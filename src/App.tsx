@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -22,6 +21,29 @@ interface AnnotationData {
   color: [number, number, number] | null;
 }
 
+type ViewMode = 'pdf' | 'markdown';
+
+interface MarkdownSaveResult {
+  markdown: string;
+  markdownPath: string;
+  written: boolean;
+  conflict: boolean;
+}
+
+type PdfBrowserTarget = 'open' | 'insert';
+
+interface PdfBrowserEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+}
+
+interface PdfBrowserListing {
+  currentDir: string;
+  parentDir: string | null;
+  entries: PdfBrowserEntry[];
+}
+
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 function App() {
@@ -34,6 +56,11 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('pdf');
+  const [markdownText, setMarkdownText] = useState('');
+  const [markdownPath, setMarkdownPath] = useState('');
+  const [pdfRevision, setPdfRevision] = useState(0);
+  const [markdownRevision, setMarkdownRevision] = useState<number | null>(null);
 
   // Editable page/zoom field values (kept in sync with the canonical state).
   const [pageInput, setPageInput] = useState('1');
@@ -56,6 +83,12 @@ function App() {
   const [printPages, setPrintPages] = useState<string[]>([]);
 
   // Modals
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [openFilePath, setOpenFilePath] = useState<string>('');
+  const [showBrowserModal, setShowBrowserModal] = useState(false);
+  const [browserTarget, setBrowserTarget] = useState<PdfBrowserTarget>('open');
+  const [browserListing, setBrowserListing] = useState<PdfBrowserListing | null>(null);
+  const [browserPathInput, setBrowserPathInput] = useState('');
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitRanges, setSplitRanges] = useState<string>('');
   const [showInsertModal, setShowInsertModal] = useState(false);
@@ -67,6 +100,11 @@ function App() {
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const markPdfEdited = useCallback(() => {
+    setPdfRevision((revision) => revision + 1);
+    setViewMode('pdf');
   }, []);
 
   const withLoading = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
@@ -85,27 +123,74 @@ function App() {
   useEffect(() => setPageInput(String(currentPage + 1)), [currentPage]);
   useEffect(() => setZoomInput(String(Math.round(zoom * 100))), [zoom]);
 
-  const pickPdf = async (): Promise<string | null> => {
-    const selected = await open({
-      multiple: false,
-      directory: false,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    });
-    return typeof selected === 'string' ? selected : null;
-  };
-
-  const openPdf = async () => {
-    const path = await pickPdf();
-    if (!path) return;
-    setFilePath(path);
-    await withLoading(async () => {
+  const loadPdfFromPath = async (path: string) => {
+    const loaded = await withLoading(async () => {
       const count = await invoke<number>('get_pdf_page_count', { path });
+      setFilePath(path);
+      setViewMode('pdf');
+      setMarkdownText('');
+      setMarkdownPath('');
+      setPdfRevision(0);
+      setMarkdownRevision(null);
+      cancelDrawing();
       setPageCount(count);
       setCurrentPage(0);
       setZoom(1);
       await renderPage(path, 0);
       await loadThumbnails(path);
+      return true;
     });
+    return loaded === true;
+  };
+
+  const openPdf = () => {
+    setOpenFilePath(filePath);
+    setShowOpenModal(true);
+  };
+
+  const handleOpenPdfPath = async () => {
+    const path = openFilePath.trim();
+    if (!path) return;
+    const loaded = await loadPdfFromPath(path);
+    if (loaded) setShowOpenModal(false);
+  };
+
+  const loadPdfBrowser = async (path?: string) => {
+    await withLoading(async () => {
+      const listing = await invoke<PdfBrowserListing>('list_pdf_browser_entries', {
+        path: path && path.trim() ? path.trim() : null,
+      });
+      setBrowserListing(listing);
+      setBrowserPathInput(listing.currentDir);
+    });
+  };
+
+  const openPdfBrowser = (target: PdfBrowserTarget) => {
+    setBrowserTarget(target);
+    setShowBrowserModal(true);
+    const startPath = target === 'open' ? openFilePath : insertFilePath;
+    void loadPdfBrowser(startPath || filePath);
+  };
+
+  const commitBrowserPath = () => {
+    void loadPdfBrowser(browserPathInput);
+  };
+
+  const handleBrowserEntryClick = async (entry: PdfBrowserEntry) => {
+    if (entry.isDir) {
+      await loadPdfBrowser(entry.path);
+      return;
+    }
+
+    if (browserTarget === 'open') {
+      setOpenFilePath(entry.path);
+      const loaded = await loadPdfFromPath(entry.path);
+      if (!loaded) return;
+      setShowOpenModal(false);
+    } else {
+      setInsertFilePath(entry.path);
+    }
+    setShowBrowserModal(false);
   };
 
   const loadThumbnails = async (path: string) => {
@@ -138,10 +223,18 @@ function App() {
 
   // Navigate to a page (0-based), clamped to the document.
   const goToPage = (index: number) => {
-    if (pageCount === null) return;
+    if (pageCount === null || !filePath) return;
     const clamped = Math.max(0, Math.min(index, pageCount - 1));
+    setViewMode('pdf');
     setCurrentPage(clamped);
-    withLoading(() => renderPage(filePath, clamped));
+    const render = () => {
+      void withLoading(() => renderPage(filePath, clamped));
+    };
+    if (viewMode === 'markdown') {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(render));
+      return;
+    }
+    render();
   };
 
   const handleDragStart = (idx: number) => setDraggedIndex(idx);
@@ -152,6 +245,7 @@ function App() {
     if (draggedIndex !== null && draggedIndex !== targetIdx) {
       await withLoading(async () => {
         await invoke('move_page', { path: filePath, fromIndex: draggedIndex, toIndex: targetIdx });
+        markPdfEdited();
         await loadThumbnails(filePath);
         setDraggedIndex(null);
         setCurrentPage(targetIdx);
@@ -168,6 +262,7 @@ function App() {
     }
     await withLoading(async () => {
       await invoke('delete_page', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
       const count = await invoke<number>('get_pdf_page_count', { path: filePath });
       setPageCount(count);
       const newPage = Math.min(currentPage, count - 1);
@@ -182,6 +277,7 @@ function App() {
     if (!filePath) return;
     await withLoading(async () => {
       await invoke('rotate_page', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
       await renderPage(filePath, currentPage);
       await loadThumbnails(filePath);
       showToast('Page rotated 90°');
@@ -214,7 +310,7 @@ function App() {
   // Wheel-driven page turn at the scroll boundaries.
   const handleWheel = (e: React.WheelEvent) => {
     const el = scrollRef.current;
-    if (!el || pageCount === null) return;
+    if (!el || pageCount === null || viewMode !== 'pdf') return;
 
     const atTop = el.scrollTop <= 0;
     const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
@@ -295,6 +391,7 @@ function App() {
         x2: rect.x + rect.w,
         y2: rect.y + rect.h,
       });
+      markPdfEdited();
       await refreshAnnotations();
       showToast('Highlight added');
     });
@@ -317,6 +414,7 @@ function App() {
       await invoke('remove_highlight', {
         path: filePath, pageIndex: currentPage, index: highlightIndex,
       });
+      markPdfEdited();
       await refreshAnnotations();
       showToast('Highlight removed');
     });
@@ -327,12 +425,24 @@ function App() {
     setHighlightMode((m) => !m);
   };
 
-  const handleConvertToMarkdown = async () => {
+  const handleMarkdownView = async () => {
     if (!filePath) return;
+    if (markdownText && markdownRevision === pdfRevision) {
+      setViewMode('markdown');
+      return;
+    }
     await withLoading(async () => {
-      const markdown = await invoke<string>('convert_pdf_to_markdown', { path: filePath });
-      alert(`Markdown conversion successful!\n\n${markdown.substring(0, 500)}${markdown.length > 500 ? '…' : ''}`);
-      showToast('Markdown conversion complete');
+      let result = await invoke<MarkdownSaveResult>('save_pdf_markdown', { path: filePath, overwrite: false });
+      if (result.conflict) {
+        const overwrite = window.confirm('Overwrite Markdown File?');
+        if (!overwrite) return;
+        result = await invoke<MarkdownSaveResult>('save_pdf_markdown', { path: filePath, overwrite: true });
+      }
+      setMarkdownText(result.markdown);
+      setMarkdownPath(result.markdownPath);
+      setMarkdownRevision(pdfRevision);
+      setViewMode('markdown');
+      showToast(result.written ? `Markdown saved to ${result.markdownPath}` : 'Markdown file is already up to date');
     });
   };
 
@@ -350,11 +460,6 @@ function App() {
     });
   };
 
-  const chooseInsertFile = async () => {
-    const path = await pickPdf();
-    if (path) setInsertFilePath(path);
-  };
-
   const handleInsertPdf = async () => {
     if (!filePath || !insertFilePath) return;
     await withLoading(async () => {
@@ -365,6 +470,7 @@ function App() {
         insertStart: insertStartPage,
         insertEnd: insertEndPage,
       });
+      markPdfEdited();
       showToast('PDF inserted successfully');
       setShowInsertModal(false);
       setInsertFilePath('');
@@ -466,7 +572,24 @@ function App() {
                 <button onClick={handleDeletePage} className="btn">Delete</button>
                 <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
                 <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
-                <button onClick={handleConvertToMarkdown} className="btn">Markdown</button>
+                <div className="view-toggle" role="group" aria-label="Document view">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('pdf')}
+                    className={viewMode === 'pdf' ? 'active' : ''}
+                    aria-pressed={viewMode === 'pdf'}
+                  >
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMarkdownView}
+                    className={viewMode === 'markdown' ? 'active' : ''}
+                    aria-pressed={viewMode === 'markdown'}
+                  >
+                    Markdown
+                  </button>
+                </div>
                 <button onClick={handleOptimizePdf} className="btn">Optimize</button>
                 <button onClick={handlePrint} className="btn">Print</button>
                 <button
@@ -479,7 +602,7 @@ function App() {
             )}
           </div>
 
-          {pageCount !== null && (
+          {pageCount !== null && viewMode === 'pdf' && (
             <div className="page-controls">
               <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 0} className="btn">Prev</button>
               <span className="field-group">
@@ -520,56 +643,90 @@ function App() {
         </div>
 
         {/* Scrollable page area */}
-        <div className="page-scroll" ref={scrollRef} onWheel={handleWheel}>
-          <div
-            className={`page-container ${highlightMode ? 'highlight-cursor' : ''}`}
-            onClick={handlePageClick}
-            onMouseMove={handlePageMouseMove}
-          >
-            {imageSrc ? (
-              <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
-                <div style={{ position: 'relative', display: 'inline-block' }}>
-                  <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={handleImageLoad} />
-                  {/* Existing highlights */}
-                  {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
-                    <div
-                      key={i}
-                      className="highlight-overlay"
-                      title={highlightMode ? 'Click to remove' : undefined}
-                      onClick={highlightMode ? (e) => { e.stopPropagation(); removeHighlight(i); } : undefined}
-                      style={{
-                        left: a.rect[0],
-                        top: a.rect[1],
-                        width: a.rect[2] - a.rect[0],
-                        height: a.rect[3] - a.rect[1],
-                        backgroundColor: a.color
-                          ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
-                          : 'rgba(255,255,0,0.3)',
-                        pointerEvents: highlightMode ? 'auto' : 'none',
-                        cursor: highlightMode ? 'pointer' : 'default',
-                      }}
-                    />
-                  ))}
-                  {/* Current highlight drag */}
-                  {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                    <div
-                      className="highlight-draft"
-                      style={{
-                        left: highlightRect.x,
-                        top: highlightRect.y,
-                        width: highlightRect.w,
-                        height: highlightRect.h,
-                      }}
-                    />
-                  )}
-                </div>
+        <div className={`page-scroll ${viewMode === 'markdown' ? 'markdown-scroll' : ''}`} ref={scrollRef} onWheel={handleWheel}>
+          {viewMode === 'markdown' ? (
+            <div className="markdown-viewer">
+              <div className="markdown-header">
+                <span>Markdown</span>
+                {markdownPath && <span className="markdown-path">{markdownPath}</span>}
               </div>
-            ) : (
-              <p className="muted">No page rendered — click “Open PDF” to begin.</p>
-            )}
-          </div>
+              <pre className="markdown-preview">{markdownText}</pre>
+            </div>
+          ) : (
+            <div
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''}`}
+              onClick={handlePageClick}
+              onMouseMove={handlePageMouseMove}
+            >
+              {imageSrc ? (
+                <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={handleImageLoad} />
+                    {/* Existing highlights */}
+                    {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
+                      <div
+                        key={i}
+                        className="highlight-overlay"
+                        title={highlightMode ? 'Click to remove' : undefined}
+                        onClick={highlightMode ? (e) => { e.stopPropagation(); removeHighlight(i); } : undefined}
+                        style={{
+                          left: a.rect[0],
+                          top: a.rect[1],
+                          width: a.rect[2] - a.rect[0],
+                          height: a.rect[3] - a.rect[1],
+                          backgroundColor: a.color
+                            ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
+                            : 'rgba(255,255,0,0.3)',
+                          pointerEvents: highlightMode ? 'auto' : 'none',
+                          cursor: highlightMode ? 'pointer' : 'default',
+                        }}
+                      />
+                    ))}
+                    {/* Current highlight drag */}
+                    {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                      <div
+                        className="highlight-draft"
+                        style={{
+                          left: highlightRect.x,
+                          top: highlightRect.y,
+                          width: highlightRect.w,
+                          height: highlightRect.h,
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="muted">No page rendered — click “Open PDF” to begin.</p>
+              )}
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Open Modal */}
+      {showOpenModal && (
+        <Modal onClose={() => setShowOpenModal(false)}>
+          <h3>Open PDF</h3>
+          <label>PDF path:</label>
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={openFilePath}
+              onChange={(e) => setOpenFilePath(e.target.value)}
+              onKeyDown={(e) => onFieldKeyDown(e, handleOpenPdfPath)}
+              className="modal-input"
+              placeholder="/path/to/document.pdf"
+              autoFocus
+            />
+            <button onClick={() => openPdfBrowser('open')} className="btn">Browse…</button>
+          </div>
+          <div className="modal-actions">
+            <button onClick={() => setShowOpenModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={handleOpenPdfPath} className="btn" disabled={!openFilePath.trim()}>Open</button>
+          </div>
+        </Modal>
+      )}
 
       {/* Split Modal */}
       {showSplitModal && (
@@ -596,8 +753,16 @@ function App() {
         <Modal onClose={() => { setShowInsertModal(false); setInsertFilePath(''); }}>
           <h3>Insert PDF</h3>
           <label>Source PDF to insert:</label>
-          <button onClick={chooseInsertFile} className="btn">Choose PDF…</button>
-          {insertFilePath && <p className="muted">{insertFilePath}</p>}
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={insertFilePath}
+              onChange={(e) => setInsertFilePath(e.target.value)}
+              className="modal-input"
+              placeholder="/path/to/source.pdf"
+            />
+            <button onClick={() => openPdfBrowser('insert')} className="btn">Browse…</button>
+          </div>
           <div className="insert-grid">
             <label>
               At page (1-{(pageCount ?? 0) + 1}):
@@ -615,6 +780,44 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* PDF Browser Modal */}
+      {showBrowserModal && (
+        <Modal onClose={() => setShowBrowserModal(false)}>
+          <h3>Browse PDF</h3>
+          <label>Folder:</label>
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={browserPathInput}
+              onChange={(e) => setBrowserPathInput(e.target.value)}
+              onKeyDown={(e) => onFieldKeyDown(e, commitBrowserPath)}
+              className="modal-input"
+            />
+            <button onClick={commitBrowserPath} className="btn">Go</button>
+          </div>
+          <div className="file-browser-list">
+            {browserListing?.parentDir && (
+              <button className="file-browser-row" onClick={() => loadPdfBrowser(browserListing.parentDir ?? undefined)}>
+                <span className="file-browser-kind">Folder</span>
+                <span className="file-browser-name">..</span>
+              </button>
+            )}
+            {browserListing?.entries.map((entry) => (
+              <button key={entry.path} className="file-browser-row" onClick={() => handleBrowserEntryClick(entry)}>
+                <span className="file-browser-kind">{entry.isDir ? 'Folder' : 'PDF'}</span>
+                <span className="file-browser-name">{entry.name}</span>
+              </button>
+            ))}
+            {browserListing && browserListing.entries.length === 0 && (
+              <p className="muted browser-empty">No folders or PDF files here</p>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button onClick={() => setShowBrowserModal(false)} className="btn btn-secondary">Cancel</button>
           </div>
         </Modal>
       )}

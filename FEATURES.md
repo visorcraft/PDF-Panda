@@ -25,7 +25,7 @@ This is an open-source PDF editor project designed to be native to Linux while c
 * **Basic Annotations:** Support for text selection and highlighting to assist in reading and reviewing documents.
 
 ### 3. Conversion & Export
-* **Convert to Markdown (.md):** Transform PDF content into structured Markdown files, preserving basic layout and text hierarchy.
+* **Convert to Markdown (.md):** Extract PDF text into a same-folder Markdown file grouped by page, with overwrite confirmation when an existing `.md` differs.
 * **Optimized PDF Export:** A specialized export mode designed to reduce file size significantly through:
     * Efficient image re-compression (balancing quality and size).
     * Content optimization (removing redundant metadata/objects).

@@ -2,10 +2,12 @@
 
 use lopdf::{Document, Object, ObjectId};
 use pdfium_render::prelude::*;
-use std::path::PathBuf;
-use std::sync::OnceLock;
+use serde::Serialize;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
-static PDFIUM: OnceLock<Result<Pdfium, String>> = OnceLock::new();
+static PDFIUM: OnceLock<Result<Mutex<Pdfium>, String>> = OnceLock::new();
 /// Directory holding the bundled PDFium library, populated during Tauri `setup`
 /// from the app's resource directory (only meaningful in a packaged build).
 static BUNDLED_PDFIUM_DIR: OnceLock<PathBuf> = OnceLock::new();
@@ -74,8 +76,13 @@ fn bind_pdfium() -> Result<Pdfium, String> {
 /// Returns the process-wide PDFium binding, or a user-facing error string if no
 /// compatible library is available (so commands surface a message instead of
 /// aborting the app).
-fn get_pdfium() -> Result<&'static Pdfium, String> {
-    PDFIUM.get_or_init(bind_pdfium).as_ref().map_err(|e| e.clone())
+fn get_pdfium() -> Result<MutexGuard<'static, Pdfium>, String> {
+    PDFIUM
+        .get_or_init(|| bind_pdfium().map(Mutex::new))
+        .as_ref()
+        .map_err(|e| e.clone())?
+        .lock()
+        .map_err(|_| "PDFium renderer lock poisoned".to_string())
 }
 
 #[tauri::command]
@@ -84,6 +91,82 @@ fn get_pdf_page_count(path: String) -> Result<u32, String> {
     let pdfium = get_pdfium()?;
     let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
     Ok(document.pages().len() as u32)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PdfBrowserEntry {
+    name: String,
+    path: String,
+    is_dir: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PdfBrowserListing {
+    current_dir: String,
+    parent_dir: Option<String>,
+    entries: Vec<PdfBrowserEntry>,
+}
+
+fn default_browser_dir() -> PathBuf {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .and_then(|home| {
+            let documents = home.join("Documents");
+            if documents.is_dir() {
+                Some(documents)
+            } else if home.is_dir() {
+                Some(home)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")))
+}
+
+fn list_pdf_entries_for_dir(dir: &Path) -> Result<PdfBrowserListing, String> {
+    let current_dir = dir.canonicalize().map_err(|e| e.to_string())?;
+    if !current_dir.is_dir() {
+        return Err(format!("{} is not a directory", current_dir.to_string_lossy()));
+    }
+
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(&current_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        let metadata = entry.metadata().map_err(|e| e.to_string())?;
+        let is_dir = metadata.is_dir();
+        let is_pdf =
+            path.extension().and_then(|ext| ext.to_str()).map(|ext| ext.eq_ignore_ascii_case("pdf")).unwrap_or(false);
+        if !is_dir && !is_pdf {
+            continue;
+        }
+        entries.push(PdfBrowserEntry {
+            name: entry.file_name().to_string_lossy().to_string(),
+            path: path.to_string_lossy().to_string(),
+            is_dir,
+        });
+    }
+
+    entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+    });
+
+    Ok(PdfBrowserListing {
+        parent_dir: current_dir.parent().map(|path| path.to_string_lossy().to_string()),
+        current_dir: current_dir.to_string_lossy().to_string(),
+        entries,
+    })
+}
+
+#[tauri::command]
+fn list_pdf_browser_entries(path: Option<String>) -> Result<PdfBrowserListing, String> {
+    let dir = path.filter(|path| !path.trim().is_empty()).map(PathBuf::from).unwrap_or_else(default_browser_dir);
+    let dir = if dir.is_file() { dir.parent().map(Path::to_path_buf).unwrap_or_else(default_browser_dir) } else { dir };
+    list_pdf_entries_for_dir(&dir)
 }
 
 #[tauri::command]
@@ -217,13 +300,12 @@ fn rotate_page(path: String, page_index: u32) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
+fn pdf_to_markdown(path: &Path) -> Result<String, String> {
     // Use PDFium's text layer: it decodes font encodings (including CID/Type0
     // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
     // produce text instead of empty pages.
     let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(&PathBuf::from(&path), None).map_err(|e| e.to_string())?;
+    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
 
     let mut markdown = String::from("# PDF to Markdown Conversion\n\n");
     for (index, page) in document.pages().iter().enumerate() {
@@ -238,6 +320,59 @@ fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
         markdown.push_str("\n\n");
     }
     Ok(markdown)
+}
+
+#[tauri::command]
+fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
+    pdf_to_markdown(&PathBuf::from(path))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MarkdownSaveResult {
+    markdown: String,
+    markdown_path: String,
+    written: bool,
+    conflict: bool,
+}
+
+fn write_markdown_file(pdf_path: &Path, markdown: &str, overwrite: bool) -> Result<MarkdownSaveResult, String> {
+    let markdown_path = pdf_path.with_extension("md");
+
+    if markdown_path.exists() {
+        let existing = std::fs::read(&markdown_path).map_err(|e| e.to_string())?;
+        if existing == markdown.as_bytes() {
+            return Ok(MarkdownSaveResult {
+                markdown: markdown.to_string(),
+                markdown_path: markdown_path.to_string_lossy().to_string(),
+                written: false,
+                conflict: false,
+            });
+        }
+        if !overwrite {
+            return Ok(MarkdownSaveResult {
+                markdown: markdown.to_string(),
+                markdown_path: markdown_path.to_string_lossy().to_string(),
+                written: false,
+                conflict: true,
+            });
+        }
+    }
+
+    std::fs::write(&markdown_path, markdown).map_err(|e| e.to_string())?;
+    Ok(MarkdownSaveResult {
+        markdown: markdown.to_string(),
+        markdown_path: markdown_path.to_string_lossy().to_string(),
+        written: true,
+        conflict: false,
+    })
+}
+
+#[tauri::command]
+fn save_pdf_markdown(path: String, overwrite: bool) -> Result<MarkdownSaveResult, String> {
+    let pdf_path = PathBuf::from(path);
+    let markdown = pdf_to_markdown(&pdf_path)?;
+    write_markdown_file(&pdf_path, &markdown, overwrite)
 }
 
 #[tauri::command]
@@ -580,7 +715,6 @@ fn main() {
     }
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // In a packaged build, PDFium ships under the app's resource
             // directory; record it so the loader can find it at runtime.
@@ -591,6 +725,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            list_pdf_browser_entries,
             get_pdf_page_count,
             render_pdf_page,
             get_pdf_thumbnails,
@@ -600,6 +735,7 @@ fn main() {
             split_pdf,
             insert_pdf,
             convert_pdf_to_markdown,
+            save_pdf_markdown,
             optimize_pdf,
             add_highlight,
             remove_highlight,
@@ -755,6 +891,63 @@ mod tests {
     }
 
     #[test]
+    fn write_markdown_file_creates_sibling_md() {
+        let pdf_path = tmp("markdown_write");
+        let md_path = pdf_path.with_extension("md");
+        let _ = std::fs::remove_file(&md_path);
+
+        let result = write_markdown_file(&pdf_path, "# Test\n", false).unwrap();
+
+        assert!(result.written);
+        assert!(!result.conflict);
+        assert_eq!(result.markdown_path, md_path.to_string_lossy());
+        assert_eq!(std::fs::read_to_string(&md_path).unwrap(), "# Test\n");
+        let _ = std::fs::remove_file(&md_path);
+    }
+
+    #[test]
+    fn write_markdown_file_detects_conflict_without_overwrite() {
+        let pdf_path = tmp("markdown_conflict");
+        let md_path = pdf_path.with_extension("md");
+        std::fs::write(&md_path, "# Existing\n").unwrap();
+
+        let result = write_markdown_file(&pdf_path, "# New\n", false).unwrap();
+
+        assert!(!result.written);
+        assert!(result.conflict);
+        assert_eq!(std::fs::read_to_string(&md_path).unwrap(), "# Existing\n");
+        let _ = std::fs::remove_file(&md_path);
+    }
+
+    #[test]
+    fn write_markdown_file_overwrites_after_confirmation() {
+        let pdf_path = tmp("markdown_overwrite");
+        let md_path = pdf_path.with_extension("md");
+        std::fs::write(&md_path, "# Existing\n").unwrap();
+
+        let result = write_markdown_file(&pdf_path, "# New\n", true).unwrap();
+
+        assert!(result.written);
+        assert!(!result.conflict);
+        assert_eq!(std::fs::read_to_string(&md_path).unwrap(), "# New\n");
+        let _ = std::fs::remove_file(&md_path);
+    }
+
+    #[test]
+    fn write_markdown_file_skips_rewrite_when_content_matches() {
+        let pdf_path = tmp("markdown_unchanged");
+        let md_path = pdf_path.with_extension("md");
+        std::fs::write(&md_path, "# Same\n").unwrap();
+
+        let result = write_markdown_file(&pdf_path, "# Same\n", false).unwrap();
+
+        assert!(!result.written);
+        assert!(!result.conflict);
+        assert_eq!(std::fs::read_to_string(&md_path).unwrap(), "# Same\n");
+        let _ = std::fs::remove_file(&md_path);
+    }
+
+    #[test]
     fn optimize_pdf_writes_output_file() {
         let path = save(&mut build_pdf(2), "optimize");
         let msg = optimize_pdf(path.clone()).unwrap();
@@ -820,8 +1013,14 @@ mod tests {
         let thumbs = get_pdf_thumbnails(pdf.clone(), 100, 141).expect("thumbnails");
         assert_eq!(thumbs.len() as u32, pages, "one thumbnail per page");
 
-        let md = convert_pdf_to_markdown(pdf).expect("markdown");
+        let md = convert_pdf_to_markdown(pdf.clone()).expect("markdown");
         assert!(md.contains("## Page 1"), "markdown should have page headers");
+
+        if pages > 1 {
+            let png_after_markdown = render_pdf_page(pdf, 1, 800, 1132).expect("render page 1 after markdown");
+            assert!(png_after_markdown.starts_with(b"\x89PNG"), "post-markdown render output should be a PNG");
+            assert!(png_after_markdown.len() > 1000, "post-markdown rendered PNG looks too small");
+        }
 
         eprintln!(
             "render_real_pdf_smoke: pages={pages}, page0={} bytes, thumbnails={}, markdown={} bytes",

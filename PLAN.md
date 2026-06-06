@@ -85,7 +85,7 @@ and verified:
 
 | Area | Implementation | Verified by |
 | --- | --- | --- |
-| Open PDF | Native file dialog (`@tauri-apps/plugin-dialog`) | Renders in browser/Tauri; dialog plugin + capability wired |
+| Open PDF | In-app path modal with built-in PDF browser (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | Real-PDF smoke test with `Disability_Brochure.pdf` |
 | View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
 | Zoom | 25%–300%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder | `move_page_reorders` test |
@@ -93,21 +93,22 @@ and verified:
 | Rotate page | Toolbar button → `rotate_page` (90° steps) | `rotate_page_accumulates_in_90_steps` |
 | Insert PDF | Modal w/ source + range + position | `insert_pdf_adds_pages_at_index` |
 | Split PDF | Ranges → separate files, orphans pruned | `split_pdf_creates_separate_files` |
-| Markdown | Content-stream text extraction (UTF-8/UTF-16/Latin-1, line breaks) | `markdown_extracts_page_text` |
+| Markdown | PDF/Markdown view toggle, PDFium text extraction, sibling `.md` auto-save with overwrite conflict detection | `write_markdown_file_*`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
 | Print | Renders all pages → native print dialog (`window.print()`) | Manual |
 | Highlight | Drag to highlight, persisted + read back | `highlight_add_and_read_back` |
 
 **Quality gates (all green):**
-- `cargo test` — 9 unit tests covering every lopdf-based command.
+- `cargo test` — unit tests covering every lopdf-based command and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
 - `cargo fmt --check` — clean.
 - `tsc --noEmit` — clean.
-- `tauri build` — optimized release (LTO, `codegen-units=1`, stripped).
+- `npx tauri build --no-bundle` — optimized release binary (LTO, `codegen-units=1`, stripped).
 - CI matrix runs all of the above on Linux, macOS, and Windows.
 
 **Known limitations (documented, not defects):**
-- Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts); pages
+- Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), saves
+  beside the open PDF as `<pdf-name>.md`, and groups plain text by page; pages
   with no text layer at all are marked `_(no extractable text on this page)_`.
 - Page-tree edits assume a flat page tree (the common case).
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at

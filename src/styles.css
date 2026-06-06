@@ -90,6 +90,39 @@ body {
   padding: 12px 16px;
 }
 
+.view-toggle {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.view-toggle button {
+  padding: 6px 12px;
+  border: 0;
+  border-right: 1px solid #ccc;
+  background: transparent;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.view-toggle button:last-child {
+  border-right: 0;
+}
+
+.view-toggle button:hover {
+  background: #f5f5f5;
+}
+
+.view-toggle button.active {
+  background: #4a90d9;
+  color: #fff;
+}
+
 .file-input::file-selector-button {
   padding: 6px 12px;
   border: 1px solid #ccc;
@@ -201,6 +234,11 @@ body {
   align-items: flex-start;
 }
 
+.page-scroll.markdown-scroll {
+  justify-content: stretch;
+  align-items: stretch;
+}
+
 /* Page Container */
 .page-container {
   position: relative;
@@ -220,6 +258,52 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   background: #fff;
   user-select: none;
+}
+
+.markdown-viewer {
+  width: 100%;
+  max-width: 1100px;
+  min-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.markdown-header {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.markdown-path {
+  min-width: 0;
+  overflow: hidden;
+  color: #777;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-preview {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  color: #222;
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Highlights */
@@ -279,6 +363,16 @@ body {
   margin-bottom: 8px;
 }
 
+.modal-path-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.modal-path-row .modal-input {
+  flex: 1;
+}
+
 .modal-actions {
   display: flex;
   gap: 8px;
@@ -297,6 +391,55 @@ body {
 
 .insert-grid .modal-input {
   margin-top: 4px;
+}
+
+.file-browser-list {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.file-browser-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid #eee;
+  background: transparent;
+  color: #222;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.file-browser-row:last-child {
+  border-bottom: 0;
+}
+
+.file-browser-row:hover {
+  background: #edf4fb;
+}
+
+.file-browser-kind {
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.file-browser-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-empty {
+  padding: 12px;
 }
 
 /* Toast */
