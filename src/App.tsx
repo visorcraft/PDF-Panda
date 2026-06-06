@@ -8,11 +8,21 @@ import { open } from '@tauri-apps/plugin-dialog';
 const BASE_W = 800;
 const BASE_H = 1132;
 
+const MIN_ZOOM = 0.25; // 25%
+const MAX_ZOOM = 4; // 400%
+const ZOOM_STEP = 0.25;
+
+// Cooldown (ms) between wheel-driven page changes so one scroll gesture / inertia
+// doesn't skip several pages at once.
+const WHEEL_NAV_COOLDOWN = 350;
+
 interface AnnotationData {
   subtype: string;
   rect: [number, number, number, number];
   color: [number, number, number] | null;
 }
+
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 function App() {
   const [filePath, setFilePath] = useState<string>('');
@@ -25,12 +35,22 @@ function App() {
   const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Editable page/zoom field values (kept in sync with the canonical state).
+  const [pageInput, setPageInput] = useState('1');
+  const [zoomInput, setZoomInput] = useState('100');
+
   // Annotations
   const [highlightMode, setHighlightMode] = useState(false);
   const [annotations, setAnnotations] = useState<AnnotationData[]>([]);
   const [highlightStart, setHighlightStart] = useState<{ x: number; y: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [drawing, setDrawing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+
+  // Scrolling / wheel navigation
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef<'top' | 'bottom' | null>(null);
+  const lastWheelNavRef = useRef(0);
 
   // Print
   const [printPages, setPrintPages] = useState<string[]>([]);
@@ -60,6 +80,10 @@ function App() {
       setLoading(false);
     }
   };
+
+  // Keep the editable fields in sync when page/zoom change via buttons, wheel, etc.
+  useEffect(() => setPageInput(String(currentPage + 1)), [currentPage]);
+  useEffect(() => setZoomInput(String(Math.round(zoom * 100))), [zoom]);
 
   const pickPdf = async (): Promise<string | null> => {
     const selected = await open({
@@ -112,6 +136,14 @@ function App() {
     setAnnotations(annots);
   };
 
+  // Navigate to a page (0-based), clamped to the document.
+  const goToPage = (index: number) => {
+    if (pageCount === null) return;
+    const clamped = Math.max(0, Math.min(index, pageCount - 1));
+    setCurrentPage(clamped);
+    withLoading(() => renderPage(filePath, clamped));
+  };
+
   const handleDragStart = (idx: number) => setDraggedIndex(idx);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
 
@@ -157,9 +189,57 @@ function App() {
   };
 
   // Zoom
-  const zoomIn = () => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
-  const zoomOut = () => setZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2)));
+  const zoomIn = () => setZoom((z) => clampZoom(+(z + ZOOM_STEP).toFixed(2)));
+  const zoomOut = () => setZoom((z) => clampZoom(+(z - ZOOM_STEP).toFixed(2)));
   const resetZoom = () => setZoom(1);
+
+  const commitZoom = () => {
+    const n = parseInt(zoomInput, 10);
+    if (Number.isNaN(n)) {
+      setZoomInput(String(Math.round(zoom * 100)));
+      return;
+    }
+    setZoom(clampZoom(n / 100));
+  };
+
+  const commitPage = () => {
+    const n = parseInt(pageInput, 10);
+    if (Number.isNaN(n) || pageCount === null) {
+      setPageInput(String(currentPage + 1));
+      return;
+    }
+    goToPage(n - 1);
+  };
+
+  // Wheel-driven page turn at the scroll boundaries.
+  const handleWheel = (e: React.WheelEvent) => {
+    const el = scrollRef.current;
+    if (!el || pageCount === null) return;
+
+    const atTop = el.scrollTop <= 0;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    const now = Date.now();
+    if (now - lastWheelNavRef.current < WHEEL_NAV_COOLDOWN) return;
+
+    if (e.deltaY > 0 && atBottom && currentPage < pageCount - 1) {
+      lastWheelNavRef.current = now;
+      pendingScrollRef.current = 'top';
+      goToPage(currentPage + 1);
+    } else if (e.deltaY < 0 && atTop && currentPage > 0) {
+      lastWheelNavRef.current = now;
+      pendingScrollRef.current = 'bottom';
+      goToPage(currentPage - 1);
+    }
+  };
+
+  // After a wheel page-turn, position the new page sensibly: top when going
+  // forward, bottom when going back.
+  const handleImageLoad = () => {
+    const el = scrollRef.current;
+    if (!el || pendingScrollRef.current === null) return;
+    el.scrollTop = pendingScrollRef.current === 'bottom' ? el.scrollHeight : 0;
+    pendingScrollRef.current = null;
+  };
 
   // Highlight annotation handlers — coordinates are stored in natural (unscaled)
   // image pixels so they stay aligned regardless of the current zoom.
@@ -172,15 +252,56 @@ function App() {
     };
   };
 
-  const handleHighlightMouseDown = (e: React.MouseEvent) => {
-    if (!highlightMode) return;
-    const coords = getImageCoords(e.clientX, e.clientY);
-    setHighlightStart(coords);
-    setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+  const refreshAnnotations = async () => {
+    const annots = await invoke<AnnotationData[]>('get_annotations', {
+      path: filePath, pageIndex: currentPage,
+    });
+    setAnnotations(annots);
   };
 
-  const handleHighlightMouseMove = (e: React.MouseEvent) => {
-    if (!highlightMode || !highlightStart) return;
+  const cancelDrawing = () => {
+    setDrawing(false);
+    setHighlightStart(null);
+    setHighlightRect(null);
+  };
+
+  // Highlighting is a two-click gesture: click once to set the start corner,
+  // move the mouse to rubber-band the selection, click again to finish.
+  const handlePageClick = (e: React.MouseEvent) => {
+    if (!highlightMode) return;
+    const coords = getImageCoords(e.clientX, e.clientY);
+    if (!drawing) {
+      setHighlightStart(coords);
+      setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+      setDrawing(true);
+      return;
+    }
+    const start = highlightStart;
+    cancelDrawing();
+    if (!start) return;
+    const rect = {
+      x: Math.min(start.x, coords.x),
+      y: Math.min(start.y, coords.y),
+      w: Math.abs(coords.x - start.x),
+      h: Math.abs(coords.y - start.y),
+    };
+    if (rect.w < 5 || rect.h < 5) return;
+    void withLoading(async () => {
+      await invoke('add_highlight', {
+        path: filePath,
+        pageIndex: currentPage,
+        x1: rect.x,
+        y1: rect.y,
+        x2: rect.x + rect.w,
+        y2: rect.y + rect.h,
+      });
+      await refreshAnnotations();
+      showToast('Highlight added');
+    });
+  };
+
+  const handlePageMouseMove = (e: React.MouseEvent) => {
+    if (!highlightMode || !drawing || !highlightStart) return;
     const coords = getImageCoords(e.clientX, e.clientY);
     setHighlightRect({
       x: Math.min(highlightStart.x, coords.x),
@@ -190,30 +311,20 @@ function App() {
     });
   };
 
-  const handleHighlightMouseUp = async () => {
-    if (!highlightMode || !highlightRect || highlightRect.w < 5 || highlightRect.h < 5) {
-      setHighlightStart(null);
-      setHighlightRect(null);
-      return;
-    }
-    const { x, y, w, h } = highlightRect;
-    await withLoading(async () => {
-      await invoke('add_highlight', {
-        path: filePath,
-        pageIndex: currentPage,
-        x1: x,
-        y1: y,
-        x2: x + w,
-        y2: y + h,
+  // Click an existing highlight (while in highlight mode) to remove it.
+  const removeHighlight = (highlightIndex: number) => {
+    void withLoading(async () => {
+      await invoke('remove_highlight', {
+        path: filePath, pageIndex: currentPage, index: highlightIndex,
       });
-      const annots = await invoke<AnnotationData[]>('get_annotations', {
-        path: filePath, pageIndex: currentPage,
-      });
-      setAnnotations(annots);
-      showToast('Highlight added');
+      await refreshAnnotations();
+      showToast('Highlight removed');
     });
-    setHighlightStart(null);
-    setHighlightRect(null);
+  };
+
+  const toggleHighlightMode = () => {
+    cancelDrawing();
+    setHighlightMode((m) => !m);
   };
 
   const handleConvertToMarkdown = async () => {
@@ -301,11 +412,11 @@ function App() {
     return () => clearTimeout(timer);
   }, [printPages]);
 
-  const changePage = (dir: -1 | 1) => {
-    const next = currentPage + dir;
-    if (next >= 0 && next < (pageCount ?? 0)) {
-      setCurrentPage(next);
-      withLoading(() => renderPage(filePath, next));
+  // Commit-on-Enter helper for the numeric fields (Tab / click-out commit via onBlur).
+  const onFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, commit: () => void) => {
+    if (e.key === 'Enter') {
+      commit();
+      e.currentTarget.blur();
     }
   };
 
@@ -332,7 +443,7 @@ function App() {
                 onDragStart={() => handleDragStart(idx)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, idx)}
-                onClick={() => { setCurrentPage(idx); withLoading(() => renderPage(filePath, idx)); }}
+                onClick={() => goToPage(idx)}
                 className={`thumbnail ${currentPage === idx ? 'active' : ''} ${draggedIndex === idx ? 'dragging' : ''}`}
                 alt={`Page ${idx + 1}`}
               />
@@ -345,83 +456,118 @@ function App() {
 
       {/* Main Content */}
       <main className="main">
-        <div className="toolbar">
-          <button onClick={openPdf} className="btn btn-active">Open PDF</button>
-          {filePath && (
-            <>
-              <button onClick={handleRotatePage} className="btn">Rotate</button>
-              <button onClick={handleDeletePage} className="btn">Delete</button>
-              <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
-              <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
-              <button onClick={handleConvertToMarkdown} className="btn">Markdown</button>
-              <button onClick={handleOptimizePdf} className="btn">Optimize</button>
-              <button onClick={handlePrint} className="btn">Print</button>
-              <button
-                onClick={() => setHighlightMode(!highlightMode)}
-                className={`btn ${highlightMode ? 'btn-active' : ''}`}
-              >
-                {highlightMode ? 'Highlight: ON' : 'Highlight'}
-              </button>
-            </>
+        {/* Fixed header: toolbar + page/zoom controls stay put while the page scrolls */}
+        <div className="header">
+          <div className="toolbar">
+            <button onClick={openPdf} className="btn btn-active">Open PDF</button>
+            {filePath && (
+              <>
+                <button onClick={handleRotatePage} className="btn">Rotate</button>
+                <button onClick={handleDeletePage} className="btn">Delete</button>
+                <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
+                <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
+                <button onClick={handleConvertToMarkdown} className="btn">Markdown</button>
+                <button onClick={handleOptimizePdf} className="btn">Optimize</button>
+                <button onClick={handlePrint} className="btn">Print</button>
+                <button
+                  onClick={toggleHighlightMode}
+                  className={`btn ${highlightMode ? 'btn-active' : ''}`}
+                >
+                  {highlightMode ? 'Highlight: ON' : 'Highlight'}
+                </button>
+              </>
+            )}
+          </div>
+
+          {pageCount !== null && (
+            <div className="page-controls">
+              <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 0} className="btn">Prev</button>
+              <span className="field-group">
+                <input
+                  className="num-input"
+                  type="text"
+                  inputMode="numeric"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => onFieldKeyDown(e, commitPage)}
+                  onBlur={commitPage}
+                  aria-label="Current page"
+                />
+                <span className="muted">/ {pageCount}</span>
+              </span>
+              <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
+
+              <span className="zoom-divider" />
+
+              <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM} className="btn">−</button>
+              <span className="field-group">
+                <input
+                  className="num-input"
+                  type="text"
+                  inputMode="numeric"
+                  value={zoomInput}
+                  onChange={(e) => setZoomInput(e.target.value)}
+                  onKeyDown={(e) => onFieldKeyDown(e, commitZoom)}
+                  onBlur={commitZoom}
+                  aria-label="Zoom percent"
+                />
+                <span className="muted">%</span>
+              </span>
+              <button onClick={zoomIn} disabled={zoom >= MAX_ZOOM} className="btn">+</button>
+              <button onClick={resetZoom} className="btn btn-secondary">Reset</button>
+            </div>
           )}
         </div>
 
-        {pageCount !== null && (
-          <div className="page-controls">
-            <button onClick={() => changePage(-1)} disabled={currentPage === 0} className="btn">Prev</button>
-            <span>{currentPage + 1} / {pageCount}</span>
-            <button onClick={() => changePage(1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
-            <span className="zoom-divider" />
-            <button onClick={zoomOut} disabled={zoom <= 0.25} className="btn">−</button>
-            <span className="zoom-level">{Math.round(zoom * 100)}%</span>
-            <button onClick={zoomIn} disabled={zoom >= 3} className="btn">+</button>
-            <button onClick={resetZoom} className="btn btn-secondary">Reset</button>
-          </div>
-        )}
-
-        <div
-          className={`page-container ${highlightMode ? 'highlight-cursor' : ''}`}
-          onMouseDown={handleHighlightMouseDown}
-          onMouseMove={handleHighlightMouseMove}
-          onMouseUp={handleHighlightMouseUp}
-        >
-          {imageSrc ? (
-            <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" />
-                {/* Existing highlights */}
-                {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
-                  <div
-                    key={i}
-                    className="highlight-overlay"
-                    style={{
-                      left: a.rect[0],
-                      top: a.rect[1],
-                      width: a.rect[2] - a.rect[0],
-                      height: a.rect[3] - a.rect[1],
-                      backgroundColor: a.color
-                        ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
-                        : 'rgba(255,255,0,0.3)',
-                    }}
-                  />
-                ))}
-                {/* Current highlight drag */}
-                {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                  <div
-                    className="highlight-draft"
-                    style={{
-                      left: highlightRect.x,
-                      top: highlightRect.y,
-                      width: highlightRect.w,
-                      height: highlightRect.h,
-                    }}
-                  />
-                )}
+        {/* Scrollable page area */}
+        <div className="page-scroll" ref={scrollRef} onWheel={handleWheel}>
+          <div
+            className={`page-container ${highlightMode ? 'highlight-cursor' : ''}`}
+            onClick={handlePageClick}
+            onMouseMove={handlePageMouseMove}
+          >
+            {imageSrc ? (
+              <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={handleImageLoad} />
+                  {/* Existing highlights */}
+                  {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
+                    <div
+                      key={i}
+                      className="highlight-overlay"
+                      title={highlightMode ? 'Click to remove' : undefined}
+                      onClick={highlightMode ? (e) => { e.stopPropagation(); removeHighlight(i); } : undefined}
+                      style={{
+                        left: a.rect[0],
+                        top: a.rect[1],
+                        width: a.rect[2] - a.rect[0],
+                        height: a.rect[3] - a.rect[1],
+                        backgroundColor: a.color
+                          ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
+                          : 'rgba(255,255,0,0.3)',
+                        pointerEvents: highlightMode ? 'auto' : 'none',
+                        cursor: highlightMode ? 'pointer' : 'default',
+                      }}
+                    />
+                  ))}
+                  {/* Current highlight drag */}
+                  {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                    <div
+                      className="highlight-draft"
+                      style={{
+                        left: highlightRect.x,
+                        top: highlightRect.y,
+                        width: highlightRect.w,
+                        height: highlightRect.h,
+                      }}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <p className="muted">No page rendered — click “Open PDF” to begin.</p>
-          )}
+            ) : (
+              <p className="muted">No page rendered — click “Open PDF” to begin.</p>
+            )}
+          </div>
         </div>
       </main>
 

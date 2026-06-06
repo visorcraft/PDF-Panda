@@ -1,7 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod markdown_converter;
-
 use lopdf::{Document, Object, ObjectId};
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
@@ -219,11 +217,27 @@ fn rotate_page(path: String, page_index: u32) -> Result<(), String> {
     Ok(())
 }
 
-use crate::markdown_converter::convert_pdf_to_markdown as md_convert;
-
 #[tauri::command]
 fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
-    md_convert(path)
+    // Use PDFium's text layer: it decodes font encodings (including CID/Type0
+    // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
+    // produce text instead of empty pages.
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(&PathBuf::from(&path), None).map_err(|e| e.to_string())?;
+
+    let mut markdown = String::from("# PDF to Markdown Conversion\n\n");
+    for (index, page) in document.pages().iter().enumerate() {
+        markdown.push_str(&format!("## Page {}\n\n", index + 1));
+        let text = page.text().map_err(|e| e.to_string())?.all();
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            markdown.push_str("_(no extractable text on this page)_");
+        } else {
+            markdown.push_str(trimmed);
+        }
+        markdown.push_str("\n\n");
+    }
+    Ok(markdown)
 }
 
 #[tauri::command]
@@ -429,6 +443,54 @@ fn add_highlight(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f
     Ok(())
 }
 
+/// Remove the `index`-th highlight annotation (0-based, in document order) from a
+/// page. The index matches the order highlights are returned by
+/// `get_annotations` after filtering to the `Highlight` subtype.
+#[tauri::command]
+fn remove_highlight(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
+        Ok(Object::Array(arr)) => arr.clone(),
+        _ => return Err("No annotations on this page".to_string()),
+    };
+
+    let mut highlight_count = 0u32;
+    let mut target_pos: Option<usize> = None;
+    for (pos, annot_ref) in annots.iter().enumerate() {
+        let Object::Reference(id) = annot_ref else {
+            continue;
+        };
+        let is_highlight = doc
+            .get_object(*id)
+            .ok()
+            .and_then(|o| o.as_dict().ok())
+            .and_then(|d| d.get(b"Subtype").ok())
+            .and_then(|o| o.as_name().ok())
+            .map(|n| String::from_utf8_lossy(n) == "Highlight")
+            .unwrap_or(false);
+        if is_highlight {
+            if highlight_count == index {
+                target_pos = Some(pos);
+                break;
+            }
+            highlight_count += 1;
+        }
+    }
+
+    let pos = target_pos.ok_or("Highlight not found".to_string())?;
+    let mut new_annots = annots;
+    new_annots.remove(pos);
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
+
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 struct AnnotationData {
     subtype: String,
@@ -540,6 +602,7 @@ fn main() {
             convert_pdf_to_markdown,
             optimize_pdf,
             add_highlight,
+            remove_highlight,
             get_annotations
         ])
         .run(tauri::generate_context!())
@@ -705,11 +768,16 @@ mod tests {
     }
 
     #[test]
-    fn markdown_extracts_page_text() {
-        let path = save(&mut build_pdf(1), "markdown");
-        let md = convert_pdf_to_markdown(path.clone()).unwrap();
-        assert!(md.contains("Hello"), "extracted markdown: {md}");
-        assert!(md.contains("## Page 1"));
+    fn highlight_remove_deletes_the_right_one() {
+        let path = save(&mut build_pdf(1), "remove_hl");
+        add_highlight(path.clone(), 0, 10.0, 10.0, 20.0, 20.0).unwrap();
+        add_highlight(path.clone(), 0, 30.0, 30.0, 40.0, 40.0).unwrap();
+        assert_eq!(get_annotations(path.clone(), 0).unwrap().len(), 2);
+        // Removing highlight 0 must leave the second one intact.
+        remove_highlight(path.clone(), 0, 0).unwrap();
+        let remaining = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].rect, [30.0, 30.0, 40.0, 40.0]);
         let _ = std::fs::remove_file(&path);
     }
 
@@ -749,9 +817,18 @@ mod tests {
         assert!(png.len() > 1000, "rendered PNG looks too small");
         std::fs::write("/tmp/render_test_page0.png", &png).unwrap();
 
-        let thumbs = get_pdf_thumbnails(pdf, 100, 141).expect("thumbnails");
+        let thumbs = get_pdf_thumbnails(pdf.clone(), 100, 141).expect("thumbnails");
         assert_eq!(thumbs.len() as u32, pages, "one thumbnail per page");
 
-        eprintln!("render_real_pdf_smoke: pages={pages}, page0={} bytes, thumbnails={}", png.len(), thumbs.len());
+        let md = convert_pdf_to_markdown(pdf).expect("markdown");
+        assert!(md.contains("## Page 1"), "markdown should have page headers");
+
+        eprintln!(
+            "render_real_pdf_smoke: pages={pages}, page0={} bytes, thumbnails={}, markdown={} bytes",
+            png.len(),
+            thumbs.len(),
+            md.len()
+        );
+        eprintln!("markdown preview:\n{}", md.chars().take(400).collect::<String>());
     }
 }

@@ -66,11 +66,19 @@ body {
 /* Main Area */
 .main {
   flex: 1;
-  overflow-y: auto;
-  padding: 16px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  overflow: hidden;
+}
+
+/* Fixed header (toolbar + page/zoom controls) — stays put while the page scrolls */
+.header {
+  flex-shrink: 0;
+  background: #fff;
+  border-bottom: 1px solid #e3e3e3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  z-index: 10;
 }
 
 /* Toolbar */
@@ -78,8 +86,8 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
   align-items: center;
+  padding: 12px 16px;
 }
 
 .file-input::file-selector-button {
@@ -143,13 +151,37 @@ body {
 .page-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 12px;
   font-size: 14px;
   font-weight: 500;
+  padding: 8px 16px;
+  border-top: 1px solid #f0f0f0;
+  flex-wrap: wrap;
 }
 
-/* Zoom controls */
+.field-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Editable numeric fields (page number, zoom %) */
+.num-input {
+  width: 56px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.num-input:focus {
+  outline: none;
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+}
+
 .zoom-divider {
   width: 1px;
   height: 20px;
@@ -157,19 +189,21 @@ body {
   margin: 0 4px;
 }
 
-.zoom-level {
-  min-width: 48px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+/* Scrollable page area */
+.page-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  /* `safe center` centers the page when it fits and switches to start-aligned
+     (fully scrollable) when zoomed larger than the viewport. */
+  justify-content: safe center;
+  align-items: flex-start;
 }
 
 /* Page Container */
 .page-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   position: relative;
-  width: 100%;
 }
 
 .page-scale {

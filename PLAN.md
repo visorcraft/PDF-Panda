@@ -107,8 +107,8 @@ and verified:
 - CI matrix runs all of the above on Linux, macOS, and Windows.
 
 **Known limitations (documented, not defects):**
-- Markdown extraction can't recover text from CID/Type0-font PDFs (needs a full
-  text layer); such pages are marked `_(no extractable text on this page)_`.
+- Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts); pages
+  with no text layer at all are marked `_(no extractable text on this page)_`.
 - Page-tree edits assume a flat page tree (the common case).
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
