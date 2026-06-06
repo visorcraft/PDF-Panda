@@ -75,3 +75,40 @@ This document outlines the phased approach for developing the high-performance, 
     - [x] Conduct cross-platform testing on all target OSs.
     - [x] Perform performance profiling to ensure "bleeding edge" speed.
     - [x] Finalize documentation and prepare the first release tag.
+
+---
+
+## Status & Verification
+
+All MVP features are implemented, wired end-to-end (frontend ⇄ Tauri commands),
+and verified:
+
+| Area | Implementation | Verified by |
+| --- | --- | --- |
+| Open PDF | Native file dialog (`@tauri-apps/plugin-dialog`) | Renders in browser/Tauri; dialog plugin + capability wired |
+| View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
+| Zoom | 25%–300%, CSS-scaled (overlays stay aligned) | Manual |
+| Thumbnails | Async generation, drag-and-drop reorder | `move_page_reorders` test |
+| Delete page | Toolbar button → `delete_page` (keeps `/Count`) | `delete_page_reduces_pages_and_fixes_count` |
+| Rotate page | Toolbar button → `rotate_page` (90° steps) | `rotate_page_accumulates_in_90_steps` |
+| Insert PDF | Modal w/ source + range + position | `insert_pdf_adds_pages_at_index` |
+| Split PDF | Ranges → separate files, orphans pruned | `split_pdf_creates_separate_files` |
+| Markdown | Content-stream text extraction (UTF-8/UTF-16/Latin-1, line breaks) | `markdown_extracts_page_text` |
+| Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
+| Print | Renders all pages → native print dialog (`window.print()`) | Manual |
+| Highlight | Drag to highlight, persisted + read back | `highlight_add_and_read_back` |
+
+**Quality gates (all green):**
+- `cargo test` — 9 unit tests covering every lopdf-based command.
+- `cargo clippy --all-targets` with `-D warnings` — clean.
+- `cargo fmt --check` — clean.
+- `tsc --noEmit` — clean.
+- `tauri build` — optimized release (LTO, `codegen-units=1`, stripped).
+- CI matrix runs all of the above on Linux, macOS, and Windows.
+
+**Known limitations (documented, not defects):**
+- Markdown extraction can't recover text from CID/Type0-font PDFs (needs a full
+  text layer); such pages are marked `_(no extractable text on this page)_`.
+- Page-tree edits assume a flat page tree (the common case).
+- On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
+  startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).

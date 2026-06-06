@@ -3,10 +3,13 @@
 A high-performance, cross-platform PDF editor built with Rust and Tauri.
 
 ## Features (MVP)
-* Page Management (Re-order, Insert, Delete, Rotate, Split)
-* High-Performance Viewer
+* Open PDFs via a native file dialog
+* Page Management (Re-order via drag-and-drop, Insert, Delete, Rotate, Split)
+* High-Performance Viewer with zoom (25%–300%) and thumbnail navigation
+* Highlight annotations (persisted to the document)
 * Markdown Conversion (.md)
-* Optimized PDF Export
+* Optimized PDF Export (metadata strip, image recompression, stream compression)
+* Printing via the system's native print dialog
 * Cross-platform support (Linux, macOS, Windows)
 
 ## Tech Stack

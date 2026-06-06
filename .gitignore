@@ -13,6 +13,19 @@ build/
 src-tauri/target/
 src-tauri/bin/
 
+# Tooling / test artifacts
+.playwright-mcp/
+test-results/
+playwright-report/
+coverage/
+*.tsbuildinfo
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*~
+
 # OS
 .DS_Store
 Thumbs.db

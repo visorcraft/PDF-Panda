@@ -149,11 +149,31 @@ body {
   font-weight: 500;
 }
 
+/* Zoom controls */
+.zoom-divider {
+  width: 1px;
+  height: 20px;
+  background: #ddd;
+  margin: 0 4px;
+}
+
+.zoom-level {
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Page Container */
 .page-container {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   position: relative;
+  width: 100%;
+}
+
+.page-scale {
+  transition: transform 0.1s ease-out;
 }
 
 .page-container.highlight-cursor {
@@ -304,4 +324,40 @@ body {
 .muted {
   font-size: 13px;
   color: #888;
+}
+
+/* Print surface — hidden on screen, revealed only for the native print dialog */
+.print-root {
+  display: none;
+}
+
+@media print {
+  html,
+  body,
+  .app {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    background: #fff !important;
+  }
+
+  .app > *:not(.print-root) {
+    display: none !important;
+  }
+
+  .print-root {
+    display: block !important;
+  }
+
+  .print-page {
+    display: block;
+    width: 100%;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
 }

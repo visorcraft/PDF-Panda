@@ -1,5 +1,18 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+
+// Base resolution each page is rendered at. Zoom is applied as a CSS transform
+// on top of this so the rendered image and the annotation overlays scale
+// together and stay aligned at any zoom level.
+const BASE_W = 800;
+const BASE_H = 1132;
+
+interface AnnotationData {
+  subtype: string;
+  rect: [number, number, number, number];
+  color: [number, number, number] | null;
+}
 
 function App() {
   const [filePath, setFilePath] = useState<string>('');
@@ -9,6 +22,7 @@ function App() {
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Annotations
@@ -16,8 +30,10 @@ function App() {
   const [annotations, setAnnotations] = useState<AnnotationData[]>([]);
   const [highlightStart, setHighlightStart] = useState<{ x: number; y: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+
+  // Print
+  const [printPages, setPrintPages] = useState<string[]>([]);
 
   // Modals
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -27,12 +43,6 @@ function App() {
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
   const [insertStartPage, setInsertStartPage] = useState<number>(0);
   const [insertEndPage, setInsertEndPage] = useState<number>(0);
-
-  interface AnnotationData {
-    subtype: string;
-    rect: [number, number, number, number];
-    color: [number, number, number] | null;
-  }
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -51,41 +61,54 @@ function App() {
     }
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const path = (file as any).path || '';
-    setFilePath(path);
+  const pickPdf = async (): Promise<string | null> => {
+    const selected = await open({
+      multiple: false,
+      directory: false,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    return typeof selected === 'string' ? selected : null;
+  };
 
+  const openPdf = async () => {
+    const path = await pickPdf();
+    if (!path) return;
+    setFilePath(path);
     await withLoading(async () => {
       const count = await invoke<number>('get_pdf_page_count', { path });
       setPageCount(count);
-      renderPage(path, 0);
-      loadThumbnails(path);
+      setCurrentPage(0);
+      setZoom(1);
+      await renderPage(path, 0);
+      await loadThumbnails(path);
     });
   };
 
   const loadThumbnails = async (path: string) => {
     const thumbBytesArray = await invoke<number[][]>('get_pdf_thumbnails', {
-      path, width: 100, height: 141
+      path, width: 100, height: 141,
     });
-    const thumbs = thumbBytesArray.map(bytes => {
+    const thumbs = thumbBytesArray.map((bytes) => {
       const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
       return URL.createObjectURL(blob);
     });
-    setThumbnails(thumbs);
+    setThumbnails((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return thumbs;
+    });
   };
 
   const renderPage = async (path: string, index: number) => {
     const bytes = await invoke<number[]>('render_pdf_page', {
-      path, pageIndex: index, width: 800, height: 1132
+      path, pageIndex: index, width: BASE_W, height: BASE_H,
     });
     const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-    setImageSrc(URL.createObjectURL(blob));
-
-    const annots = await invoke<AnnotationData[]>('get_annotations', {
-      path, pageIndex: index
+    setImageSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(blob);
     });
+
+    const annots = await invoke<AnnotationData[]>('get_annotations', { path, pageIndex: index });
     setAnnotations(annots);
   };
 
@@ -99,18 +122,53 @@ function App() {
         await invoke('move_page', { path: filePath, fromIndex: draggedIndex, toIndex: targetIdx });
         await loadThumbnails(filePath);
         setDraggedIndex(null);
-        renderPage(filePath, currentPage);
+        setCurrentPage(targetIdx);
+        await renderPage(filePath, targetIdx);
       });
     }
   };
 
-  // Highlight annotation handlers
+  const handleDeletePage = async () => {
+    if (!filePath || pageCount === null) return;
+    if (pageCount <= 1) {
+      showToast('Cannot delete the only page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      await invoke('delete_page', { path: filePath, pageIndex: currentPage });
+      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
+      setPageCount(count);
+      const newPage = Math.min(currentPage, count - 1);
+      setCurrentPage(newPage);
+      await loadThumbnails(filePath);
+      await renderPage(filePath, newPage);
+      showToast('Page deleted');
+    });
+  };
+
+  const handleRotatePage = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('rotate_page', { path: filePath, pageIndex: currentPage });
+      await renderPage(filePath, currentPage);
+      await loadThumbnails(filePath);
+      showToast('Page rotated 90°');
+    });
+  };
+
+  // Zoom
+  const zoomIn = () => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
+  const zoomOut = () => setZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2)));
+  const resetZoom = () => setZoom(1);
+
+  // Highlight annotation handlers — coordinates are stored in natural (unscaled)
+  // image pixels so they stay aligned regardless of the current zoom.
   const getImageCoords = (clientX: number, clientY: number) => {
-    if (!pageRef.current || !imgRef.current) return { x: 0, y: 0 };
-    const imgBounds = imgRef.current.getBoundingClientRect();
+    if (!imgRef.current) return { x: 0, y: 0 };
+    const b = imgRef.current.getBoundingClientRect();
     return {
-      x: clientX - imgBounds.left,
-      y: clientY - imgBounds.top,
+      x: (clientX - b.left) / zoom,
+      y: (clientY - b.top) / zoom,
     };
   };
 
@@ -138,11 +196,7 @@ function App() {
       setHighlightRect(null);
       return;
     }
-    const x = highlightRect.x;
-    const y = highlightRect.y;
-    const w = highlightRect.w;
-    const h = highlightRect.h;
-
+    const { x, y, w, h } = highlightRect;
     await withLoading(async () => {
       await invoke('add_highlight', {
         path: filePath,
@@ -153,12 +207,11 @@ function App() {
         y2: y + h,
       });
       const annots = await invoke<AnnotationData[]>('get_annotations', {
-        path: filePath, pageIndex: currentPage
+        path: filePath, pageIndex: currentPage,
       });
       setAnnotations(annots);
       showToast('Highlight added');
     });
-
     setHighlightStart(null);
     setHighlightRect(null);
   };
@@ -167,7 +220,7 @@ function App() {
     if (!filePath) return;
     await withLoading(async () => {
       const markdown = await invoke<string>('convert_pdf_to_markdown', { path: filePath });
-      alert(`Markdown conversion successful!\n\n${markdown.substring(0, 500)}...`);
+      alert(`Markdown conversion successful!\n\n${markdown.substring(0, 500)}${markdown.length > 500 ? '…' : ''}`);
       showToast('Markdown conversion complete');
     });
   };
@@ -175,23 +228,31 @@ function App() {
   const handleSplitPdf = async () => {
     if (!filePath || !splitRanges) return;
     await withLoading(async () => {
-      const ranges = splitRanges.split(',').map(r => {
-        const [start, end] = r.trim().split('-').map(n => parseInt(n.trim(), 10) - 1);
+      const ranges = splitRanges.split(',').map((r) => {
+        const [start, end] = r.trim().split('-').map((n) => parseInt(n.trim(), 10) - 1);
         return [start, end] as [number, number];
       });
-      const outputPaths = await invoke<string[]>('split_pdf', { path: filePath, page_ranges: ranges });
+      const outputPaths = await invoke<string[]>('split_pdf', { path: filePath, pageRanges: ranges });
       showToast(`PDF split into ${outputPaths.length} file(s)`);
       setShowSplitModal(false);
       setSplitRanges('');
     });
   };
 
+  const chooseInsertFile = async () => {
+    const path = await pickPdf();
+    if (path) setInsertFilePath(path);
+  };
+
   const handleInsertPdf = async () => {
     if (!filePath || !insertFilePath) return;
     await withLoading(async () => {
       await invoke('insert_pdf', {
-        path: filePath, insert_path: insertFilePath,
-        at_index: insertAtPage, insert_start: insertStartPage, insert_end: insertEndPage
+        path: filePath,
+        insertPath: insertFilePath,
+        atIndex: insertAtPage,
+        insertStart: insertStartPage,
+        insertEnd: insertEndPage,
       });
       showToast('PDF inserted successfully');
       setShowInsertModal(false);
@@ -205,11 +266,6 @@ function App() {
     });
   };
 
-  const handleInsertFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) setInsertFilePath((file as any).path || '');
-  };
-
   const handleOptimizePdf = async () => {
     if (!filePath) return;
     await withLoading(async () => {
@@ -218,10 +274,32 @@ function App() {
     });
   };
 
-  const handlePrintPdf = async () => {
-    if (!filePath) return;
-    await invoke('print_pdf', { path: filePath }).catch(err => showToast(String(err), 'error'));
+  const handlePrint = async () => {
+    if (!filePath || pageCount === null) return;
+    await withLoading(async () => {
+      const urls: string[] = [];
+      for (let i = 0; i < pageCount; i++) {
+        const bytes = await invoke<number[]>('render_pdf_page', {
+          path: filePath, pageIndex: i, width: 1000, height: 1414,
+        });
+        const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+        urls.push(URL.createObjectURL(blob));
+      }
+      setPrintPages(urls);
+    });
   };
+
+  // Once the print pages are in the DOM, open the native print dialog, then
+  // clean up the object URLs.
+  useEffect(() => {
+    if (printPages.length === 0) return;
+    const timer = setTimeout(() => {
+      window.print();
+      printPages.forEach((url) => URL.revokeObjectURL(url));
+      setPrintPages([]);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [printPages]);
 
   const changePage = (dir: -1 | 1) => {
     const next = currentPage + dir;
@@ -254,8 +332,9 @@ function App() {
                 onDragStart={() => handleDragStart(idx)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, idx)}
-                onClick={() => { setCurrentPage(idx); renderPage(filePath, idx); }}
+                onClick={() => { setCurrentPage(idx); withLoading(() => renderPage(filePath, idx)); }}
                 className={`thumbnail ${currentPage === idx ? 'active' : ''} ${draggedIndex === idx ? 'dragging' : ''}`}
+                alt={`Page ${idx + 1}`}
               />
             ))}
           </div>
@@ -267,14 +346,16 @@ function App() {
       {/* Main Content */}
       <main className="main">
         <div className="toolbar">
-          <input type="file" accept=".pdf" onChange={handleFileSelect} className="file-input" />
+          <button onClick={openPdf} className="btn btn-active">Open PDF</button>
           {filePath && (
             <>
-              <button onClick={handleConvertToMarkdown} className="btn">Markdown</button>
+              <button onClick={handleRotatePage} className="btn">Rotate</button>
+              <button onClick={handleDeletePage} className="btn">Delete</button>
+              <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
               <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
-              <button onClick={() => { setShowInsertModal(true); setInsertEndPage((pageCount || 1) - 1); }} className="btn">Insert</button>
+              <button onClick={handleConvertToMarkdown} className="btn">Markdown</button>
               <button onClick={handleOptimizePdf} className="btn">Optimize</button>
-              <button onClick={handlePrintPdf} className="btn">Print</button>
+              <button onClick={handlePrint} className="btn">Print</button>
               <button
                 onClick={() => setHighlightMode(!highlightMode)}
                 className={`btn ${highlightMode ? 'btn-active' : ''}`}
@@ -285,55 +366,61 @@ function App() {
           )}
         </div>
 
-        {pageCount && (
+        {pageCount !== null && (
           <div className="page-controls">
             <button onClick={() => changePage(-1)} disabled={currentPage === 0} className="btn">Prev</button>
             <span>{currentPage + 1} / {pageCount}</span>
-            <button onClick={() => changePage(1)} disabled={currentPage === (pageCount - 1)} className="btn">Next</button>
+            <button onClick={() => changePage(1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
+            <span className="zoom-divider" />
+            <button onClick={zoomOut} disabled={zoom <= 0.25} className="btn">−</button>
+            <span className="zoom-level">{Math.round(zoom * 100)}%</span>
+            <button onClick={zoomIn} disabled={zoom >= 3} className="btn">+</button>
+            <button onClick={resetZoom} className="btn btn-secondary">Reset</button>
           </div>
         )}
 
         <div
-          ref={pageRef}
           className={`page-container ${highlightMode ? 'highlight-cursor' : ''}`}
           onMouseDown={handleHighlightMouseDown}
           onMouseMove={handleHighlightMouseMove}
           onMouseUp={handleHighlightMouseUp}
         >
           {imageSrc ? (
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" />
-              {/* Existing highlights */}
-              {annotations.filter(a => a.subtype === 'Highlight').map((a, i) => (
-                <div
-                  key={i}
-                  className="highlight-overlay"
-                  style={{
-                    left: a.rect[0],
-                    top: a.rect[1],
-                    width: a.rect[2] - a.rect[0],
-                    height: a.rect[3] - a.rect[1],
-                    backgroundColor: a.color
-                      ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
-                      : 'rgba(255,255,0,0.3)',
-                  }}
-                />
-              ))}
-              {/* Current highlight drag */}
-              {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                <div
-                  className="highlight-draft"
-                  style={{
-                    left: highlightRect.x,
-                    top: highlightRect.y,
-                    width: highlightRect.w,
-                    height: highlightRect.h,
-                  }}
-                />
-              )}
+            <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" />
+                {/* Existing highlights */}
+                {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
+                  <div
+                    key={i}
+                    className="highlight-overlay"
+                    style={{
+                      left: a.rect[0],
+                      top: a.rect[1],
+                      width: a.rect[2] - a.rect[0],
+                      height: a.rect[3] - a.rect[1],
+                      backgroundColor: a.color
+                        ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
+                        : 'rgba(255,255,0,0.3)',
+                    }}
+                  />
+                ))}
+                {/* Current highlight drag */}
+                {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                  <div
+                    className="highlight-draft"
+                    style={{
+                      left: highlightRect.x,
+                      top: highlightRect.y,
+                      width: highlightRect.w,
+                      height: highlightRect.h,
+                    }}
+                  />
+                )}
+              </div>
             </div>
           ) : (
-            <p className="muted">No page rendered</p>
+            <p className="muted">No page rendered — click “Open PDF” to begin.</p>
           )}
         </div>
       </main>
@@ -362,8 +449,8 @@ function App() {
       {showInsertModal && (
         <Modal onClose={() => { setShowInsertModal(false); setInsertFilePath(''); }}>
           <h3>Insert PDF</h3>
-          <label>Select PDF to insert:</label>
-          <input type="file" accept=".pdf" onChange={handleInsertFileSelect} />
+          <label>Source PDF to insert:</label>
+          <button onClick={chooseInsertFile} className="btn">Choose PDF…</button>
           {insertFilePath && <p className="muted">{insertFilePath}</p>}
           <div className="insert-grid">
             <label>
@@ -381,10 +468,17 @@ function App() {
           </div>
           <div className="modal-actions">
             <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleInsertPdf} className="btn">Insert</button>
+            <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
           </div>
         </Modal>
       )}
+
+      {/* Print surface — hidden on screen, shown only by the print stylesheet */}
+      <div className="print-root">
+        {printPages.map((src, i) => (
+          <img key={i} src={src} className="print-page" alt={`Print page ${i + 1}`} />
+        ))}
+      </div>
     </div>
   );
 }
