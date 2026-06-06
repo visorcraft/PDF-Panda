@@ -13,6 +13,9 @@ build/
 src-tauri/target/
 src-tauri/bin/
 
+# Vendored PDFium runtime library (downloaded prebuilt, not committed — see README)
+src-tauri/vendor/
+
 # Tooling / test artifacts
 .playwright-mcp/
 test-results/

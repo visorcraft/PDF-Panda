@@ -7,20 +7,74 @@ use pdfium_render::prelude::*;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-static PDFIUM: OnceLock<Pdfium> = OnceLock::new();
+static PDFIUM: OnceLock<Result<Pdfium, String>> = OnceLock::new();
 
-fn get_pdfium() -> &'static Pdfium {
-    PDFIUM.get_or_init(|| {
-        let bindings =
-            Pdfium::bind_to_library("/usr/lib/libdeepin-pdfium.so").expect("Failed to bind to Pdfium library");
-        Pdfium::new(bindings)
-    })
+/// Try to bind a standard PDFium build at `dir`, recording the attempted path on
+/// failure.
+fn try_pdfium_dir(dir: &std::path::Path, tried: &mut Vec<String>) -> Option<Pdfium> {
+    let candidate = Pdfium::pdfium_platform_library_name_at_path(dir);
+    match Pdfium::bind_to_library(&candidate) {
+        Ok(bindings) => Some(Pdfium::new(bindings)),
+        Err(_) => {
+            tried.push(candidate.to_string_lossy().into_owned());
+            None
+        }
+    }
+}
+
+/// Bind to a standard PDFium library (the C `FPDF_*` API that `pdfium-render`
+/// requires). Search order: an explicit `PDFIUM_LIB_PATH`, a `libpdfium` shipped
+/// next to the executable, a vendored copy under the crate, then any system
+/// library. The system's `libdeepin-pdfium` is a *different*, incompatible C++
+/// API and is intentionally never used.
+fn bind_pdfium() -> Result<Pdfium, String> {
+    let mut tried: Vec<String> = Vec::new();
+
+    // 1. Explicit override.
+    if let Some(path) = std::env::var_os("PDFIUM_LIB_PATH") {
+        let path = PathBuf::from(path);
+        match Pdfium::bind_to_library(&path) {
+            Ok(bindings) => return Ok(Pdfium::new(bindings)),
+            Err(_) => tried.push(path.to_string_lossy().into_owned()),
+        }
+    }
+    // 2. Next to the executable (bundled distribution).
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if let Some(pdfium) = try_pdfium_dir(dir, &mut tried) {
+                return Ok(pdfium);
+            }
+        }
+    }
+    // 3. Vendored copy under the crate (developer runs).
+    let vendor = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("vendor/pdfium");
+    if let Some(pdfium) = try_pdfium_dir(&vendor, &mut tried) {
+        return Ok(pdfium);
+    }
+    // 4. Any system-installed PDFium.
+    if let Ok(bindings) = Pdfium::bind_to_system_library() {
+        return Ok(Pdfium::new(bindings));
+    }
+    tried.push("system library".to_string());
+
+    Err(format!(
+        "Could not load a standard PDFium library. The system's libdeepin-pdfium is a \
+         different, incompatible API. Install libpdfium or set PDFIUM_LIB_PATH. Tried: {}",
+        tried.join(", ")
+    ))
+}
+
+/// Returns the process-wide PDFium binding, or a user-facing error string if no
+/// compatible library is available (so commands surface a message instead of
+/// aborting the app).
+fn get_pdfium() -> Result<&'static Pdfium, String> {
+    PDFIUM.get_or_init(bind_pdfium).as_ref().map_err(|e| e.clone())
 }
 
 #[tauri::command]
 fn get_pdf_page_count(path: String) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    let pdfium = get_pdfium();
+    let pdfium = get_pdfium()?;
     let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
     Ok(document.pages().len() as u32)
 }
@@ -28,7 +82,7 @@ fn get_pdf_page_count(path: String) -> Result<u32, String> {
 #[tauri::command]
 fn render_pdf_page(path: String, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
     let path = PathBuf::from(path);
-    let pdfium = get_pdfium();
+    let pdfium = get_pdfium()?;
     let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
     let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
 
@@ -44,7 +98,7 @@ fn render_pdf_page(path: String, page_index: u32, width: i32, height: i32) -> Re
 #[tauri::command]
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
     let path = PathBuf::from(path);
-    let pdfium = get_pdfium();
+    let pdfium = get_pdfium()?;
     let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
     let page_count = document.pages().len();
     let mut thumbnails = Vec::with_capacity(page_count as usize);
@@ -657,5 +711,29 @@ mod tests {
         let path = save(&mut build_pdf(2), "oob");
         assert!(delete_page(path.clone(), 9).is_err());
         let _ = std::fs::remove_file(&path);
+    }
+
+    /// End-to-end smoke test against a real PDF through the actual pdfium-backed
+    /// commands. Ignored by default (needs a working PDFium library and a file);
+    /// run with:
+    ///   PDF_EDITOR_TEST_PDF=/path/to/file.pdf \
+    ///     cargo test render_real_pdf_smoke -- --ignored --nocapture
+    #[test]
+    #[ignore = "requires a PDFium library and PDF_EDITOR_TEST_PDF"]
+    fn render_real_pdf_smoke() {
+        let pdf = std::env::var("PDF_EDITOR_TEST_PDF").expect("set PDF_EDITOR_TEST_PDF");
+
+        let pages = get_pdf_page_count(pdf.clone()).expect("page count");
+        assert!(pages > 0, "expected at least one page");
+
+        let png = render_pdf_page(pdf.clone(), 0, 800, 1132).expect("render page 0");
+        assert!(png.starts_with(b"\x89PNG"), "output should be a PNG");
+        assert!(png.len() > 1000, "rendered PNG looks too small");
+        std::fs::write("/tmp/render_test_page0.png", &png).unwrap();
+
+        let thumbs = get_pdf_thumbnails(pdf, 100, 141).expect("thumbnails");
+        assert_eq!(thumbs.len() as u32, pages, "one thumbnail per page");
+
+        eprintln!("render_real_pdf_smoke: pages={pages}, page0={} bytes, thumbnails={}", png.len(), thumbs.len());
     }
 }
