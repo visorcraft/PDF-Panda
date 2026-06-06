@@ -449,12 +449,24 @@ fn print_pdf(path: String) -> Result<(), String> {
 }
 
 fn main() {
-    // WebKitGTK's DMABUF renderer fails to negotiate buffers with some Wayland
-    // compositors / GPU drivers, aborting with "Error 71 (Protocol error)
-    // dispatching to Wayland display" before the window opens. Disabling it
-    // forces a compatible rendering path. Must be set before GTK/WebKit init.
+    // webkit2gtk's DMABUF renderer aborts with `Gdk Error 71 (Protocol error)
+    // dispatching to Wayland display` on some Wayland + GPU-driver combinations
+    // (notably bleeding-edge multi-GPU NVIDIA + mesa stacks, where the cross-GPU
+    // zero-copy buffer handoff to the compositor fails). Disabling it falls back
+    // to the SHM presentation path — GPU compositing is still used, so the app
+    // stays hardware-accelerated; only the zero-copy presentation is given up.
+    // Must run before GTK/WebKit initialise. A value set by the user always
+    // wins. Drop when webkit2gtk-4.1 ships a working DMABUF renderer here.
+    #[cfg(target_os = "linux")]
     if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        // SAFETY: single-threaded at the very start of main(), before the
+        // Tauri/GTK builder or any other thread reads the environment. `unsafe`
+        // is a no-op before edition 2024 (hence `allow(unused_unsafe)`) but
+        // keeps the call correct after an edition bump.
+        #[allow(unused_unsafe)]
+        unsafe {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
     }
 
     tauri::Builder::default()
