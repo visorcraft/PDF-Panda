@@ -25,6 +25,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "vendor/pdfium/libpdfium.so": "vendor/pdfium/libpdfium.so"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/96x96.png",

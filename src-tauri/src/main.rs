@@ -8,6 +8,9 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 static PDFIUM: OnceLock<Result<Pdfium, String>> = OnceLock::new();
+/// Directory holding the bundled PDFium library, populated during Tauri `setup`
+/// from the app's resource directory (only meaningful in a packaged build).
+static BUNDLED_PDFIUM_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 /// Try to bind a standard PDFium build at `dir`, recording the attempted path on
 /// failure.
@@ -44,6 +47,12 @@ fn bind_pdfium() -> Result<Pdfium, String> {
             if let Some(pdfium) = try_pdfium_dir(dir, &mut tried) {
                 return Ok(pdfium);
             }
+        }
+    }
+    // 2b. Tauri resource directory of a packaged build (set during setup).
+    if let Some(dir) = BUNDLED_PDFIUM_DIR.get() {
+        if let Some(pdfium) = try_pdfium_dir(dir, &mut tried) {
+            return Ok(pdfium);
         }
     }
     // 3. Vendored copy under the crate (developer runs).
@@ -510,6 +519,15 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            // In a packaged build, PDFium ships under the app's resource
+            // directory; record it so the loader can find it at runtime.
+            use tauri::Manager;
+            if let Ok(resources) = app.path().resource_dir() {
+                let _ = BUNDLED_PDFIUM_DIR.set(resources.join("vendor").join("pdfium"));
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_pdf_page_count,
             render_pdf_page,
