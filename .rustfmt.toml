@@ -1,0 +1,10 @@
+format_version = 4
+
+newline_style = "Unix"
+indent_style = "Block"
+tab_width = 4
+wrap_comments = true
+hard_wrap = 100
+use_counter = true
+group_imports = "StdExternalCrate"
+group_aliases = { std = ["std", "core", "alloc"] }
