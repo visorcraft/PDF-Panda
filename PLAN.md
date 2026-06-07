@@ -117,12 +117,13 @@ and verified:
 | Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), tagged-PDF `/StructTreeRoot` semantics (headings, lists, tables) with PDFium heuristic + OCR fallback per page; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; on save, no-text pages export rendered PNGs and embedded XObject images land in `<name>_assets/` | `tagged_markdown_*`, `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, `file_byte_size_returns_length`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
 | Password protect | Export encrypted `<name>_protected.pdf`; open encrypted files with password prompt | `protect_pdf_*`, `pdf_is_encrypted`, `verify_pdf_password`, `open_working_copy_with_password` |
+| Summarize | Extractive overview, key points, headings, emails/URLs/dates; save sibling `.summary.md` (Ctrl/Cmd+Shift+E) | `summarize_pdf`, `save_pdf_summary`, `build_pdf_summary_*`, UI validation |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight / Notes / Draw / Shapes / Stamps / Redact | Highlights (H), notes (N), ink (D), shapes (S), stamps (T), redaction boxes (X); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_*`, `ink_stroke_*`, `square_*`, `circle_*`, `line_*`, `*_stamp_*`, `add_redaction`, `remove_redaction` |
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 121 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
+- `cargo test` — 126 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -178,9 +179,9 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] OCR integration — Tesseract OCR for scanned pages in Markdown export (`ocr_pdf_page`, `ocr_available`; env `TESSERACT_CMD`, `PDF_PANDA_OCR_LANG`)
 - [x] Markdown depth — tagged-PDF semantics (`/StructTreeRoot` → headings, lists, tables; PDFium/OCR fallback per page)
 - [x] File dialogs — native open/save via `tauri-plugin-dialog` (`native_file_dialogs_enabled`; macOS/Windows + Linux X11 by default, Wayland opt-in with `PDF_PANDA_NATIVE_DIALOGS=1`)
+- [x] AI-powered tools — extractive document summarization and intelligent extraction (`summarize_pdf`, `save_pdf_summary`; emails, URLs, dates, headings)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing and vector object manipulation.
 - **Security features:** Digital signatures.
-- **AI-powered tools:** Document summarization and intelligent extraction.

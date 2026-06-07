@@ -14,7 +14,8 @@ Cross-platform desktop PDF editor (MVP). Tauri 2 + Rust backend, React/TS fronte
 (single UI file: `src/App.tsx`). GPL v3. Remote: `visorcraft/PDF-Panda`. Tag: `v0.2.0`.
 
 **Stack:** Rust 2021, Tauri 2, Vite 8, React 19, TS 6 · `pdfium-render` (render) ·
-`lopdf` (structure) · `mold` + `sccache` (Linux; `.cargo/config.toml`).
+`lopdf` (structure) · `tauri-plugin-dialog` (native file pickers) · `mold` +
+`sccache` (Linux; `.cargo/config.toml`).
 
 ## PDFium (critical)
 
@@ -47,12 +48,12 @@ avoids WebKitGTK DMABUF crash on some multi-GPU Wayland stacks.
 
 From `src-tauri/` unless noted:
 
-- `cargo test` — 121 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`)
+- `cargo test` — 126 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`)
 - `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
 - `cargo clippy --all-targets` (CI: `RUSTFLAGS=-Dwarnings`)
 - `cargo fmt --check` (single `rustfmt.toml` at repo root)
 - `npx tsc --noEmit`
-- E2E (Linux): `scripts/e2e-test.sh` (needs `xvfb-run`; `wdio` feature)
+- E2E (Linux): `scripts/e2e-test.sh` or `npm run test:e2e` (needs `xvfb-run`; `wdio` feature)
 - Local parity: `scripts/smoke-test.sh`
 
 CI does not install PDFium; default tests compile without it.
@@ -60,36 +61,45 @@ CI does not install PDFium; default tests compile without it.
 ## Architecture
 
 - `src-tauri/src/main.rs` — all commands, PDFium binding, tests. Custom commands
-  need no ACL entries; plugins do (`capabilities/default.json`).
+  need no ACL entries; plugins do (`capabilities/default.json` — includes
+  `dialog:default`).
 - Flat page tree only (`/Kids` are leaf pages; `/Count` synced in `set_pages_kids`).
 - Annotation coords: natural image pixels; zoom is CSS transform on the viewer.
 
 Command surface (grouped): browser/listing · render/thumbnails · page ops
-(delete/move/rotate/split/insert) · markdown convert/save · optimize · encrypt/
-protect/open-with-password · annotations (highlight, note, ink, shapes, stamps,
-redact) · page image · forms (get/set/add text/checkbox/choice/radio) · working
-copy + undo history (`snapshot_pdf_entry`, `restore_history_entry`,
-`prune_history_entry`, delta snapshots >32 MB) · OCR (`ocr_available`,
-`ocr_pdf_page`; Tesseract on PATH) · native file dialogs
+(delete/move/rotate/split/insert) · markdown convert/save (`convert_pdf_to_markdown`,
+`save_pdf_markdown`) · summarize/extract (`summarize_pdf`, `save_pdf_summary`) ·
+optimize · encrypt/protect/open-with-password · annotations
+(highlight, note, ink, shapes, stamps, redact) · page image · forms (get/set/add
+text/checkbox/choice/radio) · working copy + undo history (`snapshot_pdf_entry`,
+`restore_history_entry`, `prune_history_entry`, delta snapshots >32 MB) · OCR
+(`ocr_available`, `ocr_pdf_page`; Tesseract on PATH) · native file dialogs
 (`native_file_dialogs_enabled`; `tauri-plugin-dialog`) · `file_byte_size`.
 
 ## Status
 
-**Shipped (v0.2.0):** open/close/save (working copy), view/zoom/thumbnails/nav,
-page edit (delete/rotate/reorder/insert/split), optimize, print, annotations
-(H/N/D/S/T/X), page image (I), forms (F), PDF↔Markdown toggle + assets export,
-undo/redo (50-entry cap; deltas for files >32 MB), in-app file browser + native
-open/save dialogs when `native_file_dialogs_enabled` (Wayland opt-in:
-`PDF_PANDA_NATIVE_DIALOGS=1`).
+**Shipped (v0.2.0 + post-MVP backlog):** open/close/save (working copy), view/zoom/
+thumbnails/nav, page edit (delete/rotate/reorder/insert/split), optimize, print,
+password protect, annotations (H/N/D/S/T/X), page image (I), forms (F), PDF↔Markdown
+(tagged `/StructTreeRoot` + PDFium heuristics + Tesseract OCR; `_assets/` export),
+extractive summarize + intelligent extraction (`.summary.md`), undo/redo (50-entry
+cap; deltas for files >32 MB), in-app file browser + native open/save when
+`native_file_dialogs_enabled`, WebdriverIO e2e smoke, tag-triggered releases with
+optional signing.
 
-**Ops:** tag `v*` → release workflow (`.github/workflows/release.yml`); optional
-signing — `docs/SIGNING.md`. Manual QA: `docs/MANUAL_E2E.md`.
+**Ops:** tag `v*` → `.github/workflows/release.yml`; `docs/SIGNING.md`;
+`docs/MANUAL_E2E.md`; `scripts/e2e-test.sh`; `scripts/smoke-test.sh`.
 
-**Gaps:** see `PLAN.md` vNext roadmap. OCR needs
-system Tesseract (`tesseract-ocr` package).
+**Gaps (vNext):** in-PDF text/vector editing, digital signatures — see `PLAN.md`.
 
-**Gotchas:** Markdown-view thumbnail clicks defer PDF render (WebKitGTK race);
-AppImage needs `appimagetool`.
+**Env (optional):** `PDFIUM_LIB_PATH` · `PDF_PANDA_TEST_PDF` (ignored render smoke) ·
+`PDF_PANDA_OCR_LANG` / `TESSERACT_CMD` · `PDF_PANDA_NATIVE_DIALOGS=1` (Wayland native
+dialogs) · `PDF_PANDA_DISABLE_NATIVE_DIALOGS=1`.
+
+**Gotchas:** Markdown-view thumbnail clicks defer PDF render (WebKitGTK race); Linux
+Wayland disables native dialogs unless opted in; Markdown defaults to sibling
+`<pdf-name>.md` + `<pdf-name>_assets/`; OCR needs system Tesseract; AppImage needs
+`appimagetool`.
 
 ## Conventions
 

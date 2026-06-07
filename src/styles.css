@@ -627,6 +627,39 @@ body {
   line-height: 1.45;
 }
 
+.summary-panel {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: 8px;
+  padding-right: 4px;
+}
+
+.summary-panel h4 {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #555;
+}
+
+.summary-panel h4:first-child {
+  margin-top: 0;
+}
+
+.summary-panel p {
+  margin: 0;
+  line-height: 1.5;
+  color: #333;
+}
+
+.summary-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #333;
+  line-height: 1.45;
+}
+
 .modal-input {
   width: 100%;
   padding: 8px 12px;

@@ -14,6 +14,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 
 ### Open & navigate
 - In-app path entry, **Recently Opened** list, built-in PDF browser, and **native open/save dialogs** on macOS/Windows (Linux X11 by default; Wayland: set `PDF_PANDA_NATIVE_DIALOGS=1`)
+- **Close** current document (Ctrl/Cmd+W) with unsaved-changes prompt
 - Smooth viewer with **25%–400%** zoom and a thumbnail sidebar
 - Page navigation via toolbar, thumbnails, keyboard, and mouse wheel at scroll edges
 
@@ -24,7 +25,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 
 ### Save & history
 - Non-destructive **working-copy** editing
-- **Save** / **Save As** with unsaved-changes prompts
+- **Save** / **Save As** with unsaved-changes prompts; **Save As** opens a native save dialog when available
 - **Undo** / **Redo** (50-entry history; compact deltas for files &gt; 32 MB)
 
 ### Annotations
@@ -39,10 +40,12 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export
-- **PDF → Markdown** with tagged-PDF structure (`/StructTreeRoot` headings, lists, tables) plus heuristic PDFium layout and TOC formatting
+- **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates; save as sibling `.summary.md` (Ctrl/Cmd+Shift+E)
+- **PDF ↔ Markdown** view toggle (Ctrl/Cmd+Shift+M)
+- **PDF → Markdown** with tagged-PDF structure (`/StructTreeRoot` headings, lists, tables) plus heuristic PDFium layout and TOC formatting; untagged pages use PDFium/OCR fallback
 - **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX) to a sibling `_assets` folder; **Tesseract OCR** for scanned pages without a text layer (`tesseract-ocr` on PATH, optional `PDF_PANDA_OCR_LANG`)
-- **Optimize** — strip metadata, recompress images, prune unused objects
-- **Print** via the system print dialog
+- **Optimize** — strip metadata, recompress images, prune unused objects (Ctrl/Cmd+Shift+O)
+- **Print** via the system print dialog (Ctrl/Cmd+P)
 
 ## Quick start
 
@@ -83,20 +86,33 @@ npx tauri build --no-bundle
 
 Packaging helpers live under `scripts/` (`build-linux-packages.sh`, `build-appimage.sh`, `build-macos.sh`, `build-windows.sh`).
 
+## Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `PDFIUM_LIB_PATH` | Override path to the PDFium shared library |
+| `PDF_PANDA_OCR_LANG` | Tesseract language code (default `eng`) |
+| `TESSERACT_CMD` | Path to the `tesseract` executable |
+| `PDF_PANDA_NATIVE_DIALOGS` | Set to `1` to enable native file dialogs on Linux Wayland |
+| `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | Set to `1` to disable native dialogs and use in-app path entry only |
+| `PDF_PANDA_TEST_PDF` | PDF path for the ignored `render_real_pdf_smoke` integration test |
+
 ## Tech stack
 
 | Layer | Stack |
 | --- | --- |
 | Backend | Rust, [Tauri 2](https://v2.tauri.app/) |
-| Frontend | Vite, React 19, TypeScript |
+| Frontend | Vite 8, React 19, TypeScript 6 |
 | Render | [pdfium-render](https://crates.io/crates/pdfium-render) |
 | Structure edits | [lopdf](https://crates.io/crates/lopdf) |
+| File dialogs | [tauri-plugin-dialog](https://v2.tauri.app/plugin/dialog/) |
 | Build accel (Linux) | mold, sccache |
 
 ## Development
 
 ```sh
 scripts/smoke-test.sh               # unit tests, clippy, fmt, and tsc (CI parity)
+npm run test:e2e                    # WebdriverIO smoke (Linux; needs xvfb-run)
 ```
 
 Optional smoke test with a real PDF and PDFium installed:
@@ -106,7 +122,9 @@ PDF_PANDA_TEST_PDF=/path/to/file.pdf \
   cargo test render_real_pdf_smoke --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture
 ```
 
-Implementation status and post-MVP backlog: [`PLAN.md`](PLAN.md).  
+**Status:** v0.2.x MVP and post-MVP backlog are complete. Future work is tracked in
+[`PLAN.md`](PLAN.md) vNext (advanced in-PDF editing, digital signatures).
+
 Tagged releases (`git tag v0.2.1 && git push origin v0.2.1`) trigger the GitHub
 Actions release workflow (unsigned by default; optional macOS/Windows signing via
 repository secrets). See [`docs/SIGNING.md`](docs/SIGNING.md).  

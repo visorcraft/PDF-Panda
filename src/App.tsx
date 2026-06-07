@@ -92,6 +92,30 @@ interface MarkdownSaveResult {
   conflict: boolean;
 }
 
+interface PdfIntelligentExtraction {
+  headings: string[];
+  emails: string[];
+  urls: string[];
+  dates: string[];
+}
+
+interface PdfSummaryResult {
+  pageCount: number;
+  wordCount: number;
+  titleGuess: string | null;
+  overview: string;
+  keyPoints: string[];
+  extraction: PdfIntelligentExtraction;
+  scannedPages: number;
+}
+
+interface SummarySaveResult {
+  summary: PdfSummaryResult;
+  summaryPath: string;
+  written: boolean;
+  conflict: boolean;
+}
+
 type PdfBrowserTarget = 'open' | 'insert';
 
 interface PdfBrowserEntry {
@@ -109,6 +133,36 @@ interface PdfBrowserListing {
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 const siblingMarkdownPath = (pdfPath: string) => pdfPath.replace(/\.pdf$/i, '.md');
+
+const formatSummaryMarkdown = (summary: PdfSummaryResult): string => {
+  const lines: string[] = ['# Document Summary', ''];
+  if (summary.titleGuess) lines.push(`**Title guess:** ${summary.titleGuess}`, '');
+  lines.push(
+    `**Pages:** ${summary.pageCount} · **Words:** ${summary.wordCount} · **Scanned/image-only pages:** ${summary.scannedPages}`,
+    '',
+    '## Overview',
+    '',
+    summary.overview,
+    '',
+    '## Key points',
+    '',
+  );
+  if (summary.keyPoints.length === 0) lines.push('_(none)_', '');
+  else summary.keyPoints.forEach((point) => lines.push(`- ${point}`));
+  lines.push('', '## Extracted headings', '');
+  if (summary.extraction.headings.length === 0) lines.push('_(none)_', '');
+  else summary.extraction.headings.forEach((heading) => lines.push(`- ${heading}`));
+  lines.push('', '## Emails', '');
+  if (summary.extraction.emails.length === 0) lines.push('_(none)_', '');
+  else summary.extraction.emails.forEach((email) => lines.push(`- ${email}`));
+  lines.push('', '## URLs', '');
+  if (summary.extraction.urls.length === 0) lines.push('_(none)_', '');
+  else summary.extraction.urls.forEach((url) => lines.push(`- ${url}`));
+  lines.push('', '## Dates', '');
+  if (summary.extraction.dates.length === 0) lines.push('_(none)_');
+  else summary.extraction.dates.forEach((date) => lines.push(`- ${date}`));
+  return lines.join('\n');
+};
 
 const readStoredString = (key: string): string => {
   try {
@@ -201,6 +255,8 @@ function App() {
   const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [nativeDialogs, setNativeDialogs] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [pdfSummary, setPdfSummary] = useState<PdfSummaryResult | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const historyRef = useRef<HistorySnapshot[]>([]); // historyRef[histIdx] == current working state
@@ -1539,6 +1595,7 @@ function App() {
     setShowInsertModal(false);
     setShowImageInsertModal(false);
     setShowAddFormFieldModal(false);
+    setShowSummaryModal(false);
   }, [showUnsavedModal]);
 
   const refreshAfterWorkingChange = async () => {
@@ -1671,6 +1728,7 @@ function App() {
   const openSplitModalRef = useRef(openSplitModal);
   openSplitModalRef.current = openSplitModal;
   const handleOptimizePdfRef = useRef(async () => {});
+  const handleSummarizePdfRef = useRef(async () => {});
   const dismissModalsRef = useRef(dismissModals);
   dismissModalsRef.current = dismissModals;
   const anyModalOpenRef = useRef(false);
@@ -1678,7 +1736,7 @@ function App() {
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
     || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal
-    || showAddFormFieldModal;
+    || showAddFormFieldModal || showSummaryModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -1840,6 +1898,11 @@ function App() {
       if (key === 'o' && e.shiftKey) {
         e.preventDefault();
         void handleOptimizePdfRef.current();
+        return;
+      }
+      if (key === 'e' && e.shiftKey) {
+        e.preventDefault();
+        void handleSummarizePdfRef.current();
         return;
       }
       if (key === 'i' && e.shiftKey) {
@@ -2017,6 +2080,40 @@ function App() {
     setMarkdownSaveAsPath(defaultPath);
     setShowMarkdownSaveAsModal(true);
   };
+
+  const handleSummarizePdf = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const summary = await invoke<PdfSummaryResult>('summarize_pdf', { path: filePath });
+      setPdfSummary(summary);
+      setShowSummaryModal(true);
+    });
+  };
+
+  const handleCopySummary = async () => {
+    if (!pdfSummary) return;
+    try {
+      await navigator.clipboard.writeText(formatSummaryMarkdown(pdfSummary));
+      showToast('Summary copied');
+    } catch {
+      showToast('Could not copy summary', 'error');
+    }
+  };
+
+  const handleSaveSummary = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      let result = await invoke<SummarySaveResult>('save_pdf_summary', { path: filePath, overwrite: false });
+      if (result.conflict) {
+        const overwrite = window.confirm('Overwrite existing summary file?');
+        if (!overwrite) return;
+        result = await invoke<SummarySaveResult>('save_pdf_summary', { path: filePath, overwrite: true });
+      }
+      setPdfSummary(result.summary);
+      showToast(result.written ? `Summary saved to ${result.summaryPath}` : 'Summary already saved');
+    });
+  };
+  handleSummarizePdfRef.current = handleSummarizePdf;
 
   const handleSplitPdf = async () => {
     if (!filePath || !splitRanges) return;
@@ -2264,6 +2361,14 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
+                <button
+                  onClick={() => void handleSummarizePdf()}
+                  className="btn"
+                  title="Summarize & extract (Ctrl+Shift+E)"
+                  data-testid="summarize-pdf"
+                >
+                  Summarize
+                </button>
                 <button onClick={openProtectModal} className="btn" title="Export password-protected PDF">Protect</button>
                 <button
                   onClick={toggleRedactMode}
@@ -3023,6 +3128,59 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {showSummaryModal && pdfSummary && (
+        <Modal onClose={() => setShowSummaryModal(false)}>
+          <h3>Document Summary</h3>
+          <p className="modal-help">
+            {pdfSummary.titleGuess ? (
+              <>
+                <strong>{pdfSummary.titleGuess}</strong>
+                {' · '}
+              </>
+            ) : null}
+            {pdfSummary.pageCount} pages · {pdfSummary.wordCount} words
+            {pdfSummary.scannedPages > 0 ? ` · ${pdfSummary.scannedPages} scanned/image-only` : ''}
+          </p>
+          <div className="summary-panel">
+            <h4>Overview</h4>
+            <p>{pdfSummary.overview}</p>
+            {pdfSummary.keyPoints.length > 0 && (
+              <>
+                <h4>Key points</h4>
+                <ul className="summary-list">
+                  {pdfSummary.keyPoints.map((point) => <li key={point}>{point}</li>)}
+                </ul>
+              </>
+            )}
+            {pdfSummary.extraction.headings.length > 0 && (
+              <>
+                <h4>Headings</h4>
+                <ul className="summary-list">
+                  {pdfSummary.extraction.headings.map((heading) => <li key={heading}>{heading}</li>)}
+                </ul>
+              </>
+            )}
+            {(pdfSummary.extraction.emails.length > 0
+              || pdfSummary.extraction.urls.length > 0
+              || pdfSummary.extraction.dates.length > 0) && (
+              <>
+                <h4>Extracted contacts &amp; dates</h4>
+                <ul className="summary-list">
+                  {pdfSummary.extraction.emails.map((email) => <li key={`email-${email}`}>{email}</li>)}
+                  {pdfSummary.extraction.urls.map((url) => <li key={`url-${url}`}>{url}</li>)}
+                  {pdfSummary.extraction.dates.map((date) => <li key={`date-${date}`}>{date}</li>)}
+                </ul>
+              </>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button onClick={() => setShowSummaryModal(false)} className="btn btn-secondary">Close</button>
+            <button onClick={() => void handleCopySummary()} className="btn">Copy</button>
+            <button onClick={() => void handleSaveSummary()} className="btn btn-active">Save summary</button>
           </div>
         </Modal>
       )}
