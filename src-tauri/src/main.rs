@@ -1799,6 +1799,14 @@ mod tests {
     }
 
     #[test]
+    fn move_page_same_index_is_noop() {
+        let path = save(&mut build_pdf(3), "move_noop");
+        move_page(path.clone(), 1, 1).unwrap();
+        assert_eq!(page_count(&path), 3);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn rotate_page_rejects_invalid_index() {
         let path = save(&mut build_pdf(1), "rotate_invalid");
         let err = rotate_page(path.clone(), 9).unwrap_err();

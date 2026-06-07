@@ -110,7 +110,7 @@ and verified:
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
 | Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
 | Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_undo_restore_reverts_working_copy`, UI validation |
-| Delete page | Confirmation modal → tree-aware `delete_page` (rejects last-page delete, nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf`, `delete_page_rejects_only_page` |
+| Delete page | Delete key or toolbar → confirmation modal → tree-aware `delete_page` (rejects last-page delete, nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf`, `delete_page_rejects_only_page` |
 | Rotate page | Toolbar button or Ctrl/Cmd+R → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps` |
 | Insert PDF | Two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree` |
 | Split PDF | Ranges → separate files, orphans pruned; rejects empty/invalid ranges | `split_pdf_creates_separate_files`, `split_pdf_rejects_empty_ranges` |

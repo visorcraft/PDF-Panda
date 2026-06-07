@@ -762,6 +762,8 @@ function App() {
   const handleRotatePageRef = useRef(handleRotatePage);
   handleRotatePageRef.current = handleRotatePage;
   const toggleMarkdownViewRef = useRef(async () => {});
+  const openDeleteModalRef = useRef(openDeleteModal);
+  openDeleteModalRef.current = openDeleteModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -813,6 +815,11 @@ function App() {
         if (e.key === 'End' && count !== null && page < count - 1) {
           e.preventDefault();
           goToPageRef.current(count - 1);
+          return;
+        }
+        if (e.key === 'Delete' && count !== null && count > 1) {
+          e.preventDefault();
+          openDeleteModalRef.current();
           return;
         }
       }
@@ -1103,7 +1110,7 @@ function App() {
                 <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
                 <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)">Rotate</button>
-                <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1}>Delete</button>
+                <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
                 <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
