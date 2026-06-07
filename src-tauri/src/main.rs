@@ -2231,6 +2231,29 @@ mod tests {
     }
 
     #[test]
+    fn get_annotations_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_annots_missing_{}.pdf", std::process::id()));
+        match get_annotations(missing.to_string_lossy().into_owned(), 0) {
+            Ok(_) => panic!("expected missing file to fail"),
+            Err(message) => assert!(!message.is_empty()),
+        }
+    }
+
+    #[test]
+    fn add_highlight_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_add_highlight_missing_{}.pdf", std::process::id()));
+        let err = add_highlight(missing.to_string_lossy().into_owned(), 0, 1.0, 1.0, 2.0, 2.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn remove_highlight_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_remove_highlight_missing_{}.pdf", std::process::id()));
+        let err = remove_highlight(missing.to_string_lossy().into_owned(), 0, 0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
     fn highlight_add_and_read_back() {
         let path = save(&mut build_pdf(1), "highlight");
         add_highlight(path.clone(), 0, 10.0, 20.0, 110.0, 40.0).unwrap();
