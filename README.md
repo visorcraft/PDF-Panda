@@ -33,6 +33,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Shape outlines** — rectangle, ellipse, and line annotations (`S`)
 - **Stamps** — text and image preset stamps (`T`) — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED
 - **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
+- **Redaction** — black-box redaction annotations persisted in the PDF (`X`)
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export

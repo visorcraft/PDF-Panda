@@ -2127,6 +2127,72 @@ fn remove_image_stamp(path: String, page_index: u32, index: u32) -> Result<(), S
     Ok(())
 }
 
+fn annot_is_redaction(dict: &lopdf::Dictionary) -> bool {
+    dict.get(b"PandaRedact").ok().and_then(|o| o.as_bool().ok()).unwrap_or(false)
+}
+
+fn remove_redaction_at_index(doc: &mut Document, page_id: ObjectId, index: u32) -> Result<(), String> {
+    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
+        Ok(Object::Array(arr)) => arr.clone(),
+        _ => return Err("No annotations on this page".to_string()),
+    };
+
+    let mut redaction_count = 0u32;
+    let mut target_pos: Option<usize> = None;
+    for (pos, annot_ref) in annots.iter().enumerate() {
+        let Object::Reference(id) = annot_ref else {
+            continue;
+        };
+        let is_redaction =
+            doc.get_object(*id).ok().and_then(|o| o.as_dict().ok()).map(annot_is_redaction).unwrap_or(false);
+        if is_redaction {
+            if redaction_count == index {
+                target_pos = Some(pos);
+                break;
+            }
+            redaction_count += 1;
+        }
+    }
+
+    let pos = target_pos.ok_or("Redaction not found".to_string())?;
+    let mut new_annots = annots;
+    new_annots.remove(pos);
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
+    Ok(())
+}
+
+#[tauri::command]
+fn add_redaction(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Square".to_vec())),
+        (b"Rect".to_vec(), shape_rect_object(x1, y1, x2, y2)),
+        (b"C".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])),
+        (b"IC".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])),
+        (b"Border".to_vec(), Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(0.0)])),
+        (b"PandaRedact".to_vec(), Object::Boolean(true)),
+    ])));
+    push_page_annotation(&mut doc, page_id, annot)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_redaction(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    remove_redaction_at_index(&mut doc, page_id, index)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 struct AnnotationData {
     subtype: String,
@@ -2137,6 +2203,7 @@ struct AnnotationData {
     line_endpoints: Option<[f64; 4]>,
     stamp_kind: Option<String>,
     stamp_preset: Option<String>,
+    is_redaction: bool,
 }
 
 fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
@@ -2218,6 +2285,7 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
                     };
                     let stamp_kind = annot_panda_stamp_kind(annot_dict);
                     let stamp_preset = annot_panda_stamp(annot_dict);
+                    let is_redaction = annot_is_redaction(annot_dict);
                     result.push(AnnotationData {
                         subtype,
                         rect,
@@ -2227,6 +2295,7 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
                         line_endpoints,
                         stamp_kind,
                         stamp_preset,
+                        is_redaction,
                     });
                 }
             }
@@ -2343,6 +2412,8 @@ fn main() {
             add_image_stamp,
             remove_text_stamp,
             remove_image_stamp,
+            add_redaction,
+            remove_redaction,
             get_annotations,
             open_working_copy,
             save_working_copy,
@@ -3372,6 +3443,47 @@ mod tests {
             Err(message) => assert!(message.contains("too short")),
         }
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn redaction_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "redact");
+        add_redaction(path.clone(), 0, 12.0, 24.0, 112.0, 84.0).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert!(annots[0].is_redaction);
+        assert_eq!(annots[0].rect, [12.0, 24.0, 112.0, 84.0]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_redaction_deletes_the_right_one() {
+        let path = save(&mut build_pdf(1), "redact_remove");
+        add_redaction(path.clone(), 0, 1.0, 1.0, 10.0, 10.0).unwrap();
+        add_redaction(path.clone(), 0, 20.0, 20.0, 40.0, 40.0).unwrap();
+        remove_redaction(path.clone(), 0, 0).unwrap();
+        let remaining = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].rect, [20.0, 20.0, 40.0, 40.0]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_redaction_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "redact_invalid");
+        add_redaction(path.clone(), 0, 1.0, 1.0, 10.0, 10.0).unwrap();
+        match remove_redaction(path.clone(), 0, 9) {
+            Ok(_) => panic!("expected invalid index to fail"),
+            Err(message) => assert!(message.contains("Redaction not found")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_redaction_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_add_redact_missing_{}.pdf", std::process::id()));
+        let err = add_redaction(missing.to_string_lossy().into_owned(), 0, 1.0, 1.0, 2.0, 2.0).unwrap_err();
+        assert!(!err.is_empty());
     }
 
     #[test]

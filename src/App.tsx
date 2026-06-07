@@ -43,6 +43,7 @@ interface AnnotationData {
   line_endpoints: [number, number, number, number] | null;
   stamp_kind: string | null;
   stamp_preset: string | null;
+  is_redaction: boolean;
 }
 
 function stampPresetMeta(preset: string | null | undefined) {
@@ -185,6 +186,7 @@ function App() {
   const [stampMode, setStampMode] = useState(false);
   const [stampKind, setStampKind] = useState<StampKind>('text');
   const [stampPreset, setStampPreset] = useState<string>(STAMP_PRESETS[0].id);
+  const [redactMode, setRedactMode] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
@@ -685,6 +687,39 @@ function App() {
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
     if (drawMode) return;
+    if (redactMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!drawing) {
+        setHighlightStart(coords);
+        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+        setDrawing(true);
+        return;
+      }
+      const start = highlightStart;
+      cancelDrawing();
+      if (!start) return;
+      const rect = {
+        x: Math.min(start.x, coords.x),
+        y: Math.min(start.y, coords.y),
+        w: Math.abs(coords.x - start.x),
+        h: Math.abs(coords.y - start.y),
+      };
+      if (rect.w < 5 || rect.h < 5) return;
+      void withLoading(async () => {
+        await invoke('add_redaction', {
+          path: filePath,
+          pageIndex: currentPage,
+          x1: rect.x,
+          y1: rect.y,
+          x2: rect.x + rect.w,
+          y2: rect.y + rect.h,
+        });
+        markPdfEdited();
+        await refreshAnnotations();
+        showToast('Redaction added');
+      });
+      return;
+    }
     if (stampMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       void withLoading(async () => {
@@ -817,9 +852,9 @@ function App() {
       });
       return;
     }
-    if (shapeMode && drawing && highlightStart) {
+    if ((shapeMode || redactMode) && drawing && highlightStart) {
       const coords = getImageCoords(e.clientX, e.clientY);
-      if (shapeKind === 'line') {
+      if (shapeMode && shapeKind === 'line') {
         setShapeLineEnd(coords);
         return;
       }
@@ -838,6 +873,15 @@ function App() {
       y: Math.min(highlightStart.y, coords.y),
       w: Math.abs(coords.x - highlightStart.x),
       h: Math.abs(coords.y - highlightStart.y),
+    });
+  };
+
+  const removeRedaction = (index: number) => {
+    void withLoading(async () => {
+      await invoke('remove_redaction', { path: filePath, pageIndex: currentPage, index });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Redaction removed');
     });
   };
 
@@ -920,6 +964,7 @@ function App() {
     setDrawMode(false);
     setShapeMode(false);
     setStampMode(false);
+    setRedactMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setHighlightMode((m) => !m);
@@ -936,6 +981,7 @@ function App() {
     setDrawMode(false);
     setShapeMode(false);
     setStampMode(false);
+    setRedactMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setNoteMode((m) => !m);
@@ -947,6 +993,7 @@ function App() {
     setNoteMode(false);
     setShapeMode(false);
     setStampMode(false);
+    setRedactMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setDrawMode((m) => !m);
@@ -963,6 +1010,7 @@ function App() {
     setNoteMode(false);
     setDrawMode(false);
     setStampMode(false);
+    setRedactMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setShapeMode((m) => !m);
@@ -979,6 +1027,7 @@ function App() {
     setNoteMode(false);
     setDrawMode(false);
     setShapeMode(false);
+    setRedactMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setStampMode((m) => !m);
@@ -986,6 +1035,23 @@ function App() {
 
   const exitStampMode = () => {
     setStampMode(false);
+  };
+
+  const toggleRedactMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShapeMode(false);
+    setStampMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setRedactMode((m) => !m);
+  };
+
+  const exitRedactMode = () => {
+    cancelDrawing();
+    setRedactMode(false);
   };
 
   const exitNoteMode = () => {
@@ -1143,6 +1209,8 @@ function App() {
   shapeModeRef.current = shapeMode;
   const stampModeRef = useRef(stampMode);
   stampModeRef.current = stampMode;
+  const redactModeRef = useRef(redactMode);
+  redactModeRef.current = redactMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
   const exitNoteModeRef = useRef(exitNoteMode);
@@ -1153,6 +1221,8 @@ function App() {
   exitShapeModeRef.current = exitShapeMode;
   const exitStampModeRef = useRef(exitStampMode);
   exitStampModeRef.current = exitStampMode;
+  const exitRedactModeRef = useRef(exitRedactMode);
+  exitRedactModeRef.current = exitRedactMode;
   const toggleNoteModeRef = useRef(toggleNoteMode);
   toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
@@ -1171,6 +1241,8 @@ function App() {
   toggleShapeModeRef.current = toggleShapeMode;
   const toggleStampModeRef = useRef(toggleStampMode);
   toggleStampModeRef.current = toggleStampMode;
+  const toggleRedactModeRef = useRef(toggleRedactMode);
+  toggleRedactModeRef.current = toggleRedactMode;
   const zoomInRef = useRef(zoomIn);
   zoomInRef.current = zoomIn;
   const zoomOutRef = useRef(zoomOut);
@@ -1233,6 +1305,10 @@ function App() {
           exitStampModeRef.current();
           return;
         }
+        if (redactModeRef.current && hasOpenPdfRef.current) {
+          exitRedactModeRef.current();
+          return;
+        }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
           exitHighlightModeRef.current();
           return;
@@ -1281,6 +1357,11 @@ function App() {
         if (e.key.toLowerCase() === 't' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleStampModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'x' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleRedactModeRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1657,6 +1738,13 @@ function App() {
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
                 <button onClick={openProtectModal} className="btn" title="Export password-protected PDF">Protect</button>
+                <button
+                  onClick={toggleRedactMode}
+                  className={`btn ${redactMode ? 'btn-active' : ''}`}
+                  title="Toggle redaction mode (X)"
+                >
+                  {redactMode ? 'Redact: ON' : 'Redact'}
+                </button>
                 <button onClick={handlePrint} className="btn" title="Print (Ctrl+P)">Print</button>
                 <button
                   onClick={toggleHighlightMode}
@@ -1806,7 +1894,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
@@ -1834,6 +1922,23 @@ function App() {
                             : 'rgba(255,255,0,0.3)',
                           pointerEvents: highlightMode ? 'auto' : 'none',
                           cursor: highlightMode ? 'pointer' : 'default',
+                        }}
+                      />
+                    ))}
+                    {/* Redaction boxes */}
+                    {annotations.filter((a) => a.is_redaction).map((a, i) => (
+                      <div
+                        key={`redact-${i}`}
+                        className="redaction-overlay"
+                        title={redactMode ? 'Click to remove' : undefined}
+                        onClick={redactMode ? (e) => { e.stopPropagation(); removeRedaction(i); } : undefined}
+                        style={{
+                          left: a.rect[0],
+                          top: a.rect[1],
+                          width: a.rect[2] - a.rect[0],
+                          height: a.rect[3] - a.rect[1],
+                          pointerEvents: redactMode ? 'auto' : 'none',
+                          cursor: redactMode ? 'pointer' : 'default',
                         }}
                       />
                     ))}
@@ -1885,7 +1990,7 @@ function App() {
                       );
                     })}
                     {/* Shape outlines */}
-                    {annotations.filter((a) => a.subtype === 'Square').map((a, i) => (
+                    {annotations.filter((a) => a.subtype === 'Square' && !a.is_redaction).map((a, i) => (
                       <div
                         key={`square-${i}`}
                         className="shape-overlay shape-square"
@@ -2048,6 +2153,17 @@ function App() {
                     {shapeMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && shapeKind !== 'line' && (
                       <div
                         className={`shape-draft ${shapeKind === 'circle' ? 'shape-circle' : 'shape-square'}`}
+                        style={{
+                          left: highlightRect.x,
+                          top: highlightRect.y,
+                          width: highlightRect.w,
+                          height: highlightRect.h,
+                        }}
+                      />
+                    )}
+                    {redactMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                      <div
+                        className="redaction-draft"
                         style={{
                           left: highlightRect.x,
                           top: highlightRect.y,

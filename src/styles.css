@@ -299,6 +299,22 @@ body {
   cursor: copy;
 }
 
+.page-container.redact-cursor {
+  cursor: crosshair;
+}
+
+.redaction-overlay,
+.redaction-draft {
+  position: absolute;
+  box-sizing: border-box;
+  background: #000;
+  pointer-events: none;
+}
+
+.redaction-draft {
+  opacity: 0.65;
+}
+
 .stamp-toolbar {
   display: inline-flex;
   align-items: center;

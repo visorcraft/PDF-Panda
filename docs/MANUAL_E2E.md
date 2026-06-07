@@ -20,6 +20,7 @@ checklist before a release tag.
 - [ ] Freehand draw add (D) and remove
 - [ ] Shape outlines add (S — rect/ellipse/line) and remove
 - [ ] Text/image stamps add (T) and remove
+- [ ] Redaction boxes add (X) and remove
 
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict

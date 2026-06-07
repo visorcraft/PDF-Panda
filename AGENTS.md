@@ -98,7 +98,8 @@ and the default test suite don't need it.
   `add_text_note`, `remove_text_note`, `add_ink_stroke`, `remove_ink_stroke`,
   `add_square`, `add_circle`, `add_line`, `remove_square`, `remove_circle`,
   `remove_line`, `list_stamp_presets`, `add_text_stamp`, `add_image_stamp`,
-  `remove_text_stamp`, `remove_image_stamp`, `get_annotations`, `file_byte_size`.
+  `remove_text_stamp`, `remove_image_stamp`, `add_redaction`, `remove_redaction`,
+  `get_annotations`, `file_byte_size`.
 - `src/App.tsx` — the whole UI (toolbar, scrollable viewer, thumbnail sidebar,
   split/insert modals, highlight overlays, print surface).
 - `src-tauri/capabilities/default.json` — Tauri ACL (`core:default`). Custom app
@@ -121,7 +122,8 @@ click-an-existing-highlight to remove), sticky text notes (N — click to place,
 click-to-remove in note mode), freehand ink drawing (D — drag to draw,
 click-to-remove in draw mode), shape outlines (S — rectangle/ellipse/line,
 click-to-remove in shape mode), text/image stamps (T — preset badges,
-click-to-remove in stamp mode), PDF/Markdown view toggle with sibling
+click-to-remove in stamp mode), redaction boxes (X — two-click black boxes,
+click-to-remove in redact mode), PDF/Markdown view toggle with sibling
 `.md` auto-save (or Save Markdown As… custom path) and overwrite confirmation,
 Markdown conversion (PDFium text
 extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and

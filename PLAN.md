@@ -118,11 +118,11 @@ and verified:
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
 | Password protect | Export encrypted `<name>_protected.pdf`; open encrypted files with password prompt | `protect_pdf_*`, `pdf_is_encrypted`, `verify_pdf_password`, `open_working_copy_with_password` |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
-| Highlight / Notes / Draw / Shapes / Stamps | Highlights (H), notes (N), ink (D), shapes (S), text/image stamps (T); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_*`, `ink_stroke_*`, `square_*`, `circle_*`, `line_*`, `*_stamp_*`, `list_stamp_presets` |
+| Highlight / Notes / Draw / Shapes / Stamps / Redact | Highlights (H), notes (N), ink (D), shapes (S), stamps (T), redaction boxes (X); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_*`, `ink_stroke_*`, `square_*`, `circle_*`, `line_*`, `*_stamp_*`, `add_redaction`, `remove_redaction` |
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 85 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 89 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -161,13 +161,14 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Shape outlines (`add_square` / `add_circle` / `add_line`, **S** shortcut)
 - [x] Text and image stamps (`add_text_stamp` / `add_image_stamp`, **T** shortcut)
 - [x] Password protection (`protect_pdf`, encrypted open with password prompt)
+- [x] Redaction (`add_redaction` / `remove_redaction`, **X** shortcut)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing, vector object manipulation, image
   insertion beyond page-level operations.
 - **OCR integration:** Optical character recognition for scanned documents.
-- **Security features:** Digital signatures and redaction.
+- **Security features:** Digital signatures.
 - **Form support:** Interactive PDF form creation and filling.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
