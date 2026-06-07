@@ -6849,7 +6849,7 @@ mod tests {
             Some("Finance".to_string()),
             Some("Q1, revenue".to_string()),
             Some("PDF Panda".to_string()),
-            Some("PDF-Panda".to_string()),
+            Some("PDF Panda".to_string()),
         )
         .unwrap();
         let metadata = get_pdf_metadata(path.clone()).unwrap();
@@ -6858,7 +6858,7 @@ mod tests {
         assert_eq!(metadata.subject.as_deref(), Some("Finance"));
         assert_eq!(metadata.keywords.as_deref(), Some("Q1, revenue"));
         assert_eq!(metadata.creator.as_deref(), Some("PDF Panda"));
-        assert_eq!(metadata.producer.as_deref(), Some("PDF-Panda"));
+        assert_eq!(metadata.producer.as_deref(), Some("PDF Panda"));
         assert!(metadata.creation_date.is_some());
         assert!(metadata.mod_date.is_some());
         let _ = std::fs::remove_file(&path);

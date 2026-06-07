@@ -27,9 +27,9 @@
 
 ---
 
-## What is PDF-Panda?
+## What is PDF Panda?
 
-PDF-Panda is a desktop PDF editor for the everyday workflow: **view, reorganize,
+PDF Panda is a desktop PDF editor for the everyday workflow: **view, reorganize,
 annotate, sign, and export** — without firing up a heavyweight suite or uploading
 your files to someone else's server. It's a small, snappy native app that gets out
 of your way.
@@ -170,22 +170,10 @@ Contributions are welcome — issues, fixes, and features alike.
 
 - Match the existing style, and keep commits focused.
 - Run the quality gates before you push: `scripts/smoke-test.sh` (Rust unit tests, `clippy`, `fmt`, `tsc`) and, on Linux, `npm run test:e2e`.
-- PDF-Panda is **GPL v3** — derivative works must stay open source under compatible terms.
-
-See [`AGENTS.md`](AGENTS.md) for the full architecture notes, conventions, and
-testing details.
-
----
-
-## Documentation
-
-- [`AGENTS.md`](AGENTS.md) — architecture, tech stack, and contributor conventions
-- [`PLAN.md`](PLAN.md) — feature matrix, status, and roadmap
-- [`docs/SIGNING.md`](docs/SIGNING.md) — release-artifact code signing (macOS/Windows packages)
-- [`docs/MANUAL_E2E.md`](docs/MANUAL_E2E.md) — manual QA checklist
+- PDF Panda is **GPL v3** — derivative works must stay open source under compatible terms.
 
 ---
 
 ## Licence
 
-PDF-Panda is licensed under the [GNU General Public License v3.0](LICENSE). Copyright © VisorCraft LLC.
+PDF Panda is licensed under the [GNU General Public License v3.0](LICENSE). Copyright © VisorCraft LLC.
