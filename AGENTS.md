@@ -73,8 +73,8 @@ DMABUF renderer for the target hardware.
 
 Run from `src-tauri/` unless noted:
 
-- `cargo test` — 58 unit tests for every lopdf-based command, working-copy flows,
-  and validation paths (no PDFium needed for the default suite).
+- `cargo test` — 61 unit tests for every lopdf-based command, working-copy flows,
+  highlights/notes, and validation paths (no PDFium needed for the default suite).
 - Ignored end-to-end smoke test (needs PDFium + a file):
   `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
   This smoke test covers render → thumbnails → Markdown extraction → render
@@ -94,7 +94,7 @@ and the default test suite don't need it.
   `render_pdf_page`, `get_pdf_thumbnails`, `delete_page`, `move_page`,
   `rotate_page`, `split_pdf`, `insert_pdf`, `convert_pdf_to_markdown`,
   `save_pdf_markdown`, `optimize_pdf`, `add_highlight`, `remove_highlight`,
-  `get_annotations`.
+  `add_text_note`, `remove_text_note`, `get_annotations`.
 - `src/App.tsx` — the whole UI (toolbar, scrollable viewer, thumbnail sidebar,
   split/insert modals, highlight overlays, print surface).
 - `src-tauri/capabilities/default.json` — Tauri ACL (`core:default`). Custom app
@@ -113,7 +113,8 @@ editable page/zoom fields, fixed (non-scrolling) toolbar, drag-reorder, delete
 with page-specific confirmation, rotate, insert, split, optimize (metadata strip
 + image recompress + prune + stream compress), print (native print dialog via
 `window.print()`), highlight (click-to-start → click-to-finish, persists,
-click-an-existing-highlight to remove), PDF/Markdown view toggle with sibling
+click-an-existing-highlight to remove), sticky text notes (N — click to place,
+click-to-remove in note mode), PDF/Markdown view toggle with sibling
 `.md` auto-save (or Save Markdown As… custom path) and overwrite confirmation,
 Markdown conversion (PDFium text
 extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and
@@ -127,7 +128,10 @@ the WebKitGTK view transition.
 
 **MVP status:** Phases 1–6 complete (`v0.2.0`). See `PLAN.md` and `FEATURES.md`.
 
-**Known gaps / future work (post-MVP):**
+**Known gaps / future work (post-MVP):** see `PLAN.md` **Deferred** section and
+`FEATURES.md` roadmap. Signing steps: `docs/SIGNING.md`.
+
+**Still open:**
 - Markdown output is heuristic layout reconstruction from PDF text geometry; it
   does not yet extract images, OCR scanned pages, or use tagged-PDF semantics.
 - Markdown defaults to saving beside the open PDF as `<pdf-name>.md`; use Save
@@ -135,8 +139,9 @@ the WebKitGTK view transition.
 - Native PDF file dialogs are intentionally avoided on the current Linux/Wayland
   target because the WebKitGTK/portal path can hang the app when opening a file.
 - AppImage bundling needs `appimagetool` installed (deb/rpm work out of the box).
-- Rust unit tests cover all lopdf commands and validation paths; no automated UI/e2e
-  tests yet. PDFium paths use ignored `render_real_pdf_smoke` when PDFium is present.
+- Rust unit tests cover all lopdf commands and validation paths; manual release QA
+  in `docs/MANUAL_E2E.md`. PDFium paths use ignored `render_real_pdf_smoke` when
+  PDFium is present. Markdown save exports page PNGs for no-text pages.
 
 ## Conventions
 

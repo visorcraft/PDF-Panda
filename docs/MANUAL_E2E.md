@@ -1,0 +1,27 @@
+# Manual End-to-End Checklist
+
+Automated UI/e2e tests are not yet wired for the Tauri WebView shell. Run this
+checklist before a release tag.
+
+## Open & save
+- [ ] Open PDF via path entry and via built-in browser
+- [ ] Recently Opened list updates
+- [ ] Edit → dirty indicator → Save commits working copy
+- [ ] Save As writes a new file; unsaved prompt on close/open/quit
+
+## View & edit
+- [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges)
+- [ ] Zoom 25%–400% with aligned highlights/notes
+- [ ] Delete / rotate / reorder / insert / split
+
+## Annotations
+- [ ] Highlight add (H) and remove
+- [ ] Sticky note add (N) and remove
+
+## Export
+- [ ] Markdown toggle; save with overwrite conflict
+- [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
+- [ ] Optimize and print
+
+## Platforms
+- [ ] Linux (Wayland), macOS, Windows smoke pass

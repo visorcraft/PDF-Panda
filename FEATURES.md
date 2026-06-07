@@ -27,12 +27,14 @@ catalog referenced by `PLAN.md`.
 
 ### Conversion & export
 - PDF → Markdown (PDFium text extraction with heuristic headings, TOC, tables)
-- Save Markdown beside PDF or via Save Markdown As… with overwrite detection
+- Save Markdown beside PDF or via Save Markdown As… with overwrite detection;
+  no-text pages export rendered PNGs to `<name>_assets/` on save
 - Optimize PDF (metadata strip, image recompress, prune, stream compress)
 - Print via native print dialog
 
 ### Annotations
-- Rectangle highlights (click-to-draw, persisted, click-to-remove)
+- Rectangle highlights (H — click-to-draw, persisted, click-to-remove)
+- Sticky text notes (N — click to place, modal for text, click-to-remove in note mode)
 
 ### Platform
 - Linux, macOS, Windows builds via Tauri 2
@@ -41,21 +43,22 @@ catalog referenced by `PLAN.md`.
 
 ## Known limitations (MVP)
 
-- Markdown: no image extraction, OCR, or tagged-PDF semantics
-- Highlights only — no notes, freehand, stamps, or shapes
+- Markdown: no embedded XObject image extraction, OCR, or tagged-PDF semantics
+  (no-text pages get a rendered page PNG on Markdown save)
+- No freehand, stamps, or shapes (highlights + sticky notes only)
 - Native file dialogs intentionally avoided on the current Linux/Wayland target
 - Undo/redo uses whole-file snapshots (fine for typical PDFs; large files copy
   on each edit)
 - Insert does not merge AcroForm fields or dedupe fonts across repeated inserts
-- Release packages are unsigned (signing/notarization not configured)
+- Release packages are unsigned (`docs/SIGNING.md` documents signing when certs exist)
 
 ## Future roadmap (post-MVP)
 
 - **Advanced editing:** in-PDF text editing, vector manipulation, image insertion
 - **OCR:** scanned documents and pages without a text layer
-- **Enhanced annotations:** sticky notes, stamps, shapes, freehand drawing
+- **Enhanced annotations:** stamps, shapes, freehand drawing
 - **Security:** password protection, digital signatures, redaction
 - **Forms:** interactive PDF form creation and filling
 - **AI tools:** summarization and intelligent content extraction
-- **Testing:** automated UI / end-to-end coverage
-- **Distribution:** code signing and notarization for macOS/Windows releases
+- **Testing:** automated Tauri WebView UI / e2e suite (`docs/MANUAL_E2E.md` today)
+- **Distribution:** automated signing pipeline (see `docs/SIGNING.md`)

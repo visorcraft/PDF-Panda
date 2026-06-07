@@ -26,6 +26,7 @@ interface AnnotationData {
   subtype: string;
   rect: [number, number, number, number];
   color: [number, number, number] | null;
+  contents: string | null;
 }
 
 type ViewMode = 'pdf' | 'markdown';
@@ -136,6 +137,10 @@ function App() {
 
   // Annotations
   const [highlightMode, setHighlightMode] = useState(false);
+  const [noteMode, setNoteMode] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
   const [annotations, setAnnotations] = useState<AnnotationData[]>([]);
   const [highlightStart, setHighlightStart] = useState<{ x: number; y: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -587,6 +592,13 @@ function App() {
   // Highlighting is a two-click gesture: click once to set the start corner,
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
+    if (noteMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      setPendingNotePos(coords);
+      setNoteDraft('');
+      setShowNoteModal(true);
+      return;
+    }
     if (!highlightMode) return;
     const coords = getImageCoords(e.clientX, e.clientY);
     if (!drawing) {
@@ -645,12 +657,60 @@ function App() {
 
   const toggleHighlightMode = () => {
     cancelDrawing();
+    setNoteMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
     setHighlightMode((m) => !m);
   };
 
   const exitHighlightMode = () => {
     cancelDrawing();
     setHighlightMode(false);
+  };
+
+  const toggleNoteMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setNoteMode((m) => !m);
+  };
+
+  const exitNoteMode = () => {
+    setNoteMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setNoteDraft('');
+  };
+
+  const removeTextNote = (noteIndex: number) => {
+    void withLoading(async () => {
+      await invoke('remove_text_note', {
+        path: filePath, pageIndex: currentPage, index: noteIndex,
+      });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Note removed');
+    });
+  };
+
+  const submitTextNote = () => {
+    const text = noteDraft.trim();
+    const pos = pendingNotePos;
+    if (!text || !pos) return;
+    void withLoading(async () => {
+      await invoke('add_text_note', {
+        path: filePath,
+        pageIndex: currentPage,
+        x: pos.x,
+        y: pos.y,
+        content: text,
+      });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Note added');
+      exitNoteMode();
+    });
   };
 
   const handleSave = async () => {
@@ -761,8 +821,14 @@ function App() {
   hasOpenPdfRef.current = !!filePath;
   const highlightModeRef = useRef(highlightMode);
   highlightModeRef.current = highlightMode;
+  const noteModeRef = useRef(noteMode);
+  noteModeRef.current = noteMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
+  const exitNoteModeRef = useRef(exitNoteMode);
+  exitNoteModeRef.current = exitNoteMode;
+  const toggleNoteModeRef = useRef(toggleNoteMode);
+  toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
   goToPageRef.current = goToPage;
   const pageCountRef = useRef(pageCount);
@@ -798,7 +864,7 @@ function App() {
   const anyModalOpenRef = useRef(false);
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showOpenModal
-    || showBrowserModal || showDeleteModal || showSplitModal || showInsertModal;
+    || showBrowserModal || showDeleteModal || showSplitModal || showInsertModal || showNoteModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -818,6 +884,10 @@ function App() {
       }
 
       if (e.key === 'Escape') {
+        if (noteModeRef.current && hasOpenPdfRef.current) {
+          exitNoteModeRef.current();
+          return;
+        }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
           exitHighlightModeRef.current();
           return;
@@ -846,6 +916,11 @@ function App() {
         if (e.key.toLowerCase() === 'h' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleHighlightModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'n' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleNoteModeRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1198,6 +1273,13 @@ function App() {
                 >
                   {highlightMode ? 'Highlight: ON' : 'Highlight'}
                 </button>
+                <button
+                  onClick={toggleNoteMode}
+                  className={`btn ${noteMode ? 'btn-active' : ''}`}
+                  title="Toggle sticky note mode (N)"
+                >
+                  {noteMode ? 'Note: ON' : 'Note'}
+                </button>
                 <button onClick={() => guardUnsaved(closePdf)} className="btn" title="Close (Ctrl+W)">Close</button>
               </>
             )}
@@ -1256,7 +1338,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseMove={handlePageMouseMove}
             >
@@ -1283,6 +1365,25 @@ function App() {
                           cursor: highlightMode ? 'pointer' : 'default',
                         }}
                       />
+                    ))}
+                    {/* Sticky text notes */}
+                    {annotations.filter((a) => a.subtype === 'Text').map((a, i) => (
+                      <div
+                        key={`note-${i}`}
+                        className="text-note-overlay"
+                        title={noteMode ? 'Click to remove' : (a.contents ?? undefined)}
+                        onClick={noteMode ? (e) => { e.stopPropagation(); removeTextNote(i); } : undefined}
+                        style={{
+                          left: a.rect[0],
+                          top: a.rect[1],
+                          width: a.rect[2] - a.rect[0],
+                          height: a.rect[3] - a.rect[1],
+                          pointerEvents: noteMode ? 'auto' : 'none',
+                          cursor: noteMode ? 'pointer' : 'default',
+                        }}
+                      >
+                        {a.contents}
+                      </div>
                     ))}
                     {/* Current highlight drag */}
                     {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
@@ -1337,6 +1438,24 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowOpenModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleOpenPdfPath} className="btn" disabled={!openFilePath.trim()}>Open</button>
+          </div>
+        </Modal>
+      )}
+
+      {showNoteModal && (
+        <Modal onClose={exitNoteMode}>
+          <h3>Add Sticky Note</h3>
+          <label>Note text:</label>
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            className="modal-input note-textarea"
+            rows={4}
+            autoFocus
+          />
+          <div className="modal-actions">
+            <button onClick={exitNoteMode} className="btn btn-secondary">Cancel</button>
+            <button onClick={submitTextNote} className="btn" disabled={!noteDraft.trim()}>Add note</button>
           </div>
         </Modal>
       )}

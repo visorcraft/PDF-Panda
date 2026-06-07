@@ -259,6 +259,30 @@ body {
   transition: transform 0.1s ease-out;
 }
 
+.page-container.note-cursor {
+  cursor: text;
+}
+
+.text-note-overlay {
+  position: absolute;
+  background: rgba(255, 248, 180, 0.92);
+  border: 1px solid #d4b800;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #333;
+  overflow: hidden;
+  word-break: break-word;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.note-textarea {
+  min-height: 96px;
+  resize: vertical;
+  font-family: inherit;
+}
+
 .page-container.highlight-cursor {
   cursor: crosshair;
 }

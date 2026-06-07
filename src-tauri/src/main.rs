@@ -187,6 +187,17 @@ fn render_pdf_page(path: String, page_index: u32, width: i32, height: i32) -> Re
     Ok(buffer)
 }
 
+fn render_page_png(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
+    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
+    let image = bitmap.as_image().map_err(|e| e.to_string())?;
+    let mut buffer = Vec::new();
+    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png).map_err(|e| e.to_string())?;
+    Ok(buffer)
+}
+
 #[tauri::command]
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
     let path = PathBuf::from(path);
@@ -984,7 +995,12 @@ fn plain_text_to_markdown(text: &str) -> String {
     }
 }
 
-fn pdf_to_markdown(path: &Path) -> Result<String, String> {
+struct MarkdownImageSink<'a> {
+    assets_dir: &'a Path,
+    rel_prefix: &'a str,
+}
+
+fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> Result<String, String> {
     // Use PDFium's text layer: it decodes font encodings (including CID/Type0
     // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
     // produce text instead of empty pages.
@@ -997,7 +1013,21 @@ fn pdf_to_markdown(path: &Path) -> Result<String, String> {
         let text = page.text().map_err(|e| e.to_string())?;
         let lines = lines_from_pdfium_text(&text);
         if lines.is_empty() {
-            markdown.push_str(&plain_text_to_markdown(text.all().trim()));
+            let all_text = text.all();
+            let trimmed = all_text.trim();
+            if trimmed.is_empty() {
+                if let Some(sink) = image_sink {
+                    std::fs::create_dir_all(sink.assets_dir).map_err(|e| e.to_string())?;
+                    let file_name = format!("page-{}.png", index + 1);
+                    let png = render_page_png(path, index as u32, 800, 1132)?;
+                    std::fs::write(sink.assets_dir.join(&file_name), png).map_err(|e| e.to_string())?;
+                    markdown.push_str(&format!("![Page {}]({}/{})\n\n", index + 1, sink.rel_prefix, file_name));
+                } else {
+                    markdown.push_str(&plain_text_to_markdown(trimmed));
+                }
+            } else {
+                markdown.push_str(&plain_text_to_markdown(trimmed));
+            }
         } else {
             markdown.push_str(&format_markdown_lines(&lines));
         }
@@ -1007,7 +1037,7 @@ fn pdf_to_markdown(path: &Path) -> Result<String, String> {
 
 #[tauri::command]
 fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
-    pdf_to_markdown(&PathBuf::from(path))
+    pdf_to_markdown(&PathBuf::from(path), None)
 }
 
 #[derive(serde::Serialize)]
@@ -1052,8 +1082,14 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
 #[tauri::command]
 fn save_pdf_markdown(path: String, overwrite: bool, output_path: Option<String>) -> Result<MarkdownSaveResult, String> {
     let pdf_path = PathBuf::from(path);
-    let markdown = pdf_to_markdown(&pdf_path)?;
     let markdown_path = output_path.map(PathBuf::from).unwrap_or_else(|| pdf_path.with_extension("md"));
+    let assets_folder = format!("{}_assets", markdown_path.file_stem().and_then(|s| s.to_str()).unwrap_or("document"));
+    let assets_dir = markdown_path
+        .parent()
+        .map(|parent| parent.join(&assets_folder))
+        .unwrap_or_else(|| PathBuf::from(&assets_folder));
+    let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: &assets_folder };
+    let markdown = pdf_to_markdown(&pdf_path, Some(&sink))?;
     write_markdown_file(&markdown_path, &markdown, overwrite)
 }
 
@@ -1323,11 +1359,112 @@ fn remove_highlight(path: String, page_index: u32, index: u32) -> Result<(), Str
     Ok(())
 }
 
+const TEXT_NOTE_WIDTH: f64 = 140.0;
+const TEXT_NOTE_HEIGHT: f64 = 80.0;
+
+#[tauri::command]
+fn add_text_note(path: String, page_index: u32, x: f64, y: f64, content: String) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+
+    let pages = doc.get_pages();
+    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let x2 = x + TEXT_NOTE_WIDTH;
+    let y2 = y + TEXT_NOTE_HEIGHT;
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Text".to_vec())),
+        (
+            b"Rect".to_vec(),
+            Object::Array(vec![
+                Object::Real(x as f32),
+                Object::Real(y as f32),
+                Object::Real(x2 as f32),
+                Object::Real(y2 as f32),
+            ]),
+        ),
+        (b"Contents".to_vec(), Object::String(content.into_bytes(), lopdf::StringFormat::Literal)),
+        (b"Open".to_vec(), Object::Boolean(false)),
+        (b"C".to_vec(), Object::Array(vec![Object::Real(1.0), Object::Real(1.0), Object::Real(0.6)])),
+    ])));
+
+    let annots = doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
+
+    match annots {
+        Ok(Object::Array(ref mut arr)) => {
+            arr.push(Object::Reference(annot));
+        }
+        _ => {
+            doc.get_dictionary_mut(*page_id)
+                .map_err(|e| e.to_string())?
+                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
+        }
+    }
+
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Remove the `index`-th text-note annotation (0-based among `Text` subtypes).
+#[tauri::command]
+fn remove_text_note(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
+        Ok(Object::Array(arr)) => arr.clone(),
+        _ => return Err("No annotations on this page".to_string()),
+    };
+
+    let mut note_count = 0u32;
+    let mut target_pos: Option<usize> = None;
+    for (pos, annot_ref) in annots.iter().enumerate() {
+        let Object::Reference(id) = annot_ref else {
+            continue;
+        };
+        let is_text = doc
+            .get_object(*id)
+            .ok()
+            .and_then(|o| o.as_dict().ok())
+            .and_then(|d| d.get(b"Subtype").ok())
+            .and_then(|o| o.as_name().ok())
+            .map(|n| String::from_utf8_lossy(n) == "Text")
+            .unwrap_or(false);
+        if is_text {
+            if note_count == index {
+                target_pos = Some(pos);
+                break;
+            }
+            note_count += 1;
+        }
+    }
+
+    let pos = target_pos.ok_or("Text note not found".to_string())?;
+    let mut new_annots = annots;
+    new_annots.remove(pos);
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
+
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 struct AnnotationData {
     subtype: String,
     rect: [f64; 4],
     color: Option<[f64; 3]>,
+    contents: Option<String>,
+}
+
+fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
+    dict.get(b"Contents").ok().and_then(|o| match o {
+        Object::String(bytes, _) => Some(String::from_utf8_lossy(bytes).to_string()),
+        _ => None,
+    })
 }
 
 /// Coerce a PDF numeric object to f64. Necessary because a value written as
@@ -1381,7 +1518,8 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
                         })
                     });
 
-                    result.push(AnnotationData { subtype, rect, color });
+                    let contents = annot_contents(annot_dict);
+                    result.push(AnnotationData { subtype, rect, color, contents });
                 }
             }
         }
@@ -1478,6 +1616,8 @@ fn main() {
             optimize_pdf,
             add_highlight,
             remove_highlight,
+            add_text_note,
+            remove_text_note,
             get_annotations,
             open_working_copy,
             save_working_copy,
@@ -2277,6 +2417,40 @@ mod tests {
         assert_eq!(annots.len(), 1);
         assert_eq!(annots[0].subtype, "Highlight");
         assert_eq!(annots[0].rect, [10.0, 20.0, 110.0, 40.0]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn text_note_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "text_note");
+        add_text_note(path.clone(), 0, 12.0, 24.0, "Review this section".to_string()).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].subtype, "Text");
+        assert_eq!(annots[0].contents.as_deref(), Some("Review this section"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_text_note_deletes_the_right_one() {
+        let path = save(&mut build_pdf(1), "text_note_remove");
+        add_text_note(path.clone(), 0, 10.0, 10.0, "First".to_string()).unwrap();
+        add_text_note(path.clone(), 0, 50.0, 50.0, "Second".to_string()).unwrap();
+        remove_text_note(path.clone(), 0, 0).unwrap();
+        let remaining = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].contents.as_deref(), Some("Second"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_text_note_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "text_note_invalid");
+        add_text_note(path.clone(), 0, 1.0, 1.0, "Note".to_string()).unwrap();
+        match remove_text_note(path.clone(), 0, 9) {
+            Ok(_) => panic!("expected invalid index to fail"),
+            Err(message) => assert!(message.contains("Text note not found")),
+        }
         let _ = std::fs::remove_file(&path);
     }
 

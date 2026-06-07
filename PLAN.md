@@ -114,14 +114,14 @@ and verified:
 | Rotate page | Toolbar button or Ctrl/Cmd+R → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps`, `rotate_page_rejects_invalid_index`, `rotate_page_rejects_missing_file` |
 | Insert PDF | Ctrl/Cmd+Shift+I two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree`, `insert_pdf_rejects_invalid_source_range`, `insert_pdf_rejects_source_range_out_of_bounds`, `insert_pdf_rejects_out_of_bounds_index`, `insert_pdf_rejects_missing_source_file`, `insert_pdf_rejects_missing_dest_file` |
 | Split PDF | Ctrl/Cmd+Shift+K ranges → separate files, orphans pruned; rejects empty/invalid ranges | `split_pdf_creates_separate_files`, `split_pdf_rejects_invalid_range`, `split_pdf_rejects_empty_ranges`, `split_pdf_rejects_missing_file` |
-| Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
+| Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; no-text pages export rendered PNGs to `<name>_assets/` on save | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
-| Highlight | Click-to-draw highlights, persisted + read back; H toggles mode; Escape exits highlight mode or dismisses modals | `get_annotations_returns_empty_without_highlights`, `highlight_add_and_read_back`, `highlight_remove_deletes_the_right_one`, `get_annotations_rejects_invalid_page`, `get_annotations_rejects_missing_file`, `add_highlight_rejects_invalid_page`, `add_highlight_rejects_missing_file`, `remove_highlight_rejects_invalid_index`, `remove_highlight_rejects_missing_file` |
+| Highlight / Notes | Rectangle highlights (H) and sticky text notes (N); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_add_and_read_back`, `remove_text_note_*`, `get_annotations_rejects_*`, `add_highlight_rejects_*`, `remove_highlight_rejects_*` |
 | Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 58 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 61 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -151,39 +151,39 @@ are post-MVP backlog only — they do not block release.
 
 ## Remaining / Future Work
 
-- **Markdown depth:** no image extraction, OCR for scanned/no-text pages, or
-  tagged-PDF semantics.
-- **Insert edge cases:** AcroForm / form-field merging is not handled; fonts
-  shared across inserted pages aren't deduped beyond a single insert operation.
-- **Undo/Redo:** snapshot-based with a 50-entry cap; delta snapshots would still
-  help for very large files.
-- **File dialogs:** native open/save dialogs are intentionally avoided on the
-  Wayland/WebKitGTK target (in-app path + browser used); revisit when the desktop
-  portal path is stable.
-- **Annotations:** rectangle highlights only — no notes, freehand, or other types.
-- **Packaging / distribution:** release binary via `scripts/build-no-bundle.sh`;
-  Linux via `scripts/build-linux-packages.sh` (deb/rpm) and `scripts/build-appimage.sh`
-  (needs `appimagetool`); unsigned macOS/Windows via `scripts/build-macos.sh` /
-  `scripts/build-windows.sh`; signing/notarization not set up yet.
-- **Testing:** all lopdf-based commands, working-copy/snapshot save flows, PDF
-  browser listing, page-edit validation (delete/move/rotate/insert/split),
-  highlight CRUD, optimize/split error paths, and Markdown file-write flows have
-  Rust unit tests; PDFium render/Markdown extraction covered by ignored
-  `render_real_pdf_smoke`; no automated UI/e2e coverage yet.
+Completed in this pass (moved out of backlog):
+
+- **Markdown images:** pages with no extractable text export a rendered PNG to
+  `<markdown-stem>_assets/` when saving Markdown (preview/convert still shows a
+  placeholder without writing files).
+- **Sticky notes:** `Text` annotations with toolbar/keyboard (N), persisted via
+  `add_text_note` / `remove_text_note`.
+- **Packaging docs:** `docs/SIGNING.md` documents macOS/Windows signing steps.
+- **Manual QA:** `docs/MANUAL_E2E.md` release checklist (automated WebView e2e
+  still outstanding).
+
+### Deferred (requires external deps or major new subsystems)
+
+- **Markdown depth:** embedded XObject image extraction, OCR for scanned pages,
+  tagged-PDF semantics (page renders cover no-text pages today).
+- **Insert edge cases:** AcroForm / form-field merging; cross-insert font dedup.
+- **Undo/Redo:** delta snapshots for very large files (50-entry whole-file cap
+  remains).
+- **File dialogs:** native open/save on Wayland/WebKitGTK — intentionally avoided;
+  revisit when the desktop portal path is stable.
+- **Annotations:** freehand, stamps, shapes (highlights + sticky notes shipped).
+- **Signing:** credentials required; see `docs/SIGNING.md`.
+- **Automated UI/e2e:** Tauri WebView harness not wired; use `docs/MANUAL_E2E.md`.
 
 ## Future Roadmap (Post-MVP)
 
-Aligned with `FEATURES.md`. Overlaps with **Remaining / Future Work** above are
-called out rather than duplicated.
+Aligned with `FEATURES.md`.
 
-- **Advanced editing:** In-PDF text editing, vector object manipulation, and
-  image insertion (beyond current page-level operations).
-- **OCR integration:** Optical character recognition for scanned documents and
-  pages with no text layer (see also Markdown depth above).
-- **Enhanced annotations:** Sticky notes, stamps, shapes, and freehand drawing
-  (see also annotations bullet above — highlights only today).
-- **Security features:** Password protection, digital signatures, and redaction
-  tools.
-- **Form support:** Creation and filling of interactive PDF forms (broader than
-  insert-time AcroForm merging noted above).
-- **AI-powered tools:** Document summarization and intelligent content extraction.
+- **Advanced editing:** In-PDF text editing, vector object manipulation, image
+  insertion beyond page-level operations.
+- **OCR integration:** Optical character recognition for scanned documents.
+- **Enhanced annotations:** stamps, shapes, freehand drawing.
+- **Security features:** Password protection, digital signatures, redaction.
+- **Form support:** Interactive PDF form creation and filling.
+- **AI-powered tools:** Document summarization and intelligent extraction.
+- **Automated testing:** Headless/WebDriver UI suite for the Tauri shell.
