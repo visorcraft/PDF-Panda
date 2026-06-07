@@ -18,7 +18,7 @@ making changes.**
 A cross-platform desktop PDF editor named PDF-Panda (MVP). Tauri 2 backend (Rust) + React/
 TypeScript frontend. Page management, viewing, annotation, Markdown conversion,
 and optimized export. GPL v3. Remote: `visorcraft/PDF-Panda`. Current tag:
-`v0.1.1`.
+`v0.2.0`.
 
 ## Tech stack
 
