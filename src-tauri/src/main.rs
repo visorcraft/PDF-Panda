@@ -387,6 +387,9 @@ fn delete_page(path: String, page_index: u32) -> Result<(), String> {
     // page, so on a nested tree it deleted whole sub-trees and wrote a bogus
     // /Count (deleting "page 1" could drop pages 1–5 and hide the rest).
     let total = doc.get_pages().len();
+    if total <= 1 {
+        return Err("Cannot delete the only page in the document".to_string());
+    }
     let idx = page_index as usize;
     if idx >= total {
         return Err("Page index out of bounds".to_string());
@@ -1761,6 +1764,15 @@ mod tests {
         let path = save(&mut build_pdf(2), "delete_invalid");
         let err = delete_page(path.clone(), 9).unwrap_err();
         assert!(err.contains("Page index out of bounds"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_page_rejects_only_page() {
+        let path = save(&mut build_pdf(1), "delete_only");
+        let err = delete_page(path.clone(), 0).unwrap_err();
+        assert!(err.contains("only page"));
+        assert_eq!(page_count(&path), 1);
         let _ = std::fs::remove_file(&path);
     }
 
