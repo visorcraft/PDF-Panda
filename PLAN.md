@@ -116,12 +116,13 @@ and verified:
 | Split PDF | Ctrl/Cmd+Shift+K ranges → separate files, orphans pruned; rejects empty/invalid ranges | `split_pdf_creates_separate_files`, `split_pdf_rejects_invalid_range`, `split_pdf_rejects_empty_ranges`, `split_pdf_rejects_missing_file` |
 | Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; on save, no-text pages export rendered PNGs and embedded XObject images land in `<name>_assets/` | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, `file_byte_size_returns_length`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
+| Password protect | Export encrypted `<name>_protected.pdf`; open encrypted files with password prompt | `protect_pdf_*`, `pdf_is_encrypted`, `verify_pdf_password`, `open_working_copy_with_password` |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight / Notes / Draw / Shapes / Stamps | Highlights (H), notes (N), ink (D), shapes (S), text/image stamps (T); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_*`, `ink_stroke_*`, `square_*`, `circle_*`, `line_*`, `*_stamp_*`, `list_stamp_presets` |
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 80 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 85 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -159,13 +160,14 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Freehand drawing (`add_ink_stroke` / `remove_ink_stroke`, **D** shortcut)
 - [x] Shape outlines (`add_square` / `add_circle` / `add_line`, **S** shortcut)
 - [x] Text and image stamps (`add_text_stamp` / `add_image_stamp`, **T** shortcut)
+- [x] Password protection (`protect_pdf`, encrypted open with password prompt)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing, vector object manipulation, image
   insertion beyond page-level operations.
 - **OCR integration:** Optical character recognition for scanned documents.
-- **Security features:** Password protection, digital signatures, redaction.
+- **Security features:** Digital signatures and redaction.
 - **Form support:** Interactive PDF form creation and filling.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.

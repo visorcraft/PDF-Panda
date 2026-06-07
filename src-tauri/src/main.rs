@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use lopdf::{Dictionary, Document, Object, ObjectId, Stream};
+use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -1347,6 +1347,86 @@ fn optimize_pdf(path: String) -> Result<String, String> {
     ))
 }
 
+/// True when the file has an encryption dictionary (may still require a password to open).
+#[tauri::command]
+fn pdf_is_encrypted(path: String) -> Result<bool, String> {
+    let path = PathBuf::from(&path);
+    match Document::load(&path) {
+        Ok(doc) => Ok(doc.is_encrypted()),
+        Err(lopdf::Error::InvalidPassword) => Ok(true),
+        Err(lopdf::Error::Unimplemented(_)) => Ok(true),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Verify that `password` unlocks an encrypted PDF.
+#[tauri::command]
+fn verify_pdf_password(path: String, password: String) -> Result<(), String> {
+    Document::load_with_password(PathBuf::from(&path), &password).map_err(|_| "Incorrect password".to_string())?;
+    Ok(())
+}
+
+/// Copy an encrypted PDF into a decrypted working copy for editing.
+#[tauri::command]
+fn open_working_copy_with_password(original: String, password: String) -> Result<String, String> {
+    let original = PathBuf::from(&original);
+    let mut doc = Document::load_with_password(&original, &password).map_err(|e| e.to_string())?;
+    if doc.is_encrypted() {
+        doc.decrypt(&password).map_err(|e| e.to_string())?;
+    }
+    let stem = original.file_stem().and_then(|s| s.to_str()).unwrap_or("document");
+    let working = std::env::temp_dir().join(format!("pdf_panda_work_{}_{}.pdf", std::process::id(), stem));
+    doc.save(&working).map_err(|e| e.to_string())?;
+    Ok(working.to_string_lossy().into_owned())
+}
+
+fn ensure_pdf_file_id(doc: &mut Document) {
+    if doc.trailer.get(b"ID").is_ok() {
+        return;
+    }
+    let id = vec![0xA1u8; 16];
+    doc.trailer.set(
+        b"ID",
+        Object::Array(vec![
+            Object::String(id.clone(), lopdf::StringFormat::Hexadecimal),
+            Object::String(id, lopdf::StringFormat::Hexadecimal),
+        ]),
+    );
+}
+
+/// Write a password-protected sibling `<stem>_protected.pdf` next to `path`.
+#[tauri::command]
+fn protect_pdf(path: String, user_password: String, owner_password: Option<String>) -> Result<String, String> {
+    if user_password.is_empty() {
+        return Err("User password is required".to_string());
+    }
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    if doc.is_encrypted() {
+        return Err("PDF is already encrypted".to_string());
+    }
+    ensure_pdf_file_id(&mut doc);
+
+    let owner = owner_password.filter(|value| !value.is_empty()).unwrap_or_else(|| user_password.clone());
+    let version = EncryptionVersion::V2 {
+        document: &doc,
+        owner_password: &owner,
+        user_password: &user_password,
+        key_length: 128,
+        permissions: Permissions::all(),
+    };
+    let state = EncryptionState::try_from(version).map_err(|e| e.to_string())?;
+    doc.encrypt(&state).map_err(|e| e.to_string())?;
+
+    let output_path = path.with_file_name(format!("{}_protected.pdf", path.file_stem().unwrap().to_string_lossy()));
+    doc.save(&output_path).map_err(|e| e.to_string())?;
+
+    Ok(format!(
+        "Saved encrypted PDF to {}. Open it with the user password you set.",
+        output_path.file_name().unwrap().to_string_lossy()
+    ))
+}
+
 #[tauri::command]
 fn add_highlight(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
     let path = PathBuf::from(&path);
@@ -2242,6 +2322,10 @@ fn main() {
             convert_pdf_to_markdown,
             save_pdf_markdown,
             optimize_pdf,
+            pdf_is_encrypted,
+            verify_pdf_password,
+            open_working_copy_with_password,
+            protect_pdf,
             add_highlight,
             remove_highlight,
             add_text_note,
@@ -2981,6 +3065,68 @@ mod tests {
         let missing = std::env::temp_dir().join(format!("pp_optimize_missing_{}.pdf", std::process::id()));
         let err = optimize_pdf(missing.to_string_lossy().into_owned()).unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn protect_pdf_writes_encrypted_output() {
+        let path = save(&mut build_pdf(1), "protect");
+        let msg = protect_pdf(path.clone(), "user-secret".to_string(), None).unwrap();
+        assert!(msg.contains("_protected.pdf"));
+        let protected = PathBuf::from(&path)
+            .with_file_name(format!("{}_protected.pdf", PathBuf::from(&path).file_stem().unwrap().to_string_lossy()));
+        verify_pdf_password(protected.to_string_lossy().into_owned(), "user-secret".to_string()).unwrap();
+        assert!(pdf_is_encrypted(protected.to_string_lossy().into_owned()).unwrap());
+        assert!(verify_pdf_password(protected.to_string_lossy().into_owned(), "wrong".to_string()).is_err());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(protected);
+    }
+
+    #[test]
+    fn protect_pdf_rejects_empty_password() {
+        let path = save(&mut build_pdf(1), "protect_empty");
+        match protect_pdf(path.clone(), String::new(), None) {
+            Ok(_) => panic!("expected empty password to fail"),
+            Err(message) => assert!(message.contains("required")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn pdf_is_encrypted_detects_protected_file() {
+        let path = save(&mut build_pdf(1), "protect_detect");
+        protect_pdf(path.clone(), "secret".to_string(), None).unwrap();
+        let protected = PathBuf::from(&path)
+            .with_file_name(format!("{}_protected.pdf", PathBuf::from(&path).file_stem().unwrap().to_string_lossy()));
+        assert!(pdf_is_encrypted(protected.to_string_lossy().into_owned()).unwrap());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(protected);
+    }
+
+    #[test]
+    fn verify_pdf_password_accepts_correct_secret() {
+        let path = save(&mut build_pdf(1), "protect_verify");
+        protect_pdf(path.clone(), "open-me".to_string(), None).unwrap();
+        let protected = PathBuf::from(&path)
+            .with_file_name(format!("{}_protected.pdf", PathBuf::from(&path).file_stem().unwrap().to_string_lossy()));
+        verify_pdf_password(protected.to_string_lossy().into_owned(), "open-me".to_string()).unwrap();
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(protected);
+    }
+
+    #[test]
+    fn open_working_copy_with_password_decrypts_for_editing() {
+        let path = save(&mut build_pdf(2), "protect_open");
+        protect_pdf(path.clone(), "edit-me".to_string(), None).unwrap();
+        let protected = PathBuf::from(&path)
+            .with_file_name(format!("{}_protected.pdf", PathBuf::from(&path).file_stem().unwrap().to_string_lossy()));
+        let working =
+            open_working_copy_with_password(protected.to_string_lossy().into_owned(), "edit-me".to_string()).unwrap();
+        let doc = Document::load(&working).unwrap();
+        assert!(!doc.is_encrypted());
+        assert_eq!(get_pdf_page_count(working.clone()).unwrap(), 2);
+        discard_working_copy(working).unwrap();
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(protected);
     }
 
     #[test]

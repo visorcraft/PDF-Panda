@@ -144,6 +144,13 @@ function App() {
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsPath, setSaveAsPath] = useState<string>('');
   const [showMarkdownSaveAsModal, setShowMarkdownSaveAsModal] = useState(false);
+  const [showProtectModal, setShowProtectModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingEncryptedPath, setPendingEncryptedPath] = useState('');
+  const [protectUserPassword, setProtectUserPassword] = useState('');
+  const [protectUserPasswordConfirm, setProtectUserPasswordConfirm] = useState('');
+  const [protectOwnerPassword, setProtectOwnerPassword] = useState('');
+  const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -357,10 +364,19 @@ function App() {
   useEffect(() => setPageInput(String(currentPage + 1)), [currentPage]);
   useEffect(() => setZoomInput(String(Math.round(zoom * 100))), [zoom]);
 
-  const loadPdfFromPath = async (path: string) => {
+  const loadPdfFromPath = async (path: string, password?: string) => {
     const loaded = await withLoading(async () => {
+      const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
+      if (encrypted && !password) {
+        setPendingEncryptedPath(path);
+        setPdfPasswordDraft('');
+        setShowPasswordModal(true);
+        return false;
+      }
       const previousWorking = filePath;
-      const working = await invoke<string>('open_working_copy', { original: path });
+      const working = password
+        ? await invoke<string>('open_working_copy_with_password', { original: path, password })
+        : await invoke<string>('open_working_copy', { original: path });
       const count = await invoke<number>('get_pdf_page_count', { path: working });
       setOriginalPath(path);
       setFilePath(working);
@@ -402,6 +418,25 @@ function App() {
     if (!path) return;
     const loaded = await loadPdfFromPath(path);
     if (loaded) setShowOpenModal(false);
+  };
+
+  const handleOpenEncryptedPdf = async () => {
+    const path = pendingEncryptedPath.trim();
+    const password = pdfPasswordDraft;
+    if (!path || !password) return;
+    try {
+      await invoke('verify_pdf_password', { path, password });
+    } catch {
+      showToast('Incorrect password', 'error');
+      return;
+    }
+    const loaded = await loadPdfFromPath(path, password);
+    if (loaded) {
+      setShowPasswordModal(false);
+      setShowOpenModal(false);
+      setPendingEncryptedPath('');
+      setPdfPasswordDraft('');
+    }
   };
 
   const handleOpenRecentPdf = async (path: string) => {
@@ -1043,6 +1078,8 @@ function App() {
     }
     setShowSaveAsModal(false);
     setShowMarkdownSaveAsModal(false);
+    setShowProtectModal(false);
+    setShowPasswordModal(false);
     setShowOpenModal(false);
     setShowBrowserModal(false);
     setShowDeleteModal(false);
@@ -1158,8 +1195,9 @@ function App() {
   dismissModalsRef.current = dismissModals;
   const anyModalOpenRef = useRef(false);
   anyModalOpenRef.current =
-    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showOpenModal
-    || showBrowserModal || showDeleteModal || showSplitModal || showInsertModal || showNoteModal;
+    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal
+    || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
+    || showSplitModal || showInsertModal || showNoteModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -1481,6 +1519,37 @@ function App() {
   };
   handleOptimizePdfRef.current = handleOptimizePdf;
 
+  const openProtectModal = () => {
+    setProtectUserPassword('');
+    setProtectUserPasswordConfirm('');
+    setProtectOwnerPassword('');
+    setShowProtectModal(true);
+  };
+
+  const handleProtectPdf = async () => {
+    if (!filePath) return;
+    const userPassword = protectUserPassword;
+    const confirm = protectUserPasswordConfirm;
+    if (!userPassword) {
+      showToast('User password is required', 'error');
+      return;
+    }
+    if (userPassword !== confirm) {
+      showToast('Passwords do not match', 'error');
+      return;
+    }
+    const ownerPassword = protectOwnerPassword.trim();
+    await withLoading(async () => {
+      const result = await invoke<string>('protect_pdf', {
+        path: filePath,
+        userPassword,
+        ownerPassword: ownerPassword || null,
+      });
+      setShowProtectModal(false);
+      showToast(result);
+    });
+  };
+
   const handlePrint = async () => {
     if (!filePath || pageCount === null) return;
     await withLoading(async () => {
@@ -1587,6 +1656,7 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
+                <button onClick={openProtectModal} className="btn" title="Export password-protected PDF">Protect</button>
                 <button onClick={handlePrint} className="btn" title="Print (Ctrl+P)">Print</button>
                 <button
                   onClick={toggleHighlightMode}
@@ -2153,6 +2223,64 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowMarkdownSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleMarkdownSaveAs} className="btn" disabled={!markdownSaveAsPath.trim()}>Save</button>
+          </div>
+        </Modal>
+      )}
+
+      {showPasswordModal && (
+        <Modal onClose={() => { setShowPasswordModal(false); setPendingEncryptedPath(''); }}>
+          <h3>Password required</h3>
+          <p className="modal-help">This PDF is encrypted. Enter the user password to open it.</p>
+          <label>Password:</label>
+          <input
+            type="password"
+            value={pdfPasswordDraft}
+            onChange={(e) => setPdfPasswordDraft(e.target.value)}
+            className="modal-input"
+            onKeyDown={(e) => { if (e.key === 'Enter') void handleOpenEncryptedPdf(); }}
+          />
+          <div className="modal-actions">
+            <button onClick={() => { setShowPasswordModal(false); setPendingEncryptedPath(''); }} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleOpenEncryptedPdf()} className="btn" disabled={!pdfPasswordDraft}>Open</button>
+          </div>
+        </Modal>
+      )}
+
+      {showProtectModal && (
+        <Modal onClose={() => setShowProtectModal(false)}>
+          <h3>Password protect</h3>
+          <p className="modal-help">Writes an encrypted copy as <code>&lt;name&gt;_protected.pdf</code> beside the working file. The open document stays editable.</p>
+          <label>User password:</label>
+          <input
+            type="password"
+            value={protectUserPassword}
+            onChange={(e) => setProtectUserPassword(e.target.value)}
+            className="modal-input"
+          />
+          <label>Confirm user password:</label>
+          <input
+            type="password"
+            value={protectUserPasswordConfirm}
+            onChange={(e) => setProtectUserPasswordConfirm(e.target.value)}
+            className="modal-input"
+          />
+          <label>Owner password (optional):</label>
+          <input
+            type="password"
+            value={protectOwnerPassword}
+            onChange={(e) => setProtectOwnerPassword(e.target.value)}
+            className="modal-input"
+            placeholder="Defaults to user password"
+          />
+          <div className="modal-actions">
+            <button onClick={() => setShowProtectModal(false)} className="btn btn-secondary">Cancel</button>
+            <button
+              onClick={() => void handleProtectPdf()}
+              className="btn"
+              disabled={!protectUserPassword || !protectUserPasswordConfirm}
+            >
+              Protect
+            </button>
           </div>
         </Modal>
       )}

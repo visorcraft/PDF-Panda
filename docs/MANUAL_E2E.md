@@ -24,7 +24,8 @@ checklist before a release tag.
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict
 - [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
-- [ ] Optimize and print
+- [ ] Optimize, password-protect export, and print
+- [ ] Open an encrypted `_protected.pdf` with password prompt
 
 ## Platforms
 - [ ] Linux (Wayland), macOS, Windows smoke pass

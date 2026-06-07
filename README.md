@@ -32,6 +32,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Freehand drawing** — ink strokes on the page, persisted in the PDF (`D`)
 - **Shape outlines** — rectangle, ellipse, and line annotations (`S`)
 - **Stamps** — text and image preset stamps (`T`) — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED
+- **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export
