@@ -459,6 +459,16 @@ function App() {
     setShowDeleteModal(true);
   };
 
+  const openInsertModal = () => {
+    if (!filePath) return;
+    setShowInsertModal(true);
+  };
+
+  const openSplitModal = () => {
+    if (!filePath) return;
+    setShowSplitModal(true);
+  };
+
   const handleDeletePage = async () => {
     if (!filePath || pageCount === null) return;
     if (pageCount <= 1) {
@@ -778,6 +788,10 @@ function App() {
   const toggleMarkdownViewRef = useRef(async () => {});
   const openDeleteModalRef = useRef(openDeleteModal);
   openDeleteModalRef.current = openDeleteModal;
+  const openInsertModalRef = useRef(openInsertModal);
+  openInsertModalRef.current = openInsertModal;
+  const openSplitModalRef = useRef(openSplitModal);
+  openSplitModalRef.current = openSplitModal;
   const handleOptimizePdfRef = useRef(async () => {});
   const dismissModalsRef = useRef(dismissModals);
   dismissModalsRef.current = dismissModals;
@@ -883,6 +897,16 @@ function App() {
       if (key === 'o' && e.shiftKey) {
         e.preventDefault();
         void handleOptimizePdfRef.current();
+        return;
+      }
+      if (key === 'i' && e.shiftKey) {
+        e.preventDefault();
+        openInsertModalRef.current();
+        return;
+      }
+      if (key === 'k' && e.shiftKey) {
+        e.preventDefault();
+        openSplitModalRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -1144,8 +1168,8 @@ function App() {
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
                 <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)">Rotate</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
-                <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
-                <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
+                <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
+                <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
                   <button
                     type="button"

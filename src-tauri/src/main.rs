@@ -1975,6 +1975,12 @@ mod tests {
     }
 
     #[test]
+    fn discard_working_copy_missing_path_succeeds() {
+        let missing = std::env::temp_dir().join(format!("pp_missing_wc_{}.pdf", std::process::id()));
+        discard_working_copy(missing.to_string_lossy().into_owned()).unwrap();
+    }
+
+    #[test]
     fn open_working_copy_creates_isolated_temp_file() {
         let path = save(&mut build_pdf(1), "wc_open");
         let working = open_working_copy(path.clone()).unwrap();
