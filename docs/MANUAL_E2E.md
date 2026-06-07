@@ -14,6 +14,7 @@ before a release tag.
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
 - [ ] Delete / rotate / reorder / insert / split
+- [ ] Metadata modal — edit title/author; Apply marks dirty; Save persists
 
 ## Annotations
 - [ ] Highlight add (H) and remove

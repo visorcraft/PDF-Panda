@@ -202,6 +202,133 @@ fn get_pdf_bookmarks(path: String) -> Result<Vec<PdfBookmarkEntry>, String> {
     Ok(entries)
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct PdfDocumentMetadata {
+    title: Option<String>,
+    author: Option<String>,
+    subject: Option<String>,
+    keywords: Option<String>,
+    creator: Option<String>,
+    producer: Option<String>,
+    creation_date: Option<String>,
+    mod_date: Option<String>,
+}
+
+fn read_info_string(doc: &Document, key: &[u8]) -> Option<String> {
+    let object = doc.trailer.get(b"Info").ok()?;
+    let dict = match object {
+        Object::Reference(id) => doc.get_dictionary(*id).ok()?,
+        Object::Dictionary(dict) => dict,
+        _ => return None,
+    };
+    dict.get(key).ok().and_then(|value| value.as_str().ok()).map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+}
+
+fn ensure_info_dict_id(doc: &mut Document) -> Result<ObjectId, String> {
+    match doc.trailer.get(b"Info") {
+        Ok(Object::Reference(id)) => Ok(*id),
+        Ok(Object::Dictionary(dict)) => {
+            let id = doc.add_object(Object::Dictionary(dict.clone()));
+            doc.trailer.set(b"Info", Object::Reference(id));
+            Ok(id)
+        }
+        _ => {
+            let id = doc.add_object(Object::Dictionary(Dictionary::new()));
+            doc.trailer.set(b"Info", Object::Reference(id));
+            Ok(id)
+        }
+    }
+}
+
+fn unix_seconds_to_utc_parts(secs: i64) -> (i32, u32, u32, u32, u32, u32) {
+    let days = secs.div_euclid(86_400);
+    let time = secs.rem_euclid(86_400);
+    let hour = (time / 3_600) as u32;
+    let minute = ((time % 3_600) / 60) as u32;
+    let second = (time % 60) as u32;
+
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = (yoe as i32) + era as i32 * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let month = (5 * doy + 2) / 153;
+    let day = (doy - (153 * month + 2) / 5 + 1) as u32;
+    let month = ((month + 2) % 12 + 1) as u32;
+    let year = y + i32::from(month <= 2);
+
+    (year, month, day, hour, minute, second)
+}
+
+fn current_pdf_mod_date() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0);
+    let (year, month, day, hour, minute, second) = unix_seconds_to_utc_parts(secs);
+    format!("D:{year:04}{month:02}{day:02}{hour:02}{minute:02}{second:02}Z")
+}
+
+fn write_info_text_field(dict: &mut Dictionary, key: &[u8], value: Option<String>) {
+    let Some(text) = value.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()) else {
+        dict.remove(key);
+        return;
+    };
+    dict.set(key, Object::String(text.into_bytes(), lopdf::StringFormat::Literal));
+}
+
+/// Read document Info dictionary metadata from a PDF.
+#[tauri::command]
+fn get_pdf_metadata(path: String) -> Result<PdfDocumentMetadata, String> {
+    let path = PathBuf::from(path);
+    let doc = Document::load(&path).map_err(|e| e.to_string())?;
+    Ok(PdfDocumentMetadata {
+        title: read_info_string(&doc, b"Title"),
+        author: read_info_string(&doc, b"Author"),
+        subject: read_info_string(&doc, b"Subject"),
+        keywords: read_info_string(&doc, b"Keywords"),
+        creator: read_info_string(&doc, b"Creator"),
+        producer: read_info_string(&doc, b"Producer"),
+        creation_date: read_info_string(&doc, b"CreationDate"),
+        mod_date: read_info_string(&doc, b"ModDate"),
+    })
+}
+
+/// Update document Info dictionary metadata in the working copy.
+#[tauri::command]
+fn set_pdf_metadata(
+    path: String,
+    title: Option<String>,
+    author: Option<String>,
+    subject: Option<String>,
+    keywords: Option<String>,
+    creator: Option<String>,
+    producer: Option<String>,
+) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    if doc.is_encrypted() {
+        return Err("Cannot edit metadata on an encrypted PDF".to_string());
+    }
+    let info_id = ensure_info_dict_id(&mut doc)?;
+    let needs_creation_date = read_info_string(&doc, b"CreationDate").is_none();
+    let mod_date = current_pdf_mod_date();
+    let dict = doc.get_dictionary_mut(info_id).map_err(|e| e.to_string())?;
+    write_info_text_field(dict, b"Title", title);
+    write_info_text_field(dict, b"Author", author);
+    write_info_text_field(dict, b"Subject", subject);
+    write_info_text_field(dict, b"Keywords", keywords);
+    write_info_text_field(dict, b"Creator", creator);
+    write_info_text_field(dict, b"Producer", producer);
+    if needs_creation_date {
+        dict.set(b"CreationDate", Object::String(mod_date.clone().into_bytes(), lopdf::StringFormat::Literal));
+    }
+    dict.set(b"ModDate", Object::String(mod_date.into_bytes(), lopdf::StringFormat::Literal));
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PdfBrowserEntry {
@@ -5399,6 +5526,8 @@ fn main() {
             list_pdf_browser_entries,
             get_pdf_page_count,
             get_pdf_bookmarks,
+            get_pdf_metadata,
+            set_pdf_metadata,
             render_pdf_page,
             get_pdf_thumbnails,
             delete_page,
@@ -6699,6 +6828,40 @@ mod tests {
         doc.objects.insert(outlines_id, Object::Dictionary(outlines));
         doc.get_dictionary_mut(catalog_id).expect("catalog").set("Outlines", Object::Reference(outlines_id));
         doc
+    }
+
+    #[test]
+    fn get_pdf_metadata_empty_without_info_dict() {
+        let path = save(&mut build_pdf(1), "metadata_empty");
+        let metadata = get_pdf_metadata(path.clone()).unwrap();
+        assert!(metadata.title.is_none());
+        assert!(metadata.author.is_none());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_pdf_metadata_roundtrip() {
+        let path = save(&mut build_pdf(1), "metadata_roundtrip");
+        set_pdf_metadata(
+            path.clone(),
+            Some("Quarterly Report".to_string()),
+            Some("Alex Example".to_string()),
+            Some("Finance".to_string()),
+            Some("Q1, revenue".to_string()),
+            Some("PDF Panda".to_string()),
+            Some("PDF-Panda".to_string()),
+        )
+        .unwrap();
+        let metadata = get_pdf_metadata(path.clone()).unwrap();
+        assert_eq!(metadata.title.as_deref(), Some("Quarterly Report"));
+        assert_eq!(metadata.author.as_deref(), Some("Alex Example"));
+        assert_eq!(metadata.subject.as_deref(), Some("Finance"));
+        assert_eq!(metadata.keywords.as_deref(), Some("Q1, revenue"));
+        assert_eq!(metadata.creator.as_deref(), Some("PDF Panda"));
+        assert_eq!(metadata.producer.as_deref(), Some("PDF-Panda"));
+        assert!(metadata.creation_date.is_some());
+        assert!(metadata.mod_date.is_some());
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

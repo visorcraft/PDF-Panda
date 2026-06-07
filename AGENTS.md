@@ -77,7 +77,7 @@ DMABUF renderer for the target hardware.
 Run from `src-tauri/` unless noted:
 
 - `cargo test` — unit tests for every lopdf-based command (no PDFium needed).
-  **137 passed** (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`,
+  **139 passed** (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`,
   `ocr_rendered_page_smoke`). Includes working-copy/snapshot flows, page-edit
   validation, highlight CRUD, Markdown file-write conflict handling, page
   text/vector edits, and digital-signature roundtrips (`pdf_signature_roundtrip_with_openssl`
@@ -115,7 +115,8 @@ and the default test suite don't need it.
   `add_page_vector_rect`, `list_page_vectors`, `remove_page_vector`,
   `get_pdf_form_fields`, `set_pdf_form_field`, `add_text_form_field`,
   `add_checkbox_form_field`, `add_choice_form_field`, `add_radio_form_field`,
-  `get_annotations`, `get_pdf_bookmarks`, `open_working_copy`, `save_working_copy`,
+  `get_annotations`, `get_pdf_bookmarks`, `get_pdf_metadata`, `set_pdf_metadata`,
+  `open_working_copy`, `save_working_copy`,
   `discard_working_copy`, `snapshot_pdf`, `snapshot_pdf_entry`,
   `restore_history_entry`, `discard_history_entry`, `prune_history_entry`,
   `file_byte_size`, `native_file_dialogs_enabled`, `ocr_available`, `ocr_pdf_page`.
@@ -143,7 +144,7 @@ sticky notes (N), freehand ink (D), shapes (S), stamps (T), redaction (X), page
 image insert (I), interactive forms (F), in-PDF text blocks (E) and vector stroke
 rectangles (G) with Edits modal, PAdES digital signatures (Sign modal +
 Signatures panel, Ctrl/Cmd+Shift+U), PDF outline **Bookmarks** sidebar (click to
-jump), PDF/Markdown view toggle with sibling `.md`
+jump), document **Metadata** editor (Info dictionary), PDF/Markdown view toggle with sibling `.md`
 auto-save and overwrite confirmation, Markdown conversion (PDFium text extraction —
 decodes CID/Type0 fonts, with heuristic headings, TOC/table, column-table formatting;
 tagged-PDF `/StructTreeRoot` semantics; Tesseract OCR fallback), extractive summarize

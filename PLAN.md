@@ -121,12 +121,13 @@ and verified:
 | Page text / vector | In-PDF Helvetica text blocks and stroke rectangles via content-stream markers (`%PP-TXT` / `%PP-VEC`); place (**E**), drag rect (**G**), manage via Edits modal | `add_page_text`, `list_page_text_edits`, `update_page_text`, `remove_page_text`, `add_page_vector_rect`, `list_page_vectors`, `remove_page_vector`, `page_text_edit_roundtrip`, `page_vector_rect_roundtrip` |
 | Digital signatures | PAdES signing with PKCS#12 (.p12/.pfx); list + verify integrity/chain (Ctrl/Cmd+Shift+U); Signatures sidebar panel | `sign_pdf`, `list_pdf_signatures`, `verify_pdf_signatures`, `pdf_signature_roundtrip_with_openssl`, UI validation |
 | Bookmarks | PDF outline tree in sidebar; click to jump (nested depth); Refresh reloads | `get_pdf_bookmarks`, `get_pdf_bookmarks_reads_outline_tree`, UI validation |
+| Metadata | View/edit Info dictionary (title, author, subject, keywords, creator, producer); ModDate updated on save | `get_pdf_metadata`, `set_pdf_metadata`, `set_pdf_metadata_roundtrip`, UI validation |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight / Notes / Draw / Shapes / Stamps / Redact | Highlights (H), notes (N), ink (D), shapes (S), stamps (T), redaction boxes (X); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_*`, `ink_stroke_*`, `square_*`, `circle_*`, `line_*`, `*_stamp_*`, `add_redaction`, `remove_redaction` |
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 137 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
+- `cargo test` — 139 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -189,3 +190,4 @@ file blocks tagging or shipping `v0.2.0`.
 ### vNext roadmap
 
 - [x] **Bookmark navigation** — PDF outline sidebar with page jump (`get_pdf_bookmarks`, Bookmarks panel)
+- [x] **Document metadata** — view/edit PDF Info fields (`get_pdf_metadata`, `set_pdf_metadata`, Metadata modal)

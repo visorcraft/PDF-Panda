@@ -22,6 +22,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Delete**, **rotate** (90° steps), and **drag-and-drop reorder**
 - **Insert** pages from another PDF (range + position; merges AcroForm fields, dedups fonts)
 - **Split** into multiple files by page ranges
+- **Metadata** — view and edit title, author, subject, keywords, creator, and producer
 - **In-PDF text** — place Helvetica text blocks in page content (`E`); edit or remove via the **Edits** modal
 - **Vector rectangles** — draw stroke rectangles in page content (`G`); manage via **Edits** modal
 
@@ -145,7 +146,7 @@ scripts/smoke-test.sh               # unit tests, clippy, fmt, and tsc (CI parit
 npm run test:e2e                    # WebdriverIO smoke (Linux; needs xvfb-run)
 ```
 
-From `src-tauri/`: `cargo test` runs **137** unit tests (+ 3 ignored integration
+From `src-tauri/`: `cargo test` runs **139** unit tests (+ 3 ignored integration
 smokes that need PDFium, a sample PDF, or Tesseract).
 
 Optional smoke test with a real PDF and PDFium installed:

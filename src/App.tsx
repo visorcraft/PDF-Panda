@@ -169,6 +169,17 @@ interface PdfBookmarkEntry {
   page_index: number | null;
 }
 
+interface PdfDocumentMetadata {
+  title: string | null;
+  author: string | null;
+  subject: string | null;
+  keywords: string | null;
+  creator: string | null;
+  producer: string | null;
+  creation_date: string | null;
+  mod_date: string | null;
+}
+
 type PdfBrowserTarget = 'open' | 'insert';
 
 interface PdfBrowserEntry {
@@ -331,6 +342,15 @@ function App() {
   const [signatureVerification, setSignatureVerification] = useState<PdfSignatureVerificationSummary | null>(null);
   const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
   const [pdfBookmarks, setPdfBookmarks] = useState<PdfBookmarkEntry[]>([]);
+  const [showMetadataModal, setShowMetadataModal] = useState(false);
+  const [metadataTitle, setMetadataTitle] = useState('');
+  const [metadataAuthor, setMetadataAuthor] = useState('');
+  const [metadataSubject, setMetadataSubject] = useState('');
+  const [metadataKeywords, setMetadataKeywords] = useState('');
+  const [metadataCreator, setMetadataCreator] = useState('');
+  const [metadataProducer, setMetadataProducer] = useState('');
+  const [metadataCreationDate, setMetadataCreationDate] = useState('');
+  const [metadataModDate, setMetadataModDate] = useState('');
   const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [nativeDialogs, setNativeDialogs] = useState(false);
@@ -1888,6 +1908,7 @@ function App() {
     setShowMarkdownSaveAsModal(false);
     setShowProtectModal(false);
     setShowSignModal(false);
+    setShowMetadataModal(false);
     setShowPasswordModal(false);
     setShowOpenModal(false);
     setShowBrowserModal(false);
@@ -2049,7 +2070,7 @@ function App() {
   dismissModalsRef.current = dismissModals;
   const anyModalOpenRef = useRef(false);
   anyModalOpenRef.current =
-    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal
+    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal || showMetadataModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
     || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
@@ -2317,6 +2338,7 @@ function App() {
     setPdfSignatures([]);
     setSignatureVerification(null);
     setShowSignModal(false);
+    setShowMetadataModal(false);
     setFormFields([]);
     setFormDrafts({});
     setShowAddFormFieldModal(false);
@@ -2511,6 +2533,40 @@ function App() {
     setProtectUserPasswordConfirm('');
     setProtectOwnerPassword('');
     setShowProtectModal(true);
+  };
+
+  const openMetadataModal = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const metadata = await invoke<PdfDocumentMetadata>('get_pdf_metadata', { path: filePath });
+      setMetadataTitle(metadata.title ?? '');
+      setMetadataAuthor(metadata.author ?? '');
+      setMetadataSubject(metadata.subject ?? '');
+      setMetadataKeywords(metadata.keywords ?? '');
+      setMetadataCreator(metadata.creator ?? '');
+      setMetadataProducer(metadata.producer ?? '');
+      setMetadataCreationDate(metadata.creation_date ?? '');
+      setMetadataModDate(metadata.mod_date ?? '');
+      setShowMetadataModal(true);
+    });
+  };
+
+  const handleSaveMetadata = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('set_pdf_metadata', {
+        path: filePath,
+        title: metadataTitle.trim() || null,
+        author: metadataAuthor.trim() || null,
+        subject: metadataSubject.trim() || null,
+        keywords: metadataKeywords.trim() || null,
+        creator: metadataCreator.trim() || null,
+        producer: metadataProducer.trim() || null,
+      });
+      markPdfEdited();
+      setShowMetadataModal(false);
+      showToast('Document metadata updated');
+    });
   };
 
   const handleProtectPdf = async () => {
@@ -2833,6 +2889,14 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
+                <button
+                  onClick={() => void openMetadataModal()}
+                  className="btn"
+                  title="Edit document metadata (title, author, subject…)"
+                  data-testid="metadata-pdf"
+                >
+                  Metadata
+                </button>
                 <button
                   onClick={() => void handleSummarizePdf()}
                   className="btn"
@@ -3841,6 +3905,35 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => { setShowPasswordModal(false); setPendingEncryptedPath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleOpenEncryptedPdf()} className="btn" disabled={!pdfPasswordDraft}>Open</button>
+          </div>
+        </Modal>
+      )}
+
+      {showMetadataModal && (
+        <Modal onClose={() => setShowMetadataModal(false)}>
+          <h3>Document metadata</h3>
+          <p className="modal-help">Edits the PDF Info dictionary in the working copy. Save the document to write changes to your file.</p>
+          <label>Title:</label>
+          <input type="text" value={metadataTitle} onChange={(e) => setMetadataTitle(e.target.value)} className="modal-input" />
+          <label>Author:</label>
+          <input type="text" value={metadataAuthor} onChange={(e) => setMetadataAuthor(e.target.value)} className="modal-input" />
+          <label>Subject:</label>
+          <input type="text" value={metadataSubject} onChange={(e) => setMetadataSubject(e.target.value)} className="modal-input" />
+          <label>Keywords:</label>
+          <input type="text" value={metadataKeywords} onChange={(e) => setMetadataKeywords(e.target.value)} className="modal-input" />
+          <label>Creator:</label>
+          <input type="text" value={metadataCreator} onChange={(e) => setMetadataCreator(e.target.value)} className="modal-input" />
+          <label>Producer:</label>
+          <input type="text" value={metadataProducer} onChange={(e) => setMetadataProducer(e.target.value)} className="modal-input" />
+          {metadataCreationDate && (
+            <p className="modal-help">Creation date: <code>{metadataCreationDate}</code></p>
+          )}
+          {metadataModDate && (
+            <p className="modal-help">Modified date: <code>{metadataModDate}</code></p>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowMetadataModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleSaveMetadata()} className="btn">Apply</button>
           </div>
         </Modal>
       )}
