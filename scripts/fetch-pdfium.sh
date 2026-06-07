@@ -13,12 +13,35 @@ version="${1:-latest}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 dest="$root/src-tauri/vendor/pdfium"
 
-case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64)   asset="pdfium-linux-x64.tgz" ;;
-  Linux-aarch64)  asset="pdfium-linux-arm64.tgz" ;;
-  Darwin-x86_64)  asset="pdfium-mac-x64.tgz" ;;
-  Darwin-arm64)   asset="pdfium-mac-arm64.tgz" ;;
-  *) echo "Unsupported platform: $(uname -s)-$(uname -m). See https://github.com/bblanchon/pdfium-binaries/releases" >&2; exit 1 ;;
+os="$(uname -s)"
+arch="$(uname -m)"
+layout="unix"
+
+case "$os" in
+  Linux)
+    case "$arch" in
+      x86_64)  asset="pdfium-linux-x64.tgz" ;;
+      aarch64) asset="pdfium-linux-arm64.tgz" ;;
+      *) echo "Unsupported Linux arch: $arch" >&2; exit 1 ;;
+    esac
+    ;;
+  Darwin)
+    case "$arch" in
+      x86_64)  asset="pdfium-mac-x64.tgz" ;;
+      arm64)   asset="pdfium-mac-arm64.tgz" ;;
+      *) echo "Unsupported macOS arch: $arch" >&2; exit 1 ;;
+    esac
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    case "$arch" in
+      x86_64) asset="pdfium-win-x64.tgz"; layout="win" ;;
+      *) echo "Unsupported Windows arch: $arch" >&2; exit 1 ;;
+    esac
+    ;;
+  *)
+    echo "Unsupported platform: $os-$arch. See https://github.com/bblanchon/pdfium-binaries/releases" >&2
+    exit 1
+    ;;
 esac
 
 if [ "$version" = latest ]; then
@@ -31,7 +54,19 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 echo "Downloading $url"
 curl -fSL "$url" -o "$tmp/pdfium.tgz"
-tar xzf "$tmp/pdfium.tgz" -C "$tmp" lib
 mkdir -p "$dest"
-cp "$tmp"/lib/libpdfium.* "$dest"/
+if [ "$layout" = win ]; then
+  tar xzf "$tmp/pdfium.tgz" -C "$tmp"
+  if [ -f "$tmp/pdfium.dll" ]; then
+    cp "$tmp/pdfium.dll" "$dest"/
+  elif [ -f "$tmp/bin/pdfium.dll" ]; then
+    cp "$tmp/bin/pdfium.dll" "$dest"/
+  else
+    echo "Unexpected pdfium-win archive layout" >&2
+    exit 1
+  fi
+else
+  tar xzf "$tmp/pdfium.tgz" -C "$tmp" lib
+  cp "$tmp"/lib/libpdfium.* "$dest"/
+fi
 echo "PDFium installed to $dest"
