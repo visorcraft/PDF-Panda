@@ -2123,6 +2123,14 @@ mod tests {
     }
 
     #[test]
+    fn get_annotations_returns_empty_without_highlights() {
+        let path = save(&mut build_pdf(1), "annots_empty");
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert!(annots.is_empty());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn highlight_add_and_read_back() {
         let path = save(&mut build_pdf(1), "highlight");
         add_highlight(path.clone(), 0, 10.0, 20.0, 110.0, 40.0).unwrap();
