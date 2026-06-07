@@ -1944,6 +1944,15 @@ mod tests {
     }
 
     #[test]
+    fn list_pdf_browser_entries_rejects_missing_directory() {
+        let missing = std::env::temp_dir().join(format!("pp_browser_missing_{}", std::process::id()));
+        match list_pdf_browser_entries(Some(missing.to_string_lossy().into_owned())) {
+            Ok(_) => panic!("expected missing directory to fail"),
+            Err(message) => assert!(!message.is_empty()),
+        }
+    }
+
+    #[test]
     fn open_working_copy_creates_isolated_temp_file() {
         let path = save(&mut build_pdf(1), "wc_open");
         let working = open_working_copy(path.clone()).unwrap();
