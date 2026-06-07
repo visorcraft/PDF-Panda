@@ -1774,6 +1774,22 @@ mod tests {
     }
 
     #[test]
+    fn insert_pdf_rejects_missing_source_file() {
+        let dest = save(&mut build_pdf(2), "insert_dest_missing");
+        let missing = std::env::temp_dir().join(format!("pp_insert_missing_{}.pdf", std::process::id()));
+        let err = insert_pdf(
+            dest.clone(),
+            missing.to_string_lossy().into_owned(),
+            0,
+            0,
+            0,
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+        let _ = std::fs::remove_file(&dest);
+    }
+
+    #[test]
     fn delete_page_rejects_invalid_index() {
         let path = save(&mut build_pdf(2), "delete_invalid");
         let err = delete_page(path.clone(), 9).unwrap_err();
