@@ -47,7 +47,7 @@ avoids WebKitGTK DMABUF crash on some multi-GPU Wayland stacks.
 
 From `src-tauri/` unless noted:
 
-- `cargo test` — 115 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`)
+- `cargo test` — 118 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`)
 - `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
 - `cargo clippy --all-targets` (CI: `RUSTFLAGS=-Dwarnings`)
 - `cargo fmt --check` (single `rustfmt.toml` at repo root)
@@ -83,7 +83,7 @@ dialogs on Linux/Wayland — portal path hangs).
 **Ops:** tag `v*` → release workflow (`.github/workflows/release.yml`); optional
 signing — `docs/SIGNING.md`. Manual QA: `docs/MANUAL_E2E.md`.
 
-**Gaps:** see `PLAN.md` vNext roadmap (tagged-PDF, native dialogs, etc.). OCR needs
+**Gaps:** see `PLAN.md` vNext roadmap (native dialogs, etc.). OCR needs
 system Tesseract (`tesseract-ocr` package).
 
 **Gotchas:** Markdown-view thumbnail clicks defer PDF render (WebKitGTK race);

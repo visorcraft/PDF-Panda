@@ -214,9 +214,8 @@ fn resolve_tesseract() -> Option<PathBuf> {
         }
     }
     let name = if cfg!(windows) { "tesseract.exe" } else { "tesseract" };
-    std::env::var_os("PATH").and_then(|paths| {
-        std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|candidate| candidate.is_file())
-    })
+    std::env::var_os("PATH")
+        .and_then(|paths| std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|candidate| candidate.is_file()))
 }
 
 /// Run Tesseract on a PNG buffer. `Ok(None)` when Tesseract is not installed.
@@ -229,10 +228,7 @@ fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
     let tmp_dir = std::env::temp_dir().join(format!(
         "pdf_panda_ocr_{}_{}",
         std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
     ));
     fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
     let image_path = tmp_dir.join("page.png");
@@ -254,7 +250,11 @@ fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
     }
 
     let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if text.is_empty() { Ok(None) } else { Ok(Some(text)) }
+    if text.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(text))
+    }
 }
 
 #[tauri::command]
@@ -2143,6 +2143,312 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
     }
 }
 
+#[derive(Debug, Clone)]
+struct TaggedBlock {
+    kind: String,
+    text: String,
+    children: Vec<TaggedBlock>,
+}
+
+fn decode_pdf_string(obj: &Object) -> Option<String> {
+    match obj {
+        Object::String(bytes, _) => Some(String::from_utf8_lossy(bytes).into_owned()),
+        Object::Name(name) => Some(String::from_utf8_lossy(name).into_owned()),
+        _ => None,
+    }
+}
+
+fn struct_tree_root_id(doc: &Document) -> Result<ObjectId, String> {
+    let catalog = doc.catalog().map_err(|e| e.to_string())?;
+    catalog
+        .get(b"StructTreeRoot")
+        .map_err(|_| "missing StructTreeRoot".to_string())?
+        .as_reference()
+        .map_err(|_| "bad StructTreeRoot".to_string())
+}
+
+fn page_index_for_struct(doc: &Document, dict: &Dictionary) -> Option<u32> {
+    let page_ref = dict.get(b"Pg").ok()?.as_reference().ok()?;
+    doc.get_pages().iter().find_map(|(num, id)| (*id == page_ref).then_some(num.saturating_sub(1)))
+}
+
+fn struct_element_text(dict: &Dictionary) -> String {
+    for key in [b"T".as_slice(), b"ActualText", b"Alt", b"E"] {
+        if let Ok(obj) = dict.get(key) {
+            if let Some(raw) = decode_pdf_string(obj) {
+                let text = normalize_inline_text(&raw);
+                if !text.is_empty() {
+                    return text;
+                }
+            }
+        }
+    }
+    String::new()
+}
+
+fn struct_k_ids(k: &Object) -> Vec<ObjectId> {
+    match k {
+        Object::Reference(id) => vec![*id],
+        Object::Array(items) => items
+            .iter()
+            .filter_map(|item| match item {
+                Object::Reference(id) => Some(*id),
+                Object::Dictionary(dict) => dict.get(b"Obj").ok().and_then(|obj| obj.as_reference().ok()),
+                _ => None,
+            })
+            .collect(),
+        Object::Dictionary(dict) => {
+            dict.get(b"Obj").ok().and_then(|obj| obj.as_reference().ok()).map(|id| vec![id]).unwrap_or_default()
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn parse_struct_element(
+    doc: &Document,
+    id: ObjectId,
+    inherited_page: Option<u32>,
+) -> Result<(Option<u32>, TaggedBlock), String> {
+    let dict = doc.get_dictionary(id).map_err(|e| e.to_string())?;
+    let page = page_index_for_struct(doc, dict).or(inherited_page);
+    let kind = dict
+        .get(b"S")
+        .ok()
+        .and_then(|obj| obj.as_name().ok())
+        .map(|name| String::from_utf8_lossy(name).into_owned())
+        .unwrap_or_else(|| "Span".to_string());
+    let text = struct_element_text(dict);
+    let mut children = Vec::new();
+    if let Ok(k) = dict.get(b"K") {
+        for child_id in struct_k_ids(k) {
+            let (_, child) = parse_struct_element(doc, child_id, page)?;
+            children.push(child);
+        }
+    }
+    Ok((page, TaggedBlock { kind, text, children }))
+}
+
+fn is_struct_container(kind: &str) -> bool {
+    matches!(kind, "Document" | "Part" | "Art" | "Sect" | "Div" | "NonStruct" | "Private" | "Span" | "Form")
+}
+
+fn infer_page_from_block(block: &TaggedBlock) -> Option<u32> {
+    for child in &block.children {
+        if let Some(page) = infer_page_from_block(child) {
+            return Some(page);
+        }
+    }
+    None
+}
+
+fn block_has_content(block: &TaggedBlock) -> bool {
+    !block.text.is_empty() || block.children.iter().any(block_has_content)
+}
+
+fn distribute_tagged_block(block: TaggedBlock, page: Option<u32>, out: &mut BTreeMap<u32, Vec<TaggedBlock>>) {
+    let block_page = page.or_else(|| infer_page_from_block(&block));
+    if is_struct_container(&block.kind) && block.text.is_empty() {
+        if let Some(p) = block_page {
+            for child in block.children {
+                distribute_tagged_block(child, Some(p), out);
+            }
+        } else {
+            for child in block.children {
+                distribute_tagged_block(child, None, out);
+            }
+        }
+        return;
+    }
+    if let Some(p) = block_page {
+        out.entry(p).or_default().push(block);
+    } else {
+        for child in block.children {
+            distribute_tagged_block(child, None, out);
+        }
+    }
+}
+
+fn tagged_heading_level(kind: &str) -> Option<usize> {
+    match kind {
+        "H" | "H1" | "Title" => Some(1),
+        "H2" => Some(2),
+        "H3" => Some(3),
+        "H4" => Some(4),
+        "H5" => Some(5),
+        "H6" => Some(6),
+        _ => None,
+    }
+}
+
+fn tagged_block_text(block: &TaggedBlock) -> String {
+    let mut parts = Vec::new();
+    if !block.text.is_empty() {
+        parts.push(block.text.clone());
+    }
+    for child in &block.children {
+        if matches!(child.kind.as_str(), "Span" | "Em" | "Strong" | "Lbl" | "LBBody" | "LBody") {
+            let child_text = tagged_block_text(child);
+            if !child_text.is_empty() {
+                parts.push(child_text);
+            }
+        }
+    }
+    parts.join(" ")
+}
+
+fn tagged_list_item_text(block: &TaggedBlock) -> String {
+    if !block.text.is_empty() {
+        return block.text.clone();
+    }
+    for child in &block.children {
+        if matches!(child.kind.as_str(), "LBody" | "LBBody" | "Lbl") {
+            let text = tagged_block_text(child);
+            if !text.is_empty() {
+                return text;
+            }
+        }
+    }
+    tagged_block_text(block)
+}
+
+fn format_tagged_table(children: &[TaggedBlock]) -> String {
+    let mut rows = Vec::new();
+    for child in children {
+        if matches!(child.kind.as_str(), "TR" | "TableRow") {
+            let cells: Vec<String> = child
+                .children
+                .iter()
+                .filter(|cell| matches!(cell.kind.as_str(), "TD" | "TH" | "TableDataCell" | "TableHeaderCell"))
+                .map(tagged_block_text)
+                .filter(|cell| !cell.is_empty())
+                .collect();
+            if !cells.is_empty() {
+                rows.push(cells);
+            }
+        }
+    }
+    if rows.len() >= 2 {
+        let headers = rows.remove(0);
+        markdown_table(&headers, &rows)
+    } else if rows.len() == 1 {
+        let headers: Vec<String> = (0..rows[0].len()).map(|index| format!("Column {}", index + 1)).collect();
+        markdown_table(&headers, &rows)
+    } else {
+        String::new()
+    }
+}
+
+fn format_tagged_block(block: &TaggedBlock, list_depth: usize, out: &mut String) {
+    let kind = block.kind.as_str();
+    if let Some(level) = tagged_heading_level(kind) {
+        let text = tagged_block_text(block);
+        if !text.is_empty() {
+            out.push_str(&format!("{} {}\n\n", "#".repeat(level), text));
+        }
+        return;
+    }
+
+    match kind {
+        "P" | "Paragraph" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("{text}\n\n"));
+            }
+        }
+        "L" | "List" => {
+            for child in &block.children {
+                format_tagged_block(child, list_depth, out);
+            }
+        }
+        "LI" | "ListItem" => {
+            let text = tagged_list_item_text(block);
+            if !text.is_empty() {
+                let indent = "  ".repeat(list_depth);
+                out.push_str(&format!("{indent}- {text}\n"));
+            }
+            for child in &block.children {
+                if !matches!(child.kind.as_str(), "LBody" | "LBBody" | "Lbl") {
+                    format_tagged_block(child, list_depth + 1, out);
+                }
+            }
+            if list_depth == 0 {
+                out.push('\n');
+            }
+        }
+        "Table" => {
+            let table = format_tagged_table(&block.children);
+            if !table.is_empty() {
+                out.push_str(&table);
+                out.push('\n');
+            }
+        }
+        "BlockQuote" | "Quote" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                for line in text.lines() {
+                    out.push_str(&format!("> {line}\n"));
+                }
+                out.push('\n');
+            }
+        }
+        "Figure" | "Image" => {
+            let alt = tagged_block_text(block);
+            if !alt.is_empty() {
+                out.push_str(&format!("![{alt}]({alt})\n\n"));
+            }
+        }
+        _ if is_struct_container(kind) => {
+            for child in &block.children {
+                format_tagged_block(child, list_depth, out);
+            }
+        }
+        _ => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("{text}\n\n"));
+            } else {
+                for child in &block.children {
+                    format_tagged_block(child, list_depth, out);
+                }
+            }
+        }
+    }
+}
+
+fn format_tagged_blocks(blocks: &[TaggedBlock]) -> String {
+    let mut output = String::new();
+    for block in blocks {
+        format_tagged_block(block, 0, &mut output);
+    }
+    if output.trim().is_empty() {
+        "_(no extractable text on this page)_\n\n".to_string()
+    } else {
+        output
+    }
+}
+
+fn tagged_page_has_content(md: &str) -> bool {
+    let trimmed = md.trim();
+    !trimmed.is_empty() && trimmed != "_(no extractable text on this page)_"
+}
+
+/// When the PDF catalog carries `/StructTreeRoot`, map 0-based page indices to
+/// Markdown derived from structure types (`/H1`, `/P`, `/L`, `/Table`, …).
+fn tagged_markdown_by_page(doc: &Document) -> Option<BTreeMap<u32, String>> {
+    let root_id = struct_tree_root_id(doc).ok()?;
+    let root = doc.get_dictionary(root_id).ok()?;
+    let k = root.get(b"K").ok()?;
+    let mut page_blocks: BTreeMap<u32, Vec<TaggedBlock>> = BTreeMap::new();
+    for child_id in struct_k_ids(k) {
+        let (page, block) = parse_struct_element(doc, child_id, None).ok()?;
+        distribute_tagged_block(block, page, &mut page_blocks);
+    }
+    if !page_blocks.values().any(|blocks| blocks.iter().any(block_has_content)) {
+        return None;
+    }
+    Some(page_blocks.into_iter().map(|(page, blocks)| (page, format_tagged_blocks(&blocks))).collect())
+}
+
 fn plain_text_to_markdown(text: &str) -> String {
     let normalized = text.lines().map(str::trim).filter(|line| !line.is_empty()).collect::<Vec<_>>().join("\n");
     if normalized.is_empty() {
@@ -2384,32 +2690,44 @@ fn append_page_embedded_images(
 }
 
 fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> Result<String, String> {
+    let lopdf_doc = Document::load(path).map_err(|e| e.to_string())?;
+    let tagged_pages = tagged_markdown_by_page(&lopdf_doc);
+
     // Use PDFium's text layer: it decodes font encodings (including CID/Type0
     // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
     // produce text instead of empty pages.
     let pdfium = get_pdfium()?;
     let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let struct_doc = if image_sink.is_some() { Some(Document::load(path).map_err(|e| e.to_string())?) } else { None };
 
     let mut markdown = String::from("# PDF to Markdown Conversion\n\n");
     for (index, page) in document.pages().iter().enumerate() {
         markdown.push_str(&format!("## Page {}\n\n", index + 1));
-        let text = page.text().map_err(|e| e.to_string())?;
-        let lines = lines_from_pdfium_text(&text);
-        if lines.is_empty() {
-            let all_text = text.all();
-            let trimmed = all_text.trim();
-            if trimmed.is_empty() {
-                append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink)?;
-            } else {
-                markdown.push_str(&plain_text_to_markdown(trimmed));
-            }
+
+        if let Some(page_md) = tagged_pages
+            .as_ref()
+            .and_then(|pages| pages.get(&(index as u32)))
+            .filter(|page_md| tagged_page_has_content(page_md))
+        {
+            markdown.push_str(page_md);
         } else {
-            markdown.push_str(&format_markdown_lines(&lines));
+            let text = page.text().map_err(|e| e.to_string())?;
+            let lines = lines_from_pdfium_text(&text);
+            if lines.is_empty() {
+                let all_text = text.all();
+                let trimmed = all_text.trim();
+                if trimmed.is_empty() {
+                    append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink)?;
+                } else {
+                    markdown.push_str(&plain_text_to_markdown(trimmed));
+                }
+            } else {
+                markdown.push_str(&format_markdown_lines(&lines));
+            }
         }
-        if let (Some(sink), Some(doc)) = (image_sink, struct_doc.as_ref()) {
+
+        if let Some(sink) = image_sink {
             let mut image_seq = 0u32;
-            markdown.push_str(&append_page_embedded_images(doc, (index + 1) as u32, sink, &mut image_seq)?);
+            markdown.push_str(&append_page_embedded_images(&lopdf_doc, (index + 1) as u32, sink, &mut image_seq)?);
         }
     }
     Ok(markdown)
@@ -3924,9 +4242,8 @@ fn main() {
     }
 
     #[cfg(feature = "wdio")]
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_wdio::init())
-        .plugin(tauri_plugin_wdio_webdriver::init());
+    let builder =
+        tauri::Builder::default().plugin(tauri_plugin_wdio::init()).plugin(tauri_plugin_wdio_webdriver::init());
     #[cfg(not(feature = "wdio"))]
     let builder = tauri::Builder::default();
 
@@ -4105,6 +4422,92 @@ mod tests {
         let path = tmp(name);
         doc.save(&path).unwrap();
         path.to_string_lossy().to_string()
+    }
+
+    fn attach_struct_tree_root(doc: &mut Document, root_id: ObjectId) {
+        let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
+        let Object::Dictionary(catalog) = doc.objects.get_mut(&catalog_id).unwrap() else {
+            panic!("catalog is not a dictionary");
+        };
+        catalog.set("StructTreeRoot", Object::Reference(root_id));
+        let mut mark_info = Dictionary::new();
+        mark_info.set("Marked", Object::Boolean(true));
+        catalog.set("MarkInfo", Object::Dictionary(mark_info));
+    }
+
+    fn add_struct_elem(doc: &mut Document, kind: &[u8], text: &str, page_id: Option<ObjectId>) -> ObjectId {
+        let mut elem = Dictionary::new();
+        elem.set("Type", Object::Name(b"StructElem".to_vec()));
+        elem.set("S", Object::Name(kind.to_vec()));
+        if !text.is_empty() {
+            elem.set("T", Object::String(text.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        }
+        if let Some(page_id) = page_id {
+            elem.set("Pg", Object::Reference(page_id));
+        }
+        doc.add_object(Object::Dictionary(elem))
+    }
+
+    /// Tagged PDF with headings, paragraphs, a list, and a table across two pages.
+    fn build_tagged_pdf() -> Document {
+        let mut doc = build_pdf(2);
+        let page1_id = *doc.get_pages().get(&1).unwrap();
+        let page2_id = *doc.get_pages().get(&2).unwrap();
+
+        let h1_id = add_struct_elem(&mut doc, b"H1", "Introduction", Some(page1_id));
+        let p1_id = add_struct_elem(&mut doc, b"P", "Body paragraph one.", Some(page1_id));
+
+        let lbody_id = add_struct_elem(&mut doc, b"LBody", "First item", None);
+        let mut li = Dictionary::new();
+        li.set("Type", Object::Name(b"StructElem".to_vec()));
+        li.set("S", Object::Name(b"LI".to_vec()));
+        li.set("K", Object::Reference(lbody_id));
+        let li_id = doc.add_object(Object::Dictionary(li));
+
+        let mut list = Dictionary::new();
+        list.set("Type", Object::Name(b"StructElem".to_vec()));
+        list.set("S", Object::Name(b"L".to_vec()));
+        list.set("Pg", Object::Reference(page2_id));
+        list.set("K", Object::Array(vec![Object::Reference(li_id)]));
+        let list_id = doc.add_object(Object::Dictionary(list));
+
+        let td1 = add_struct_elem(&mut doc, b"TD", "Name", None);
+        let td2 = add_struct_elem(&mut doc, b"TD", "Score", None);
+        let mut tr_head = Dictionary::new();
+        tr_head.set("Type", Object::Name(b"StructElem".to_vec()));
+        tr_head.set("S", Object::Name(b"TR".to_vec()));
+        tr_head.set("K", Object::Array(vec![Object::Reference(td1), Object::Reference(td2)]));
+        let tr_head_id = doc.add_object(Object::Dictionary(tr_head));
+
+        let td3 = add_struct_elem(&mut doc, b"TD", "Alice", None);
+        let td4 = add_struct_elem(&mut doc, b"TD", "98", None);
+        let mut tr_row = Dictionary::new();
+        tr_row.set("Type", Object::Name(b"StructElem".to_vec()));
+        tr_row.set("S", Object::Name(b"TR".to_vec()));
+        tr_row.set("K", Object::Array(vec![Object::Reference(td3), Object::Reference(td4)]));
+        let tr_row_id = doc.add_object(Object::Dictionary(tr_row));
+
+        let mut table = Dictionary::new();
+        table.set("Type", Object::Name(b"StructElem".to_vec()));
+        table.set("S", Object::Name(b"Table".to_vec()));
+        table.set("Pg", Object::Reference(page2_id));
+        table.set("K", Object::Array(vec![Object::Reference(tr_head_id), Object::Reference(tr_row_id)]));
+        let table_id = doc.add_object(Object::Dictionary(table));
+
+        let mut root = Dictionary::new();
+        root.set("Type", Object::Name(b"StructTreeRoot".to_vec()));
+        root.set(
+            "K",
+            Object::Array(vec![
+                Object::Reference(h1_id),
+                Object::Reference(p1_id),
+                Object::Reference(list_id),
+                Object::Reference(table_id),
+            ]),
+        );
+        let root_id = doc.add_object(Object::Dictionary(root));
+        attach_struct_tree_root(&mut doc, root_id);
+        doc
     }
 
     fn page_count(path: &str) -> usize {
@@ -4792,6 +5195,31 @@ mod tests {
         discard_history_entry(pruned[0].clone()).unwrap();
         discard_working_copy(working).unwrap();
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn tagged_markdown_extracts_headings_and_paragraphs() {
+        let doc = build_tagged_pdf();
+        let pages = tagged_markdown_by_page(&doc).expect("tagged pages");
+        let page1 = pages.get(&0).expect("page 1 markdown");
+        assert!(page1.contains("# Introduction"));
+        assert!(page1.contains("Body paragraph one."));
+    }
+
+    #[test]
+    fn tagged_markdown_formats_lists_and_tables() {
+        let doc = build_tagged_pdf();
+        let pages = tagged_markdown_by_page(&doc).expect("tagged pages");
+        let page2 = pages.get(&1).expect("page 2 markdown");
+        assert!(page2.contains("- First item"));
+        assert!(page2.contains("| Name | Score |"));
+        assert!(page2.contains("| Alice | 98 |"));
+    }
+
+    #[test]
+    fn tagged_markdown_absent_without_struct_tree() {
+        let doc = build_pdf(1);
+        assert!(tagged_markdown_by_page(&doc).is_none());
     }
 
     #[test]

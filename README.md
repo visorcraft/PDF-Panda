@@ -39,7 +39,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export
-- **PDF → Markdown** with heuristic headings, tables, and TOC formatting
+- **PDF → Markdown** with tagged-PDF structure (`/StructTreeRoot` headings, lists, tables) plus heuristic PDFium layout and TOC formatting
 - **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX) to a sibling `_assets` folder; **Tesseract OCR** for scanned pages without a text layer (`tesseract-ocr` on PATH, optional `PDF_PANDA_OCR_LANG`)
 - **Optimize** — strip metadata, recompress images, prune unused objects
 - **Print** via the system print dialog

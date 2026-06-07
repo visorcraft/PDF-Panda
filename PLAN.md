@@ -114,7 +114,7 @@ and verified:
 | Rotate page | Toolbar button or Ctrl/Cmd+R → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps`, `rotate_page_rejects_invalid_index`, `rotate_page_rejects_missing_file` |
 | Insert PDF | Ctrl/Cmd+Shift+I two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree`, `insert_pdf_rejects_invalid_source_range`, `insert_pdf_rejects_source_range_out_of_bounds`, `insert_pdf_rejects_out_of_bounds_index`, `insert_pdf_rejects_missing_source_file`, `insert_pdf_rejects_missing_dest_file` |
 | Split PDF | Ctrl/Cmd+Shift+K ranges → separate files, orphans pruned; rejects empty/invalid ranges | `split_pdf_creates_separate_files`, `split_pdf_rejects_invalid_range`, `split_pdf_rejects_empty_ranges`, `split_pdf_rejects_missing_file` |
-| Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; on save, no-text pages export rendered PNGs and embedded XObject images land in `<name>_assets/` | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, `file_byte_size_returns_length`, ignored `render_real_pdf_smoke` |
+| Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), tagged-PDF `/StructTreeRoot` semantics (headings, lists, tables) with PDFium heuristic + OCR fallback per page; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; on save, no-text pages export rendered PNGs and embedded XObject images land in `<name>_assets/` | `tagged_markdown_*`, `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, `file_byte_size_returns_length`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
 | Password protect | Export encrypted `<name>_protected.pdf`; open encrypted files with password prompt | `protect_pdf_*`, `pdf_is_encrypted`, `verify_pdf_password`, `open_working_copy_with_password` |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
@@ -122,7 +122,7 @@ and verified:
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 115 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
+- `cargo test` — 118 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -139,7 +139,8 @@ and verified:
   exports page renders (no-text pages) and embedded XObject images (JPEG, PNG,
   DeviceGray, DeviceCMYK, Indexed, JPXDecode) to `<pdf-name>_assets/`. Scanned pages
   without a text layer use Tesseract OCR when installed (`PDF_PANDA_OCR_LANG`,
-  `TESSERACT_CMD`). Tagged-PDF semantics are not implemented yet.
+  `TESSERACT_CMD`). Tagged PDFs prefer `/StructTreeRoot` structure types over
+  geometry heuristics; untagged pages still use PDFium layout reconstruction.
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
 - Undo/Redo uses whole-file snapshots for files ≤ 32 MB and compact binary deltas
@@ -175,11 +176,11 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Automated UI/e2e — WebdriverIO + embedded WebDriver smoke suite (`scripts/e2e-test.sh`, `e2e/specs/smoke.spec.ts`)
 - [x] Signing automation — tag-triggered release workflow with optional macOS/Windows signing and SHA256 checksums (`.github/workflows/release.yml`, `docs/SIGNING.md`)
 - [x] OCR integration — Tesseract OCR for scanned pages in Markdown export (`ocr_pdf_page`, `ocr_available`; env `TESSERACT_CMD`, `PDF_PANDA_OCR_LANG`)
+- [x] Markdown depth — tagged-PDF semantics (`/StructTreeRoot` → headings, lists, tables; PDFium/OCR fallback per page)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing and vector object manipulation.
 - **Security features:** Digital signatures.
 - **AI-powered tools:** Document summarization and intelligent extraction.
-- **Markdown depth:** tagged-PDF semantics.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
