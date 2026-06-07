@@ -146,8 +146,9 @@ the WebKitGTK view transition.
 **MVP status:** Phases 1–6 complete (`v0.2.0`). See `PLAN.md` and `README.md`.
 
 **E2E:** headless WebDriver smoke via `scripts/e2e-test.sh` (Linux needs `xvfb-run`;
-builds debug binary with `wdio` feature). **Known gaps / future work:** see
-`PLAN.md` **vNext roadmap**.
+builds debug binary with `wdio` feature). **Releases:** push a `v*` tag (or run the
+Release workflow) to build packages; optional signing via GitHub secrets — see
+`docs/SIGNING.md`. **Known gaps / future work:** see `PLAN.md` **vNext roadmap**.
 Signing steps: `docs/SIGNING.md`.
 
 **Still open:**

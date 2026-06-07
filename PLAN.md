@@ -172,6 +172,7 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Form depth — checkbox, choice list, and radio group field creation (`add_checkbox_form_field` / `add_choice_form_field` / `add_radio_form_field`)
 - [x] Large-file undo deltas — binary delta snapshots for files &gt; 32 MB (`snapshot_pdf_entry` / `restore_history_entry` / `prune_history_entry`)
 - [x] Automated UI/e2e — WebdriverIO + embedded WebDriver smoke suite (`scripts/e2e-test.sh`, `e2e/specs/smoke.spec.ts`)
+- [x] Signing automation — tag-triggered release workflow with optional macOS/Windows signing and SHA256 checksums (`.github/workflows/release.yml`, `docs/SIGNING.md`)
 
 ### vNext roadmap
 
@@ -181,4 +182,3 @@ file blocks tagging or shipping `v0.2.0`.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Markdown depth:** OCR and tagged-PDF semantics.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
-- **Signing automation:** CI release signing (credentials required; see `docs/SIGNING.md`).

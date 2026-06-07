@@ -107,7 +107,9 @@ PDF_PANDA_TEST_PDF=/path/to/file.pdf \
 ```
 
 Implementation status and post-MVP backlog: [`PLAN.md`](PLAN.md).  
-Release signing notes: [`docs/SIGNING.md`](docs/SIGNING.md).  
+Tagged releases (`git tag v0.2.1 && git push origin v0.2.1`) trigger the GitHub
+Actions release workflow (unsigned by default; optional macOS/Windows signing via
+repository secrets). See [`docs/SIGNING.md`](docs/SIGNING.md).  
 Manual QA checklist: [`docs/MANUAL_E2E.md`](docs/MANUAL_E2E.md).
 
 ## Contributing
