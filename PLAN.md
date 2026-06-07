@@ -103,7 +103,7 @@ and verified:
 
 | Area | Implementation | Verified by |
 | --- | --- | --- |
-| Open PDF | In-app path modal with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | Real-PDF smoke test with `Disability_Brochure.pdf`, UI validation |
+| Open PDF | In-app path modal with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | `list_pdf_browser_entries_lists_pdfs_and_directories`, UI validation |
 | Close PDF | Toolbar close action clears current document state and generated object URLs | UI validation |
 | View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down, Home/End keys | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
@@ -155,9 +155,9 @@ and verified:
 - **Packaging / distribution:** Linux via `scripts/build-linux-packages.sh` (deb/rpm)
   and `scripts/build-appimage.sh` (needs `appimagetool`); unsigned macOS/Windows via
   `scripts/build-macos.sh` / `scripts/build-windows.sh`; signing/notarization not set up yet.
-- **Testing:** save, undo/redo snapshot restore, page edit validation (delete/move/
-  rotate/insert/split), and Markdown file-write flows have Rust unit tests; no
-  automated UI/e2e coverage yet.
+- **Testing:** save, undo/redo snapshot restore, PDF browser listing, page edit
+  validation (delete/move/rotate/insert/split), and Markdown file-write flows have
+  Rust unit tests; no automated UI/e2e coverage yet.
 
 ## Future Roadmap (Post-MVP)
 

@@ -1895,6 +1895,28 @@ mod tests {
     }
 
     #[test]
+    fn list_pdf_browser_entries_lists_pdfs_and_directories() {
+        let dir = std::env::temp_dir().join(format!("pp_browser_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let standalone = save(&mut build_pdf(1), "browser_src");
+        fs::copy(&standalone, dir.join("sample.pdf")).unwrap();
+        let _ = fs::remove_file(&standalone);
+        fs::write(dir.join("notes.txt"), b"text").unwrap();
+        fs::create_dir_all(dir.join("nested")).unwrap();
+
+        let listing = list_pdf_browser_entries(Some(dir.to_string_lossy().into_owned())).unwrap();
+        let names: Vec<&str> = listing.entries.iter().map(|entry| entry.name.as_str()).collect();
+        assert!(names.contains(&"nested"));
+        assert!(names.contains(&"sample.pdf"));
+        assert!(!names.iter().any(|name| *name == "notes.txt"));
+        assert!(listing.entries.iter().find(|e| e.name == "nested").unwrap().is_dir);
+        assert!(!listing.entries.iter().find(|e| e.name == "sample.pdf").unwrap().is_dir);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn open_working_copy_creates_isolated_temp_file() {
         let path = save(&mut build_pdf(1), "wc_open");
         let working = open_working_copy(path.clone()).unwrap();
