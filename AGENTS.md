@@ -160,4 +160,4 @@ Signing steps: `docs/SIGNING.md`.
 
 ## Commit & Pull Request Guidelines
 
-- **Attribution (IMPORTANT):** Never attribute code changes to an AI agent or tool. Do **not** add `Co-Authored-By` trailers, "Generated with…" lines, or any mention of Cursor, cursoragent, Claude, or Codex (or any other AI assistant) in commit messages, PR titles/descriptions, code, or comments. Commits are authored solely by the human committer.
+- **Attribution (IMPORTANT):** Commits are authored solely by the human committer. Never attribute code changes to any AI agent, assistant, or tool — including, but not limited to, **Cursor**, **cursoragent**, **Claude**, and **Codex**. Do **not** add `Co-Authored-By` trailers, "Generated with…" / "Assisted-by" lines, or any other AI attribution in commit messages, PR titles/descriptions, code, or comments.
