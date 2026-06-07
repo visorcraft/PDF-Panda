@@ -164,11 +164,11 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Password protection (`protect_pdf`, encrypted open with password prompt)
 - [x] Redaction (`add_redaction` / `remove_redaction`, **X** shortcut)
 - [x] Markdown exotic image filters (DeviceGray, DeviceCMYK, Indexed, JPXDecode on save)
+- [x] Page image insertion (`add_page_image` / `get_image_dimensions`, **I** shortcut)
 
 ### vNext roadmap
 
-- **Advanced editing:** In-PDF text editing, vector object manipulation, image
-  insertion beyond page-level operations.
+- **Advanced editing:** In-PDF text editing and vector object manipulation.
 - **OCR integration:** Optical character recognition for scanned documents.
 - **Security features:** Digital signatures.
 - **Form support:** Interactive PDF form creation and filling.

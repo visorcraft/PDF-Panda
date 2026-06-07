@@ -21,6 +21,7 @@ checklist before a release tag.
 - [ ] Shape outlines add (S — rect/ellipse/line) and remove
 - [ ] Text/image stamps add (T) and remove
 - [ ] Redaction boxes add (X) and remove
+- [ ] Page image insert (I) — path entry, two-click placement, re-render shows image
 
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict

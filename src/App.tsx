@@ -187,6 +187,10 @@ function App() {
   const [stampKind, setStampKind] = useState<StampKind>('text');
   const [stampPreset, setStampPreset] = useState<string>(STAMP_PRESETS[0].id);
   const [redactMode, setRedactMode] = useState(false);
+  const [imageInsertMode, setImageInsertMode] = useState(false);
+  const [showImageInsertModal, setShowImageInsertModal] = useState(false);
+  const [imageSourcePath, setImageSourcePath] = useState('');
+  const [imageSourceDraft, setImageSourceDraft] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
@@ -687,6 +691,40 @@ function App() {
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
     if (drawMode) return;
+    if (imageInsertMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!drawing) {
+        setHighlightStart(coords);
+        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+        setDrawing(true);
+        return;
+      }
+      const start = highlightStart;
+      cancelDrawing();
+      if (!start || !imageSourcePath) return;
+      const rect = {
+        x: Math.min(start.x, coords.x),
+        y: Math.min(start.y, coords.y),
+        w: Math.abs(coords.x - start.x),
+        h: Math.abs(coords.y - start.y),
+      };
+      if (rect.w < 5 || rect.h < 5) return;
+      void withLoading(async () => {
+        await invoke('add_page_image', {
+          path: filePath,
+          pageIndex: currentPage,
+          x: rect.x,
+          y: rect.y,
+          width: rect.w,
+          height: rect.h,
+          imagePath: imageSourcePath,
+        });
+        markPdfEdited();
+        await renderPage(filePath, currentPage);
+        showToast('Image inserted');
+      });
+      return;
+    }
     if (redactMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (!drawing) {
@@ -852,7 +890,7 @@ function App() {
       });
       return;
     }
-    if ((shapeMode || redactMode) && drawing && highlightStart) {
+    if ((shapeMode || redactMode || imageInsertMode) && drawing && highlightStart) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (shapeMode && shapeKind === 'line') {
         setShapeLineEnd(coords);
@@ -958,6 +996,58 @@ function App() {
     });
   };
 
+  const openImageInsertModal = () => {
+    if (!filePath) return;
+    setImageSourceDraft(imageSourcePath);
+    setShowImageInsertModal(true);
+  };
+
+  const confirmImageSource = async () => {
+    const path = imageSourceDraft.trim();
+    if (!path) {
+      showToast('Enter an image path', 'error');
+      return;
+    }
+    try {
+      await invoke<[number, number]>('get_image_dimensions', { path });
+      setImageSourcePath(path);
+      setShowImageInsertModal(false);
+      cancelDrawing();
+      setHighlightMode(false);
+      setNoteMode(false);
+      setDrawMode(false);
+      setShapeMode(false);
+      setStampMode(false);
+      setRedactMode(false);
+      setImageInsertMode(true);
+      showToast('Click twice on the page to place the image');
+    } catch (err) {
+      showToast(String(err), 'error');
+    }
+  };
+
+  const toggleImageInsertMode = () => {
+    if (!imageSourcePath) {
+      openImageInsertModal();
+      return;
+    }
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShapeMode(false);
+    setStampMode(false);
+    setRedactMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setImageInsertMode((m) => !m);
+  };
+
+  const exitImageInsertMode = () => {
+    cancelDrawing();
+    setImageInsertMode(false);
+  };
+
   const toggleHighlightMode = () => {
     cancelDrawing();
     setNoteMode(false);
@@ -965,6 +1055,7 @@ function App() {
     setShapeMode(false);
     setStampMode(false);
     setRedactMode(false);
+    setImageInsertMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setHighlightMode((m) => !m);
@@ -982,6 +1073,7 @@ function App() {
     setShapeMode(false);
     setStampMode(false);
     setRedactMode(false);
+    setImageInsertMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setNoteMode((m) => !m);
@@ -994,6 +1086,7 @@ function App() {
     setShapeMode(false);
     setStampMode(false);
     setRedactMode(false);
+    setImageInsertMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setDrawMode((m) => !m);
@@ -1011,6 +1104,7 @@ function App() {
     setDrawMode(false);
     setStampMode(false);
     setRedactMode(false);
+    setImageInsertMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setShapeMode((m) => !m);
@@ -1028,6 +1122,7 @@ function App() {
     setDrawMode(false);
     setShapeMode(false);
     setRedactMode(false);
+    setImageInsertMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setStampMode((m) => !m);
@@ -1044,6 +1139,7 @@ function App() {
     setDrawMode(false);
     setShapeMode(false);
     setStampMode(false);
+    setImageInsertMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setRedactMode((m) => !m);
@@ -1151,6 +1247,7 @@ function App() {
     setShowDeleteModal(false);
     setShowSplitModal(false);
     setShowInsertModal(false);
+    setShowImageInsertModal(false);
   }, [showUnsavedModal]);
 
   const refreshAfterWorkingChange = async () => {
@@ -1211,6 +1308,8 @@ function App() {
   stampModeRef.current = stampMode;
   const redactModeRef = useRef(redactMode);
   redactModeRef.current = redactMode;
+  const imageInsertModeRef = useRef(imageInsertMode);
+  imageInsertModeRef.current = imageInsertMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
   const exitNoteModeRef = useRef(exitNoteMode);
@@ -1223,6 +1322,8 @@ function App() {
   exitStampModeRef.current = exitStampMode;
   const exitRedactModeRef = useRef(exitRedactMode);
   exitRedactModeRef.current = exitRedactMode;
+  const exitImageInsertModeRef = useRef(exitImageInsertMode);
+  exitImageInsertModeRef.current = exitImageInsertMode;
   const toggleNoteModeRef = useRef(toggleNoteMode);
   toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
@@ -1243,6 +1344,8 @@ function App() {
   toggleStampModeRef.current = toggleStampMode;
   const toggleRedactModeRef = useRef(toggleRedactMode);
   toggleRedactModeRef.current = toggleRedactMode;
+  const toggleImageInsertModeRef = useRef(toggleImageInsertMode);
+  toggleImageInsertModeRef.current = toggleImageInsertMode;
   const zoomInRef = useRef(zoomIn);
   zoomInRef.current = zoomIn;
   const zoomOutRef = useRef(zoomOut);
@@ -1269,7 +1372,7 @@ function App() {
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showInsertModal || showNoteModal;
+    || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -1307,6 +1410,10 @@ function App() {
         }
         if (redactModeRef.current && hasOpenPdfRef.current) {
           exitRedactModeRef.current();
+          return;
+        }
+        if (imageInsertModeRef.current && hasOpenPdfRef.current) {
+          exitImageInsertModeRef.current();
           return;
         }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
@@ -1362,6 +1469,11 @@ function App() {
         if (e.key.toLowerCase() === 'x' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleRedactModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'i' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleImageInsertModeRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1477,6 +1589,9 @@ function App() {
     setPdfRevision(0);
     setMarkdownRevision(null);
     setHighlightMode(false);
+    setImageInsertMode(false);
+    setImageSourcePath('');
+    setShowImageInsertModal(false);
     setAnnotations([]);
     setShowDeleteModal(false);
     setImageSrc((prev) => {
@@ -1781,6 +1896,23 @@ function App() {
                 >
                   {stampMode ? 'Stamp: ON' : 'Stamp'}
                 </button>
+                <button
+                  onClick={toggleImageInsertMode}
+                  className={`btn ${imageInsertMode ? 'btn-active' : ''}`}
+                  title="Insert image on page — PNG/JPEG (I)"
+                >
+                  {imageInsertMode ? 'Image: ON' : 'Insert Image'}
+                </button>
+                {imageInsertMode && imageSourcePath && (
+                  <button
+                    type="button"
+                    onClick={openImageInsertModal}
+                    className="btn"
+                    title="Change source image"
+                  >
+                    {fileNameFromPath(imageSourcePath)}
+                  </button>
+                )}
                 {stampMode && (
                   <div className="stamp-toolbar" role="group" aria-label="Stamp options">
                     <div className="shape-kind-toggle" role="group" aria-label="Stamp kind">
@@ -1894,7 +2026,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''} ${imageInsertMode ? 'image-insert-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
@@ -2172,6 +2304,17 @@ function App() {
                         }}
                       />
                     )}
+                    {imageInsertMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                      <div
+                        className="image-insert-draft"
+                        style={{
+                          left: highlightRect.x,
+                          top: highlightRect.y,
+                          width: highlightRect.w,
+                          height: highlightRect.h,
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               ) : (
@@ -2277,6 +2420,25 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowSplitModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleSplitPdf} className="btn">Split</button>
+          </div>
+        </Modal>
+      )}
+
+      {showImageInsertModal && (
+        <Modal onClose={() => setShowImageInsertModal(false)}>
+          <h3>Insert Image</h3>
+          <p className="modal-help">Choose a PNG or JPEG file, then click twice on the page to size and place it.</p>
+          <label>Image path:</label>
+          <input
+            type="text"
+            value={imageSourceDraft}
+            onChange={(e) => setImageSourceDraft(e.target.value)}
+            className="modal-input"
+            placeholder="/path/to/image.png"
+          />
+          <div className="modal-actions">
+            <button onClick={() => setShowImageInsertModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void confirmImageSource()} className="btn" disabled={!imageSourceDraft.trim()}>Place on page</button>
           </div>
         </Modal>
       )}

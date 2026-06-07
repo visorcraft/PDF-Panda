@@ -461,6 +461,165 @@ fn rotate_page(path: String, page_index: u32) -> Result<(), String> {
     Ok(())
 }
 
+// Viewer render size — must stay aligned with `BASE_W` / `BASE_H` in `App.tsx`.
+const VIEWER_PAGE_W: f64 = 800.0;
+const VIEWER_PAGE_H: f64 = 1132.0;
+
+fn page_media_box(doc: &Document, page_id: ObjectId) -> Result<[f64; 4], String> {
+    let page = doc.get_dictionary(page_id).map_err(|e| e.to_string())?;
+    let arr = page.get(b"MediaBox").map_err(|e| e.to_string())?.as_array().map_err(|_| "Bad MediaBox")?;
+    let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
+    Ok([get(0), get(1), get(2), get(3)])
+}
+
+fn viewer_rect_to_pdf(
+    doc: &Document,
+    page_id: ObjectId,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+) -> Result<(f64, f64, f64, f64), String> {
+    let media = page_media_box(doc, page_id)?;
+    let mw = media[2] - media[0];
+    let mh = media[3] - media[1];
+    if mw <= 0.0 || mh <= 0.0 || w <= 0.0 || h <= 0.0 {
+        return Err("Invalid page or image size".to_string());
+    }
+    let px = x * mw / VIEWER_PAGE_W;
+    let pw = w * mw / VIEWER_PAGE_W;
+    let ph = h * mh / VIEWER_PAGE_H;
+    let py = mh - (y * mh / VIEWER_PAGE_H) - ph;
+    Ok((px, py, pw, ph))
+}
+
+fn next_image_xobject_name(xobjects: &Dictionary) -> String {
+    for n in 1..=9999 {
+        let name = format!("Im{n}");
+        if xobjects.get(name.as_bytes()).is_err() {
+            return name;
+        }
+    }
+    "Im9999".to_string()
+}
+
+fn append_page_content(doc: &mut Document, page_id: ObjectId, ops: &[u8]) -> Result<(), String> {
+    let contents = doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Contents").ok().cloned();
+    match contents {
+        Some(Object::Reference(id)) => {
+            let obj = doc.get_object_mut(id).map_err(|e| e.to_string())?;
+            if let Object::Stream(stream) = obj {
+                let mut body = stream.get_plain_content().map_err(|e| e.to_string())?;
+                body.extend_from_slice(ops);
+                stream.set_plain_content(body);
+            } else {
+                return Err("Bad page Contents".to_string());
+            }
+        }
+        Some(Object::Array(mut arr)) => {
+            let new_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.to_vec())));
+            arr.push(Object::Reference(new_id));
+            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Contents", Object::Array(arr));
+        }
+        _ => {
+            let stream_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.to_vec())));
+            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Contents", Object::Reference(stream_id));
+        }
+    }
+    Ok(())
+}
+
+fn embed_jpeg_xobject(doc: &mut Document, jpeg: Vec<u8>, width: u32, height: u32) -> ObjectId {
+    doc.add_object(Object::Stream(Stream::new(
+        Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+            (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
+            (b"Width".to_vec(), Object::Integer(width as i64)),
+            (b"Height".to_vec(), Object::Integer(height as i64)),
+            (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+            (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+            (b"Filter".to_vec(), Object::Name(b"DCTDecode".to_vec())),
+        ]),
+        jpeg,
+    )))
+}
+
+#[tauri::command]
+fn get_image_dimensions(path: String) -> Result<[u32; 2], String> {
+    let img = image::open(PathBuf::from(&path)).map_err(|e| e.to_string())?;
+    Ok([img.width(), img.height()])
+}
+
+#[tauri::command]
+fn add_page_image(
+    path: String,
+    page_index: u32,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    image_path: String,
+) -> Result<(), String> {
+    if width < 5.0 || height < 5.0 {
+        return Err("Image placement is too small".to_string());
+    }
+
+    let image_path = PathBuf::from(&image_path);
+    if !image_path.is_file() {
+        return Err("Image file not found".to_string());
+    }
+
+    let img = image::open(&image_path).map_err(|e| e.to_string())?;
+    let rgb = img.to_rgb8();
+    let (img_w, img_h) = rgb.dimensions();
+    let mut jpeg = Vec::new();
+    image::DynamicImage::ImageRgb8(rgb)
+        .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+        .map_err(|e| e.to_string())?;
+
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
+    let image_id = embed_jpeg_xobject(&mut doc, jpeg, img_w, img_h);
+
+    if !matches!(doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Resources"), Ok(Object::Dictionary(_))) {
+        doc.get_dictionary_mut(page_id)
+            .map_err(|e| e.to_string())?
+            .set(b"Resources", Object::Dictionary(Dictionary::new()));
+    }
+
+    let xobject_name = {
+        let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
+        let resources = page_dict
+            .get_mut(b"Resources")
+            .map_err(|e| e.to_string())?
+            .as_dict_mut()
+            .map_err(|_| "Bad Resources".to_string())?;
+        match resources.get_mut(b"XObject") {
+            Ok(Object::Dictionary(dict)) => {
+                let name = next_image_xobject_name(dict);
+                dict.set(name.as_bytes(), Object::Reference(image_id));
+                name
+            }
+            _ => {
+                let mut dict = Dictionary::new();
+                dict.set(b"Im1", Object::Reference(image_id));
+                resources.set(b"XObject", Object::Dictionary(dict));
+                "Im1".to_string()
+            }
+        }
+    };
+
+    let ops = format!("q {pw} 0 0 {ph} {px} {py} cm /{xobject_name} Do Q\n");
+    append_page_content(&mut doc, page_id, ops.as_bytes())?;
+
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(Clone, Debug)]
 struct MarkdownTextCell {
     text: String,
@@ -1133,12 +1292,7 @@ fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
     if width == 0 || height == 0 {
         return None;
     }
-    let bits = stream
-        .dict
-        .get(b"BitsPerComponent")
-        .ok()
-        .and_then(pdf_numeric_i64)
-        .unwrap_or(8) as u32;
+    let bits = stream.dict.get(b"BitsPerComponent").ok().and_then(pdf_numeric_i64).unwrap_or(8) as u32;
     if bits != 8 {
         return None;
     }
@@ -2543,6 +2697,8 @@ fn main() {
             remove_image_stamp,
             add_redaction,
             remove_redaction,
+            get_image_dimensions,
+            add_page_image,
             get_annotations,
             open_working_copy,
             save_working_copy,
@@ -3613,6 +3769,96 @@ mod tests {
         let missing = std::env::temp_dir().join(format!("pp_add_redact_missing_{}.pdf", std::process::id()));
         let err = add_redaction(missing.to_string_lossy().into_owned(), 0, 1.0, 1.0, 2.0, 2.0).unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    fn test_png(name: &str) -> PathBuf {
+        use image::{ImageBuffer, Rgb};
+        let path = tmp(name).with_extension("png");
+        let img = ImageBuffer::from_fn(8, 6, |_, _| Rgb([200u8, 40, 40]));
+        img.save(&path).unwrap();
+        path
+    }
+
+    #[test]
+    fn append_page_content_writes_marker() {
+        let path = save(&mut build_pdf(1), "append_content");
+        let mut doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        append_page_content(&mut doc, page_id, b"PP_IMAGE_MARKER\n").unwrap();
+        doc.save(&path).unwrap();
+        let doc = Document::load(&path).unwrap();
+        let marked = doc.objects.iter().any(|(_, obj)| {
+            obj.as_stream().map(|s| s.content.windows(16).any(|w| w == b"PP_IMAGE_MARKER\n")).unwrap_or(false)
+        });
+        assert!(marked, "append_page_content did not persist marker after save");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn get_image_dimensions_reads_png() {
+        let path = test_png("dims");
+        let dims = get_image_dimensions(path.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(dims, [8, 6]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_image_embeds_xobject_and_content() {
+        let path = save(&mut build_pdf(1), "page_image");
+        let img_path = test_png("page_image_src");
+        add_page_image(path.clone(), 0, 100.0, 100.0, 80.0, 60.0, img_path.to_string_lossy().into_owned()).unwrap();
+        let doc = Document::load(&path).unwrap();
+        let any_stream_do = doc.objects.iter().any(|(_, obj)| {
+            obj.as_stream().map(|s| String::from_utf8_lossy(&s.content).contains(" Do")).unwrap_or(false)
+        });
+        assert!(any_stream_do, "no content stream contains image draw operator");
+        let pages = doc.get_pages();
+        let page_id = *pages.get(&1).unwrap();
+        let page = doc.get_dictionary(page_id).unwrap();
+        let resources = page.get(b"Resources").unwrap().as_dict().unwrap();
+        let xobjects = resources.get(b"XObject").unwrap().as_dict().unwrap();
+        assert!(xobjects.iter().any(|(k, _)| k.starts_with(b"Im")));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&img_path);
+    }
+
+    #[test]
+    fn add_page_image_rejects_missing_pdf() {
+        let img_path = test_png("page_image_missing_pdf");
+        let missing = std::env::temp_dir().join(format!("pp_page_image_missing_{}.pdf", std::process::id()));
+        let err = add_page_image(
+            missing.to_string_lossy().into_owned(),
+            0,
+            10.0,
+            10.0,
+            50.0,
+            50.0,
+            img_path.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+        let _ = std::fs::remove_file(&img_path);
+    }
+
+    #[test]
+    fn add_page_image_rejects_missing_image() {
+        let path = save(&mut build_pdf(1), "page_image_no_src");
+        let missing = std::env::temp_dir().join(format!("pp_page_image_src_{}.png", std::process::id()));
+        let err = add_page_image(path.clone(), 0, 10.0, 10.0, 50.0, 50.0, missing.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("not found"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_image_rejects_too_small() {
+        let path = save(&mut build_pdf(1), "page_image_small");
+        let img_path = test_png("page_image_small_src");
+        let err =
+            add_page_image(path.clone(), 0, 10.0, 10.0, 4.0, 4.0, img_path.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("too small"));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&img_path);
     }
 
     #[test]
