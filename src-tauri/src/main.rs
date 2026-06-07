@@ -1754,6 +1754,13 @@ mod tests {
     }
 
     #[test]
+    fn split_pdf_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_split_missing_{}.pdf", std::process::id()));
+        let err = split_pdf(missing.to_string_lossy().into_owned(), vec![(0, 0)]).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
     fn insert_pdf_rejects_invalid_source_range() {
         let dest = save(&mut build_pdf(2), "insert_dest_range");
         let src = save(&mut build_pdf(2), "insert_src_range");
