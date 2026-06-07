@@ -33,7 +33,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 
 ### Conversion & export
 - **PDF → Markdown** with heuristic headings, tables, and TOC formatting
-- **Save Markdown** beside the PDF or to a custom path; no-text pages export page PNGs to a sibling `_assets` folder
+- **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images to a sibling `_assets` folder
 - **Optimize** — strip metadata, recompress images, prune unused objects
 - **Print** via the system print dialog
 
@@ -89,10 +89,7 @@ Packaging helpers live under `scripts/` (`build-linux-packages.sh`, `build-appim
 ## Development
 
 ```sh
-cd src-tauri && cargo test          # unit tests (lopdf commands, no PDFium required)
-cd src-tauri && cargo clippy --all-targets
-cargo fmt --check                   # rustfmt.toml at repo root
-npx tsc --noEmit
+scripts/smoke-test.sh               # unit tests, clippy, fmt, and tsc (CI parity)
 ```
 
 Optional smoke test with a real PDF and PDFium installed:

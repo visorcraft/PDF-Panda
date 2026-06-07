@@ -1000,12 +1000,91 @@ struct MarkdownImageSink<'a> {
     rel_prefix: &'a str,
 }
 
+fn pdf_filter_is_dctdecode(filter: &Object) -> bool {
+    match filter {
+        Object::Name(name) => name == b"DCTDecode",
+        Object::Array(items) => items.iter().any(|item| matches!(item, Object::Name(name) if name == b"DCTDecode")),
+        _ => false,
+    }
+}
+
+fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
+    let filter = stream.dict.get(b"Filter").ok();
+    let bytes = stream.decompressed_content().ok()?;
+    if filter.is_some_and(pdf_filter_is_dctdecode) {
+        return Some((bytes, "jpg"));
+    }
+    let width = stream.dict.get(b"Width").ok()?.as_i64().ok()? as u32;
+    let height = stream.dict.get(b"Height").ok()?.as_i64().ok()? as u32;
+    if width == 0 || height == 0 {
+        return None;
+    }
+    let expected = (width as u64 * height as u64 * 3) as usize;
+    if bytes.len() < expected {
+        return None;
+    }
+    use image::{ImageBuffer, Rgb};
+    let img: ImageBuffer<Rgb<u8>, _> = ImageBuffer::from_raw(width, height, bytes)?;
+    let mut png = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).ok()?;
+    Some((png, "png"))
+}
+
+fn append_page_embedded_images(
+    doc: &Document,
+    page_number: u32,
+    sink: &MarkdownImageSink<'_>,
+    image_seq: &mut u32,
+) -> Result<String, String> {
+    let page_id = match doc.get_pages().get(&page_number) {
+        Some(id) => *id,
+        None => return Ok(String::new()),
+    };
+    let resources = doc
+        .get_dictionary(page_id)
+        .ok()
+        .and_then(|page| page.get(b"Resources").ok())
+        .and_then(|obj| obj.as_dict().ok());
+    let Some(resources) = resources else {
+        return Ok(String::new());
+    };
+    let xobjects = resources.get(b"XObject").ok().and_then(|obj| obj.as_dict().ok());
+    let Some(xobjects) = xobjects else {
+        return Ok(String::new());
+    };
+
+    let mut block = String::new();
+    for (_name, obj) in xobjects.iter() {
+        let id = match obj {
+            Object::Reference(id) => id,
+            _ => continue,
+        };
+        let stream = match doc.get_object(*id).ok().and_then(|o| o.as_stream().ok()) {
+            Some(stream) => stream,
+            None => continue,
+        };
+        let subtype = stream.dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok());
+        if subtype != Some(b"Image") {
+            continue;
+        }
+        let Some((bytes, ext)) = pdf_image_stream_bytes(stream) else {
+            continue;
+        };
+        *image_seq += 1;
+        let file_name = format!("page-{page_number}-img-{image_seq}.{ext}");
+        fs::write(sink.assets_dir.join(&file_name), bytes).map_err(|e| e.to_string())?;
+        block.push_str(&format!("![Page {page_number} embedded image]({}/{file_name})\n\n", sink.rel_prefix));
+    }
+    Ok(block)
+}
+
 fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> Result<String, String> {
     // Use PDFium's text layer: it decodes font encodings (including CID/Type0
     // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
     // produce text instead of empty pages.
     let pdfium = get_pdfium()?;
     let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let struct_doc = if image_sink.is_some() { Some(Document::load(path).map_err(|e| e.to_string())?) } else { None };
 
     let mut markdown = String::from("# PDF to Markdown Conversion\n\n");
     for (index, page) in document.pages().iter().enumerate() {
@@ -1031,8 +1110,18 @@ fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> R
         } else {
             markdown.push_str(&format_markdown_lines(&lines));
         }
+        if let (Some(sink), Some(doc)) = (image_sink, struct_doc.as_ref()) {
+            let mut image_seq = 0u32;
+            markdown.push_str(&append_page_embedded_images(doc, (index + 1) as u32, sink, &mut image_seq)?);
+        }
     }
     Ok(markdown)
+}
+
+/// Return on-disk byte length for undo snapshot sizing decisions.
+#[tauri::command]
+fn file_byte_size(path: String) -> Result<u64, String> {
+    Ok(fs::metadata(path).map_err(|e| e.to_string())?.len())
 }
 
 #[tauri::command]
@@ -1622,7 +1711,8 @@ fn main() {
             open_working_copy,
             save_working_copy,
             discard_working_copy,
-            snapshot_pdf
+            snapshot_pdf,
+            file_byte_size
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -2173,6 +2263,14 @@ mod tests {
     fn discard_working_copy_missing_path_succeeds() {
         let missing = std::env::temp_dir().join(format!("pp_missing_wc_{}.pdf", std::process::id()));
         discard_working_copy(missing.to_string_lossy().into_owned()).unwrap();
+    }
+
+    #[test]
+    fn file_byte_size_returns_length() {
+        let path = save(&mut build_pdf(1), "byte_size");
+        let len = file_byte_size(path.clone()).unwrap();
+        assert!(len > 0);
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

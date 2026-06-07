@@ -21,6 +21,8 @@ const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
 const RECENT_PDF_LIMIT = 8;
 // Cap undo snapshots so very large PDFs don't accumulate unbounded working copies.
 const MAX_UNDO_HISTORY = 50;
+// Skip undo snapshots above this size to avoid copying very large PDFs on every edit.
+const SNAPSHOT_BYTE_LIMIT = 32 * 1024 * 1024;
 
 interface AnnotationData {
   subtype: string;
@@ -146,6 +148,7 @@ function App() {
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [drawing, setDrawing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+  const snapshotSkipNotifiedRef = useRef(false);
 
   // Scrolling / wheel navigation
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -228,6 +231,15 @@ function App() {
     const working = filePathRef.current;
     if (!working) return;
     try {
+      const size = await invoke<number>('file_byte_size', { path: working });
+      if (size > SNAPSHOT_BYTE_LIMIT) {
+        if (!snapshotSkipNotifiedRef.current) {
+          snapshotSkipNotifiedRef.current = true;
+          showToast('Undo snapshots disabled for files larger than 32 MB', 'error');
+        }
+        refreshUndoRedoState();
+        return;
+      }
       const snapshot = await invoke<string>('snapshot_pdf', { source: working });
       // Drop any redo branch we're overwriting.
       historyRef.current.slice(histIdxRef.current + 1).forEach((p) => {
@@ -241,7 +253,7 @@ function App() {
     } catch {
       /* history is best-effort */
     }
-  }, [pruneUndoHistory, refreshUndoRedoState]);
+  }, [pruneUndoHistory, refreshUndoRedoState, showToast]);
 
   const markPdfEdited = useCallback(() => {
     setPdfRevision((revision) => revision + 1);
@@ -311,6 +323,7 @@ function App() {
       const count = await invoke<number>('get_pdf_page_count', { path: working });
       setOriginalPath(path);
       setFilePath(working);
+      snapshotSkipNotifiedRef.current = false;
       setIsDirty(false);
       // Reset undo/redo history with the freshly-opened state as the baseline.
       historyRef.current.forEach((p) => void invoke('discard_working_copy', { working: p }).catch(() => {}));

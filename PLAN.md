@@ -109,19 +109,19 @@ and verified:
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned); Ctrl/Cmd +/−/0 shortcuts | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves`, `move_page_rejects_invalid_index`, `move_page_rejects_invalid_from_index`, `move_page_same_index_is_noop`, `move_page_rejects_missing_file` |
 | Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `open_working_copy_creates_isolated_temp_file`, `working_copy_isolates_edits_until_saved`, `open_working_copy_rejects_missing_file`, `save_working_copy_rejects_missing_working_file`, UI validation |
-| Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_pdf_creates_unique_history_files`, `snapshot_undo_restore_reverts_working_copy`, `snapshot_pdf_rejects_missing_source`, UI validation |
+| Undo / Redo | Working-copy snapshot history (50-entry cap); skips snapshots for files &gt; 32 MB; dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_pdf_creates_unique_history_files`, `snapshot_undo_restore_reverts_working_copy`, `snapshot_pdf_rejects_missing_source`, `file_byte_size_returns_length`, UI validation |
 | Delete page | Delete key or toolbar → confirmation modal → tree-aware `delete_page` (rejects last-page delete, nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf`, `delete_page_rejects_invalid_index`, `delete_page_rejects_only_page`, `delete_page_rejects_missing_file` |
 | Rotate page | Toolbar button or Ctrl/Cmd+R → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps`, `rotate_page_rejects_invalid_index`, `rotate_page_rejects_missing_file` |
 | Insert PDF | Ctrl/Cmd+Shift+I two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree`, `insert_pdf_rejects_invalid_source_range`, `insert_pdf_rejects_source_range_out_of_bounds`, `insert_pdf_rejects_out_of_bounds_index`, `insert_pdf_rejects_missing_source_file`, `insert_pdf_rejects_missing_dest_file` |
 | Split PDF | Ctrl/Cmd+Shift+K ranges → separate files, orphans pruned; rejects empty/invalid ranges | `split_pdf_creates_separate_files`, `split_pdf_rejects_invalid_range`, `split_pdf_rejects_empty_ranges`, `split_pdf_rejects_missing_file` |
-| Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; no-text pages export rendered PNGs to `<name>_assets/` on save | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
+| Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection; on save, no-text pages export rendered PNGs and embedded XObject images land in `<name>_assets/` | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, `file_byte_size_returns_length`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight / Notes | Rectangle highlights (H) and sticky text notes (N); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_add_and_read_back`, `remove_text_note_*`, `get_annotations_rejects_*`, `add_highlight_rejects_*`, `remove_highlight_rejects_*` |
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 61 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 62 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -133,51 +133,31 @@ and verified:
 **Known limitations (documented, not defects):**
 - Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), defaults
   to saving beside the open PDF as `<pdf-name>.md` (custom path via Save Markdown As…),
-  and reconstructs headings/tables from
-  text geometry heuristics. It does not extract images, OCR scanned pages, or use
-  tagged-PDF semantics; pages with no text layer are marked
-  `_(no extractable text on this page)_`.
+  and reconstructs headings/tables from text geometry heuristics. On save it also
+  exports page renders (no-text pages) and embedded JPEG/PNG XObject images to
+  `<pdf-name>_assets/`. No OCR, tagged-PDF semantics, or exotic image filters yet.
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
-- Undo/Redo and deferred save use whole-file working-copy snapshots — fine for
-  typical PDFs; very large files are copied on each edit.
+- Undo/Redo uses whole-file snapshots (50-entry cap). Files larger than 32 MB skip
+  per-edit snapshots; delta snapshots remain a future optimization.
 
 ## Plan Completion
 
-**MVP (Phases 1–6) is complete** as of tag `v0.2.0`. Every checklist item in
-Phases 1–6 is implemented, wired frontend ⇄ backend, and covered by the quality
-gates below. The **Remaining / Future Work** and **Future Roadmap** sections
-are post-MVP backlog only — they do not block release.
+**PLAN.md is complete for v0.2.x.** Phases 1–6 and every actionable backlog item
+below are implemented or explicitly moved to the vNext roadmap. Nothing in this
+file blocks tagging or shipping `v0.2.0`.
 
-## Remaining / Future Work
+### v0.2.x backlog (all done)
 
-Completed in this pass (moved out of backlog):
+- [x] Markdown page renders for no-text pages (`<name>_assets/page-N.png` on save)
+- [x] Markdown embedded XObject image extraction (JPEG + raw RGB → PNG on save)
+- [x] Sticky text notes (`add_text_note` / `remove_text_note`, **N** shortcut)
+- [x] Large-file undo guard (skip snapshots &gt; 32 MB; `file_byte_size` command)
+- [x] Packaging/signing docs (`docs/SIGNING.md`)
+- [x] Release QA checklist (`docs/MANUAL_E2E.md`)
+- [x] Local smoke script (`scripts/smoke-test.sh` — unit tests + typecheck)
 
-- **Markdown images:** pages with no extractable text export a rendered PNG to
-  `<markdown-stem>_assets/` when saving Markdown (preview/convert still shows a
-  placeholder without writing files).
-- **Sticky notes:** `Text` annotations with toolbar/keyboard (N), persisted via
-  `add_text_note` / `remove_text_note`.
-- **Packaging docs:** `docs/SIGNING.md` documents macOS/Windows signing steps.
-- **Manual QA:** `docs/MANUAL_E2E.md` release checklist (automated WebView e2e
-  still outstanding).
-
-### Deferred (requires external deps or major new subsystems)
-
-- **Markdown depth:** embedded XObject image extraction, OCR for scanned pages,
-  tagged-PDF semantics (page renders cover no-text pages today).
-- **Insert edge cases:** AcroForm / form-field merging; cross-insert font dedup.
-- **Undo/Redo:** delta snapshots for very large files (50-entry whole-file cap
-  remains).
-- **File dialogs:** native open/save on Wayland/WebKitGTK — intentionally avoided;
-  revisit when the desktop portal path is stable.
-- **Annotations:** freehand, stamps, shapes (highlights + sticky notes shipped).
-- **Signing:** credentials required; see `docs/SIGNING.md`.
-- **Automated UI/e2e:** Tauri WebView harness not wired; use `docs/MANUAL_E2E.md`.
-
-## Future Roadmap (Post-MVP)
-
-Post-MVP backlog (also summarized in `README.md` **Features** and **Deferred** sections above).
+### vNext roadmap (not in v0.2.x scope)
 
 - **Advanced editing:** In-PDF text editing, vector object manipulation, image
   insertion beyond page-level operations.
@@ -186,4 +166,9 @@ Post-MVP backlog (also summarized in `README.md` **Features** and **Deferred** s
 - **Security features:** Password protection, digital signatures, redaction.
 - **Form support:** Interactive PDF form creation and filling.
 - **AI-powered tools:** Document summarization and intelligent extraction.
-- **Automated testing:** Headless/WebDriver UI suite for the Tauri shell.
+- **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
+- **Markdown depth:** OCR, tagged-PDF semantics, exotic image filters.
+- **Insert edge cases:** AcroForm merging, cross-insert font dedup.
+- **Undo/Redo:** delta snapshots for very large files.
+- **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
+- **Signing automation:** CI release signing (credentials required; see `docs/SIGNING.md`).

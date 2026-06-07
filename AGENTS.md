@@ -94,7 +94,7 @@ and the default test suite don't need it.
   `render_pdf_page`, `get_pdf_thumbnails`, `delete_page`, `move_page`,
   `rotate_page`, `split_pdf`, `insert_pdf`, `convert_pdf_to_markdown`,
   `save_pdf_markdown`, `optimize_pdf`, `add_highlight`, `remove_highlight`,
-  `add_text_note`, `remove_text_note`, `get_annotations`.
+  `add_text_note`, `remove_text_note`, `get_annotations`, `file_byte_size`.
 - `src/App.tsx` — the whole UI (toolbar, scrollable viewer, thumbnail sidebar,
   split/insert modals, highlight overlays, print surface).
 - `src-tauri/capabilities/default.json` — Tauri ACL (`core:default`). Custom app
@@ -118,7 +118,9 @@ click-to-remove in note mode), PDF/Markdown view toggle with sibling
 `.md` auto-save (or Save Markdown As… custom path) and overwrite confirmation,
 Markdown conversion (PDFium text
 extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and
-column-table formatting).
+column-table formatting). On save, exports page renders and embedded XObject
+images to `<pdf-name>_assets/`. Undo/Redo skips per-edit snapshots for files
+larger than 32 MB.
 
 **Crash notes from v0.1.1 work:** native PDF file dialogs were removed after the
 Open PDF dialog path froze on the target Linux/Wayland stack. Thumbnail clicks
@@ -128,12 +130,12 @@ the WebKitGTK view transition.
 
 **MVP status:** Phases 1–6 complete (`v0.2.0`). See `PLAN.md` and `README.md`.
 
-**Known gaps / future work (post-MVP):** see `PLAN.md` **Deferred** section.
+**Known gaps / future work (post-MVP):** see `PLAN.md` **vNext roadmap**.
 Signing steps: `docs/SIGNING.md`.
 
 **Still open:**
-- Markdown output is heuristic layout reconstruction from PDF text geometry; it
-  does not yet extract images, OCR scanned pages, or use tagged-PDF semantics.
+- Markdown output is heuristic layout reconstruction from PDF text geometry; no
+  OCR, tagged-PDF semantics, or exotic image filters yet.
 - Markdown defaults to saving beside the open PDF as `<pdf-name>.md`; use Save
   Markdown As… in the Markdown view for a custom path.
 - Native PDF file dialogs are intentionally avoided on the current Linux/Wayland
@@ -141,7 +143,7 @@ Signing steps: `docs/SIGNING.md`.
 - AppImage bundling needs `appimagetool` installed (deb/rpm work out of the box).
 - Rust unit tests cover all lopdf commands and validation paths; manual release QA
   in `docs/MANUAL_E2E.md`. PDFium paths use ignored `render_real_pdf_smoke` when
-  PDFium is present. Markdown save exports page PNGs for no-text pages.
+  PDFium is present. Local CI parity: `scripts/smoke-test.sh`.
 
 ## Conventions
 
@@ -153,3 +155,7 @@ Signing steps: `docs/SIGNING.md`.
   when features change.
 - Match existing style; run fmt + clippy + tsc and the test suite before claiming
   work is done. Verify behavior with evidence, not assertions.
+
+## Commit & Pull Request Guidelines
+
+- **Attribution (IMPORTANT):** Never attribute code changes to an AI agent or tool. Do **not** add `Co-Authored-By` trailers, "Generated with…" lines, or any mention of Cursor, cursoragent, Claude, or Codex (or any other AI assistant) in commit messages, PR titles/descriptions, code, or comments. Commits are authored solely by the human committer.
