@@ -14,8 +14,8 @@ before a release tag.
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Find text (Ctrl/Cmd+F) — search, next/previous, highlight on page
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
-- [ ] Delete / duplicate / dup. range / rotate / 180° / CCW / reset rot. / rotate all / all CCW / reverse / blank before+after / to first+last / delete range / reorder / insert / image page / merge / extract / export page PDF / split
-- [ ] Export PNG/JPEG/WebP/BMP, page dimensions, page numbers, page header, watermark, crop (single/all/clear all), flatten annotations
+- [ ] Delete / duplicate / dup. range / dup. all / rotate / 180° / CCW / reset rot. / rotate all / all CCW / reverse / blank before+after / to first+last / move up+down / swap / replace / interleave / odd-even split / to first+last / delete range / reorder / insert / image page / merge / extract / export page PDF / export pages PDF / split
+- [ ] Export PNG/JPEG/WebP/BMP/TIFF, page dimensions, page numbers, page header+footer, page size presets, watermark, crop (single/all/clear all), flatten annotations
 - [ ] Add / rename / remove / clear all bookmarks from Bookmarks panel
 - [ ] Metadata modal — edit title/author; Apply marks dirty; Save persists
 
@@ -38,7 +38,7 @@ before a release tag.
 - [ ] Summarize (Ctrl/Cmd+Shift+E); sibling `.summary.md`
 - [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
 - [ ] Export image (Ctrl/Cmd+Shift+B) — PNG or JPEG, current page, range, or all pages
-- [ ] Optimize, password-protect export, and print
+- [ ] Optimize, password-protect export, decrypt to `_decrypted.pdf`, and print
 - [ ] Open an encrypted `_protected.pdf` with password prompt
 
 ## Platforms
