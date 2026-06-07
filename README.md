@@ -1,6 +1,6 @@
-# PDF Editor MVP
+# PDF-Panda
 
-A high-performance, cross-platform PDF editor built with Rust and Tauri.
+PDF-Panda is a high-performance, cross-platform PDF editor built with Rust and Tauri.
 
 ## Features (MVP)
 * Open PDFs via a native file dialog

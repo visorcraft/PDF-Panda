@@ -1,6 +1,6 @@
-# Implementation Plan - PDF Editor (MVP)
+# Implementation Plan - PDF-Panda (MVP)
 
-This document outlines the phased approach for developing the high-performance, cross-platform PDF editor.
+This document outlines the phased approach for developing PDF-Panda, the high-performance, cross-platform PDF editor.
 
 **Full Tech Stack:**
 * **Backend Language:** Rust (Bleeding edge)
@@ -85,15 +85,16 @@ and verified:
 
 | Area | Implementation | Verified by |
 | --- | --- | --- |
-| Open PDF | In-app path modal with built-in PDF browser (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | Real-PDF smoke test with `Disability_Brochure.pdf` |
+| Open PDF | In-app path modal with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | Real-PDF smoke test with `Disability_Brochure.pdf`, UI validation |
+| Close PDF | Toolbar close action clears current document state and generated object URLs | UI validation |
 | View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
-| Zoom | 25%–300%, CSS-scaled (overlays stay aligned) | Manual |
+| Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder | `move_page_reorders` test |
-| Delete page | Toolbar button → `delete_page` (keeps `/Count`) | `delete_page_reduces_pages_and_fixes_count` |
+| Delete page | Page-specific confirmation modal → `delete_page` (keeps `/Count`) | `delete_page_reduces_pages_and_fixes_count`, UI validation |
 | Rotate page | Toolbar button → `rotate_page` (90° steps) | `rotate_page_accumulates_in_90_steps` |
 | Insert PDF | Modal w/ source + range + position | `insert_pdf_adds_pages_at_index` |
 | Split PDF | Ranges → separate files, orphans pruned | `split_pdf_creates_separate_files` |
-| Markdown | PDF/Markdown view toggle, PDFium text extraction, sibling `.md` auto-save with overwrite conflict detection | `write_markdown_file_*`, ignored `render_real_pdf_smoke` |
+| Markdown | PDF/Markdown view toggle, PDFium text extraction with heuristic headings, TOC/table, and column-table formatting; sibling `.md` auto-save with overwrite conflict detection | `write_markdown_file_*`, Markdown formatter tests, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
 | Print | Renders all pages → native print dialog (`window.print()`) | Manual |
 | Highlight | Drag to highlight, persisted + read back | `highlight_add_and_read_back` |
@@ -108,8 +109,10 @@ and verified:
 
 **Known limitations (documented, not defects):**
 - Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), saves
-  beside the open PDF as `<pdf-name>.md`, and groups plain text by page; pages
-  with no text layer at all are marked `_(no extractable text on this page)_`.
+  beside the open PDF as `<pdf-name>.md`, and reconstructs headings/tables from
+  text geometry heuristics. It does not extract images, OCR scanned pages, or use
+  tagged-PDF semantics; pages with no text layer are marked
+  `_(no extractable text on this page)_`.
 - Page-tree edits assume a flat page tree (the common case).
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).

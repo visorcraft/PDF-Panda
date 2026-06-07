@@ -1,11 +1,21 @@
-# AGENTS.md — PDF Editor
+# AGENTS.md — PDF-Panda
+
+## Agent Working Style
+
+- Be concise. No long explanations. Don't restate the plan unless it changed.
+- Never scan `node_modules`, `.venv`, `dist`, `build`, log/archive dirs, or generated files.
+- Cap output when searching or reading files. Default to limits, e.g.:
+  - `head -n 100` / `tail -n 100`
+  - `grep -n "pattern" file | head`
+  - `find . -type f | head -n 200`
+  - `python script.py --limit 50`
 
 Context and conventions for AI agents working in this repo. **Read this before
 making changes.**
 
 ## What this is
 
-A cross-platform desktop PDF editor (MVP). Tauri 2 backend (Rust) + React/
+A cross-platform desktop PDF editor named PDF-Panda (MVP). Tauri 2 backend (Rust) + React/
 TypeScript frontend. Page management, viewing, annotation, Markdown conversion,
 and optimized export. GPL v3. Remote: `visorcraft/PDF-Panda`. Current tag:
 `v0.1.1`.
@@ -43,7 +53,7 @@ Rendering needs a **standard PDFium build** (the C `FPDF_*` API).
 **Always use the Tauri CLI, never plain `cargo`:**
 
 - Dev: `npm run tauri dev`
-- Binary only: `npx tauri build --no-bundle` → `src-tauri/target/release/pdf-editor`
+- Binary only: `npx tauri build --no-bundle` → `src-tauri/target/release/pdf-panda`
 - Packages: `npx tauri build` → deb/rpm/appimage (AppImage needs `appimagetool`)
 
 ⚠️ **Plain `cargo build --release` produces a DEV-MODE binary** that tries to load
@@ -65,7 +75,7 @@ Run from `src-tauri/` unless noted:
 
 - `cargo test` — unit tests for every lopdf-based command (no PDFium needed).
 - Ignored end-to-end smoke test (needs PDFium + a file):
-  `PDF_EDITOR_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
+  `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
   This smoke test covers render → thumbnails → Markdown extraction → render
   page 2 after Markdown, which guards the Markdown-to-PDF transition path.
 - `cargo clippy --all-targets` (CI sets `RUSTFLAGS=-Dwarnings`)
@@ -95,14 +105,17 @@ and the default test suite don't need it.
 
 ## Current status (accurate)
 
-**Working & verified:** open (in-app path modal + built-in PDF browser), view + zoom (25–400%) + thumbnails,
-prev/next + mouse-wheel page-turn at scroll boundaries, editable page/zoom fields,
-fixed (non-scrolling) toolbar, drag-reorder, delete, rotate, insert, split,
-optimize (metadata strip + image recompress + prune + stream compress), print
-(native print dialog via `window.print()`), highlight (click-to-start →
-click-to-finish, persists, click-an-existing-highlight to remove), PDF/Markdown
-view toggle with sibling `.md` auto-save and overwrite confirmation, Markdown
-conversion (PDFium text extraction — decodes CID/Type0 fonts).
+**Working & verified:** open (in-app path modal + built-in PDF browser, Recently Opened list,
+browser starts in the last opened-file directory), close current PDF, view + zoom
+(25–400%) + thumbnails, prev/next + mouse-wheel page-turn at scroll boundaries,
+editable page/zoom fields, fixed (non-scrolling) toolbar, drag-reorder, delete
+with page-specific confirmation, rotate, insert, split, optimize (metadata strip
++ image recompress + prune + stream compress), print (native print dialog via
+`window.print()`), highlight (click-to-start → click-to-finish, persists,
+click-an-existing-highlight to remove), PDF/Markdown view toggle with sibling
+`.md` auto-save and overwrite confirmation, Markdown conversion (PDFium text
+extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and
+column-table formatting).
 
 **Crash notes from v0.1.1 work:** native PDF file dialogs were removed after the
 Open PDF dialog path froze on the target Linux/Wayland stack. Thumbnail clicks
@@ -111,8 +124,8 @@ page; the UI currently defers that render by animation frames to avoid racing
 the WebKitGTK view transition.
 
 **Known gaps / future work:**
-- Markdown output is plain text grouped by `## Page N` — no heading/bold/list
-  structure, no images.
+- Markdown output is heuristic layout reconstruction from PDF text geometry; it
+  does not yet extract images, OCR scanned pages, or use tagged-PDF semantics.
 - Markdown always saves beside the open PDF as `<pdf-name>.md`; there is no custom
   destination picker yet.
 - Native PDF file dialogs are intentionally avoided on the current Linux/Wayland

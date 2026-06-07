@@ -1,5 +1,5 @@
 [package]
-name = "pdf-editor"
+name = "pdf-panda"
 version = "0.1.1"
 description = "A high-performance PDF editor"
 edition = "2021"

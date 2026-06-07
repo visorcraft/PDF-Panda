@@ -4,6 +4,8 @@
   "description": "Capabilities for the main application window.",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-destroy"
   ]
 }

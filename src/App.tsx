@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -14,6 +15,10 @@ const ZOOM_STEP = 0.25;
 // Cooldown (ms) between wheel-driven page changes so one scroll gesture / inertia
 // doesn't skip several pages at once.
 const WHEEL_NAV_COOLDOWN = 350;
+
+const RECENT_PDFS_KEY = 'pdf-panda:recent-pdfs';
+const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
+const RECENT_PDF_LIMIT = 8;
 
 interface AnnotationData {
   subtype: string;
@@ -46,8 +51,65 @@ interface PdfBrowserListing {
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
+const readStoredString = (key: string): string => {
+  try {
+    return window.localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+};
+
+const readStoredStringArray = (key: string): string[] => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredString = (key: string, value: string) => {
+  try {
+    if (value) window.localStorage.setItem(key, value);
+  } catch {
+    // localStorage can be unavailable in restricted webviews; persistence is optional.
+  }
+};
+
+const writeStoredStringArray = (key: string, value: string[]) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // localStorage can be unavailable in restricted webviews; persistence is optional.
+  }
+};
+
+const directoryFromPath = (path: string): string => {
+  const trimmed = path.trim();
+  const slash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  return slash > 0 ? trimmed.slice(0, slash) : '';
+};
+
+const fileNameFromPath = (path: string): string => {
+  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return slash >= 0 ? path.slice(slash + 1) : path;
+};
+
 function App() {
-  const [filePath, setFilePath] = useState<string>('');
+  const [filePath, setFilePath] = useState<string>(''); // working-copy path; all backend ops target this
+  const [originalPath, setOriginalPath] = useState<string>(''); // user's real file (display / recents / Save target)
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+  const isDirtyRef = useRef(false);
+  const pendingNavRef = useRef<null | (() => void | Promise<void>)>(null);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
+  const [saveAsPath, setSaveAsPath] = useState<string>('');
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const historyRef = useRef<string[]>([]); // snapshot paths; historyRef[histIdx] == current working state
+  const histIdxRef = useRef(0);
+  const savedIdxRef = useRef(0); // history index matching the last saved/opened state
+  const filePathRef = useRef('');
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [imageSrc, setImageSrc] = useState<string>('');
@@ -85,10 +147,14 @@ function App() {
   // Modals
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [openFilePath, setOpenFilePath] = useState<string>('');
+  const [recentPdfs, setRecentPdfs] = useState<string[]>(() => readStoredStringArray(RECENT_PDFS_KEY));
+  const [lastBrowserDir, setLastBrowserDir] = useState<string>(() => readStoredString(LAST_BROWSER_DIR_KEY));
   const [showBrowserModal, setShowBrowserModal] = useState(false);
   const [browserTarget, setBrowserTarget] = useState<PdfBrowserTarget>('open');
   const [browserListing, setBrowserListing] = useState<PdfBrowserListing | null>(null);
   const [browserPathInput, setBrowserPathInput] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePageInput, setDeletePageInput] = useState('1');
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitRanges, setSplitRanges] = useState<string>('');
   const [showInsertModal, setShowInsertModal] = useState(false);
@@ -96,16 +162,107 @@ function App() {
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
   const [insertStartPage, setInsertStartPage] = useState<number>(0);
   const [insertEndPage, setInsertEndPage] = useState<number>(0);
+  const [insertSourcePageCount, setInsertSourcePageCount] = useState<number | null>(null);
+
+  // When a source PDF is chosen for Insert, load *its* page count so the From/To
+  // range reflects the source document (not the currently open one) and defaults
+  // to inserting the whole file.
+  useEffect(() => {
+    if (!insertFilePath) {
+      setInsertSourcePageCount(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const count = await invoke<number>('get_pdf_page_count', { path: insertFilePath });
+        if (cancelled) return;
+        setInsertSourcePageCount(count);
+        setInsertStartPage(0);
+        setInsertEndPage(Math.max(0, count - 1));
+      } catch {
+        if (!cancelled) setInsertSourcePageCount(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [insertFilePath]);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  useEffect(() => { filePathRef.current = filePath; }, [filePath]);
+
+  const refreshUndoRedoState = useCallback(() => {
+    setCanUndo(histIdxRef.current > 0);
+    setCanRedo(histIdxRef.current < historyRef.current.length - 1);
+    setIsDirty(histIdxRef.current !== savedIdxRef.current);
+  }, []);
+
+  // Snapshot the working copy into the undo history after an edit.
+  const recordHistory = useCallback(async () => {
+    const working = filePathRef.current;
+    if (!working) return;
+    try {
+      const snapshot = await invoke<string>('snapshot_pdf', { source: working });
+      // Drop any redo branch we're overwriting.
+      historyRef.current.slice(histIdxRef.current + 1).forEach((p) => {
+        void invoke('discard_working_copy', { working: p }).catch(() => {});
+      });
+      historyRef.current = historyRef.current.slice(0, histIdxRef.current + 1);
+      historyRef.current.push(snapshot);
+      histIdxRef.current = historyRef.current.length - 1;
+      refreshUndoRedoState();
+    } catch {
+      /* history is best-effort */
+    }
+  }, [refreshUndoRedoState]);
+
   const markPdfEdited = useCallback(() => {
     setPdfRevision((revision) => revision + 1);
     setViewMode('pdf');
+    setIsDirty(true);
+    void recordHistory();
+  }, [recordHistory]);
+
+  // Mirror dirty state into a ref + reflect it in the window title (the quit
+  // handler reads the ref so it isn't stale).
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+    const name = originalPath ? (originalPath.split('/').pop() ?? '') : '';
+    const title = name ? `${isDirty ? '• ' : ''}${name} — PDF-Panda` : 'PDF-Panda';
+    void getCurrentWindow().setTitle(title);
+  }, [isDirty, originalPath]);
+
+  // Intercept window close (quit) so unsaved edits prompt first.
+  useEffect(() => {
+    const w = getCurrentWindow();
+    const unlisten = w.onCloseRequested((event) => {
+      if (isDirtyRef.current) {
+        event.preventDefault();
+        pendingNavRef.current = () => w.destroy();
+        setShowUnsavedModal(true);
+      }
+    });
+    return () => { void unlisten.then((f) => f()); };
   }, []);
+
+  const rememberBrowserDirectory = useCallback((path: string) => {
+    const dir = directoryFromPath(path);
+    if (!dir) return;
+    setLastBrowserDir(dir);
+    writeStoredString(LAST_BROWSER_DIR_KEY, dir);
+  }, []);
+
+  const rememberOpenedPdf = useCallback((path: string) => {
+    rememberBrowserDirectory(path);
+    setRecentPdfs((prev) => {
+      const next = [path, ...prev.filter((item) => item !== path)].slice(0, RECENT_PDF_LIMIT);
+      writeStoredStringArray(RECENT_PDFS_KEY, next);
+      return next;
+    });
+  }, [rememberBrowserDirectory]);
 
   const withLoading = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
     setLoading(true);
@@ -125,8 +282,20 @@ function App() {
 
   const loadPdfFromPath = async (path: string) => {
     const loaded = await withLoading(async () => {
-      const count = await invoke<number>('get_pdf_page_count', { path });
-      setFilePath(path);
+      const previousWorking = filePath;
+      const working = await invoke<string>('open_working_copy', { original: path });
+      const count = await invoke<number>('get_pdf_page_count', { path: working });
+      setOriginalPath(path);
+      setFilePath(working);
+      setIsDirty(false);
+      // Reset undo/redo history with the freshly-opened state as the baseline.
+      historyRef.current.forEach((p) => void invoke('discard_working_copy', { working: p }).catch(() => {}));
+      const baseline = await invoke<string>('snapshot_pdf', { source: working });
+      historyRef.current = [baseline];
+      histIdxRef.current = 0;
+      savedIdxRef.current = 0;
+      setCanUndo(false);
+      setCanRedo(false);
       setViewMode('pdf');
       setMarkdownText('');
       setMarkdownPath('');
@@ -136,21 +305,29 @@ function App() {
       setPageCount(count);
       setCurrentPage(0);
       setZoom(1);
-      await renderPage(path, 0);
-      await loadThumbnails(path);
+      await renderPage(working, 0);
+      await loadThumbnails(working);
+      rememberOpenedPdf(path);
+      if (previousWorking) void invoke('discard_working_copy', { working: previousWorking }).catch(() => {});
       return true;
     });
     return loaded === true;
   };
 
-  const openPdf = () => {
-    setOpenFilePath(filePath);
+  const openPdf = () => guardUnsaved(() => {
+    setOpenFilePath(originalPath);
     setShowOpenModal(true);
-  };
+  });
 
   const handleOpenPdfPath = async () => {
     const path = openFilePath.trim();
     if (!path) return;
+    const loaded = await loadPdfFromPath(path);
+    if (loaded) setShowOpenModal(false);
+  };
+
+  const handleOpenRecentPdf = async (path: string) => {
+    setOpenFilePath(path);
     const loaded = await loadPdfFromPath(path);
     if (loaded) setShowOpenModal(false);
   };
@@ -168,8 +345,10 @@ function App() {
   const openPdfBrowser = (target: PdfBrowserTarget) => {
     setBrowserTarget(target);
     setShowBrowserModal(true);
-    const startPath = target === 'open' ? openFilePath : insertFilePath;
-    void loadPdfBrowser(startPath || filePath);
+    const startPath = target === 'open'
+      ? lastBrowserDir || directoryFromPath(openFilePath) || directoryFromPath(originalPath)
+      : directoryFromPath(insertFilePath) || lastBrowserDir || directoryFromPath(originalPath);
+    void loadPdfBrowser(startPath);
   };
 
   const commitBrowserPath = () => {
@@ -189,6 +368,7 @@ function App() {
       setShowOpenModal(false);
     } else {
       setInsertFilePath(entry.path);
+      rememberBrowserDirectory(entry.path);
     }
     setShowBrowserModal(false);
   };
@@ -254,22 +434,36 @@ function App() {
     }
   };
 
+  const openDeleteModal = () => {
+    if (!filePath || pageCount === null) return;
+    setDeletePageInput(String(currentPage + 1));
+    setShowDeleteModal(true);
+  };
+
   const handleDeletePage = async () => {
     if (!filePath || pageCount === null) return;
     if (pageCount <= 1) {
       showToast('Cannot delete the only page', 'error');
       return;
     }
+    const pageNumber = parseInt(deletePageInput, 10);
+    if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > pageCount) {
+      showToast(`Enter a page from 1 to ${pageCount}`, 'error');
+      setDeletePageInput(String(currentPage + 1));
+      return;
+    }
+    const targetPage = pageNumber - 1;
     await withLoading(async () => {
-      await invoke('delete_page', { path: filePath, pageIndex: currentPage });
+      await invoke('delete_page', { path: filePath, pageIndex: targetPage });
       markPdfEdited();
       const count = await invoke<number>('get_pdf_page_count', { path: filePath });
       setPageCount(count);
-      const newPage = Math.min(currentPage, count - 1);
+      const newPage = Math.min(targetPage, count - 1);
       setCurrentPage(newPage);
       await loadThumbnails(filePath);
       await renderPage(filePath, newPage);
-      showToast('Page deleted');
+      setShowDeleteModal(false);
+      showToast(`Page ${pageNumber} deleted`);
     });
   };
 
@@ -425,6 +619,125 @@ function App() {
     setHighlightMode((m) => !m);
   };
 
+  const handleSave = async () => {
+    if (!filePath || !originalPath) return;
+    await withLoading(async () => {
+      await invoke('save_working_copy', { working: filePath, target: originalPath });
+      savedIdxRef.current = histIdxRef.current;
+      refreshUndoRedoState();
+      showToast('Saved');
+    });
+  };
+
+  const openSaveAs = () => { setSaveAsPath(originalPath); setShowSaveAsModal(true); };
+
+  const handleSaveAs = async () => {
+    const target = saveAsPath.trim();
+    if (!filePath || !target) return;
+    await withLoading(async () => {
+      await invoke('save_working_copy', { working: filePath, target });
+      setOriginalPath(target);
+      rememberOpenedPdf(target);
+      savedIdxRef.current = histIdxRef.current;
+      refreshUndoRedoState();
+      setShowSaveAsModal(false);
+      showToast(`Saved to ${target}`);
+    });
+  };
+
+  // Run `action`, but if there are unsaved edits prompt Save/Discard/Cancel first.
+  const guardUnsaved = (action: () => void | Promise<void>) => {
+    if (isDirty) {
+      pendingNavRef.current = action;
+      setShowUnsavedModal(true);
+    } else {
+      void action();
+    }
+  };
+
+  const resolveUnsaved = async (choice: 'save' | 'discard' | 'cancel') => {
+    if (choice === 'cancel') { pendingNavRef.current = null; setShowUnsavedModal(false); return; }
+    if (choice === 'save') await handleSave();
+    else setIsDirty(false);
+    setShowUnsavedModal(false);
+    const action = pendingNavRef.current;
+    pendingNavRef.current = null;
+    if (action) await action();
+  };
+
+  const refreshAfterWorkingChange = async () => {
+    const working = filePath;
+    const count = await invoke<number>('get_pdf_page_count', { path: working });
+    setPageCount(count);
+    const page = Math.max(0, Math.min(currentPage, count - 1));
+    setCurrentPage(page);
+    setViewMode('pdf');
+    setMarkdownRevision(null);
+    setPdfRevision((r) => r + 1);
+    cancelDrawing();
+    await renderPage(working, page);
+    await loadThumbnails(working);
+  };
+
+  const undo = async () => {
+    if (histIdxRef.current <= 0) return;
+    await withLoading(async () => {
+      histIdxRef.current -= 1;
+      await invoke('save_working_copy', { working: historyRef.current[histIdxRef.current], target: filePath });
+      await refreshAfterWorkingChange();
+      refreshUndoRedoState();
+    });
+  };
+
+  const redo = async () => {
+    if (histIdxRef.current >= historyRef.current.length - 1) return;
+    await withLoading(async () => {
+      histIdxRef.current += 1;
+      await invoke('save_working_copy', { working: historyRef.current[histIdxRef.current], target: filePath });
+      await refreshAfterWorkingChange();
+      refreshUndoRedoState();
+    });
+  };
+
+  const closePdf = () => {
+    if (filePath) void invoke('discard_working_copy', { working: filePath }).catch(() => {});
+    historyRef.current.forEach((p) => void invoke('discard_working_copy', { working: p }).catch(() => {}));
+    historyRef.current = [];
+    histIdxRef.current = 0;
+    savedIdxRef.current = 0;
+    setCanUndo(false);
+    setCanRedo(false);
+    cancelDrawing();
+    setFilePath('');
+    setOriginalPath('');
+    setIsDirty(false);
+    setPageCount(null);
+    setCurrentPage(0);
+    setPageInput('1');
+    setZoom(1);
+    setViewMode('pdf');
+    setMarkdownText('');
+    setMarkdownPath('');
+    setPdfRevision(0);
+    setMarkdownRevision(null);
+    setHighlightMode(false);
+    setAnnotations([]);
+    setShowDeleteModal(false);
+    setImageSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    setThumbnails((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return [];
+    });
+    setPrintPages((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return [];
+    });
+    showToast('PDF closed');
+  };
+
   const handleMarkdownView = async () => {
     if (!filePath) return;
     if (markdownText && markdownRevision === pdfRevision) {
@@ -568,8 +881,12 @@ function App() {
             <button onClick={openPdf} className="btn btn-active">Open PDF</button>
             {filePath && (
               <>
+                <button onClick={handleSave} className="btn" disabled={!isDirty}>{isDirty ? 'Save •' : 'Save'}</button>
+                <button onClick={openSaveAs} className="btn">Save As…</button>
+                <button onClick={undo} className="btn" disabled={!canUndo}>Undo</button>
+                <button onClick={redo} className="btn" disabled={!canRedo}>Redo</button>
                 <button onClick={handleRotatePage} className="btn">Rotate</button>
-                <button onClick={handleDeletePage} className="btn">Delete</button>
+                <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1}>Delete</button>
                 <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
                 <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
@@ -598,6 +915,7 @@ function App() {
                 >
                   {highlightMode ? 'Highlight: ON' : 'Highlight'}
                 </button>
+                <button onClick={() => guardUnsaved(closePdf)} className="btn">Close</button>
               </>
             )}
           </div>
@@ -721,9 +1039,46 @@ function App() {
             />
             <button onClick={() => openPdfBrowser('open')} className="btn">Browse…</button>
           </div>
+          {recentPdfs.length > 0 && (
+            <div className="recent-list" aria-label="Recently opened PDFs">
+              <h4>Recently Opened</h4>
+              {recentPdfs.map((path) => (
+                <button key={path} className="recent-row" onClick={() => handleOpenRecentPdf(path)}>
+                  <span className="recent-name">{fileNameFromPath(path)}</span>
+                  <span className="recent-path">{path}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="modal-actions">
             <button onClick={() => setShowOpenModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleOpenPdfPath} className="btn" disabled={!openFilePath.trim()}>Open</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && pageCount !== null && (
+        <Modal onClose={() => setShowDeleteModal(false)}>
+          <h3>Delete Page</h3>
+          <p className="modal-help">
+            Choose the page to remove. This edits the open PDF file on disk.
+          </p>
+          <label>Page to delete:</label>
+          <input
+            type="number"
+            value={deletePageInput}
+            onChange={(e) => setDeletePageInput(e.target.value)}
+            onKeyDown={(e) => onFieldKeyDown(e, handleDeletePage)}
+            className="modal-input"
+            min="1"
+            max={pageCount}
+            autoFocus
+          />
+          <p className="muted">Current page: {currentPage + 1} / {pageCount}</p>
+          <div className="modal-actions">
+            <button onClick={() => setShowDeleteModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={handleDeletePage} className="btn btn-danger">Delete page</button>
           </div>
         </Modal>
       )}
@@ -752,34 +1107,72 @@ function App() {
       {showInsertModal && (
         <Modal onClose={() => { setShowInsertModal(false); setInsertFilePath(''); }}>
           <h3>Insert PDF</h3>
-          <label>Source PDF to insert:</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={insertFilePath}
-              onChange={(e) => setInsertFilePath(e.target.value)}
-              className="modal-input"
-              placeholder="/path/to/source.pdf"
-            />
-            <button onClick={() => openPdfBrowser('insert')} className="btn">Browse…</button>
-          </div>
           <div className="insert-grid">
+            <div className="insert-source">
+              <label>Source PDF to insert:</label>
+              <div className="modal-path-row">
+                <input
+                  type="text"
+                  value={insertFilePath}
+                  onChange={(e) => setInsertFilePath(e.target.value)}
+                  className="modal-input"
+                  placeholder="/path/to/source.pdf"
+                />
+                <button onClick={() => openPdfBrowser('insert')} className="btn">Browse…</button>
+              </div>
+            </div>
             <label>
-              At page (1-{(pageCount ?? 0) + 1}):
-              <input type="number" value={insertAtPage + 1} onChange={(e) => setInsertAtPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" className="modal-input" />
+              Insert at page (1-{(pageCount ?? 0) + 1}) of this document:
+              <input type="number" value={insertAtPage + 1} onChange={(e) => setInsertAtPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" />
             </label>
             <label>
-              From (1-{pageCount ?? 0}):
-              <input type="number" value={insertStartPage + 1} onChange={(e) => setInsertStartPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" className="modal-input" />
+              From page {insertSourcePageCount ? `(1-${insertSourcePageCount})` : ''} of source:
+              <input type="number" value={insertStartPage + 1} onChange={(e) => setInsertStartPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={insertSourcePageCount ?? undefined} disabled={!insertSourcePageCount} className="modal-input" />
             </label>
             <label>
-              To (1-{pageCount ?? 0}):
-              <input type="number" value={insertEndPage + 1} onChange={(e) => setInsertEndPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" className="modal-input" />
+              To page {insertSourcePageCount ? `(1-${insertSourcePageCount})` : ''} of source:
+              <input type="number" value={insertEndPage + 1} onChange={(e) => setInsertEndPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={insertSourcePageCount ?? undefined} disabled={!insertSourcePageCount} className="modal-input" />
             </label>
           </div>
+          {insertSourcePageCount ? (
+            <p className="modal-help">
+              Inserts page{insertStartPage === insertEndPage ? '' : 's'} {insertStartPage + 1}
+              {insertStartPage === insertEndPage ? '' : `–${insertEndPage + 1}`} of the source ({insertSourcePageCount} pages) at position {insertAtPage + 1} of this document.
+            </p>
+          ) : null}
           <div className="modal-actions">
             <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {showSaveAsModal && (
+        <Modal onClose={() => setShowSaveAsModal(false)}>
+          <h3>Save As</h3>
+          <label>Save to path:</label>
+          <input
+            type="text"
+            value={saveAsPath}
+            onChange={(e) => setSaveAsPath(e.target.value)}
+            className="modal-input"
+            placeholder="/path/to/output.pdf"
+          />
+          <div className="modal-actions">
+            <button onClick={() => setShowSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={handleSaveAs} className="btn" disabled={!saveAsPath.trim()}>Save</button>
+          </div>
+        </Modal>
+      )}
+
+      {showUnsavedModal && (
+        <Modal onClose={() => resolveUnsaved('cancel')}>
+          <h3>Unsaved changes</h3>
+          <p className="modal-help">You have unsaved edits to this document. Save them before continuing?</p>
+          <div className="modal-actions">
+            <button onClick={() => resolveUnsaved('cancel')} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => resolveUnsaved('discard')} className="btn">Discard</button>
+            <button onClick={() => resolveUnsaved('save')} className="btn btn-active">Save</button>
           </div>
         </Modal>
       )}
