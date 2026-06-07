@@ -1,102 +1,99 @@
-# PDF Panda
+<p align="center">
+  <img src="src/assets/panda_face.png" alt="PDF-Panda logo" width="200" />
+</p>
 
-A fast, cross-platform PDF editor built with **Rust** and **Tauri**. Open a document, rearrange pages, annotate, sign, export to Markdown, and save optimized copies — without leaving a lightweight native app.
+<h1 align="center">PDF-Panda</h1>
 
-**Current release:** v0.2.0 · **License:** [GPL v3](LICENSE)
+<p align="center">
+  <a href="https://github.com/visorcraft/PDF-Panda/releases/latest"><img src="https://img.shields.io/github/v/release/visorcraft/PDF-Panda?sort=semver" alt="Latest release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-blue.svg" alt="License: GPL-3.0-only" /></a>
+  <img src="https://img.shields.io/badge/built%20with-Rust-000000?logo=rust&amp;logoColor=white" alt="Built with Rust" />
+  <img src="https://img.shields.io/badge/Tauri%202-FFC131?logo=tauri&amp;logoColor=white" alt="Tauri 2" />
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-333333?logo=linux&amp;logoColor=white" alt="Platform: Linux, macOS, Windows" />
+</p>
 
-## Why PDF Panda?
+<p align="center">
+  <b>The friendly, fast, cross-platform PDF editor.</b><br />
+  Open a document, rearrange pages, annotate, sign, and export to Markdown — all in one lightweight native app.
+</p>
 
-PDF Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, sign, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools. A WebdriverIO smoke suite covers launch, open-via-path, and edit flows (`scripts/e2e-test.sh`).
+---
 
-Runs on **Linux**, **macOS**, and **Windows**.
+## Screenshots
 
-## Features
+> _Placeholder — drop a real capture here._ The app shows a fixed toolbar, a
+> scrollable page viewer with 25–400% zoom, a thumbnail + bookmarks sidebar, and
+> tool overlays for highlights, notes, shapes, stamps, and forms.
 
-### Open & navigate
-- In-app path entry, **Recently Opened** list, built-in PDF browser, and **native open/save dialogs** on macOS/Windows (Linux X11 by default; Wayland: set `PDF_PANDA_NATIVE_DIALOGS=1`)
-- **Close** current document (Ctrl/Cmd+W) with unsaved-changes prompt
+---
+
+## What is PDF-Panda?
+
+PDF-Panda is a desktop PDF editor for the everyday workflow: **view, reorganize,
+annotate, sign, and export** — without firing up a heavyweight suite or uploading
+your files to someone else's server. It's a small, snappy native app that gets out
+of your way.
+
+Three things we care about:
+
+- **Native & cross-platform** — one lightweight [Tauri 2](https://v2.tauri.app/) app that feels at home on **Linux**, **macOS**, and **Windows**.
+- **Non-destructive** — every edit lands in a working copy, so your original file stays untouched until you choose to save. Undo/redo has your back (50 steps).
+- **Offline & private** — no cloud, no accounts, no telemetry. Your documents never leave your machine.
+
+### What it covers today
+
+**View & navigate**
 - Smooth viewer with **25%–400%** zoom and a thumbnail sidebar
-- Page navigation via toolbar, thumbnails, keyboard, mouse wheel at scroll edges, and **Bookmarks** outline panel
+- Page navigation via toolbar, thumbnails, keyboard, mouse wheel at scroll edges, and a clickable **Bookmarks** outline
+- Open via in-app path entry, a **Recently Opened** list, a built-in PDF browser, or **native open/save dialogs**
 
-### Page editing
+**Organize pages**
 - **Delete**, **rotate** (90° steps), and **drag-and-drop reorder**
-- **Insert** pages from another PDF (range + position; merges AcroForm fields, dedups fonts)
-- **Split** into multiple files by page ranges
-- **Metadata** — view and edit title, author, subject, keywords, creator, and producer
-- **In-PDF text** — place Helvetica text blocks in page content (`E`); edit or remove via the **Edits** modal
-- **Vector rectangles** — draw stroke rectangles in page content (`G`); manage via **Edits** modal
+- **Insert** pages from another PDF (range + position; merges form fields, dedups fonts)
+- **Split** into multiple files by page range
+- View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
-### Security
-- **Digital signatures** — PAdES signing with a PKCS#12 certificate (.p12/.pfx); list and verify signatures in the **Signatures** sidebar panel (Ctrl/Cmd+Shift+U)
-- **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
+**Annotate & mark up**
+- **Highlights** (`H`), **sticky notes** (`N`), **freehand ink** (`D`), **shapes** (`S` — rectangle/ellipse/line)
+- **Stamps** (`T` — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED, plus image stamps) and **redaction** boxes (`X`)
+- **In-PDF text blocks** (`E`) and **vector rectangles** (`G`), embedded **images** (`I`) — all persisted in the PDF
 
-### Save & history
-- Non-destructive **working-copy** editing
-- **Save** / **Save As** with unsaved-changes prompts; **Save As** opens a native save dialog when available
-- **Undo** / **Redo** (50-entry history; compact deltas for files &gt; 32 MB)
+**Forms & signatures**
+- **Interactive forms** (`F`) — list, fill, and create text / checkbox / choice / radio fields
+- **PAdES digital signatures** — sign with a PKCS#12 certificate (`.p12`/`.pfx`); list and verify in the Signatures panel
+- **Password protect** — export an encrypted copy and open encrypted PDFs with a prompt
 
-### Annotations
-- **Highlights** — draw rectangles, persisted in the PDF (`H`)
-- **Freehand drawing** — ink strokes on the page, persisted in the PDF (`D`)
-- **Shape outlines** — rectangle, ellipse, and line annotations (`S`)
-- **Stamps** — text and image preset stamps (`T`) — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED
-- **Redaction** — black-box redaction annotations persisted in the PDF (`X`)
-- **Page image insert** — embed PNG/JPEG images into page content (`I`)
-- **Form fields** — list, fill, and create text/checkbox/choice/radio fields (`F`)
-- **Sticky notes** — place text notes on a page (`N`)
+**Convert & export**
+- **PDF → Markdown** with tagged-PDF structure (headings, lists, tables), heuristic layout, and a **Tesseract OCR** fallback for scanned pages
+- **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
+- **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
+- **Print** via the system print dialog
 
-### Conversion & export
-- **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates; save as sibling `.summary.md` (Ctrl/Cmd+Shift+E)
-- **PDF ↔ Markdown** view toggle (Ctrl/Cmd+Shift+M)
-- **PDF → Markdown** with tagged-PDF structure (`/StructTreeRoot` headings, lists, tables) plus heuristic PDFium layout and TOC formatting; untagged pages use PDFium/OCR fallback
-- **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX) to a sibling `_assets` folder; **Tesseract OCR** for scanned pages without a text layer (`tesseract-ocr` on PATH, optional `PDF_PANDA_OCR_LANG`)
-- **Optimize** — strip metadata, recompress images, prune unused objects (Ctrl/Cmd+Shift+O)
-- **Print** via the system print dialog (Ctrl/Cmd+P)
+---
 
-## Keyboard shortcuts
-
-| Shortcut | Action |
-| --- | --- |
-| Ctrl/Cmd+O | Open PDF |
-| Ctrl/Cmd+S | Save (when dirty) |
-| Ctrl/Cmd+Shift+S | Save As |
-| Ctrl/Cmd+W | Close PDF |
-| Ctrl/Cmd+Z | Undo |
-| Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z | Redo |
-| Ctrl/Cmd+R | Rotate page |
-| Ctrl/Cmd+P | Print |
-| Ctrl/Cmd+Shift+M | PDF ↔ Markdown |
-| Ctrl/Cmd+Shift+O | Optimize |
-| Ctrl/Cmd+Shift+E | Summarize |
-| Ctrl/Cmd+Shift+U | Digital sign |
-| Ctrl/Cmd+Shift+I | Insert PDF |
-| Ctrl/Cmd+Shift+K | Split PDF |
-| Ctrl/Cmd+0 | Reset zoom to 100% |
-| Ctrl/Cmd +/− | Zoom in/out |
-| H / N / D / S / T / X / E / G / I / F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
-| Delete | Delete page (with confirmation) |
-| Escape | Exit active tool or dismiss modals |
-
-## Quick start
+## Setup (build from source)
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 24+
 - [Rust](https://rustup.rs/) (edition 2021)
-- Linux: GTK/WebKit dev packages (see CI workflow for the apt list)
-- Linux (optional): `mold` linker and `sccache` (configured in `.cargo/config.toml`)
+- **Linux:** GTK/WebKit dev packages (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the exact apt list)
+- **Linux (optional):** `mold` linker and `sccache` for faster builds (configured in `.cargo/config.toml`)
 
-### PDFium (required for rendering)
+### Fetch PDFium (required for rendering)
 
-Rendering uses [`pdfium-render`](https://crates.io/crates/pdfium-render) and a standard PDFium build (`FPDF_*` API). Fetch the prebuilt library before running:
+Rendering uses [`pdfium-render`](https://crates.io/crates/pdfium-render) against a
+standard PDFium build (the C `FPDF_*` API). Fetch the prebuilt library first:
 
 ```sh
 scripts/fetch-pdfium.sh
 ```
 
-This installs into `src-tauri/vendor/pdfium/` (gitignored). The app resolves PDFium via `PDFIUM_LIB_PATH`, next to the executable, the bundled resource path, `src-tauri/vendor/pdfium/`, then the system library.
+This installs into `src-tauri/vendor/pdfium/` (gitignored). The app also resolves
+PDFium via `PDFIUM_LIB_PATH`, next to the executable, the bundled resource path,
+then the system library.
 
-> **Note:** Distro packages such as `libdeepin-pdfium` expose a different C++ API and are **not** compatible.
+> **Note:** distro packages such as `libdeepin-pdfium` expose a *different* C++ API and are **not** compatible.
 
 ### Run in development
 
@@ -105,18 +102,54 @@ npm install
 npm run tauri dev
 ```
 
-Always use the **Tauri CLI** for dev and release builds — plain `cargo build --release` produces a dev-mode binary that expects the Vite dev server.
+> Always use the **Tauri CLI** for dev and release builds — a plain
+> `cargo build --release` produces a dev-mode binary that expects the Vite dev
+> server.
 
-### Build a release binary
+---
 
-```sh
-npx tauri build --no-bundle
-# → src-tauri/target/release/pdf-panda
-```
+## Install
 
-Packaging helpers live under `scripts/` (`build-linux-packages.sh`, `build-appimage.sh`, `build-macos.sh`, `build-windows.sh`).
+Grab a prebuilt package from the [**Releases**](https://github.com/visorcraft/PDF-Panda/releases/latest)
+page, or build your own with the helpers under [`scripts/`](scripts/):
 
-## Environment variables
+| Target | Command |
+| --- | --- |
+| Linux — `.deb` / `.rpm` | `scripts/build-linux-packages.sh` |
+| Linux — AppImage | `scripts/build-appimage.sh` (needs `appimagetool`) |
+| macOS — `.app` / `.dmg` | `scripts/build-macos.sh` |
+| Windows — `.msi` / `.exe` | `scripts/build-windows.sh` |
+| Any — standalone binary | `npx tauri build --no-bundle` → `src-tauri/target/release/pdf-panda` |
+
+Run the GitHub Actions [release workflow](.github/workflows/release.yml) manually
+(**Actions → Release → Run workflow**) to build and publish the artifacts above
+(unsigned by default; optional macOS/Windows **package** signing via repository
+secrets — see [`docs/SIGNING.md`](docs/SIGNING.md)).
+
+---
+
+## Tweak
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| Ctrl/Cmd+O | Open PDF |
+| Ctrl/Cmd+S / Ctrl/Cmd+Shift+S | Save / Save As |
+| Ctrl/Cmd+W | Close PDF |
+| Ctrl/Cmd+Z / Ctrl/Cmd+Y | Undo / Redo |
+| Ctrl/Cmd+R | Rotate page |
+| Ctrl/Cmd+P | Print |
+| Ctrl/Cmd+Shift+M | PDF ↔ Markdown |
+| Ctrl/Cmd+Shift+O | Optimize |
+| Ctrl/Cmd+Shift+E | Summarize |
+| Ctrl/Cmd+Shift+U | Digital sign |
+| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+K | Insert / Split PDF |
+| Ctrl/Cmd+0, Ctrl/Cmd +/− | Reset / change zoom |
+| H N D S T X E G I F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
+| Delete · Escape | Delete page (confirm) · exit tool or close modal |
+
+### Environment variables
 
 | Variable | Purpose |
 | --- | --- |
@@ -124,51 +157,35 @@ Packaging helpers live under `scripts/` (`build-linux-packages.sh`, `build-appim
 | `PDF_PANDA_OCR_LANG` | Tesseract language code (default `eng`) |
 | `TESSERACT_CMD` | Path to the `tesseract` executable |
 | `PDF_PANDA_NATIVE_DIALOGS` | Set to `1` to enable native file dialogs on Linux Wayland |
-| `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | Set to `1` to disable native dialogs and use in-app path entry only |
+| `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | Set to `1` to force in-app path entry only |
 | `PDF_PANDA_TEST_PDF` | PDF path for the ignored `render_real_pdf_smoke` integration test |
 
-## Tech stack
+---
 
-| Layer | Stack |
-| --- | --- |
-| Backend | Rust, [Tauri 2](https://v2.tauri.app/) |
-| Frontend | Vite 8, React 19, TypeScript 6 |
-| Render | [pdfium-render](https://crates.io/crates/pdfium-render) |
-| Structure edits | [lopdf](https://crates.io/crates/lopdf) |
-| Digital signatures | [underskrift](https://crates.io/crates/underskrift) (PAdES PKCS#12) |
-| File dialogs | [tauri-plugin-dialog](https://v2.tauri.app/plugin/dialog/) |
-| Build accel (Linux) | mold, sccache |
+## Contribute
 
-## Development
+Contributions are welcome — issues, fixes, and features alike.
 
-```sh
-scripts/smoke-test.sh               # unit tests, clippy, fmt, and tsc (CI parity)
-npm run test:e2e                    # WebdriverIO smoke (Linux; needs xvfb-run)
-```
+**Quick rules:**
 
-From `src-tauri/`: `cargo test` runs **139** unit tests (+ 3 ignored integration
-smokes that need PDFium, a sample PDF, or Tesseract).
+- Match the existing style, and keep commits focused.
+- Run the quality gates before you push: `scripts/smoke-test.sh` (Rust unit tests, `clippy`, `fmt`, `tsc`) and, on Linux, `npm run test:e2e`.
+- PDF-Panda is **GPL v3** — derivative works must stay open source under compatible terms.
 
-Optional smoke test with a real PDF and PDFium installed:
+See [`AGENTS.md`](AGENTS.md) for the full architecture notes, conventions, and
+testing details.
 
-```sh
-PDF_PANDA_TEST_PDF=/path/to/file.pdf \
-  cargo test render_real_pdf_smoke --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture
-```
+---
 
-**Status:** v0.2.x MVP, post-MVP backlog, and vNext roadmap are complete. See
-[`PLAN.md`](PLAN.md) for the full feature matrix.
+## Documentation
 
-Tagged releases (`git tag v0.2.1 && git push origin v0.2.1`) trigger the GitHub
-Actions release workflow (unsigned by default; optional macOS/Windows **package**
-signing via repository secrets). See [`docs/SIGNING.md`](docs/SIGNING.md) — that
-doc covers release artifacts, not in-PDF cryptographic signatures.  
-Manual QA checklist: [`docs/MANUAL_E2E.md`](docs/MANUAL_E2E.md).
+- [`AGENTS.md`](AGENTS.md) — architecture, tech stack, and contributor conventions
+- [`PLAN.md`](PLAN.md) — feature matrix, status, and roadmap
+- [`docs/SIGNING.md`](docs/SIGNING.md) — release-artifact code signing (macOS/Windows packages)
+- [`docs/MANUAL_E2E.md`](docs/MANUAL_E2E.md) — manual QA checklist
 
-## Contributing
+---
 
-Contributions are welcome. Match existing style, run the quality gates above, and keep commits focused. This project is GPL v3 — derivative works must remain open source under compatible terms.
+## Licence
 
-## License
-
-Copyright © VisorCraft LLC. Licensed under the [GNU General Public License v3.0](LICENSE).
+PDF-Panda is licensed under the [GNU General Public License v3.0](LICENSE). Copyright © VisorCraft LLC.
