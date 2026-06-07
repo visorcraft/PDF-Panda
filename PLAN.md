@@ -119,12 +119,13 @@ and verified:
 | Password protect | Export encrypted `<name>_protected.pdf`; open encrypted files with password prompt | `protect_pdf_*`, `pdf_is_encrypted`, `verify_pdf_password`, `open_working_copy_with_password` |
 | Summarize | Extractive overview, key points, headings, emails/URLs/dates; save sibling `.summary.md` (Ctrl/Cmd+Shift+E) | `summarize_pdf`, `save_pdf_summary`, `build_pdf_summary_*`, UI validation |
 | Page text / vector | In-PDF Helvetica text blocks and stroke rectangles via content-stream markers (`%PP-TXT` / `%PP-VEC`); place (**E**), drag rect (**G**), manage via Edits modal | `add_page_text`, `list_page_text_edits`, `update_page_text`, `remove_page_text`, `add_page_vector_rect`, `list_page_vectors`, `remove_page_vector`, `page_text_edit_roundtrip`, `page_vector_rect_roundtrip` |
+| Digital signatures | PAdES signing with PKCS#12 (.p12/.pfx); list + verify integrity/chain (Ctrl/Cmd+Shift+U); Signatures sidebar panel | `sign_pdf`, `list_pdf_signatures`, `verify_pdf_signatures`, `pdf_signature_roundtrip_with_openssl`, UI validation |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight / Notes / Draw / Shapes / Stamps / Redact | Highlights (H), notes (N), ink (D), shapes (S), stamps (T), redaction boxes (X); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_*`, `ink_stroke_*`, `square_*`, `circle_*`, `line_*`, `*_stamp_*`, `add_redaction`, `remove_redaction` |
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 130 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
+- `cargo test` — 135 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -182,7 +183,8 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] File dialogs — native open/save via `tauri-plugin-dialog` (`native_file_dialogs_enabled`; macOS/Windows + Linux X11 by default, Wayland opt-in with `PDF_PANDA_NATIVE_DIALOGS=1`)
 - [x] AI-powered tools — extractive document summarization and intelligent extraction (`summarize_pdf`, `save_pdf_summary`; emails, URLs, dates, headings)
 - [x] Advanced editing — in-PDF text blocks and vector stroke rectangles (`add_page_text` / `update_page_text` / `remove_page_text`, `add_page_vector_rect` / `remove_page_vector`; **E** / **G** shortcuts, Edits modal)
+- [x] Digital signatures — PAdES PKCS#12 signing and verification (`sign_pdf`, `list_pdf_signatures`, `verify_pdf_signatures`; **Ctrl/Cmd+Shift+U**, Signatures panel)
 
 ### vNext roadmap
 
-- **Security features:** Digital signatures.
+_No open items — v0.2.x backlog and vNext roadmap are complete._

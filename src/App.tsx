@@ -133,6 +133,36 @@ interface PageVectorEdit {
   kind: string;
 }
 
+interface PdfSignatureInfo {
+  field_name: string;
+  signer_name: string | null;
+  reason: string | null;
+  location: string | null;
+  signing_time: string | null;
+  sub_filter: string | null;
+  signed_percent: number | null;
+}
+
+interface PdfSignatureVerificationEntry {
+  field_name: string;
+  status: string;
+  signer_name: string | null;
+  signing_time: string | null;
+  integrity_ok: boolean;
+  modifications_after_signing: boolean;
+  summary: string;
+}
+
+interface PdfSignatureVerificationSummary {
+  signature_count: number;
+  valid_count: number;
+  invalid_count: number;
+  document_modified: boolean;
+  overall_valid: boolean;
+  summary: string;
+  signatures: PdfSignatureVerificationEntry[];
+}
+
 type PdfBrowserTarget = 'open' | 'insert';
 
 interface PdfBrowserEntry {
@@ -227,6 +257,22 @@ const fileNameFromPath = (path: string): string => {
 
 const PDF_DIALOG_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
 const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
+const CERT_DIALOG_FILTER = [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }];
+
+const signatureStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'valid':
+      return 'Valid (trusted)';
+    case 'valid_untrusted':
+      return 'Valid (untrusted CA)';
+    case 'invalid':
+      return 'Invalid';
+    case 'indeterminate':
+      return 'Indeterminate';
+    default:
+      return status;
+  }
+};
 
 const ensureExtension = (path: string, extension: string): string => {
   const lower = path.toLowerCase();
@@ -269,6 +315,14 @@ function App() {
   const [protectUserPassword, setProtectUserPassword] = useState('');
   const [protectUserPasswordConfirm, setProtectUserPasswordConfirm] = useState('');
   const [protectOwnerPassword, setProtectOwnerPassword] = useState('');
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [signCertPath, setSignCertPath] = useState('');
+  const [signCertPassword, setSignCertPassword] = useState('');
+  const [signReason, setSignReason] = useState('');
+  const [signLocation, setSignLocation] = useState('');
+  const [showSignaturesPanel, setShowSignaturesPanel] = useState(false);
+  const [pdfSignatures, setPdfSignatures] = useState<PdfSignatureInfo[]>([]);
+  const [signatureVerification, setSignatureVerification] = useState<PdfSignatureVerificationSummary | null>(null);
   const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [nativeDialogs, setNativeDialogs] = useState(false);
@@ -876,6 +930,25 @@ function App() {
     }
   }, [filePath]);
 
+  const loadPdfSignatures = useCallback(async (path: string = filePath) => {
+    if (!path) {
+      setPdfSignatures([]);
+      setSignatureVerification(null);
+      return;
+    }
+    try {
+      const [listed, verified] = await Promise.all([
+        invoke<PdfSignatureInfo[]>('list_pdf_signatures', { path }),
+        invoke<PdfSignatureVerificationSummary>('verify_pdf_signatures', { path, trustPemPath: null }),
+      ]);
+      setPdfSignatures(listed);
+      setSignatureVerification(verified);
+    } catch {
+      setPdfSignatures([]);
+      setSignatureVerification(null);
+    }
+  }, [filePath]);
+
   const applyFormField = (name: string) => {
     const field = formFields.find((entry) => entry.name === name);
     if (!field || !filePath) return;
@@ -891,6 +964,10 @@ function App() {
   useEffect(() => {
     if (filePath) void loadFormFields(filePath);
   }, [filePath, pdfRevision, loadFormFields]);
+
+  useEffect(() => {
+    if (filePath) void loadPdfSignatures(filePath);
+  }, [filePath, pdfRevision, loadPdfSignatures]);
 
   const cancelDrawing = () => {
     setDrawing(false);
@@ -1785,6 +1862,7 @@ function App() {
     setShowSaveAsModal(false);
     setShowMarkdownSaveAsModal(false);
     setShowProtectModal(false);
+    setShowSignModal(false);
     setShowPasswordModal(false);
     setShowOpenModal(false);
     setShowBrowserModal(false);
@@ -1941,11 +2019,12 @@ function App() {
   openSplitModalRef.current = openSplitModal;
   const handleOptimizePdfRef = useRef(async () => {});
   const handleSummarizePdfRef = useRef(async () => {});
+  const openSignModalRef = useRef<() => void>(() => {});
   const dismissModalsRef = useRef(dismissModals);
   dismissModalsRef.current = dismissModals;
   const anyModalOpenRef = useRef(false);
   anyModalOpenRef.current =
-    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal
+    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
     || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
@@ -2135,6 +2214,11 @@ function App() {
         void handleSummarizePdfRef.current();
         return;
       }
+      if (key === 'u' && e.shiftKey) {
+        e.preventDefault();
+        openSignModalRef.current();
+        return;
+      }
       if (key === 'i' && e.shiftKey) {
         e.preventDefault();
         openInsertModalRef.current();
@@ -2202,6 +2286,10 @@ function App() {
     setImageSourcePath('');
     setShowImageInsertModal(false);
     setShowFormsPanel(false);
+    setShowSignaturesPanel(false);
+    setPdfSignatures([]);
+    setSignatureVerification(null);
+    setShowSignModal(false);
     setFormFields([]);
     setFormDrafts({});
     setShowAddFormFieldModal(false);
@@ -2422,6 +2510,57 @@ function App() {
     });
   };
 
+  const openSignModal = () => {
+    setSignCertPath('');
+    setSignCertPassword('');
+    setSignReason('');
+    setSignLocation('');
+    setShowSignModal(true);
+  };
+
+  const chooseSignCertNative = async () => {
+    const selected = await openNativeDialog({
+      multiple: false,
+      directory: false,
+      filters: CERT_DIALOG_FILTER,
+    });
+    if (selected === null) return;
+    const path = typeof selected === 'string' ? selected : selected[0] ?? '';
+    if (path) setSignCertPath(path);
+  };
+
+  const handleSignPdf = async () => {
+    if (!filePath) return;
+    const certPath = signCertPath.trim();
+    if (!certPath) {
+      showToast('Choose a PKCS#12 certificate (.p12/.pfx)', 'error');
+      return;
+    }
+    if (!signCertPassword) {
+      showToast('Certificate password is required', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const result = await invoke<string>('sign_pdf', {
+        path: filePath,
+        certPath,
+        certPassword: signCertPassword,
+        reason: signReason.trim() || null,
+        location: signLocation.trim() || null,
+        fieldName: null,
+        outputPath: null,
+      });
+      markPdfEdited();
+      setShowSignModal(false);
+      setPdfRevision((r) => r + 1);
+      await loadPdfSignatures(filePath);
+      showToast(result);
+    });
+  };
+
+  const toggleSignaturesPanel = () => setShowSignaturesPanel((prev) => !prev);
+  openSignModalRef.current = openSignModal;
+
   const handlePrint = async () => {
     if (!filePath || pageCount === null) return;
     await withLoading(async () => {
@@ -2489,6 +2628,49 @@ function App() {
           </div>
         ) : (
           <p className="muted">No thumbnails loaded</p>
+        )}
+        {filePath && showSignaturesPanel && (
+          <div className="signatures-panel">
+            <div className="forms-panel-header">
+              <h3>Digital Signatures</h3>
+              <button type="button" onClick={() => void loadPdfSignatures(filePath)} className="btn" title="Re-verify signatures">
+                Refresh
+              </button>
+            </div>
+            {pdfSignatures.length === 0 ? (
+              <p className="muted">No digital signatures in this PDF.</p>
+            ) : (
+              <div className="signature-list">
+                {pdfSignatures.map((sig) => {
+                  const verified = signatureVerification?.signatures.find((entry) => entry.field_name === sig.field_name);
+                  const status = verified?.status ?? 'indeterminate';
+                  return (
+                    <div key={sig.field_name} className={`signature-row signature-row--${status}`}>
+                      <div className="signature-row-header">
+                        <strong>{sig.field_name}</strong>
+                        <span className={`signature-status signature-status--${status}`}>
+                          {signatureStatusLabel(status)}
+                        </span>
+                      </div>
+                      {sig.signer_name && <div className="muted">Signer: {sig.signer_name}</div>}
+                      {sig.reason && <div className="muted">Reason: {sig.reason}</div>}
+                      {sig.location && <div className="muted">Location: {sig.location}</div>}
+                      {sig.signing_time && <div className="muted">Signed: {sig.signing_time}</div>}
+                      {sig.signed_percent !== null && (
+                        <div className="muted">Coverage: {sig.signed_percent.toFixed(1)}%</div>
+                      )}
+                      {verified && (
+                        <div className="muted signature-summary">{verified.summary}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {signatureVerification && signatureVerification.signature_count > 0 && (
+              <p className="muted signature-doc-summary">{signatureVerification.summary}</p>
+            )}
+          </div>
         )}
         {filePath && showFormsPanel && (
           <div className="forms-panel">
@@ -2600,6 +2782,22 @@ function App() {
                   Summarize
                 </button>
                 <button onClick={openProtectModal} className="btn" title="Export password-protected PDF">Protect</button>
+                <button
+                  onClick={openSignModal}
+                  className="btn"
+                  title="Digitally sign with PKCS#12 certificate (Ctrl+Shift+U)"
+                  data-testid="sign-pdf"
+                >
+                  Sign
+                </button>
+                <button
+                  onClick={toggleSignaturesPanel}
+                  className={`btn ${showSignaturesPanel ? 'btn-active' : ''}`}
+                  title="View and verify digital signatures"
+                  data-testid="signatures-panel"
+                >
+                  {showSignaturesPanel ? 'Signatures: ON' : 'Signatures'}
+                </button>
                 <button
                   onClick={toggleRedactMode}
                   className={`btn ${redactMode ? 'btn-active' : ''}`}
@@ -3575,6 +3773,61 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => { setShowPasswordModal(false); setPendingEncryptedPath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleOpenEncryptedPdf()} className="btn" disabled={!pdfPasswordDraft}>Open</button>
+          </div>
+        </Modal>
+      )}
+
+      {showSignModal && (
+        <Modal onClose={() => setShowSignModal(false)}>
+          <h3>Digital signature</h3>
+          <p className="modal-help">
+            Sign the open document with a PKCS#12 identity (.p12/.pfx). The signature is embedded in the working copy; use Save to write it to your file.
+          </p>
+          <label>Certificate (.p12 / .pfx):</label>
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={signCertPath}
+              onChange={(e) => setSignCertPath(e.target.value)}
+              className="modal-input"
+              placeholder="/path/to/identity.p12"
+            />
+            {nativeDialogs && (
+              <button type="button" onClick={() => void chooseSignCertNative()} className="btn">Choose file…</button>
+            )}
+          </div>
+          <label>Certificate password:</label>
+          <input
+            type="password"
+            value={signCertPassword}
+            onChange={(e) => setSignCertPassword(e.target.value)}
+            className="modal-input"
+          />
+          <label>Reason (optional):</label>
+          <input
+            type="text"
+            value={signReason}
+            onChange={(e) => setSignReason(e.target.value)}
+            className="modal-input"
+            placeholder="Approved"
+          />
+          <label>Location (optional):</label>
+          <input
+            type="text"
+            value={signLocation}
+            onChange={(e) => setSignLocation(e.target.value)}
+            className="modal-input"
+            placeholder="Office"
+          />
+          <div className="modal-actions">
+            <button onClick={() => setShowSignModal(false)} className="btn btn-secondary">Cancel</button>
+            <button
+              onClick={() => void handleSignPdf()}
+              className="btn"
+              disabled={!signCertPath.trim() || !signCertPassword}
+            >
+              Sign PDF
+            </button>
           </div>
         </Modal>
       )}

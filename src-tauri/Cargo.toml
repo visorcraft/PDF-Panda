@@ -20,6 +20,8 @@ image = "0.25"
 tauri-plugin-wdio = { version = "1", optional = true }
 tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 tauri-plugin-dialog = "2"
+underskrift = "0.1.4"
+tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
 
 # Optimized release profile for fast, compact production builds. `panic` is left
 # as the default (unwind) so Tauri can still catch and surface command panics.

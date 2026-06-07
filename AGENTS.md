@@ -70,7 +70,8 @@ Command surface (grouped): browser/listing · render/thumbnails · page ops
 (delete/move/rotate/split/insert) · markdown convert/save (`convert_pdf_to_markdown`,
 `save_pdf_markdown`) · summarize/extract (`summarize_pdf`, `save_pdf_summary`) ·
 page content edits (`add_page_text`, `update_page_text`, `remove_page_text`,
-`add_page_vector_rect`, `list_page_vectors`, `remove_page_vector`) · optimize ·
+`add_page_vector_rect`, `list_page_vectors`, `remove_page_vector`) · digital
+signatures (`sign_pdf`, `list_pdf_signatures`, `verify_pdf_signatures`) · optimize ·
 encrypt/protect/open-with-password · annotations
 (highlight, note, ink, shapes, stamps, redact) · page image · forms (get/set/add
 text/checkbox/choice/radio) · working copy + undo history (`snapshot_pdf_entry`,
@@ -85,14 +86,15 @@ thumbnails/nav, page edit (delete/rotate/reorder/insert/split), optimize, print,
 password protect, annotations (H/N/D/S/T/X), page image (I), forms (F), PDF↔Markdown
 (tagged `/StructTreeRoot` + PDFium heuristics + Tesseract OCR; `_assets/` export),
 extractive summarize + intelligent extraction (`.summary.md`), in-PDF text/vector
-content edits (**E** / **G**), undo/redo (50-entry cap; deltas for files >32 MB),
+content edits (**E** / **G**), PAdES PKCS#12 digital signatures (Ctrl/Cmd+Shift+U),
+undo/redo (50-entry cap; deltas for files >32 MB),
 in-app file browser + native open/save when `native_file_dialogs_enabled`,
 WebdriverIO e2e smoke, tag-triggered releases with optional signing.
 
 **Ops:** tag `v*` → `.github/workflows/release.yml`; `docs/SIGNING.md`;
 `docs/MANUAL_E2E.md`; `scripts/e2e-test.sh`; `scripts/smoke-test.sh`.
 
-**Gaps (vNext):** digital signatures — see `PLAN.md`.
+**Gaps:** none tracked in `PLAN.md` vNext.
 
 **Env (optional):** `PDFIUM_LIB_PATH` · `PDF_PANDA_TEST_PDF` (ignored render smoke) ·
 `PDF_PANDA_OCR_LANG` / `TESSERACT_CMD` · `PDF_PANDA_NATIVE_DIALOGS=1` (Wayland native

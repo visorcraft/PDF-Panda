@@ -9,6 +9,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
+use underskrift::inspect::signatures::inspect_signatures;
+use underskrift::trust::{TrustStore, TrustStoreSet};
+use underskrift::verify::report::SignatureStatus;
+use underskrift::verify::SignatureVerifier;
+use underskrift::{PdfSigner, SigningOptions, SoftwareSigner, SubFilter};
 
 static PDFIUM: OnceLock<Result<Mutex<Pdfium>, String>> = OnceLock::new();
 /// Directory holding the bundled PDFium library, populated during Tauri `setup`
@@ -3887,6 +3892,193 @@ fn protect_pdf(path: String, user_password: String, owner_password: Option<Strin
     ))
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct PdfSignatureInfo {
+    field_name: String,
+    signer_name: Option<String>,
+    reason: Option<String>,
+    location: Option<String>,
+    signing_time: Option<String>,
+    sub_filter: Option<String>,
+    signed_percent: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PdfSignatureVerificationEntry {
+    field_name: String,
+    status: String,
+    signer_name: Option<String>,
+    signing_time: Option<String>,
+    integrity_ok: bool,
+    modifications_after_signing: bool,
+    summary: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PdfSignatureVerificationSummary {
+    signature_count: usize,
+    valid_count: usize,
+    invalid_count: usize,
+    document_modified: bool,
+    overall_valid: bool,
+    summary: String,
+    signatures: Vec<PdfSignatureVerificationEntry>,
+}
+
+fn pdf_sign_runtime() -> &'static tokio::runtime::Runtime {
+    static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    RT.get_or_init(|| tokio::runtime::Runtime::new().expect("tokio runtime for PDF signing"))
+}
+
+fn read_pdf_bytes_for_signing(path: &Path) -> Result<Vec<u8>, String> {
+    let path_str = path.to_string_lossy().into_owned();
+    if pdf_is_encrypted(path_str)? {
+        return Err("Cannot sign an encrypted PDF. Save an unencrypted copy first.".to_string());
+    }
+    fs::read(path).map_err(|e| e.to_string())
+}
+
+fn signature_info_from_field(field: &underskrift::inspect::signatures::SignatureFieldInfo) -> PdfSignatureInfo {
+    let field_name = field.field_name.clone().unwrap_or_else(|| format!("Signature{}", field.obj_num.unwrap_or(0)));
+    PdfSignatureInfo {
+        field_name,
+        signer_name: field.name.clone(),
+        reason: field.reason.clone(),
+        location: field.location.clone(),
+        signing_time: field.signing_time.clone(),
+        sub_filter: field.sub_filter.clone(),
+        signed_percent: field.coverage.as_ref().map(|coverage| coverage.percentage),
+    }
+}
+
+fn next_signature_field_name(inspection: &underskrift::inspect::signatures::PdfSignatureInspection) -> String {
+    let mut index = 1u32;
+    loop {
+        let candidate = format!("Signature{index}");
+        let taken = inspection.signatures.iter().any(|field| field.field_name.as_deref() == Some(candidate.as_str()));
+        if !taken {
+            return candidate;
+        }
+        index += 1;
+    }
+}
+
+fn signature_status_label(status: &SignatureStatus) -> &'static str {
+    match status {
+        SignatureStatus::Valid => "valid",
+        SignatureStatus::ValidButUntrusted => "valid_untrusted",
+        SignatureStatus::Invalid => "invalid",
+        SignatureStatus::Indeterminate => "indeterminate",
+    }
+}
+
+fn build_trust_store_set(trust_pem_path: Option<&Path>) -> Result<TrustStoreSet, String> {
+    let mut trust_set = TrustStoreSet::new();
+    if let Some(path) = trust_pem_path {
+        let store = TrustStore::from_pem_file(path).map_err(|e| e.to_string())?;
+        trust_set = trust_set.with_sig_store(store);
+    }
+    Ok(trust_set)
+}
+
+/// List digital signature fields embedded in a PDF.
+#[tauri::command]
+fn list_pdf_signatures(path: String) -> Result<Vec<PdfSignatureInfo>, String> {
+    let path = PathBuf::from(path);
+    let bytes = read_pdf_bytes_for_signing(&path)?;
+    let inspection = inspect_signatures(&bytes).map_err(|e| e.to_string())?;
+    Ok(inspection.signatures.iter().map(signature_info_from_field).collect())
+}
+
+/// Verify cryptographic integrity and certificate chains for all PDF signatures.
+#[tauri::command]
+fn verify_pdf_signatures(
+    path: String,
+    trust_pem_path: Option<String>,
+) -> Result<PdfSignatureVerificationSummary, String> {
+    let path = PathBuf::from(path);
+    let bytes = read_pdf_bytes_for_signing(&path)?;
+    let inspection = inspect_signatures(&bytes).map_err(|e| e.to_string())?;
+    if !inspection.has_signatures {
+        return Ok(PdfSignatureVerificationSummary {
+            signature_count: 0,
+            valid_count: 0,
+            invalid_count: 0,
+            document_modified: false,
+            overall_valid: false,
+            summary: "No digital signatures found.".to_string(),
+            signatures: vec![],
+        });
+    }
+    let trust_path = trust_pem_path.map(PathBuf::from);
+    let trust_set = build_trust_store_set(trust_path.as_deref())?;
+    let verifier = SignatureVerifier::new(&trust_set);
+    let report = verifier.verify_pdf(&bytes).map_err(|e| e.to_string())?;
+    let signatures = report
+        .signatures
+        .iter()
+        .map(|sig| PdfSignatureVerificationEntry {
+            field_name: sig.field_name.clone(),
+            status: signature_status_label(&sig.status).to_string(),
+            signer_name: sig.signer_name.clone(),
+            signing_time: sig.signing_time.clone(),
+            integrity_ok: sig.integrity_ok,
+            modifications_after_signing: sig.modifications_after_signing,
+            summary: sig.summary.clone(),
+        })
+        .collect();
+    Ok(PdfSignatureVerificationSummary {
+        signature_count: report.signatures.len(),
+        valid_count: report.valid_count,
+        invalid_count: report.invalid_count,
+        document_modified: report.document_modified,
+        overall_valid: report.all_valid(),
+        summary: report.summary,
+        signatures,
+    })
+}
+
+/// Digitally sign a PDF with a PKCS#12 (.p12/.pfx) identity. Writes back to `path`
+/// unless `output_path` is set.
+#[tauri::command]
+fn sign_pdf(
+    path: String,
+    cert_path: String,
+    cert_password: String,
+    reason: Option<String>,
+    location: Option<String>,
+    field_name: Option<String>,
+    output_path: Option<String>,
+) -> Result<String, String> {
+    if cert_password.is_empty() {
+        return Err("Certificate password is required".to_string());
+    }
+    let path = PathBuf::from(path);
+    let pdf_bytes = read_pdf_bytes_for_signing(&path)?;
+    let cert_path = PathBuf::from(cert_path);
+    if !cert_path.is_file() {
+        return Err("Certificate file not found".to_string());
+    }
+    let cert_bytes = fs::read(&cert_path).map_err(|e| e.to_string())?;
+    let signer = SoftwareSigner::from_pkcs12_data(&cert_bytes, &cert_password).map_err(|e| e.to_string())?;
+    let inspection = inspect_signatures(&pdf_bytes).map_err(|e| e.to_string())?;
+    let field =
+        field_name.filter(|value| !value.trim().is_empty()).unwrap_or_else(|| next_signature_field_name(&inspection));
+    let options = SigningOptions {
+        sub_filter: SubFilter::Pades,
+        field_name: field,
+        reason: reason.filter(|value| !value.trim().is_empty()),
+        location: location.filter(|value| !value.trim().is_empty()),
+        ..Default::default()
+    };
+    let signed = pdf_sign_runtime()
+        .block_on(PdfSigner::new().options(options).sign(&pdf_bytes, &signer))
+        .map_err(|e| e.to_string())?;
+    let output = output_path.map(PathBuf::from).unwrap_or(path);
+    fs::write(&output, signed).map_err(|e| e.to_string())?;
+    Ok(format!("Signed PDF saved to {}", output.file_name().unwrap_or_default().to_string_lossy()))
+}
+
 #[tauri::command]
 fn add_highlight(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
     let path = PathBuf::from(&path);
@@ -5123,6 +5315,9 @@ fn main() {
             verify_pdf_password,
             open_working_copy_with_password,
             protect_pdf,
+            list_pdf_signatures,
+            verify_pdf_signatures,
+            sign_pdf,
             add_highlight,
             remove_highlight,
             add_text_note,
@@ -6305,6 +6500,138 @@ mod tests {
         verify_pdf_password(protected.to_string_lossy().into_owned(), "open-me".to_string()).unwrap();
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(protected);
+    }
+
+    fn generate_test_pkcs12(dir: &Path) -> Option<PathBuf> {
+        if Command::new("openssl").arg("version").output().is_err() {
+            return None;
+        }
+        let key = dir.join("sig_key.pem");
+        let cert = dir.join("sig_cert.pem");
+        let p12 = dir.join("sig_test.p12");
+        let status = Command::new("openssl")
+            .args([
+                "req",
+                "-x509",
+                "-newkey",
+                "rsa:2048",
+                "-keyout",
+                key.to_str()?,
+                "-out",
+                cert.to_str()?,
+                "-days",
+                "1",
+                "-nodes",
+                "-subj",
+                "/CN=PDF Panda Test Signer",
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .ok()?;
+        if !status.success() {
+            return None;
+        }
+        let status = Command::new("openssl")
+            .args([
+                "pkcs12",
+                "-export",
+                "-legacy",
+                "-out",
+                p12.to_str()?,
+                "-inkey",
+                key.to_str()?,
+                "-in",
+                cert.to_str()?,
+                "-password",
+                "pass:pdfpanda-test",
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .ok()?;
+        if !status.success() {
+            return None;
+        }
+        Some(p12)
+    }
+
+    #[test]
+    fn list_pdf_signatures_empty_on_unsigned_pdf() {
+        let path = save(&mut build_pdf(1), "sig_list_empty");
+        let signatures = list_pdf_signatures(path.clone()).unwrap();
+        assert!(signatures.is_empty());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn verify_pdf_signatures_empty_on_unsigned_pdf() {
+        let path = save(&mut build_pdf(1), "sig_verify_empty");
+        let report = verify_pdf_signatures(path.clone(), None).unwrap();
+        assert_eq!(report.signature_count, 0);
+        assert!(!report.overall_valid);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sign_pdf_rejects_empty_password() {
+        let path = save(&mut build_pdf(1), "sig_reject_pw");
+        let err =
+            sign_pdf(path.clone(), "/tmp/missing.p12".to_string(), String::new(), None, None, None, None).unwrap_err();
+        assert!(err.contains("password"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sign_pdf_rejects_encrypted_pdf() {
+        let path = save(&mut build_pdf(1), "sig_reject_enc");
+        protect_pdf(path.clone(), "secret".to_string(), None).unwrap();
+        let protected = PathBuf::from(&path)
+            .with_file_name(format!("{}_protected.pdf", PathBuf::from(&path).file_stem().unwrap().to_string_lossy()));
+        let err = sign_pdf(
+            protected.to_string_lossy().into_owned(),
+            "/tmp/missing.p12".to_string(),
+            "pw".to_string(),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_err();
+        assert!(err.contains("encrypted"));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(protected);
+    }
+
+    #[test]
+    fn pdf_signature_roundtrip_with_openssl() {
+        let dir = std::env::temp_dir().join(format!("pdf_panda_sig_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let Some(p12) = generate_test_pkcs12(&dir) else {
+            eprintln!("openssl unavailable — skipping pdf_signature_roundtrip_with_openssl");
+            return;
+        };
+        let path = save(&mut build_pdf(1), "sig_roundtrip");
+        sign_pdf(
+            path.clone(),
+            p12.to_string_lossy().into_owned(),
+            "pdfpanda-test".to_string(),
+            Some("Approved".to_string()),
+            Some("Test Lab".to_string()),
+            None,
+            None,
+        )
+        .unwrap();
+        let listed = list_pdf_signatures(path.clone()).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].field_name, "Signature1");
+        assert_eq!(listed[0].reason.as_deref(), Some("Approved"));
+        let report = verify_pdf_signatures(path.clone(), None).unwrap();
+        assert_eq!(report.signature_count, 1);
+        assert_eq!(report.signatures[0].status, "valid_untrusted");
+        assert!(report.signatures[0].integrity_ok);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

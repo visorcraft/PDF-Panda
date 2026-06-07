@@ -335,10 +335,67 @@ body {
   pointer-events: none;
 }
 
+.signatures-panel,
 .forms-panel {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid #e6e6e6;
+}
+
+.signature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signature-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 12px;
+}
+
+.signature-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.signature-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.signature-status--valid {
+  color: #1f6b3a;
+  background: rgba(45, 138, 78, 0.12);
+}
+
+.signature-status--valid_untrusted {
+  color: #8a5a00;
+  background: rgba(200, 140, 0, 0.15);
+}
+
+.signature-status--invalid {
+  color: #9b1c1c;
+  background: rgba(200, 40, 40, 0.12);
+}
+
+.signature-status--indeterminate {
+  color: #555;
+  background: rgba(120, 120, 120, 0.12);
+}
+
+.signature-summary,
+.signature-doc-summary {
+  margin-top: 4px;
 }
 
 .forms-panel-header {

@@ -25,6 +25,10 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **In-PDF text** — place Helvetica text blocks in page content (`E`); edit or remove via the Edits modal
 - **Vector rectangles** — draw stroke rectangles in page content (`G`); manage via Edits modal
 
+### Security
+- **Digital signatures** — sign with a PKCS#12 certificate (.p12/.pfx); list and verify signatures in the Signatures panel (Ctrl/Cmd+Shift+U)
+- **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
+
 ### Save & history
 - Non-destructive **working-copy** editing
 - **Save** / **Save As** with unsaved-changes prompts; **Save As** opens a native save dialog when available
@@ -35,7 +39,6 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Freehand drawing** — ink strokes on the page, persisted in the PDF (`D`)
 - **Shape outlines** — rectangle, ellipse, and line annotations (`S`)
 - **Stamps** — text and image preset stamps (`T`) — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED
-- **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
 - **Redaction** — black-box redaction annotations persisted in the PDF (`X`)
 - **Page image insert** — embed PNG/JPEG images into page content (`I`)
 - **Form fields** — list, fill, and create text/checkbox/choice/radio fields (`F`)
@@ -124,8 +127,8 @@ PDF_PANDA_TEST_PDF=/path/to/file.pdf \
   cargo test render_real_pdf_smoke --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture
 ```
 
-**Status:** v0.2.x MVP and post-MVP backlog are complete. Future work is tracked in
-[`PLAN.md`](PLAN.md) vNext (digital signatures).
+**Status:** v0.2.x MVP, post-MVP backlog, and vNext roadmap are complete. See
+[`PLAN.md`](PLAN.md) for the full feature matrix.
 
 Tagged releases (`git tag v0.2.1 && git push origin v0.2.1`) trigger the GitHub
 Actions release workflow (unsigned by default; optional macOS/Windows signing via
