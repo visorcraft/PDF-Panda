@@ -1829,11 +1829,25 @@ mod tests {
     }
 
     #[test]
+    fn move_page_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_move_missing_{}.pdf", std::process::id()));
+        let err = move_page(missing.to_string_lossy().into_owned(), 0, 1).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
     fn move_page_same_index_is_noop() {
         let path = save(&mut build_pdf(3), "move_noop");
         move_page(path.clone(), 1, 1).unwrap();
         assert_eq!(page_count(&path), 3);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_page_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_rotate_missing_{}.pdf", std::process::id()));
+        let err = rotate_page(missing.to_string_lossy().into_owned(), 0).unwrap_err();
+        assert!(!err.is_empty());
     }
 
     #[test]
