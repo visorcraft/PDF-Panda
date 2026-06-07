@@ -2132,6 +2132,13 @@ mod tests {
     }
 
     #[test]
+    fn optimize_pdf_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_optimize_missing_{}.pdf", std::process::id()));
+        let err = optimize_pdf(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
     fn highlight_remove_deletes_the_right_one() {
         let path = save(&mut build_pdf(1), "remove_hl");
         add_highlight(path.clone(), 0, 10.0, 10.0, 20.0, 20.0).unwrap();
