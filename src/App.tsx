@@ -187,6 +187,7 @@ interface PdfDocumentMetadata {
 }
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge';
+type PngExportScope = 'current' | 'range' | 'all';
 
 interface PdfBrowserEntry {
   name: string;
@@ -279,6 +280,7 @@ const fileNameFromPath = (path: string): string => {
 };
 
 const PDF_DIALOG_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
+const PNG_DIALOG_FILTER = [{ name: 'PNG', extensions: ['png'] }];
 const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 const CERT_DIALOG_FILTER = [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }];
 
@@ -459,6 +461,11 @@ function App() {
   const [extractStartPage, setExtractStartPage] = useState(0);
   const [extractEndPage, setExtractEndPage] = useState(0);
   const [extractOutputPath, setExtractOutputPath] = useState('');
+  const [showExportPngModal, setShowExportPngModal] = useState(false);
+  const [pngExportScope, setPngExportScope] = useState<PngExportScope>('current');
+  const [pngExportStartPage, setPngExportStartPage] = useState(0);
+  const [pngExportEndPage, setPngExportEndPage] = useState(0);
+  const [pngExportOutputPath, setPngExportOutputPath] = useState('');
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [insertFilePath, setInsertFilePath] = useState<string>('');
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
@@ -884,6 +891,69 @@ function App() {
     setExtractEndPage(currentPage);
     setExtractOutputPath(defaultExtractOutputPath(currentPage, currentPage));
     setShowExtractModal(true);
+  };
+
+  const defaultPngExportOutput = (scope: PngExportScope, start: number, _end: number) => {
+    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
+    if (scope === 'current') return `${base}_page_${start + 1}.png`;
+    return `${base}_pages`;
+  };
+
+  const openExportPngModal = () => {
+    if (!filePath || pageCount === null) return;
+    setPngExportScope('current');
+    setPngExportStartPage(currentPage);
+    setPngExportEndPage(currentPage);
+    setPngExportOutputPath(defaultPngExportOutput('current', currentPage, currentPage));
+    setShowExportPngModal(true);
+  };
+
+  const handleExportPng = async () => {
+    const output = pngExportOutputPath.trim();
+    if (!filePath || !output) return;
+    const start = pngExportScope === 'current' ? currentPage : pngExportStartPage;
+    const end = pngExportScope === 'all' ? (pageCount ?? 1) - 1 : pngExportScope === 'current' ? currentPage : pngExportEndPage;
+    if (start > end) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      if (pngExportScope === 'current') {
+        const written = await invoke<string>('export_pdf_page_png', {
+          path: filePath,
+          pageIndex: currentPage,
+          outputPath: ensureExtension(output, 'png'),
+        });
+        showToast(`Exported PNG to ${written}`);
+      } else {
+        const written = await invoke<string[]>('export_pdf_pages_png', {
+          path: filePath,
+          startPage: start,
+          endPage: end,
+          outputDir: output,
+        });
+        showToast(`Exported ${written.length} PNG file${written.length === 1 ? '' : 's'} to ${output}`);
+      }
+      setShowExportPngModal(false);
+    });
+  };
+
+  const chooseExportPngOutputNative = async () => {
+    if (pngExportScope === 'current') {
+      const picked = await pickSaveWithNativeDialog(
+        ensureExtension(pngExportOutputPath || defaultPngExportOutput('current', currentPage, currentPage), 'png'),
+        PNG_DIALOG_FILTER,
+      );
+      if (!picked) return;
+      setPngExportOutputPath(ensureExtension(picked, 'png'));
+      return;
+    }
+    const picked = await pickSaveWithNativeDialog(
+      pngExportOutputPath || defaultPngExportOutput(pngExportScope, pngExportStartPage, pngExportEndPage),
+      PNG_DIALOG_FILTER,
+    );
+    if (!picked) return;
+    setPngExportOutputPath(picked.replace(/\.png$/i, ''));
   };
 
   const openMergeModal = () => {
@@ -2057,6 +2127,7 @@ function App() {
     setShowDeleteModal(false);
     setShowSplitModal(false);
     setShowExtractModal(false);
+    setShowExportPngModal(false);
     setShowInsertModal(false);
     setShowMergeModal(false);
     setShowSearchModal(false);
@@ -2213,6 +2284,8 @@ function App() {
   openSplitModalRef.current = openSplitModal;
   const openExtractModalRef = useRef(openExtractModal);
   openExtractModalRef.current = openExtractModal;
+  const openExportPngModalRef = useRef(openExportPngModal);
+  openExportPngModalRef.current = openExportPngModal;
   const openMergeModalRef = useRef(openMergeModal);
   openMergeModalRef.current = openMergeModal;
   const openSearchModalRef = useRef(openSearchModal);
@@ -2230,7 +2303,8 @@ function App() {
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal || showMetadataModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showExtractModal || showInsertModal || showMergeModal || showSearchModal || showNoteModal || showImageInsertModal
+    || showSplitModal || showExtractModal || showExportPngModal || showInsertModal || showMergeModal || showSearchModal
+    || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
 
   useEffect(() => {
@@ -2446,6 +2520,11 @@ function App() {
       if (key === 'j' && e.shiftKey) {
         e.preventDefault();
         openExtractModalRef.current();
+        return;
+      }
+      if (key === 'b' && e.shiftKey) {
+        e.preventDefault();
+        openExportPngModalRef.current();
         return;
       }
       if (key === 'g' && e.shiftKey) {
@@ -3120,6 +3199,7 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
+                <button onClick={openExportPngModal} className="btn" title="Export pages as PNG (Ctrl+Shift+B)" data-testid="export-png">Export PNG</button>
                 <button
                   onClick={() => void openMetadataModal()}
                   className="btn"
@@ -3816,6 +3896,84 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowDeleteModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleDeletePage} className="btn btn-danger">Delete page</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Export PNG Modal */}
+      {showExportPngModal && (
+        <Modal onClose={() => setShowExportPngModal(false)}>
+          <h3>Export PNG</h3>
+          <p className="modal-help">Render PDF pages to PNG images (1600×2264). The open PDF is not modified.</p>
+          <label>Pages to export:</label>
+          <select
+            className="modal-input"
+            value={pngExportScope}
+            onChange={(e) => {
+              const scope = e.target.value as PngExportScope;
+              setPngExportScope(scope);
+              const start = scope === 'current' ? currentPage : pngExportStartPage;
+              const end = scope === 'all' ? (pageCount ?? 1) - 1 : scope === 'current' ? currentPage : pngExportEndPage;
+              setPngExportOutputPath(defaultPngExportOutput(scope, start, end));
+            }}
+          >
+            <option value="current">Current page only</option>
+            <option value="range">Page range</option>
+            <option value="all">All pages</option>
+          </select>
+          {pngExportScope === 'range' && (
+            <>
+              <label>
+                From page (1-{pageCount ?? 0}):
+                <input
+                  type="number"
+                  value={pngExportStartPage + 1}
+                  onChange={(e) => {
+                    const start = Math.max(0, parseInt(e.target.value, 10) - 1);
+                    setPngExportStartPage(start);
+                    setPngExportOutputPath(defaultPngExportOutput('range', start, pngExportEndPage));
+                  }}
+                  min="1"
+                  max={pageCount ?? undefined}
+                  className="modal-input"
+                />
+              </label>
+              <label>
+                To page (1-{pageCount ?? 0}):
+                <input
+                  type="number"
+                  value={pngExportEndPage + 1}
+                  onChange={(e) => {
+                    const end = Math.max(0, parseInt(e.target.value, 10) - 1);
+                    setPngExportEndPage(end);
+                    setPngExportOutputPath(defaultPngExportOutput('range', pngExportStartPage, end));
+                  }}
+                  min="1"
+                  max={pageCount ?? undefined}
+                  className="modal-input"
+                />
+              </label>
+            </>
+          )}
+          <label>{pngExportScope === 'current' ? 'Output PNG path:' : 'Output directory:'}</label>
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={pngExportOutputPath}
+              onChange={(e) => setPngExportOutputPath(e.target.value)}
+              className="modal-input"
+              placeholder={pngExportScope === 'current' ? '/path/to/page.png' : '/path/to/output_dir'}
+            />
+            {nativeDialogs && (
+              <button onClick={() => void chooseExportPngOutputNative()} className="btn">Choose…</button>
+            )}
+          </div>
+          {pngExportScope !== 'current' && (
+            <p className="modal-help">Files are written as page-001.png, page-002.png, … inside the directory.</p>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowExportPngModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExportPng()} className="btn" disabled={!pngExportOutputPath.trim()}>Export</button>
           </div>
         </Modal>
       )}

@@ -54,6 +54,7 @@ Three things we care about:
 - **Merge** another PDF by appending its pages to the end (page range supported)
 - **Split** into multiple files by page range
 - **Extract** a page range into a new PDF without changing the open document
+- **Export PNG** — render current page, a range, or all pages to PNG images (1600×2264)
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
 **Annotate & mark up**
@@ -70,6 +71,7 @@ Three things we care about:
 - **PDF → Markdown** with tagged-PDF structure (headings, lists, tables), heuristic layout, and a **Tesseract OCR** fallback for scanned pages
 - **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
+- **Export PNG** — save rendered pages as PNG files (Ctrl/Cmd+Shift+B)
 - **Print** via the system print dialog
 
 ---
@@ -148,7 +150,7 @@ secrets — see [`docs/SIGNING.md`](docs/SIGNING.md)).
 | Ctrl/Cmd+Shift+E | Summarize |
 | Ctrl/Cmd+Shift+U | Digital sign |
 | Ctrl/Cmd+F | Find text in PDF |
-| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+G / Ctrl/Cmd+Shift+J / Ctrl/Cmd+Shift+K | Insert / Merge / Extract / Split PDF |
+| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+G / Ctrl/Cmd+Shift+J / Ctrl/Cmd+Shift+K / Ctrl/Cmd+Shift+B | Insert / Merge / Extract / Split / Export PNG |
 | Ctrl/Cmd+0, Ctrl/Cmd +/− | Reset / change zoom |
 | H N D S T X E G I F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
 | Delete · Escape | Delete page (confirm) · exit tool or close modal |

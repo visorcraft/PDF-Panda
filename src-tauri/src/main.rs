@@ -589,6 +589,69 @@ fn search_pdf_text(
     Ok(results)
 }
 
+const EXPORT_PNG_W: i32 = 1600;
+const EXPORT_PNG_H: i32 = 2264;
+
+fn validate_page_range(path: &Path, start_page: u32, end_page: u32) -> Result<(), String> {
+    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    Ok(())
+}
+
+fn write_png_output(output_path: &Path, png: &[u8]) -> Result<(), String> {
+    if let Some(parent) = output_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    fs::write(output_path, png).map_err(|e| e.to_string())
+}
+
+/// Render one PDF page to a PNG file (2× viewer resolution by default).
+#[tauri::command]
+fn export_pdf_page_png(path: String, page_index: u32, output_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, page_index, page_index)?;
+
+    let png = render_page_png(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let output_path = PathBuf::from(&output_path);
+    write_png_output(&output_path, &png)?;
+    Ok(output_path.to_string_lossy().into_owned())
+}
+
+/// Render a page range to `output_dir/page-NNN.png` files.
+#[tauri::command]
+fn export_pdf_pages_png(
+    path: String,
+    start_page: u32,
+    end_page: u32,
+    output_dir: String,
+) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, start_page, end_page)?;
+
+    let output_dir = PathBuf::from(&output_dir);
+    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+
+    let mut written = Vec::new();
+    for page_index in start_page..=end_page {
+        let png = render_page_png(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.png", page_index + 1);
+        let output_path = output_dir.join(&file_name);
+        write_png_output(&output_path, &png)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
 #[tauri::command]
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
     let path = PathBuf::from(path);
@@ -5678,6 +5741,8 @@ fn main() {
             set_pdf_metadata,
             render_pdf_page,
             search_pdf_text,
+            export_pdf_page_png,
+            export_pdf_pages_png,
             get_pdf_thumbnails,
             delete_page,
             move_page,
@@ -6188,6 +6253,46 @@ mod tests {
             extract_pdf_pages(missing.to_string_lossy().into_owned(), output.to_string_lossy().into_owned(), 0, 0)
                 .unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_pdf_page_png_rejects_invalid_page() {
+        let path = save(&mut build_pdf(2), "export_png_invalid");
+        let output = tmp("export_png_invalid_out.png");
+        let err = export_pdf_page_png(path.clone(), 9, output.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_pdf_page_png_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_export_png_missing_{}.pdf", std::process::id()));
+        let output = tmp("export_png_missing_out.png");
+        let err = export_pdf_page_png(missing.to_string_lossy().into_owned(), 0, output.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("not found"));
+    }
+
+    #[test]
+    fn export_pdf_pages_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_pngs_invalid");
+        let err = export_pdf_pages_png(path.clone(), 2, 1, tmp("export_pngs_dir").to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    #[ignore]
+    fn export_pdf_page_png_writes_file() {
+        let path = save(&mut build_pdf(1), "export_png_write");
+        let output = tmp("export_png_write_out.png");
+        let written = export_pdf_page_png(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written, output.to_string_lossy());
+        assert!(output.is_file());
+        assert!(std::fs::metadata(&output).unwrap().len() > 100);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&output);
     }
 
     #[test]
