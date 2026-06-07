@@ -1862,6 +1862,240 @@ fn export_pdf_pages_webp(
     Ok(written)
 }
 
+/// Rotate `page_index` 180°.
+#[tauri::command]
+fn rotate_page_180(path: String, page_index: u32) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let next = (page_rotation(&doc, page_id) + 180) % 360;
+    set_page_rotation(&mut doc, page_id, next)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Rotate every page 90° counter-clockwise.
+#[tauri::command]
+fn rotate_all_pages_ccw(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
+    for page_id in &page_ids {
+        let next = (page_rotation(&doc, *page_id) + 270) % 360;
+        set_page_rotation(&mut doc, *page_id, next)?;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(page_ids.len() as u32)
+}
+
+/// Move `page_index` to the first position.
+#[tauri::command]
+fn move_page_to_first(path: String, page_index: u32) -> Result<(), String> {
+    if page_index == 0 {
+        return Ok(());
+    }
+    move_page(path, page_index, 0)
+}
+
+/// Move `page_index` to the last position.
+#[tauri::command]
+fn move_page_to_last(path: String, page_index: u32) -> Result<(), String> {
+    let path_buf = PathBuf::from(&path);
+    let last = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if last == 0 {
+        return Err("Document has no pages".to_string());
+    }
+    let last_index = last - 1;
+    if page_index == last_index {
+        return Ok(());
+    }
+    if page_index >= last {
+        return Err("Page index out of bounds".to_string());
+    }
+    move_page(path, page_index, last_index)
+}
+
+/// Remove `/CropBox` from every page.
+#[tauri::command]
+fn clear_all_page_crops(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
+    let mut cleared = 0u32;
+    for page_id in &page_ids {
+        if doc.get_dictionary(*page_id).ok().and_then(|d| d.get(b"CropBox").ok()).is_some() {
+            doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
+            cleared += 1;
+        }
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(cleared)
+}
+
+/// Remove every PDF outline/bookmark entry.
+#[tauri::command]
+fn clear_pdf_bookmarks(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let catalog_id = doc.trailer.get(b"Root").map_err(|e| e.to_string())?.as_reference().map_err(|_| "Bad Root")?;
+    let outlines_id = match doc.get_dictionary(catalog_id).map_err(|e| e.to_string())?.get(b"Outlines") {
+        Ok(Object::Reference(id)) => *id,
+        _ => return Ok(0),
+    };
+    let ids = flat_outline_ids(&doc)?;
+    let count = ids.len() as u32;
+    for id in ids {
+        doc.objects.remove(&id);
+    }
+    doc.objects.remove(&outlines_id);
+    doc.get_dictionary_mut(catalog_id).map_err(|e| e.to_string())?.remove(b"Outlines");
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(count)
+}
+
+/// Stamp header text near the top of each page in the range.
+#[tauri::command]
+fn add_page_header(path: String, start_page: u32, end_page: u32, text: String) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Header text cannot be empty".to_string());
+    }
+    let path = PathBuf::from(path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut stamped = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+/// Insert a new page at `at_index` containing a centered copy of `image_path`.
+#[tauri::command]
+fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
+    let image_path = PathBuf::from(&image_path);
+    if !image_path.is_file() {
+        return Err("Image file not found".to_string());
+    }
+    let img = image::open(&image_path).map_err(|e| e.to_string())?;
+    let rgb = img.to_rgb8();
+    let (img_w, img_h) = rgb.dimensions();
+    if img_w == 0 || img_h == 0 {
+        return Err("Image has no pixels".to_string());
+    }
+    let mut jpeg = Vec::new();
+    image::DynamicImage::ImageRgb8(rgb)
+        .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+        .map_err(|e| e.to_string())?;
+
+    let path_buf = PathBuf::from(&path);
+    let mut doc = Document::load(&path_buf).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let at = at_index as usize;
+    if at > kids.len() {
+        return Err("Insert index out of bounds".to_string());
+    }
+
+    const PAGE_W: f64 = 612.0;
+    const PAGE_H: f64 = 792.0;
+    let scale = (PAGE_W / img_w as f64).min(PAGE_H / img_h as f64);
+    let draw_w = img_w as f64 * scale;
+    let draw_h = img_h as f64 * scale;
+    let offset_x = (PAGE_W - draw_w) / 2.0;
+    let offset_y = (PAGE_H - draw_h) / 2.0;
+
+    let image_id = embed_jpeg_xobject(&mut doc, jpeg, img_w, img_h);
+    let mut xobjects = Dictionary::new();
+    xobjects.set(b"Im1", Object::Reference(image_id));
+    let mut resources = Dictionary::new();
+    resources.set(b"XObject", Object::Dictionary(xobjects));
+
+    let ops = format!("q {draw_w} 0 0 {draw_h} {offset_x} {offset_y} cm /Im1 Do Q\n");
+    let content_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.into_bytes())));
+
+    let mut page = Dictionary::new();
+    page.set("Type", Object::Name(b"Page".to_vec()));
+    page.set("Parent", Object::Reference(pages_ref));
+    page.set("Resources", Object::Dictionary(resources));
+    page.set(
+        "MediaBox",
+        Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Integer(612), Object::Integer(792)]),
+    );
+    page.set("Contents", Object::Reference(content_id));
+    let page_id = doc.add_object(Object::Dictionary(page));
+    kids.insert(at, Object::Reference(page_id));
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.save(&path_buf).map_err(|e| e.to_string())?;
+    Ok(at_index)
+}
+
+/// Write a single page from the open PDF to `output_path` (does not modify the source).
+#[tauri::command]
+fn export_page_as_pdf(path: String, page_index: u32, output_path: String) -> Result<String, String> {
+    extract_pdf_pages(path, output_path, page_index, page_index)
+}
+
+fn render_page_bmp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
+    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
+    let image = bitmap.as_image().map_err(|e| e.to_string())?;
+    let mut buffer = Vec::new();
+    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Bmp).map_err(|e| e.to_string())?;
+    Ok(buffer)
+}
+
+/// Render one PDF page to a BMP file (2× viewer resolution by default).
+#[tauri::command]
+fn export_pdf_page_bmp(path: String, page_index: u32, output_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, page_index, page_index)?;
+    let bmp = render_page_bmp(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let output_path = PathBuf::from(&output_path);
+    write_png_output(&output_path, &bmp)?;
+    Ok(output_path.to_string_lossy().into_owned())
+}
+
+/// Render a page range to `output_dir/page-NNN.bmp` files.
+#[tauri::command]
+fn export_pdf_pages_bmp(
+    path: String,
+    start_page: u32,
+    end_page: u32,
+    output_dir: String,
+) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, start_page, end_page)?;
+    let output_dir = PathBuf::from(&output_dir);
+    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in start_page..=end_page {
+        let bmp = render_page_bmp(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.bmp", page_index + 1);
+        let output_path = output_dir.join(&file_name);
+        write_png_output(&output_path, &bmp)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
 // Viewer render size — must stay aligned with `BASE_W` / `BASE_H` in `App.tsx`.
 const VIEWER_PAGE_W: f64 = 800.0;
 const VIEWER_PAGE_H: f64 = 1132.0;
@@ -6415,30 +6649,41 @@ fn main() {
             export_pdf_pages_jpeg,
             export_pdf_page_webp,
             export_pdf_pages_webp,
+            export_pdf_page_bmp,
+            export_pdf_pages_bmp,
             get_pdf_thumbnails,
             get_pdf_page_sizes,
             delete_page,
             delete_page_range,
             move_page,
+            move_page_to_first,
+            move_page_to_last,
             duplicate_page,
             duplicate_page_range,
             merge_pdf,
             rotate_page,
             rotate_page_ccw,
+            rotate_page_180,
             rotate_all_pages,
+            rotate_all_pages_ccw,
             reset_page_rotation,
             reset_all_page_rotations,
             reverse_pages,
             add_blank_page,
+            insert_image_page,
             add_pdf_bookmark,
             remove_pdf_bookmark,
             rename_pdf_bookmark,
+            clear_pdf_bookmarks,
             add_page_numbers,
+            add_page_header,
             add_text_watermark,
             flatten_annotations,
             crop_page,
             crop_all_pages,
             clear_page_crop,
+            clear_all_page_crops,
+            export_page_as_pdf,
             split_pdf,
             extract_pdf_pages,
             insert_pdf,
@@ -7238,6 +7483,100 @@ mod tests {
         let path = save(&mut build_pdf(1), "export_webp_write");
         let output = tmp("export_webp_write_out.webp");
         let written = export_pdf_page_webp(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written, output.to_string_lossy());
+        assert!(output.is_file());
+        assert!(std::fs::metadata(&output).unwrap().len() > 50);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn rotate_page_180_flips_orientation() {
+        let path = save(&mut build_pdf(1), "rotate_180");
+        rotate_page_180(path.clone(), 0).unwrap();
+        assert_eq!(rotation(&path), 180);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_all_pages_ccw_rotates_every_page() {
+        let path = save(&mut build_pdf(2), "rotate_all_ccw");
+        let count = rotate_all_pages_ccw(path.clone()).unwrap();
+        assert_eq!(count, 2);
+        assert_eq!(rotation(&path), 270);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_page_to_first_and_last_reorder() {
+        let path = save(&mut build_pdf(4), "move_first_last");
+        move_page_to_first(path.clone(), 2).unwrap();
+        assert_eq!(page_order(&path), vec![2, 0, 1, 3]);
+        move_page_to_last(path.clone(), 0).unwrap();
+        assert_eq!(page_order(&path), vec![0, 1, 3, 2]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_all_page_crops_removes_crop_boxes() {
+        let path = save(&mut build_pdf(2), "clear_all_crops");
+        crop_all_pages(path.clone(), 30.0, 30.0, 30.0, 30.0).unwrap();
+        let cleared = clear_all_page_crops(path.clone()).unwrap();
+        assert_eq!(cleared, 2);
+        let doc = Document::load(&path).unwrap();
+        for page_id in doc.get_pages().values() {
+            assert!(doc.get_dictionary(*page_id).unwrap().get(b"CropBox").is_err());
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_pdf_bookmarks_removes_outline() {
+        let path = save(&mut build_pdf_with_outlines(2), "clear_bookmarks");
+        let removed = clear_pdf_bookmarks(path.clone()).unwrap();
+        assert_eq!(removed, 2);
+        assert!(get_pdf_bookmarks(path.clone()).unwrap().is_empty());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_stamps_top_text() {
+        let path = save(&mut build_pdf(1), "page_header");
+        let stamped = add_page_header(path.clone(), 0, 0, "DRAFT".to_string()).unwrap();
+        assert_eq!(stamped, 1);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let bytes = read_page_content(&doc, page_id).unwrap();
+        let content = String::from_utf8_lossy(&bytes);
+        assert!(content.contains("(DRAFT)"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_page_as_pdf_writes_single_page() {
+        let path = save(&mut build_pdf(3), "export_page_pdf");
+        let output = tmp("export_page_pdf_out");
+        let written = export_page_as_pdf(path.clone(), 1, output.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(page_count(&written), 1);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&written);
+    }
+
+    #[test]
+    fn export_pdf_page_bmp_rejects_invalid_page() {
+        let path = save(&mut build_pdf(1), "export_bmp_invalid");
+        let output = tmp("export_bmp_invalid_out.bmp");
+        let err = export_pdf_page_bmp(path.clone(), 2, output.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    #[ignore = "requires PDFium shared library"]
+    fn export_pdf_page_bmp_writes_file() {
+        let path = save(&mut build_pdf(1), "export_bmp_write");
+        let output = tmp("export_bmp_write_out.bmp");
+        let written = export_pdf_page_bmp(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
         assert_eq!(written, output.to_string_lossy());
         assert!(output.is_file());
         assert!(std::fs::metadata(&output).unwrap().len() > 50);

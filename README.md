@@ -55,9 +55,10 @@ Three things we care about:
 - **Split** into multiple files by page range
 - **Extract** a page range into a new PDF without changing the open document
 - **Reverse** page order, **rotate all** pages, insert a **blank page**, or **delete a page range**
-- **Export PNG/JPEG/WebP** — render current page, a range, or all pages (1600×2264)
-- **Rotate CCW**, **reset rotation** (page or all), **duplicate page range**
-- **Add/rename/remove bookmarks**, **page dimensions** in the viewer, **page numbers**, **text watermarks**, **crop** (single, all, or clear), and **flatten** annotations
+- **Export PNG/JPEG/WebP/BMP** or **export current page as PDF**
+- **Rotate 180°**, **rotate all CCW**, **move page to first/last**, **blank before/after**
+- **Insert image as new page**, **page header** text, **duplicate page range**
+- **Add/rename/remove/clear bookmarks**, **page dimensions**, **page numbers**, **watermarks**, **crop** (single/all/clear), **flatten** annotations
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
 **Annotate & mark up**

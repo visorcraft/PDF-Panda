@@ -194,7 +194,7 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge';
 type PngExportScope = 'current' | 'range' | 'all';
-type ImageExportFormat = 'png' | 'jpeg' | 'webp';
+type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp';
 type PageRangeScope = 'current' | 'range' | 'all';
 
 interface PdfBrowserEntry {
@@ -291,6 +291,7 @@ const PDF_DIALOG_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
 const PNG_DIALOG_FILTER = [{ name: 'PNG', extensions: ['png'] }];
 const JPEG_DIALOG_FILTER = [{ name: 'JPEG', extensions: ['jpg', 'jpeg'] }];
 const WEBP_DIALOG_FILTER = [{ name: 'WebP', extensions: ['webp'] }];
+const BMP_DIALOG_FILTER = [{ name: 'BMP', extensions: ['bmp'] }];
 const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 const CERT_DIALOG_FILTER = [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }];
 
@@ -509,6 +510,16 @@ function App() {
   const [duplicateRangeEndPage, setDuplicateRangeEndPage] = useState(0);
   const [cropApplyAll, setCropApplyAll] = useState(false);
   const [pageSizes, setPageSizes] = useState<PdfPageSize[]>([]);
+  const [showPageHeaderModal, setShowPageHeaderModal] = useState(false);
+  const [pageHeaderScope, setPageHeaderScope] = useState<PageRangeScope>('all');
+  const [pageHeaderStartPage, setPageHeaderStartPage] = useState(0);
+  const [pageHeaderEndPage, setPageHeaderEndPage] = useState(0);
+  const [pageHeaderText, setPageHeaderText] = useState('DRAFT');
+  const [showInsertImagePageModal, setShowInsertImagePageModal] = useState(false);
+  const [insertImagePagePath, setInsertImagePagePath] = useState('');
+  const [insertImageAtIndex, setInsertImageAtIndex] = useState(0);
+  const [showExportPagePdfModal, setShowExportPagePdfModal] = useState(false);
+  const [exportPagePdfPath, setExportPagePdfPath] = useState('');
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [insertFilePath, setInsertFilePath] = useState<string>('');
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
@@ -945,6 +956,7 @@ function App() {
   const imageExportExtension = (format: ImageExportFormat) => {
     if (format === 'jpeg') return 'jpg';
     if (format === 'webp') return 'webp';
+    if (format === 'bmp') return 'bmp';
     return 'png';
   };
 
@@ -959,10 +971,12 @@ function App() {
     if (multi) {
       if (format === 'jpeg') return 'export_pdf_pages_jpeg';
       if (format === 'webp') return 'export_pdf_pages_webp';
+      if (format === 'bmp') return 'export_pdf_pages_bmp';
       return 'export_pdf_pages_png';
     }
     if (format === 'jpeg') return 'export_pdf_page_jpeg';
     if (format === 'webp') return 'export_pdf_page_webp';
+    if (format === 'bmp') return 'export_pdf_page_bmp';
     return 'export_pdf_page_png';
   };
 
@@ -985,7 +999,7 @@ function App() {
       return;
     }
     const ext = imageExportExtension(imageExportFormat);
-    const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat.toUpperCase();
+    const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat === 'bmp' ? 'BMP' : imageExportFormat.toUpperCase();
     await withLoading(async () => {
       if (pngExportScope === 'current') {
         const written = await invoke<string>(imageExportCommand(imageExportFormat, false), {
@@ -1013,7 +1027,9 @@ function App() {
       ? JPEG_DIALOG_FILTER
       : imageExportFormat === 'webp'
         ? WEBP_DIALOG_FILTER
-        : PNG_DIALOG_FILTER;
+        : imageExportFormat === 'bmp'
+          ? BMP_DIALOG_FILTER
+          : PNG_DIALOG_FILTER;
     if (pngExportScope === 'current') {
       const picked = await pickSaveWithNativeDialog(
         ensureExtension(
@@ -1031,7 +1047,7 @@ function App() {
       filters,
     );
     if (!picked) return;
-    setPngExportOutputPath(picked.replace(/\.(png|jpe?g|webp)$/i, ''));
+    setPngExportOutputPath(picked.replace(/\.(png|jpe?g|webp|bmp)$/i, ''));
   };
 
   const loadPageSizes = useCallback(async (path: string = filePath) => {
@@ -1147,6 +1163,158 @@ function App() {
       markPdfEdited();
       await reloadOpenPdf(newIndex);
       showToast(`Blank page inserted at position ${newIndex + 1}`);
+    });
+  };
+
+  const handleAddBlankPageBefore = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const newIndex = await invoke<number>('add_blank_page', {
+        path: filePath,
+        atIndex: currentPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(newIndex);
+      showToast(`Blank page inserted before page ${currentPage + 1}`);
+    });
+  };
+
+  const handleRotatePage180 = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('rotate_page_180', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast('Page rotated 180°');
+    });
+  };
+
+  const handleRotateAllPagesCcw = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const count = await invoke<number>('rotate_all_pages_ccw', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${count} page${count === 1 ? '' : 's'} CCW`);
+    });
+  };
+
+  const handleMovePageToFirst = async () => {
+    if (!filePath || currentPage === 0) return;
+    await withLoading(async () => {
+      await invoke('move_page_to_first', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast('Page moved to first position');
+    });
+  };
+
+  const handleMovePageToLast = async () => {
+    if (!filePath || pageCount === null || currentPage >= pageCount - 1) return;
+    await withLoading(async () => {
+      await invoke('move_page_to_last', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
+      const last = (pageCount ?? 1) - 1;
+      await reloadOpenPdf(last);
+      showToast('Page moved to last position');
+    });
+  };
+
+  const handleClearAllCrops = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const cleared = await invoke<number>('clear_all_page_crops', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Cleared crop on ${cleared} page${cleared === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleClearAllBookmarks = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const removed = await invoke<number>('clear_pdf_bookmarks', { path: filePath });
+      markPdfEdited();
+      await loadPdfBookmarks(filePath);
+      showToast(`Removed ${removed} bookmark${removed === 1 ? '' : 's'}`);
+    });
+  };
+
+  const openPageHeaderModal = () => {
+    if (!filePath || pageCount === null) return;
+    setPageHeaderScope('all');
+    setPageHeaderText('DRAFT');
+    setPageHeaderStartPage(0);
+    setPageHeaderEndPage((pageCount ?? 1) - 1);
+    setShowPageHeaderModal(true);
+  };
+
+  const handleAddPageHeader = async () => {
+    if (!filePath || !pageHeaderText.trim()) return;
+    const { start, end } = resolvePageRange(pageHeaderScope, pageHeaderStartPage, pageHeaderEndPage);
+    if (start > end) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_header', {
+        path: filePath,
+        startPage: start,
+        endPage: end,
+        text: pageHeaderText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageHeaderModal(false);
+      showToast(`Added header to ${stamped} page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const openInsertImagePageModal = () => {
+    if (!filePath) return;
+    setInsertImageAtIndex(currentPage + 1);
+    setInsertImagePagePath('');
+    setShowInsertImagePageModal(true);
+  };
+
+  const handleInsertImagePage = async () => {
+    const image = insertImagePagePath.trim();
+    if (!filePath || !image) return;
+    await withLoading(async () => {
+      const newIndex = await invoke<number>('insert_image_page', {
+        path: filePath,
+        atIndex: insertImageAtIndex,
+        imagePath: image,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(newIndex);
+      setShowInsertImagePageModal(false);
+      showToast(`Image page inserted at position ${newIndex + 1}`);
+    });
+  };
+
+  const defaultExportPagePdfPath = () => {
+    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
+    return `${base}_page_${currentPage + 1}.pdf`;
+  };
+
+  const openExportPagePdfModal = () => {
+    if (!filePath) return;
+    setExportPagePdfPath(defaultExportPagePdfPath());
+    setShowExportPagePdfModal(true);
+  };
+
+  const handleExportPagePdf = async () => {
+    const output = exportPagePdfPath.trim();
+    if (!filePath || !output) return;
+    await withLoading(async () => {
+      const written = await invoke<string>('export_page_as_pdf', {
+        path: filePath,
+        pageIndex: currentPage,
+        outputPath: ensureExtension(output, 'pdf'),
+      });
+      showToast(`Exported page to ${written}`);
+      setShowExportPagePdfModal(false);
     });
   };
 
@@ -2561,6 +2729,9 @@ function App() {
     setShowAddBookmarkModal(false);
     setShowRenameBookmarkModal(false);
     setShowDuplicateRangeModal(false);
+    setShowPageHeaderModal(false);
+    setShowInsertImagePageModal(false);
+    setShowExportPagePdfModal(false);
     setShowInsertModal(false);
     setShowMergeModal(false);
     setShowSearchModal(false);
@@ -2752,7 +2923,8 @@ function App() {
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
     || showSplitModal || showExtractModal || showExportPngModal || showDeleteRangeModal
     || showPageNumbersModal || showWatermarkModal || showCropModal || showFlattenModal || showAddBookmarkModal
-    || showRenameBookmarkModal || showDuplicateRangeModal
+    || showRenameBookmarkModal || showDuplicateRangeModal || showPageHeaderModal
+    || showInsertImagePageModal || showExportPagePdfModal
     || showInsertModal || showMergeModal || showSearchModal
     || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
@@ -3486,6 +3658,9 @@ function App() {
               <button type="button" onClick={openAddBookmarkModal} className="btn" title="Add bookmark at current page">
                 Add
               </button>
+              <button type="button" onClick={() => void handleClearAllBookmarks()} className="btn" title="Remove all bookmarks">
+                Clear
+              </button>
               <button type="button" onClick={() => void loadPdfBookmarks(filePath)} className="btn" title="Reload bookmarks">
                 Refresh
               </button>
@@ -3644,11 +3819,16 @@ function App() {
                 <button onClick={handleRotatePage} className="btn" title="Rotate 90° CW (Ctrl+R)" data-testid="rotate-page">Rotate</button>
                 <button onClick={() => void handleRotatePageCcw()} className="btn" title="Rotate 90° CCW">Rotate CCW</button>
                 <button onClick={() => void handleResetPageRotation()} className="btn" title="Reset current page rotation">Reset Rot.</button>
-                <button onClick={() => void handleRotateAllPages()} className="btn" title="Rotate all pages 90°">Rotate All</button>
+                <button onClick={() => void handleRotatePage180()} className="btn" title="Rotate current page 180°">Rotate 180°</button>
+                <button onClick={() => void handleRotateAllPages()} className="btn" title="Rotate all pages 90° CW">Rotate All</button>
+                <button onClick={() => void handleRotateAllPagesCcw()} className="btn" title="Rotate all pages 90° CCW">Rotate All CCW</button>
                 <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
                 <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
                 <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
-                <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank Page</button>
+                <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank After</button>
+                <button onClick={() => void handleAddBlankPageBefore()} className="btn" title="Insert blank page before current">Blank Before</button>
+                <button onClick={() => void handleMovePageToFirst()} className="btn" disabled={currentPage === 0} title="Move current page to first">To First</button>
+                <button onClick={() => void handleMovePageToLast()} className="btn" disabled={pageCount !== null && currentPage >= pageCount - 1} title="Move current page to last">To Last</button>
                 <button onClick={() => void handleReversePages()} className="btn" title="Reverse page order (Ctrl+Shift+Y)">Reverse</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
@@ -3677,8 +3857,11 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
-                <button onClick={openExportPngModal} className="btn" title="Export pages as PNG/JPEG/WebP (Ctrl+Shift+B)" data-testid="export-png">Export Image</button>
+                <button onClick={openExportPngModal} className="btn" title="Export pages as PNG/JPEG/WebP/BMP (Ctrl+Shift+B)" data-testid="export-png">Export Image</button>
+                <button onClick={openExportPagePdfModal} className="btn" title="Export current page as PDF">Export Page</button>
+                <button onClick={openInsertImagePageModal} className="btn" title="Insert image as new page">Image Page</button>
                 <button onClick={openPageNumbersModal} className="btn" title="Add page numbers">Page Numbers</button>
+                <button onClick={openPageHeaderModal} className="btn" title="Add page header text">Page Header</button>
                 <button onClick={openWatermarkModal} className="btn" title="Add text watermark">Watermark</button>
                 <button onClick={openCropModal} className="btn" title="Crop current page margins">Crop</button>
                 <button onClick={openFlattenModal} className="btn" title="Flatten annotations (remove markup)">Flatten</button>
@@ -4392,7 +4575,7 @@ function App() {
       {showExportPngModal && (
         <Modal onClose={() => setShowExportPngModal(false)}>
           <h3>Export Image</h3>
-          <p className="modal-help">Render PDF pages to PNG, JPEG, or WebP images (1600×2264). The open PDF is not modified.</p>
+          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, or BMP images (1600×2264). The open PDF is not modified.</p>
           <label>Format:</label>
           <select
             className="modal-input"
@@ -4408,6 +4591,7 @@ function App() {
             <option value="png">PNG</option>
             <option value="jpeg">JPEG</option>
             <option value="webp">WebP</option>
+            <option value="bmp">BMP</option>
           </select>
           <label>Pages to export:</label>
           <select
@@ -4591,6 +4775,7 @@ function App() {
             {!cropApplyAll && (
               <button onClick={() => void handleClearPageCrop()} className="btn btn-secondary">Clear crop</button>
             )}
+            <button onClick={() => void handleClearAllCrops()} className="btn btn-secondary">Clear all crops</button>
             <button onClick={() => void handleCropPage()} className="btn">Crop</button>
           </div>
         </Modal>
@@ -4650,6 +4835,62 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowAddBookmarkModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleAddBookmark()} className="btn" disabled={!bookmarkTitle.trim()}>Add</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Page Header Modal */}
+      {showPageHeaderModal && (
+        <Modal onClose={() => setShowPageHeaderModal(false)}>
+          <h3>Page Header</h3>
+          <p className="modal-help">Stamp header text near the top of selected pages.</p>
+          <label>Header text:</label>
+          <input type="text" value={pageHeaderText} onChange={(e) => setPageHeaderText(e.target.value)} className="modal-input" />
+          <label>Apply to:</label>
+          <select className="modal-input" value={pageHeaderScope} onChange={(e) => setPageHeaderScope(e.target.value as PageRangeScope)}>
+            <option value="current">Current page only</option>
+            <option value="range">Page range</option>
+            <option value="all">All pages</option>
+          </select>
+          {pageHeaderScope === 'range' && (
+            <>
+              <label>From page: <input type="number" value={pageHeaderStartPage + 1} onChange={(e) => setPageHeaderStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+              <label>To page: <input type="number" value={pageHeaderEndPage + 1} onChange={(e) => setPageHeaderEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+            </>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowPageHeaderModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddPageHeader()} className="btn" disabled={!pageHeaderText.trim()}>Apply</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Insert Image Page Modal */}
+      {showInsertImagePageModal && (
+        <Modal onClose={() => setShowInsertImagePageModal(false)}>
+          <h3>Insert Image Page</h3>
+          <p className="modal-help">Add a new page with a centered image (JPEG/PNG/WebP).</p>
+          <label>Insert at position (1-{((pageCount ?? 0) + 1)}):</label>
+          <input type="number" value={insertImageAtIndex + 1} onChange={(e) => setInsertImageAtIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" />
+          <label>Image file path:</label>
+          <input type="text" value={insertImagePagePath} onChange={(e) => setInsertImagePagePath(e.target.value)} className="modal-input" placeholder="/path/to/image.jpg" />
+          <div className="modal-actions">
+            <button onClick={() => setShowInsertImagePageModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleInsertImagePage()} className="btn" disabled={!insertImagePagePath.trim()}>Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Export Page PDF Modal */}
+      {showExportPagePdfModal && (
+        <Modal onClose={() => setShowExportPagePdfModal(false)}>
+          <h3>Export Page {currentPage + 1} as PDF</h3>
+          <p className="modal-help">Save only the current page to a new PDF. The open document is not modified.</p>
+          <label>Output PDF path:</label>
+          <input type="text" value={exportPagePdfPath} onChange={(e) => setExportPagePdfPath(e.target.value)} className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowExportPagePdfModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExportPagePdf()} className="btn" disabled={!exportPagePdfPath.trim()}>Export</button>
           </div>
         </Modal>
       )}
