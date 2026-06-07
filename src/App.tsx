@@ -29,6 +29,16 @@ interface AnnotationData {
   rect: [number, number, number, number];
   color: [number, number, number] | null;
   contents: string | null;
+  ink_points: number[] | null;
+}
+
+function inkPointsToPolyline(points: number[] | null | undefined): string {
+  if (!points || points.length < 2) return '';
+  const pairs: string[] = [];
+  for (let i = 0; i + 1 < points.length; i += 2) {
+    pairs.push(`${points[i]},${points[i + 1]}`);
+  }
+  return pairs.join(' ');
 }
 
 type ViewMode = 'pdf' | 'markdown';
@@ -140,12 +150,15 @@ function App() {
   // Annotations
   const [highlightMode, setHighlightMode] = useState(false);
   const [noteMode, setNoteMode] = useState(false);
+  const [drawMode, setDrawMode] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
   const [annotations, setAnnotations] = useState<AnnotationData[]>([]);
   const [highlightStart, setHighlightStart] = useState<{ x: number; y: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [inkDrawing, setInkDrawing] = useState(false);
+  const [inkDraft, setInkDraft] = useState<number[]>([]);
   const [drawing, setDrawing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const snapshotSkipNotifiedRef = useRef(false);
@@ -600,11 +613,14 @@ function App() {
     setDrawing(false);
     setHighlightStart(null);
     setHighlightRect(null);
+    setInkDrawing(false);
+    setInkDraft([]);
   };
 
   // Highlighting is a two-click gesture: click once to set the start corner,
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
+    if (drawMode) return;
     if (noteMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       setPendingNotePos(coords);
@@ -646,6 +662,17 @@ function App() {
   };
 
   const handlePageMouseMove = (e: React.MouseEvent) => {
+    if (drawMode && inkDrawing) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      setInkDraft((prev) => {
+        if (prev.length < 2) return [...prev, coords.x, coords.y];
+        const lx = prev[prev.length - 2];
+        const ly = prev[prev.length - 1];
+        if (Math.hypot(coords.x - lx, coords.y - ly) < 2) return prev;
+        return [...prev, coords.x, coords.y];
+      });
+      return;
+    }
     if (!highlightMode || !drawing || !highlightStart) return;
     const coords = getImageCoords(e.clientX, e.clientY);
     setHighlightRect({
@@ -653,6 +680,47 @@ function App() {
       y: Math.min(highlightStart.y, coords.y),
       w: Math.abs(coords.x - highlightStart.x),
       h: Math.abs(coords.y - highlightStart.y),
+    });
+  };
+
+  const commitInkStroke = (points: number[]) => {
+    if (points.length < 4) return;
+    void withLoading(async () => {
+      await invoke('add_ink_stroke', {
+        path: filePath,
+        pageIndex: currentPage,
+        points,
+      });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Drawing added');
+    });
+  };
+
+  const handleDrawMouseDown = (e: React.MouseEvent) => {
+    if (!drawMode) return;
+    e.preventDefault();
+    const coords = getImageCoords(e.clientX, e.clientY);
+    setInkDrawing(true);
+    setInkDraft([coords.x, coords.y]);
+  };
+
+  const handleDrawMouseUp = () => {
+    if (!drawMode || !inkDrawing) return;
+    setInkDrawing(false);
+    const points = inkDraft;
+    setInkDraft([]);
+    commitInkStroke(points);
+  };
+
+  const removeInkStroke = (inkIndex: number) => {
+    void withLoading(async () => {
+      await invoke('remove_ink_stroke', {
+        path: filePath, pageIndex: currentPage, index: inkIndex,
+      });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Drawing removed');
     });
   };
 
@@ -671,6 +739,7 @@ function App() {
   const toggleHighlightMode = () => {
     cancelDrawing();
     setNoteMode(false);
+    setDrawMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setHighlightMode((m) => !m);
@@ -684,9 +753,24 @@ function App() {
   const toggleNoteMode = () => {
     cancelDrawing();
     setHighlightMode(false);
+    setDrawMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setNoteMode((m) => !m);
+  };
+
+  const toggleDrawMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setDrawMode((m) => !m);
+  };
+
+  const exitDrawMode = () => {
+    cancelDrawing();
+    setDrawMode(false);
   };
 
   const exitNoteMode = () => {
@@ -836,10 +920,14 @@ function App() {
   highlightModeRef.current = highlightMode;
   const noteModeRef = useRef(noteMode);
   noteModeRef.current = noteMode;
+  const drawModeRef = useRef(drawMode);
+  drawModeRef.current = drawMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
   const exitNoteModeRef = useRef(exitNoteMode);
   exitNoteModeRef.current = exitNoteMode;
+  const exitDrawModeRef = useRef(exitDrawMode);
+  exitDrawModeRef.current = exitDrawMode;
   const toggleNoteModeRef = useRef(toggleNoteMode);
   toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
@@ -852,6 +940,8 @@ function App() {
   viewModeRef.current = viewMode;
   const toggleHighlightModeRef = useRef(toggleHighlightMode);
   toggleHighlightModeRef.current = toggleHighlightMode;
+  const toggleDrawModeRef = useRef(toggleDrawMode);
+  toggleDrawModeRef.current = toggleDrawMode;
   const zoomInRef = useRef(zoomIn);
   zoomInRef.current = zoomIn;
   const zoomOutRef = useRef(zoomOut);
@@ -901,6 +991,10 @@ function App() {
           exitNoteModeRef.current();
           return;
         }
+        if (drawModeRef.current && hasOpenPdfRef.current) {
+          exitDrawModeRef.current();
+          return;
+        }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
           exitHighlightModeRef.current();
           return;
@@ -934,6 +1028,11 @@ function App() {
         if (e.key.toLowerCase() === 'n' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleNoteModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'd' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleDrawModeRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1293,6 +1392,13 @@ function App() {
                 >
                   {noteMode ? 'Note: ON' : 'Note'}
                 </button>
+                <button
+                  onClick={toggleDrawMode}
+                  className={`btn ${drawMode ? 'btn-active' : ''}`}
+                  title="Toggle freehand draw mode (D)"
+                >
+                  {drawMode ? 'Draw: ON' : 'Draw'}
+                </button>
                 <button onClick={() => guardUnsaved(closePdf)} className="btn" title="Close (Ctrl+W)">Close</button>
               </>
             )}
@@ -1351,9 +1457,12 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''}`}
               onClick={handlePageClick}
+              onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
+              onMouseUp={handleDrawMouseUp}
+              onMouseLeave={handleDrawMouseUp}
             >
               {imageSrc ? (
                 <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
@@ -1379,6 +1488,56 @@ function App() {
                         }}
                       />
                     ))}
+                    {/* Freehand ink strokes */}
+                    <svg
+                      className="ink-overlay"
+                      viewBox={`0 0 ${BASE_W} ${BASE_H}`}
+                      aria-hidden={!drawMode}
+                    >
+                      {annotations.filter((a) => a.subtype === 'Ink').map((a, i) => {
+                        const points = inkPointsToPolyline(a.ink_points);
+                        const stroke = a.color
+                          ? `rgb(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255})`
+                          : 'rgb(0,0,255)';
+                        return (
+                          <g key={`ink-${i}`}>
+                            {drawMode && (
+                              <polyline
+                                points={points}
+                                fill="none"
+                                stroke="transparent"
+                                strokeWidth={12}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); removeInkStroke(i); }}
+                              />
+                            )}
+                            <polyline
+                              points={points}
+                              fill="none"
+                              stroke={stroke}
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              style={{ pointerEvents: 'none' }}
+                            />
+                          </g>
+                        );
+                      })}
+                      {inkDraft.length >= 2 && (
+                        <polyline
+                          points={inkPointsToPolyline(inkDraft)}
+                          fill="none"
+                          stroke="rgb(0,0,255)"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{ pointerEvents: 'none', opacity: 0.75 }}
+                        />
+                      )}
+                    </svg>
                     {/* Sticky text notes */}
                     {annotations.filter((a) => a.subtype === 'Text').map((a, i) => (
                       <div

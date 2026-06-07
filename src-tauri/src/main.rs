@@ -1541,12 +1541,122 @@ fn remove_text_note(path: String, page_index: u32, index: u32) -> Result<(), Str
     Ok(())
 }
 
+fn ink_bbox(points: &[f64]) -> [f64; 4] {
+    let mut min_x = f64::INFINITY;
+    let mut min_y = f64::INFINITY;
+    let mut max_x = f64::NEG_INFINITY;
+    let mut max_y = f64::NEG_INFINITY;
+    for chunk in points.chunks(2) {
+        if chunk.len() == 2 {
+            min_x = min_x.min(chunk[0]);
+            min_y = min_y.min(chunk[1]);
+            max_x = max_x.max(chunk[0]);
+            max_y = max_y.max(chunk[1]);
+        }
+    }
+    [min_x, min_y, max_x, max_y]
+}
+
+#[tauri::command]
+fn add_ink_stroke(path: String, page_index: u32, points: Vec<f64>) -> Result<(), String> {
+    if points.len() < 4 || !points.len().is_multiple_of(2) {
+        return Err("Ink stroke needs at least two points".to_string());
+    }
+
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+
+    let pages = doc.get_pages();
+    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let bbox = ink_bbox(&points);
+    let ink_coords: Vec<Object> = points.iter().map(|p| Object::Real(*p as f32)).collect();
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Ink".to_vec())),
+        (
+            b"Rect".to_vec(),
+            Object::Array(vec![
+                Object::Real(bbox[0] as f32),
+                Object::Real(bbox[1] as f32),
+                Object::Real(bbox[2] as f32),
+                Object::Real(bbox[3] as f32),
+            ]),
+        ),
+        (b"InkList".to_vec(), Object::Array(vec![Object::Array(ink_coords)])),
+        (b"C".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(1.0)])),
+    ])));
+
+    let annots = doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
+
+    match annots {
+        Ok(Object::Array(ref mut arr)) => {
+            arr.push(Object::Reference(annot));
+        }
+        _ => {
+            doc.get_dictionary_mut(*page_id)
+                .map_err(|e| e.to_string())?
+                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
+        }
+    }
+
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Remove the `index`-th ink annotation (0-based among `Ink` subtypes).
+#[tauri::command]
+fn remove_ink_stroke(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
+        Ok(Object::Array(arr)) => arr.clone(),
+        _ => return Err("No annotations on this page".to_string()),
+    };
+
+    let mut ink_count = 0u32;
+    let mut target_pos: Option<usize> = None;
+    for (pos, annot_ref) in annots.iter().enumerate() {
+        let Object::Reference(id) = annot_ref else {
+            continue;
+        };
+        let is_ink = doc
+            .get_object(*id)
+            .ok()
+            .and_then(|o| o.as_dict().ok())
+            .and_then(|d| d.get(b"Subtype").ok())
+            .and_then(|o| o.as_name().ok())
+            .map(|n| String::from_utf8_lossy(n) == "Ink")
+            .unwrap_or(false);
+        if is_ink {
+            if ink_count == index {
+                target_pos = Some(pos);
+                break;
+            }
+            ink_count += 1;
+        }
+    }
+
+    let pos = target_pos.ok_or("Ink stroke not found".to_string())?;
+    let mut new_annots = annots;
+    new_annots.remove(pos);
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
+
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 struct AnnotationData {
     subtype: String,
     rect: [f64; 4],
     color: Option<[f64; 3]>,
     contents: Option<String>,
+    ink_points: Option<Vec<f64>>,
 }
 
 fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
@@ -1608,7 +1718,17 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
                     });
 
                     let contents = annot_contents(annot_dict);
-                    result.push(AnnotationData { subtype, rect, color, contents });
+                    let ink_points = if subtype == "Ink" {
+                        annot_dict.get(b"InkList").ok().and_then(|o| o.as_array().ok()).and_then(|strokes| {
+                            strokes
+                                .first()
+                                .and_then(|stroke| stroke.as_array().ok())
+                                .map(|coords| coords.iter().map(obj_to_f64).collect::<Vec<_>>())
+                        })
+                    } else {
+                        None
+                    };
+                    result.push(AnnotationData { subtype, rect, color, contents, ink_points });
                 }
             }
         }
@@ -1707,6 +1827,8 @@ fn main() {
             remove_highlight,
             add_text_note,
             remove_text_note,
+            add_ink_stroke,
+            remove_ink_stroke,
             get_annotations,
             open_working_copy,
             save_working_copy,
@@ -2550,6 +2672,65 @@ mod tests {
             Err(message) => assert!(message.contains("Text note not found")),
         }
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn ink_stroke_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "ink");
+        let points = vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0];
+        add_ink_stroke(path.clone(), 0, points.clone()).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].subtype, "Ink");
+        assert_eq!(annots[0].ink_points.as_deref(), Some(points.as_slice()));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_ink_stroke_deletes_the_right_one() {
+        let path = save(&mut build_pdf(1), "ink_remove");
+        add_ink_stroke(path.clone(), 0, vec![1.0, 1.0, 2.0, 2.0]).unwrap();
+        add_ink_stroke(path.clone(), 0, vec![10.0, 10.0, 20.0, 20.0]).unwrap();
+        remove_ink_stroke(path.clone(), 0, 0).unwrap();
+        let remaining = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].ink_points.as_deref(), Some(&[10.0, 10.0, 20.0, 20.0][..]));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_ink_stroke_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "ink_invalid");
+        add_ink_stroke(path.clone(), 0, vec![1.0, 1.0, 2.0, 2.0]).unwrap();
+        match remove_ink_stroke(path.clone(), 0, 9) {
+            Ok(_) => panic!("expected invalid index to fail"),
+            Err(message) => assert!(message.contains("Ink stroke not found")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_ink_stroke_rejects_too_few_points() {
+        let path = save(&mut build_pdf(1), "ink_few");
+        match add_ink_stroke(path.clone(), 0, vec![1.0, 1.0]) {
+            Ok(_) => panic!("expected too few points to fail"),
+            Err(message) => assert!(message.contains("at least two points")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_ink_stroke_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_add_ink_missing_{}.pdf", std::process::id()));
+        let err = add_ink_stroke(missing.to_string_lossy().into_owned(), 0, vec![1.0, 1.0, 2.0, 2.0]).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn remove_ink_stroke_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_remove_ink_missing_{}.pdf", std::process::id()));
+        let err = remove_ink_stroke(missing.to_string_lossy().into_owned(), 0, 0).unwrap_err();
+        assert!(!err.is_empty());
     }
 
     #[test]

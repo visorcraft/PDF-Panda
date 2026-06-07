@@ -29,6 +29,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 
 ### Annotations
 - **Highlights** — draw rectangles, persisted in the PDF (`H`)
+- **Freehand drawing** — ink strokes on the page, persisted in the PDF (`D`)
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export

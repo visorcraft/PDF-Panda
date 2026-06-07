@@ -11,12 +11,13 @@ checklist before a release tag.
 
 ## View & edit
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges)
-- [ ] Zoom 25%–400% with aligned highlights/notes
+- [ ] Zoom 25%–400% with aligned highlights/notes/drawings
 - [ ] Delete / rotate / reorder / insert / split
 
 ## Annotations
 - [ ] Highlight add (H) and remove
 - [ ] Sticky note add (N) and remove
+- [ ] Freehand draw add (D) and remove
 
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict
