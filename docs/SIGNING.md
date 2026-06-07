@@ -6,7 +6,7 @@ artifacts automatically before publishing.
 
 ## Automated releases (GitHub Actions)
 
-Push a version tag (`v*`) or run the **Release** workflow manually. The pipeline:
+Run the **Release** workflow manually (**Actions → Release → Run workflow**). The pipeline:
 
 1. Builds Linux deb/rpm, macOS `.app`/`.dmg`, and Windows `.msi`/`.exe` packages.
 2. Signs macOS and Windows artifacts when the secrets below are present.

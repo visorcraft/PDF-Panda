@@ -12,6 +12,7 @@ env:
 
 jobs:
   build-linux:
+    if: github.event_name == 'workflow_dispatch'
     name: Build (Linux)
     runs-on: ubuntu-latest
     steps:
@@ -53,6 +54,7 @@ jobs:
             src-tauri/target/release/bundle/rpm/**
 
   build-macos:
+    if: github.event_name == 'workflow_dispatch'
     name: Build (macOS)
     runs-on: macos-latest
     steps:
@@ -81,20 +83,28 @@ jobs:
         run: npx tauri build
 
       - name: Import Apple signing certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' }}
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: scripts/import-apple-cert.sh
+        run: |
+          if [ -z "${APPLE_CERTIFICATE_BASE64}" ] || [ -z "${APPLE_CERTIFICATE_PASSWORD}" ]; then
+            echo "Apple signing secrets not configured; skipping certificate import."
+            exit 0
+          fi
+          scripts/import-apple-cert.sh
 
       - name: Sign and notarize macOS bundles
-        if: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: scripts/sign-macos.sh
+        run: |
+          if [ -z "${APPLE_SIGNING_IDENTITY}" ]; then
+            echo "Apple signing identity not configured; skipping macOS signing."
+            exit 0
+          fi
+          scripts/sign-macos.sh
 
       - name: Upload macOS bundles
         uses: actions/upload-artifact@v4
@@ -104,6 +114,7 @@ jobs:
             src-tauri/target/release/bundle/macos/**
 
   build-windows:
+    if: github.event_name == 'workflow_dispatch'
     name: Build (Windows)
     runs-on: windows-latest
     steps:
@@ -134,12 +145,15 @@ jobs:
         run: npx tauri build
 
       - name: Sign Windows bundles
-        if: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != '' }}
         shell: bash
         env:
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
+          if [ -z "${WINDOWS_CERTIFICATE_BASE64}" ] || [ -z "${WINDOWS_CERTIFICATE_PASSWORD}" ]; then
+            echo "Windows signing secrets not configured; skipping signing."
+            exit 0
+          fi
           cert_path="$RUNNER_TEMP/pdf-panda-signing.pfx"
           printf '%s' "$WINDOWS_CERTIFICATE_BASE64" | base64 --decode > "$cert_path"
           scripts/sign-windows.sh "$cert_path"
@@ -154,6 +168,7 @@ jobs:
             src-tauri/target/release/pdf-panda.exe
 
   publish:
+    if: github.event_name == 'workflow_dispatch'
     name: Publish GitHub Release
     needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
