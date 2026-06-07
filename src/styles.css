@@ -679,6 +679,20 @@ body {
 }
 
 /* Highlights */
+.search-highlight-overlay {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(255, 196, 0, 0.45);
+  border: 2px solid rgb(230, 140, 0);
+  box-sizing: border-box;
+}
+
+.search-options {
+  display: flex;
+  gap: 16px;
+  margin: 8px 0 12px;
+}
+
 .highlight-overlay {
   position: absolute;
   pointer-events: none;

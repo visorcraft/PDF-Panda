@@ -45,6 +45,7 @@ Three things we care about:
 **View & navigate**
 - Smooth viewer with **25%–400%** zoom and a thumbnail sidebar
 - Page navigation via toolbar, thumbnails, keyboard, mouse wheel at scroll edges, and a clickable **Bookmarks** outline
+- **Find text** across the document with match highlighting (Ctrl/Cmd+F)
 - Open via in-app path entry, a **Recently Opened** list, a built-in PDF browser, or **native open/save dialogs**
 
 **Organize pages**
@@ -145,7 +146,8 @@ secrets — see [`docs/SIGNING.md`](docs/SIGNING.md)).
 | Ctrl/Cmd+Shift+O | Optimize |
 | Ctrl/Cmd+Shift+E | Summarize |
 | Ctrl/Cmd+Shift+U | Digital sign |
-| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+K | Insert / Split PDF |
+| Ctrl/Cmd+F | Find text in PDF |
+| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+G / Ctrl/Cmd+Shift+K | Insert / Merge / Split PDF |
 | Ctrl/Cmd+0, Ctrl/Cmd +/− | Reset / change zoom |
 | H N D S T X E G I F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
 | Delete · Escape | Delete page (confirm) · exit tool or close modal |

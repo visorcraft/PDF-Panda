@@ -92,6 +92,12 @@ interface MarkdownSaveResult {
   conflict: boolean;
 }
 
+interface PdfTextSearchMatch {
+  page_index: number;
+  match_index: number;
+  rect: [number, number, number, number];
+}
+
 interface PdfIntelligentExtraction {
   headings: string[];
   emails: string[];
@@ -460,6 +466,14 @@ function App() {
   const [mergeStartPage, setMergeStartPage] = useState(0);
   const [mergeEndPage, setMergeEndPage] = useState(0);
   const [mergeSourcePageCount, setMergeSourcePageCount] = useState<number | null>(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMatchCase, setSearchMatchCase] = useState(false);
+  const [searchWholeWord, setSearchWholeWord] = useState(false);
+  const [searchResults, setSearchResults] = useState<PdfTextSearchMatch[]>([]);
+  const [searchResultIndex, setSearchResultIndex] = useState(0);
+  const [activeSearchRect, setActiveSearchRect] = useState<[number, number, number, number] | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // When a source PDF is chosen for Insert, load *its* page count so the From/To
   // range reflects the source document (not the currently open one) and defaults
@@ -858,6 +872,56 @@ function App() {
   const openMergeModal = () => {
     if (!filePath) return;
     setShowMergeModal(true);
+  };
+
+  const openSearchModal = () => {
+    if (!filePath) return;
+    setShowSearchModal(true);
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+
+  const closeSearchModal = () => {
+    setShowSearchModal(false);
+    setActiveSearchRect(null);
+  };
+
+  const goToSearchMatch = async (index: number, results: PdfTextSearchMatch[] = searchResults) => {
+    if (!filePath || results.length === 0) return;
+    const clamped = Math.max(0, Math.min(index, results.length - 1));
+    const match = results[clamped];
+    setSearchResultIndex(clamped);
+    setActiveSearchRect(match.rect);
+    setViewMode('pdf');
+    setCurrentPage(match.page_index);
+    setPageInput(String(match.page_index + 1));
+    await withLoading(() => renderPage(filePath, match.page_index));
+  };
+
+  const runPdfSearch = async () => {
+    if (!filePath || !searchQuery.trim()) return;
+    await withLoading(async () => {
+      const results = await invoke<PdfTextSearchMatch[]>('search_pdf_text', {
+        path: filePath,
+        query: searchQuery.trim(),
+        matchCase: searchMatchCase,
+        matchWholeWord: searchWholeWord,
+      });
+      setSearchResults(results);
+      if (results.length === 0) {
+        setSearchResultIndex(0);
+        setActiveSearchRect(null);
+        showToast('No matches found', 'error');
+        return;
+      }
+      showToast(`${results.length} match${results.length === 1 ? '' : 'es'} found`);
+      await goToSearchMatch(0, results);
+    });
+  };
+
+  const stepSearchMatch = (delta: number) => {
+    if (searchResults.length === 0) return;
+    const next = (searchResultIndex + delta + searchResults.length) % searchResults.length;
+    void goToSearchMatch(next);
   };
 
   const handleDeletePage = async () => {
@@ -1977,6 +2041,8 @@ function App() {
     setShowSplitModal(false);
     setShowInsertModal(false);
     setShowMergeModal(false);
+    setShowSearchModal(false);
+    setActiveSearchRect(null);
     setShowImageInsertModal(false);
     setShowAddFormFieldModal(false);
     setShowSummaryModal(false);
@@ -2129,6 +2195,12 @@ function App() {
   openSplitModalRef.current = openSplitModal;
   const openMergeModalRef = useRef(openMergeModal);
   openMergeModalRef.current = openMergeModal;
+  const openSearchModalRef = useRef(openSearchModal);
+  openSearchModalRef.current = openSearchModal;
+  const runPdfSearchRef = useRef(runPdfSearch);
+  runPdfSearchRef.current = runPdfSearch;
+  const stepSearchMatchRef = useRef(stepSearchMatch);
+  stepSearchMatchRef.current = stepSearchMatch;
   const handleOptimizePdfRef = useRef(async () => {});
   const handleSummarizePdfRef = useRef(async () => {});
   const openSignModalRef = useRef<() => void>(() => {});
@@ -2138,7 +2210,7 @@ function App() {
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal || showMetadataModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showInsertModal || showMergeModal || showNoteModal || showImageInsertModal
+    || showSplitModal || showInsertModal || showMergeModal || showSearchModal || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
 
   useEffect(() => {
@@ -2309,6 +2381,11 @@ function App() {
       if (key === 'r') {
         e.preventDefault();
         void handleRotatePageRef.current();
+        return;
+      }
+      if (key === 'f') {
+        e.preventDefault();
+        openSearchModalRef.current();
         return;
       }
       if (key === 'd' && e.shiftKey) {
@@ -2968,6 +3045,7 @@ function App() {
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
                 <button onClick={openMergeModal} className="btn" title="Merge PDF — append pages (Ctrl+Shift+G)">Merge</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
+                <button onClick={openSearchModal} className="btn" title="Find text (Ctrl+F)" data-testid="search-pdf">Find</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
                   <button
                     type="button"
@@ -3243,6 +3321,18 @@ function App() {
                 <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={handleImageLoad} />
+                    {/* Active search match highlight (not persisted) */}
+                    {activeSearchRect && (
+                      <div
+                        className="search-highlight-overlay"
+                        style={{
+                          left: activeSearchRect[0],
+                          top: activeSearchRect[1],
+                          width: activeSearchRect[2] - activeSearchRect[0],
+                          height: activeSearchRect[3] - activeSearchRect[1],
+                        }}
+                      />
+                    )}
                     {/* Existing highlights */}
                     {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
                       <div
@@ -3796,6 +3886,73 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowImageInsertModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void confirmImageSource()} className="btn" disabled={!imageSourceDraft.trim()}>Place on page</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Search Modal */}
+      {showSearchModal && (
+        <Modal onClose={closeSearchModal}>
+          <h3>Find in PDF</h3>
+          <label>Search for:</label>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="modal-input"
+            placeholder="Text to find"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) stepSearchMatch(-1);
+                else if (searchResults.length > 0) stepSearchMatch(1);
+                else void runPdfSearch();
+              }
+            }}
+          />
+          <div className="search-options">
+            <label className="form-checkbox-row">
+              <input
+                type="checkbox"
+                checked={searchMatchCase}
+                onChange={(e) => setSearchMatchCase(e.target.checked)}
+              />
+              <span>Match case</span>
+            </label>
+            <label className="form-checkbox-row">
+              <input
+                type="checkbox"
+                checked={searchWholeWord}
+                onChange={(e) => setSearchWholeWord(e.target.checked)}
+              />
+              <span>Whole words</span>
+            </label>
+          </div>
+          {searchResults.length > 0 && (
+            <p className="modal-help">
+              Match {searchResultIndex + 1} of {searchResults.length} (page {searchResults[searchResultIndex].page_index + 1})
+            </p>
+          )}
+          <div className="modal-actions">
+            <button onClick={closeSearchModal} className="btn btn-secondary">Close</button>
+            <button
+              type="button"
+              onClick={() => stepSearchMatch(-1)}
+              className="btn"
+              disabled={searchResults.length === 0}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => stepSearchMatch(1)}
+              className="btn"
+              disabled={searchResults.length === 0}
+            >
+              Next
+            </button>
+            <button onClick={() => void runPdfSearch()} className="btn" disabled={!searchQuery.trim()}>Find</button>
           </div>
         </Modal>
       )}

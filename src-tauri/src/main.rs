@@ -506,6 +506,89 @@ fn ocr_pdf_page(path: String, page: u32) -> Result<String, String> {
     }
 }
 
+const SEARCH_RENDER_W: i32 = 800;
+const SEARCH_RENDER_H: i32 = 1132;
+
+#[derive(Debug, Serialize)]
+struct PdfTextSearchMatch {
+    page_index: u32,
+    match_index: u32,
+    rect: [f64; 4],
+}
+
+fn pdf_rect_to_search_pixels(rect: PdfRect, page_w: f32, page_h: f32) -> [f64; 4] {
+    let sw = SEARCH_RENDER_W as f64;
+    let sh = SEARCH_RENDER_H as f64;
+    let pw = f64::from(page_w).max(1.0);
+    let ph = f64::from(page_h).max(1.0);
+    let left = f64::from(rect.left().value) / pw * sw;
+    let right = f64::from(rect.right().value) / pw * sw;
+    let top = (ph - f64::from(rect.top().value)) / ph * sh;
+    let bottom = (ph - f64::from(rect.bottom().value)) / ph * sh;
+    [left, top, right, bottom]
+}
+
+fn union_search_bounds(segments: &PdfPageTextSegments<'_>) -> Result<PdfRect, String> {
+    let mut bounds: Option<(f32, f32, f32, f32)> = None;
+    for idx in segments.as_range() {
+        let seg = segments.get(idx).map_err(|e| e.to_string())?;
+        let b = seg.bounds();
+        let l = b.left().value;
+        let r = b.right().value;
+        let bo = b.bottom().value;
+        let t = b.top().value;
+        bounds = Some(match bounds {
+            None => (l, bo, r, t),
+            Some((ul, ubo, ur, ut)) => (ul.min(l), ubo.min(bo), ur.max(r), ut.max(t)),
+        });
+    }
+    let (l, bo, r, t) = bounds.ok_or_else(|| "Empty search result".to_string())?;
+    Ok(PdfRect::new(PdfPoints::new(bo), PdfPoints::new(l), PdfPoints::new(t), PdfPoints::new(r)))
+}
+
+/// Find all occurrences of `query` in the PDF using PDFium's text layer.
+#[tauri::command]
+fn search_pdf_text(
+    path: String,
+    query: String,
+    match_case: bool,
+    match_whole_word: bool,
+) -> Result<Vec<PdfTextSearchMatch>, String> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Err("Search query is empty".to_string());
+    }
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
+    let options = PdfSearchOptions::new().match_case(match_case).match_whole_word(match_whole_word);
+    let mut results = Vec::new();
+    let mut match_index = 0u32;
+
+    for (page_index, page) in document.pages().iter().enumerate() {
+        let text = page.text().map_err(|e| e.to_string())?;
+        let search = text.search(query, &options).map_err(|e| e.to_string())?;
+        let page_w = page.width().value;
+        let page_h = page.height().value;
+
+        for segments in search.iter(PdfSearchDirection::SearchForward) {
+            let bounds = union_search_bounds(&segments)?;
+            results.push(PdfTextSearchMatch {
+                page_index: page_index as u32,
+                match_index,
+                rect: pdf_rect_to_search_pixels(bounds, page_w, page_h),
+            });
+            match_index += 1;
+        }
+    }
+
+    Ok(results)
+}
+
 #[tauri::command]
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
     let path = PathBuf::from(path);
@@ -5565,6 +5648,7 @@ fn main() {
             get_pdf_metadata,
             set_pdf_metadata,
             render_pdf_page,
+            search_pdf_text,
             get_pdf_thumbnails,
             delete_page,
             move_page,
@@ -6008,6 +6092,33 @@ mod tests {
         let err = merge_pdf(dest.clone(), missing.to_string_lossy().into_owned(), 0, 0).unwrap_err();
         assert!(!err.is_empty());
         let _ = std::fs::remove_file(&dest);
+    }
+
+    #[test]
+    fn search_pdf_text_rejects_empty_query() {
+        let path = save(&mut build_pdf(1), "search_empty_query");
+        let err = search_pdf_text(path.clone(), "   ".to_string(), false, false).unwrap_err();
+        assert!(err.contains("empty"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn search_pdf_text_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_search_missing_{}.pdf", std::process::id()));
+        let err =
+            search_pdf_text(missing.to_string_lossy().into_owned(), "hello".to_string(), false, false).unwrap_err();
+        assert!(err.contains("not found"));
+    }
+
+    #[test]
+    #[ignore]
+    fn search_pdf_text_finds_hello_on_first_page() {
+        let path = save(&mut build_pdf(1), "search_hello");
+        let matches = search_pdf_text(path.clone(), "Hello".to_string(), false, false).unwrap();
+        assert!(!matches.is_empty());
+        assert_eq!(matches[0].page_index, 0);
+        assert!(matches[0].rect[2] > matches[0].rect[0]);
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
