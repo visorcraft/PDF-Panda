@@ -116,7 +116,7 @@ and verified:
 | Split PDF | Ranges → separate files, orphans pruned | `split_pdf_creates_separate_files` |
 | Markdown | PDF/Markdown toggle, PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
-| Print | Renders all pages → native print dialog (`window.print()`) | Manual |
+| Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight | Click-to-draw highlights, persisted + read back; H toggles mode; Escape cancels draw and exits | `highlight_add_and_read_back` |
 | Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 

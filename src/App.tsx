@@ -758,6 +758,7 @@ function App() {
   const requestClosePdfRef = useRef<() => void>(() => {});
   const openPdfRef = useRef(openPdf);
   openPdfRef.current = openPdf;
+  const handlePrintRef = useRef(async () => {});
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -825,6 +826,11 @@ function App() {
       if (key === 'w') {
         e.preventDefault();
         requestClosePdfRef.current();
+        return;
+      }
+      if (key === 'p') {
+        e.preventDefault();
+        void handlePrintRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -1005,6 +1011,7 @@ function App() {
       setPrintPages(urls);
     });
   };
+  handlePrintRef.current = handlePrint;
 
   // Once the print pages are in the DOM, open the native print dialog, then
   // clean up the object URLs.
@@ -1095,7 +1102,7 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn">Optimize</button>
-                <button onClick={handlePrint} className="btn">Print</button>
+                <button onClick={handlePrint} className="btn" title="Print (Ctrl+P)">Print</button>
                 <button
                   onClick={toggleHighlightMode}
                   className={`btn ${highlightMode ? 'btn-active' : ''}`}
