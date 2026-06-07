@@ -22,6 +22,8 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Delete**, **rotate** (90° steps), and **drag-and-drop reorder**
 - **Insert** pages from another PDF (range + position; merges AcroForm fields, dedups fonts)
 - **Split** into multiple files by page ranges
+- **In-PDF text** — place Helvetica text blocks in page content (`E`); edit or remove via the Edits modal
+- **Vector rectangles** — draw stroke rectangles in page content (`G`); manage via Edits modal
 
 ### Save & history
 - Non-destructive **working-copy** editing
@@ -123,7 +125,7 @@ PDF_PANDA_TEST_PDF=/path/to/file.pdf \
 ```
 
 **Status:** v0.2.x MVP and post-MVP backlog are complete. Future work is tracked in
-[`PLAN.md`](PLAN.md) vNext (advanced in-PDF editing, digital signatures).
+[`PLAN.md`](PLAN.md) vNext (digital signatures).
 
 Tagged releases (`git tag v0.2.1 && git push origin v0.2.1`) trigger the GitHub
 Actions release workflow (unsigned by default; optional macOS/Windows signing via

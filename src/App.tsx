@@ -116,6 +116,23 @@ interface SummarySaveResult {
   conflict: boolean;
 }
 
+interface PageTextEdit {
+  index: number;
+  x: number;
+  y: number;
+  font_size: number;
+  text: string;
+}
+
+interface PageVectorEdit {
+  index: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  kind: string;
+}
+
 type PdfBrowserTarget = 'open' | 'insert';
 
 interface PdfBrowserEntry {
@@ -292,6 +309,16 @@ function App() {
   const [stampPreset, setStampPreset] = useState<string>(STAMP_PRESETS[0].id);
   const [redactMode, setRedactMode] = useState(false);
   const [imageInsertMode, setImageInsertMode] = useState(false);
+  const [textEditMode, setTextEditMode] = useState(false);
+  const [vectorEditMode, setVectorEditMode] = useState(false);
+  const [showPageTextModal, setShowPageTextModal] = useState(false);
+  const [showPageEditsModal, setShowPageEditsModal] = useState(false);
+  const [pendingTextPos, setPendingTextPos] = useState<{ x: number; y: number } | null>(null);
+  const [pageTextDraft, setPageTextDraft] = useState('');
+  const [pageTextFontSize, setPageTextFontSize] = useState('14');
+  const [editingTextIndex, setEditingTextIndex] = useState<number | null>(null);
+  const [pageTextEdits, setPageTextEdits] = useState<PageTextEdit[]>([]);
+  const [pageVectorEdits, setPageVectorEdits] = useState<PageVectorEdit[]>([]);
   const [showImageInsertModal, setShowImageInsertModal] = useState(false);
   const [imageSourcePath, setImageSourcePath] = useState('');
   const [imageSourceDraft, setImageSourceDraft] = useState('');
@@ -633,6 +660,25 @@ function App() {
     });
   };
 
+  const loadPageEdits = useCallback(async (path: string, page: number) => {
+    if (!path) {
+      setPageTextEdits([]);
+      setPageVectorEdits([]);
+      return;
+    }
+    try {
+      const [texts, vectors] = await Promise.all([
+        invoke<PageTextEdit[]>('list_page_text_edits', { path, pageIndex: page }),
+        invoke<PageVectorEdit[]>('list_page_vectors', { path, pageIndex: page }),
+      ]);
+      setPageTextEdits(texts);
+      setPageVectorEdits(vectors);
+    } catch {
+      setPageTextEdits([]);
+      setPageVectorEdits([]);
+    }
+  }, []);
+
   const renderPage = async (path: string, index: number) => {
     const bytes = await invoke<number[]>('render_pdf_page', {
       path, pageIndex: index, width: BASE_W, height: BASE_H,
@@ -645,6 +691,7 @@ function App() {
 
     const annots = await invoke<AnnotationData[]>('get_annotations', { path, pageIndex: index });
     setAnnotations(annots);
+    await loadPageEdits(path, index);
   };
 
   // Navigate to a page (0-based), clamped to the document.
@@ -858,6 +905,47 @@ function App() {
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
     if (drawMode) return;
+    if (textEditMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      setPendingTextPos(coords);
+      setPageTextDraft('');
+      setEditingTextIndex(null);
+      setShowPageTextModal(true);
+      return;
+    }
+    if (vectorEditMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!drawing) {
+        setHighlightStart(coords);
+        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+        setDrawing(true);
+        return;
+      }
+      const start = highlightStart;
+      cancelDrawing();
+      if (!start) return;
+      const rect = {
+        x: Math.min(start.x, coords.x),
+        y: Math.min(start.y, coords.y),
+        w: Math.abs(coords.x - start.x),
+        h: Math.abs(coords.y - start.y),
+      };
+      if (rect.w < 4 || rect.h < 4) return;
+      void withLoading(async () => {
+        await invoke('add_page_vector_rect', {
+          path: filePath,
+          pageIndex: currentPage,
+          x: rect.x,
+          y: rect.y,
+          width: rect.w,
+          height: rect.h,
+        });
+        markPdfEdited();
+        await renderPage(filePath, currentPage);
+        showToast('Vector shape added');
+      });
+      return;
+    }
     if (formAddMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       const placeFormField = (rect: { x: number; y: number; w: number; h: number }) => {
@@ -1132,7 +1220,7 @@ function App() {
       });
       return;
     }
-    if ((shapeMode || redactMode || imageInsertMode || formAddMode) && drawing && highlightStart) {
+    if ((shapeMode || redactMode || imageInsertMode || vectorEditMode || formAddMode) && drawing && highlightStart) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (shapeMode && shapeKind === 'line') {
         setShapeLineEnd(coords);
@@ -1433,6 +1521,116 @@ function App() {
     setStampMode(false);
   };
 
+  const toggleTextEditMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShapeMode(false);
+    setStampMode(false);
+    setRedactMode(false);
+    setImageInsertMode(false);
+    setVectorEditMode(false);
+    setFormAddMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setTextEditMode((mode) => !mode);
+  };
+
+  const exitTextEditMode = () => {
+    setTextEditMode(false);
+    setShowPageTextModal(false);
+    setPendingTextPos(null);
+    setEditingTextIndex(null);
+  };
+
+  const toggleVectorEditMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShapeMode(false);
+    setStampMode(false);
+    setRedactMode(false);
+    setImageInsertMode(false);
+    setTextEditMode(false);
+    setFormAddMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setVectorEditMode((mode) => !mode);
+  };
+
+  const exitVectorEditMode = () => {
+    cancelDrawing();
+    setVectorEditMode(false);
+  };
+
+  const submitPageText = async () => {
+    const text = pageTextDraft.trim();
+    const fontSize = Number.parseFloat(pageTextFontSize);
+    if (!filePath || !text || Number.isNaN(fontSize)) return;
+    const pos = pendingTextPos;
+    if (editingTextIndex === null && !pos) return;
+    await withLoading(async () => {
+      const wasEdit = editingTextIndex !== null;
+      if (wasEdit) {
+        await invoke('update_page_text', {
+          path: filePath,
+          pageIndex: currentPage,
+          index: editingTextIndex,
+          text,
+          x: pos?.x ?? null,
+          y: pos?.y ?? null,
+          fontSize,
+        });
+      } else if (pos) {
+        await invoke('add_page_text', {
+          path: filePath,
+          pageIndex: currentPage,
+          x: pos.x,
+          y: pos.y,
+          fontSize,
+          text,
+        });
+      }
+      markPdfEdited();
+      setShowPageTextModal(false);
+      setPendingTextPos(null);
+      setEditingTextIndex(null);
+      await renderPage(filePath, currentPage);
+      showToast(wasEdit ? 'Text updated' : 'Text added to page');
+    });
+  };
+
+  const startEditPageText = (edit: PageTextEdit) => {
+    setEditingTextIndex(edit.index);
+    setPendingTextPos({ x: edit.x, y: edit.y });
+    setPageTextDraft(edit.text);
+    setPageTextFontSize(String(edit.font_size));
+    setShowPageEditsModal(false);
+    setShowPageTextModal(true);
+  };
+
+  const removePageTextEdit = async (index: number) => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('remove_page_text', { path: filePath, pageIndex: currentPage, index });
+      markPdfEdited();
+      await renderPage(filePath, currentPage);
+      showToast('Text removed');
+    });
+  };
+
+  const removePageVectorEdit = async (index: number) => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('remove_page_vector', { path: filePath, pageIndex: currentPage, index });
+      markPdfEdited();
+      await renderPage(filePath, currentPage);
+      showToast('Vector shape removed');
+    });
+  };
+
   const toggleRedactMode = () => {
     cancelDrawing();
     setHighlightMode(false);
@@ -1596,6 +1794,8 @@ function App() {
     setShowImageInsertModal(false);
     setShowAddFormFieldModal(false);
     setShowSummaryModal(false);
+    setShowPageTextModal(false);
+    setShowPageEditsModal(false);
   }, [showUnsavedModal]);
 
   const refreshAfterWorkingChange = async () => {
@@ -1666,6 +1866,18 @@ function App() {
   redactModeRef.current = redactMode;
   const imageInsertModeRef = useRef(imageInsertMode);
   imageInsertModeRef.current = imageInsertMode;
+  const textEditModeRef = useRef(textEditMode);
+  textEditModeRef.current = textEditMode;
+  const vectorEditModeRef = useRef(vectorEditMode);
+  vectorEditModeRef.current = vectorEditMode;
+  const exitTextEditModeRef = useRef(exitTextEditMode);
+  exitTextEditModeRef.current = exitTextEditMode;
+  const exitVectorEditModeRef = useRef(exitVectorEditMode);
+  exitVectorEditModeRef.current = exitVectorEditMode;
+  const toggleTextEditModeRef = useRef(toggleTextEditMode);
+  toggleTextEditModeRef.current = toggleTextEditMode;
+  const toggleVectorEditModeRef = useRef(toggleVectorEditMode);
+  toggleVectorEditModeRef.current = toggleVectorEditMode;
   const formAddModeRef = useRef(formAddMode);
   formAddModeRef.current = formAddMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
@@ -1736,7 +1948,7 @@ function App() {
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
     || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal
-    || showAddFormFieldModal || showSummaryModal;
+    || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -1778,6 +1990,14 @@ function App() {
         }
         if (imageInsertModeRef.current && hasOpenPdfRef.current) {
           exitImageInsertModeRef.current();
+          return;
+        }
+        if (textEditModeRef.current && hasOpenPdfRef.current) {
+          exitTextEditModeRef.current();
+          return;
+        }
+        if (vectorEditModeRef.current && hasOpenPdfRef.current) {
+          exitVectorEditModeRef.current();
           return;
         }
         if (formAddModeRef.current && hasOpenPdfRef.current) {
@@ -1837,6 +2057,16 @@ function App() {
         if (e.key.toLowerCase() === 'x' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleRedactModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'e' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleTextEditModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'g' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleVectorEditModeRef.current();
           return;
         }
         if (e.key.toLowerCase() === 'i' && viewModeRef.current === 'pdf') {
@@ -2421,6 +2651,29 @@ function App() {
                   {imageInsertMode ? 'Image: ON' : 'Insert Image'}
                 </button>
                 <button
+                  onClick={toggleTextEditMode}
+                  className={`btn ${textEditMode ? 'btn-active' : ''}`}
+                  title="Place editable text in page content (E)"
+                  data-testid="text-edit-mode"
+                >
+                  {textEditMode ? 'Text: ON' : 'Page Text'}
+                </button>
+                <button
+                  onClick={toggleVectorEditMode}
+                  className={`btn ${vectorEditMode ? 'btn-active' : ''}`}
+                  title="Draw vector rectangles in page content (G)"
+                  data-testid="vector-edit-mode"
+                >
+                  {vectorEditMode ? 'Vector: ON' : 'Vector'}
+                </button>
+                <button
+                  onClick={() => setShowPageEditsModal(true)}
+                  className="btn"
+                  title="Manage page text and vector edits on this page"
+                >
+                  Edits
+                </button>
+                <button
                   onClick={toggleFormsPanel}
                   className={`btn ${showFormsPanel ? 'btn-active' : ''}`}
                   title="Form fields — fill and create text fields (F)"
@@ -2550,7 +2803,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''} ${imageInsertMode ? 'image-insert-cursor' : ''} ${formAddMode ? 'form-add-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''} ${imageInsertMode ? 'image-insert-cursor' : ''} ${textEditMode ? 'text-edit-cursor' : ''} ${vectorEditMode ? 'vector-edit-cursor' : ''} ${formAddMode ? 'form-add-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
@@ -2793,6 +3046,28 @@ function App() {
                         {a.contents}
                       </div>
                     ))}
+                    {pageTextEdits.map((edit) => (
+                      <div
+                        key={`page-text-${edit.index}`}
+                        className="page-text-edit-overlay"
+                        style={{ left: edit.x, top: edit.y }}
+                        title={edit.text}
+                      >
+                        {edit.text}
+                      </div>
+                    ))}
+                    {pageVectorEdits.map((edit) => (
+                      <div
+                        key={`page-vector-${edit.index}`}
+                        className="page-vector-edit-overlay"
+                        style={{
+                          left: edit.x,
+                          top: edit.y,
+                          width: edit.width,
+                          height: edit.height,
+                        }}
+                      />
+                    ))}
                     {/* Current highlight drag */}
                     {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && highlightMode && (
                       <div
@@ -2831,6 +3106,17 @@ function App() {
                     {imageInsertMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
                       <div
                         className="image-insert-draft"
+                        style={{
+                          left: highlightRect.x,
+                          top: highlightRect.y,
+                          width: highlightRect.w,
+                          height: highlightRect.h,
+                        }}
+                      />
+                    )}
+                    {vectorEditMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                      <div
+                        className="page-vector-edit-overlay page-vector-draft"
                         style={{
                           left: highlightRect.x,
                           top: highlightRect.y,
@@ -3128,6 +3414,72 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {showPageTextModal && (
+        <Modal onClose={() => { setShowPageTextModal(false); setEditingTextIndex(null); setPendingTextPos(null); }}>
+          <h3>{editingTextIndex !== null ? 'Edit Page Text' : 'Add Page Text'}</h3>
+          <label>Text:</label>
+          <input
+            type="text"
+            value={pageTextDraft}
+            onChange={(e) => setPageTextDraft(e.target.value)}
+            className="modal-input"
+            autoFocus
+          />
+          <label>Font size (8–72):</label>
+          <input
+            type="number"
+            min="8"
+            max="72"
+            value={pageTextFontSize}
+            onChange={(e) => setPageTextFontSize(e.target.value)}
+            className="modal-input"
+          />
+          <div className="modal-actions">
+            <button onClick={() => { setShowPageTextModal(false); setEditingTextIndex(null); setPendingTextPos(null); }} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void submitPageText()} className="btn" disabled={!pageTextDraft.trim()}>Save</button>
+          </div>
+        </Modal>
+      )}
+
+      {showPageEditsModal && (
+        <Modal onClose={() => setShowPageEditsModal(false)}>
+          <h3>Page Edits — page {currentPage + 1}</h3>
+          <p className="modal-help">Text and vector shapes embedded in the PDF content stream for this page.</p>
+          <h4>Text blocks</h4>
+          {pageTextEdits.length === 0 ? (
+            <p className="muted">No page text on this page.</p>
+          ) : (
+            <ul className="summary-list">
+              {pageTextEdits.map((edit) => (
+                <li key={`manage-text-${edit.index}`} className="page-edit-row">
+                  <span>{edit.text}</span>
+                  <span className="page-edit-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => startEditPageText(edit)}>Edit</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => void removePageTextEdit(edit.index)}>Delete</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <h4>Vector shapes</h4>
+          {pageVectorEdits.length === 0 ? (
+            <p className="muted">No vector shapes on this page.</p>
+          ) : (
+            <ul className="summary-list">
+              {pageVectorEdits.map((edit) => (
+                <li key={`manage-vector-${edit.index}`} className="page-edit-row">
+                  <span>{edit.kind} {Math.round(edit.width)}×{Math.round(edit.height)}</span>
+                  <button type="button" className="btn btn-secondary" onClick={() => void removePageVectorEdit(edit.index)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowPageEditsModal(false)} className="btn">Close</button>
           </div>
         </Modal>
       )}
