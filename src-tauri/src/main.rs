@@ -1068,6 +1068,10 @@ fn split_pdf(path: String, page_ranges: Vec<(u32, u32)>) -> Result<Vec<String>, 
     let path = PathBuf::from(&path);
     let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
 
+    if page_ranges.is_empty() {
+        return Err("At least one page range is required".to_string());
+    }
+
     let (all_kids, pages_ref) = get_pages_kids(&doc)?;
     let total_pages = all_kids.len() as u32;
 
@@ -1736,6 +1740,16 @@ mod tests {
         let path = save(&mut build_pdf(3), "split_invalid");
         let err = split_pdf(path.clone(), vec![(2, 1)]).unwrap_err();
         assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn split_pdf_rejects_empty_ranges() {
+        let path = save(&mut build_pdf(2), "split_empty");
+        match split_pdf(path.clone(), vec![]) {
+            Ok(_) => panic!("expected empty ranges to fail"),
+            Err(message) => assert!(message.contains("At least one page range")),
+        }
         let _ = std::fs::remove_file(&path);
     }
 
