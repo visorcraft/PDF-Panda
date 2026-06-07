@@ -73,7 +73,7 @@ DMABUF renderer for the target hardware.
 
 Run from `src-tauri/` unless noted:
 
-- `cargo test` — 103 unit tests for every lopdf-based command, working-copy flows,
+- `cargo test` — 106 unit tests for every lopdf-based command, working-copy flows,
   highlights/notes, and validation paths (no PDFium needed for the default suite).
 - Ignored end-to-end smoke test (needs PDFium + a file):
   `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
@@ -116,7 +116,7 @@ and the default test suite don't need it.
 browser starts in the last opened-file directory), close current PDF, view + zoom
 (25–400%) + thumbnails, prev/next + mouse-wheel page-turn at scroll boundaries,
 editable page/zoom fields, fixed (non-scrolling) toolbar, drag-reorder, delete
-with page-specific confirmation, rotate, insert, split, optimize (metadata strip
+with page-specific confirmation, rotate, insert (AcroForm merge + font dedup), split, optimize (metadata strip
 + image recompress + prune + stream compress), print (native print dialog via
 `window.print()`), highlight (click-to-start → click-to-finish, persists,
 click-an-existing-highlight to remove), sticky text notes (N — click to place,

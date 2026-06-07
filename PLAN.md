@@ -166,17 +166,17 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Markdown exotic image filters (DeviceGray, DeviceCMYK, Indexed, JPXDecode on save)
 - [x] Page image insertion (`add_page_image` / `get_image_dimensions`, **I** shortcut)
 - [x] Interactive form support (`get_pdf_form_fields` / `set_pdf_form_field` / `add_text_form_field`, **F** shortcut)
+- [x] Insert edge cases — AcroForm merge on insert, cross-insert font dedup, conflicting field rename
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing and vector object manipulation.
 - **OCR integration:** Optical character recognition for scanned documents.
 - **Security features:** Digital signatures.
-- **Form depth:** Checkbox/radio groups, choice lists, and AcroForm merge on insert.
+- **Form depth:** Checkbox/radio groups and choice list creation.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
 - **Markdown depth:** OCR and tagged-PDF semantics.
-- **Insert edge cases:** AcroForm merging, cross-insert font dedup.
 - **Undo/Redo:** delta snapshots for very large files.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
 - **Signing automation:** CI release signing (credentials required; see `docs/SIGNING.md`).

@@ -19,7 +19,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 
 ### Page editing
 - **Delete**, **rotate** (90° steps), and **drag-and-drop reorder**
-- **Insert** pages from another PDF (range + position)
+- **Insert** pages from another PDF (range + position; merges AcroForm fields, dedups fonts)
 - **Split** into multiple files by page ranges
 
 ### Save & history
