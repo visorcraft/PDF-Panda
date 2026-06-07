@@ -2,6 +2,7 @@
   "name": "pdf-panda",
   "private": true,
   "version": "0.2.0",
+  "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite",
