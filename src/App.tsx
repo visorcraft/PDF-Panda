@@ -638,6 +638,11 @@ function App() {
     setHighlightMode((m) => !m);
   };
 
+  const exitHighlightMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+  };
+
   const handleSave = async () => {
     if (!filePath || !originalPath) return;
     await withLoading(async () => {
@@ -730,6 +735,10 @@ function App() {
   canUndoRef.current = canUndo;
   canRedoRef.current = canRedo;
   hasOpenPdfRef.current = !!filePath;
+  const highlightModeRef = useRef(highlightMode);
+  highlightModeRef.current = highlightMode;
+  const exitHighlightModeRef = useRef(exitHighlightMode);
+  exitHighlightModeRef.current = exitHighlightMode;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -741,8 +750,14 @@ function App() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (!hasOpenPdfRef.current) return;
-      if (!e.ctrlKey && !e.metaKey) return;
       if (isTextInput(e.target)) return;
+
+      if (e.key === 'Escape' && highlightModeRef.current) {
+        exitHighlightModeRef.current();
+        return;
+      }
+
+      if (!e.ctrlKey && !e.metaKey) return;
 
       const key = e.key.toLowerCase();
       if (key === 's') {

@@ -117,7 +117,7 @@ and verified:
 | Markdown | PDF/Markdown toggle, PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
 | Print | Renders all pages → native print dialog (`window.print()`) | Manual |
-| Highlight | Drag to highlight, persisted + read back | `highlight_add_and_read_back` |
+| Highlight | Click-to-draw highlights, persisted + read back; Escape cancels draw and exits highlight mode | `highlight_add_and_read_back` |
 | Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
