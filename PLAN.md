@@ -108,8 +108,8 @@ and verified:
 | View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
-| Save / Save As | Working-copy committed on demand; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
-| Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | UI validation |
+| Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
+| Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_undo_restore_reverts_working_copy`, UI validation |
 | Delete page | Confirmation modal → tree-aware `delete_page` (lopdf `delete_pages`, handles nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf` |
 | Rotate page | Toolbar button → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps` |
 | Insert PDF | Two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree` |
@@ -153,8 +153,8 @@ and verified:
 - **Annotations:** rectangle highlights only — no notes, freehand, or other types.
 - **Packaging / distribution:** AppImage needs `appimagetool`; no signed/notarized
   macOS or Windows installers yet.
-- **Testing:** core logic is unit-tested; no automated UI/e2e coverage of the
-  save / undo / insert flows.
+- **Testing:** save, undo/redo snapshot restore, and insert flows have Rust unit
+  tests; no automated UI/e2e coverage yet.
 
 ## Future Roadmap (Post-MVP)
 

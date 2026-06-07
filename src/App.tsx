@@ -716,6 +716,8 @@ function App() {
 
   const undoRedoRef = useRef({ undo, redo });
   undoRedoRef.current = { undo, redo };
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
   const canUndoRef = useRef(canUndo);
   const canRedoRef = useRef(canRedo);
   const hasOpenPdfRef = useRef(!!filePath);
@@ -737,6 +739,13 @@ function App() {
       if (isTextInput(e.target)) return;
 
       const key = e.key.toLowerCase();
+      if (key === 's') {
+        if (isDirtyRef.current) {
+          e.preventDefault();
+          void handleSaveRef.current();
+        }
+        return;
+      }
       if (key === 'z' && !e.shiftKey && canUndoRef.current) {
         e.preventDefault();
         void undoRedoRef.current.undo();
@@ -934,7 +943,7 @@ function App() {
             <button onClick={openPdf} className="btn btn-active">Open PDF</button>
             {filePath && (
               <>
-                <button onClick={handleSave} className="btn" disabled={!isDirty}>{isDirty ? 'Save •' : 'Save'}</button>
+                <button onClick={handleSave} className="btn" disabled={!isDirty} title="Save (Ctrl+S)">{isDirty ? 'Save •' : 'Save'}</button>
                 <button onClick={openSaveAs} className="btn">Save As…</button>
                 <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
