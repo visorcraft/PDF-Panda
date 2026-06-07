@@ -152,9 +152,10 @@ and verified:
   Wayland/WebKitGTK target (in-app path + browser used); revisit when the desktop
   portal path is stable.
 - **Annotations:** rectangle highlights only — no notes, freehand, or other types.
-- **Packaging / distribution:** Linux via `scripts/build-linux-packages.sh` (deb/rpm)
-  and `scripts/build-appimage.sh` (needs `appimagetool`); unsigned macOS/Windows via
-  `scripts/build-macos.sh` / `scripts/build-windows.sh`; signing/notarization not set up yet.
+- **Packaging / distribution:** release binary via `scripts/build-no-bundle.sh`;
+  Linux via `scripts/build-linux-packages.sh` (deb/rpm) and `scripts/build-appimage.sh`
+  (needs `appimagetool`); unsigned macOS/Windows via `scripts/build-macos.sh` /
+  `scripts/build-windows.sh`; signing/notarization not set up yet.
 - **Testing:** save, undo/redo snapshot restore, PDF browser listing, page edit
   validation (delete/move/rotate/insert/split), and Markdown file-write flows have
   Rust unit tests; no automated UI/e2e coverage yet.
