@@ -104,7 +104,7 @@ and verified:
 | Area | Implementation | Verified by |
 | --- | --- | --- |
 | Open PDF | In-app path modal with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | `list_pdf_browser_entries_lists_pdfs_and_directories`, UI validation |
-| Close PDF | Toolbar close action clears current document state and generated object URLs | UI validation |
+| Close PDF | Toolbar close or Ctrl/Cmd+W (unsaved prompt); clears document state and object URLs | UI validation |
 | View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down, Home/End keys | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned); Ctrl/Cmd +/−/0 shortcuts | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |

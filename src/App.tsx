@@ -755,6 +755,7 @@ function App() {
   zoomOutRef.current = zoomOut;
   const resetZoomRef = useRef(resetZoom);
   resetZoomRef.current = resetZoom;
+  const requestClosePdfRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -810,6 +811,11 @@ function App() {
         e.preventDefault();
         if (e.shiftKey) openSaveAsRef.current();
         else if (isDirtyRef.current) void handleSaveRef.current();
+        return;
+      }
+      if (key === 'w') {
+        e.preventDefault();
+        requestClosePdfRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -880,6 +886,7 @@ function App() {
     });
     showToast('PDF closed');
   };
+  requestClosePdfRef.current = () => guardUnsaved(closePdf);
 
   const saveMarkdownToPath = async (target: string, switchToMarkdown: boolean) => {
     if (!filePath || !target) return;
@@ -1087,7 +1094,7 @@ function App() {
                 >
                   {highlightMode ? 'Highlight: ON' : 'Highlight'}
                 </button>
-                <button onClick={() => guardUnsaved(closePdf)} className="btn">Close</button>
+                <button onClick={() => guardUnsaved(closePdf)} className="btn" title="Close (Ctrl+W)">Close</button>
               </>
             )}
           </div>
