@@ -105,7 +105,7 @@ and verified:
 | --- | --- | --- |
 | Open PDF | In-app path modal with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | Real-PDF smoke test with `Disability_Brochure.pdf`, UI validation |
 | Close PDF | Toolbar close action clears current document state and generated object URLs | UI validation |
-| View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
+| View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down keys | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
 | Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |

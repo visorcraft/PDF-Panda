@@ -739,6 +739,12 @@ function App() {
   highlightModeRef.current = highlightMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
+  const goToPageRef = useRef(goToPage);
+  goToPageRef.current = goToPage;
+  const pageCountRef = useRef(pageCount);
+  pageCountRef.current = pageCount;
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -755,6 +761,21 @@ function App() {
       if (e.key === 'Escape' && highlightModeRef.current) {
         exitHighlightModeRef.current();
         return;
+      }
+
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const count = pageCountRef.current;
+        const page = currentPageRef.current;
+        if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && page > 0) {
+          e.preventDefault();
+          goToPageRef.current(page - 1);
+          return;
+        }
+        if ((e.key === 'ArrowRight' || e.key === 'PageDown') && count !== null && page < count - 1) {
+          e.preventDefault();
+          goToPageRef.current(page + 1);
+          return;
+        }
       }
 
       if (!e.ctrlKey && !e.metaKey) return;
