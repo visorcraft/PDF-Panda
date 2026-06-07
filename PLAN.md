@@ -108,7 +108,7 @@ and verified:
 | View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
-| Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
+| Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
 | Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_undo_restore_reverts_working_copy`, UI validation |
 | Delete page | Confirmation modal → tree-aware `delete_page` (lopdf `delete_pages`, handles nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf` |
 | Rotate page | Toolbar button → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps` |
