@@ -1729,6 +1729,34 @@ mod tests {
     }
 
     #[test]
+    fn split_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(3), "split_invalid");
+        let err = split_pdf(path.clone(), vec![(2, 1)]).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_pdf_rejects_invalid_source_range() {
+        let dest = save(&mut build_pdf(2), "insert_dest_range");
+        let src = save(&mut build_pdf(2), "insert_src_range");
+        let err = insert_pdf(dest.clone(), src.clone(), 1, 1, 0).unwrap_err();
+        assert!(err.contains("Invalid insert page range"));
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
+    fn insert_pdf_rejects_out_of_bounds_index() {
+        let dest = save(&mut build_pdf(2), "insert_dest_bounds");
+        let src = save(&mut build_pdf(1), "insert_src_bounds");
+        let err = insert_pdf(dest.clone(), src.clone(), 9, 0, 0).unwrap_err();
+        assert!(err.contains("Insert index out of bounds"));
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
     fn write_markdown_file_creates_sibling_md() {
         let pdf_path = tmp("markdown_write");
         let md_path = pdf_path.with_extension("md");

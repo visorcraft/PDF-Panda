@@ -155,8 +155,8 @@ and verified:
 - **Packaging / distribution:** Linux bundles via `scripts/build-linux-packages.sh`
   (deb/rpm) and `scripts/build-appimage.sh` (needs `appimagetool`); no signed/notarized
   macOS or Windows installers yet.
-- **Testing:** save, undo/redo snapshot restore, and insert flows have Rust unit
-  tests; no automated UI/e2e coverage yet.
+- **Testing:** save, undo/redo snapshot restore, insert/split validation, and
+  Markdown file-write flows have Rust unit tests; no automated UI/e2e coverage yet.
 
 ## Future Roadmap (Post-MVP)
 
