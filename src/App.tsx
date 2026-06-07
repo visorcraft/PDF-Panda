@@ -745,6 +745,10 @@ function App() {
   pageCountRef.current = pageCount;
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  const toggleHighlightModeRef = useRef(toggleHighlightMode);
+  toggleHighlightModeRef.current = toggleHighlightMode;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -774,6 +778,11 @@ function App() {
         if ((e.key === 'ArrowRight' || e.key === 'PageDown') && count !== null && page < count - 1) {
           e.preventDefault();
           goToPageRef.current(page + 1);
+          return;
+        }
+        if (e.key.toLowerCase() === 'h' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleHighlightModeRef.current();
           return;
         }
       }
@@ -1043,6 +1052,7 @@ function App() {
                 <button
                   onClick={toggleHighlightMode}
                   className={`btn ${highlightMode ? 'btn-active' : ''}`}
+                  title="Toggle highlight mode (H)"
                 >
                   {highlightMode ? 'Highlight: ON' : 'Highlight'}
                 </button>

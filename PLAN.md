@@ -105,7 +105,7 @@ and verified:
 | --- | --- | --- |
 | Open PDF | In-app path modal with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | Real-PDF smoke test with `Disability_Brochure.pdf`, UI validation |
 | Close PDF | Toolbar close action clears current document state and generated object URLs | UI validation |
-| View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down keys | Manual + render pipeline |
+| View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down, Home/End keys | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
 | Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
@@ -117,7 +117,7 @@ and verified:
 | Markdown | PDF/Markdown toggle, PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
 | Print | Renders all pages → native print dialog (`window.print()`) | Manual |
-| Highlight | Click-to-draw highlights, persisted + read back; Escape cancels draw and exits highlight mode | `highlight_add_and_read_back` |
+| Highlight | Click-to-draw highlights, persisted + read back; H toggles mode; Escape cancels draw and exits | `highlight_add_and_read_back` |
 | Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
