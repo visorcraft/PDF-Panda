@@ -2131,6 +2131,27 @@ mod tests {
     }
 
     #[test]
+    fn get_annotations_rejects_invalid_page() {
+        let path = save(&mut build_pdf(1), "annots_invalid_page");
+        match get_annotations(path.clone(), 9) {
+            Ok(_) => panic!("expected invalid page to fail"),
+            Err(message) => assert!(message.contains("Page not found")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_highlight_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "remove_invalid");
+        add_highlight(path.clone(), 0, 1.0, 1.0, 2.0, 2.0).unwrap();
+        match remove_highlight(path.clone(), 0, 9) {
+            Ok(_) => panic!("expected invalid index to fail"),
+            Err(message) => assert!(message.contains("Highlight not found")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn highlight_add_and_read_back() {
         let path = save(&mut build_pdf(1), "highlight");
         add_highlight(path.clone(), 0, 10.0, 20.0, 110.0, 40.0).unwrap();
