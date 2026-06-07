@@ -1814,6 +1814,13 @@ mod tests {
     }
 
     #[test]
+    fn delete_page_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_delete_missing_{}.pdf", std::process::id()));
+        let err = delete_page(missing.to_string_lossy().into_owned(), 0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
     fn move_page_rejects_invalid_index() {
         let path = save(&mut build_pdf(2), "move_invalid");
         let err = move_page(path.clone(), 0, 9).unwrap_err();
