@@ -25,7 +25,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 ### Save & history
 - Non-destructive **working-copy** editing
 - **Save** / **Save As** with unsaved-changes prompts
-- **Undo** / **Redo** (50-entry snapshot history)
+- **Undo** / **Redo** (50-entry history; compact deltas for files &gt; 32 MB)
 
 ### Annotations
 - **Highlights** — draw rectangles, persisted in the PDF (`H`)

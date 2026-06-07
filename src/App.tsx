@@ -21,8 +21,15 @@ const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
 const RECENT_PDF_LIMIT = 8;
 // Cap undo snapshots so very large PDFs don't accumulate unbounded working copies.
 const MAX_UNDO_HISTORY = 50;
-// Skip undo snapshots above this size to avoid copying very large PDFs on every edit.
+// Above this size, per-edit snapshots store compact binary deltas instead of full copies.
 const SNAPSHOT_BYTE_LIMIT = 32 * 1024 * 1024;
+
+interface HistorySnapshot {
+  kind: 'full' | 'delta';
+  path: string;
+  baseIndex?: number;
+  size: number;
+}
 
 type ShapeKind = 'square' | 'circle' | 'line';
 type StampKind = 'text' | 'image';
@@ -166,7 +173,7 @@ function App() {
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const historyRef = useRef<string[]>([]); // snapshot paths; historyRef[histIdx] == current working state
+  const historyRef = useRef<HistorySnapshot[]>([]); // historyRef[histIdx] == current working state
   const histIdxRef = useRef(0);
   const savedIdxRef = useRef(0); // history index matching the last saved/opened state
   const filePathRef = useRef('');
@@ -224,7 +231,7 @@ function App() {
   const [shapeLineEnd, setShapeLineEnd] = useState<{ x: number; y: number } | null>(null);
   const [drawing, setDrawing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-  const snapshotSkipNotifiedRef = useRef(false);
+  const deltaSnapshotNotifiedRef = useRef(false);
 
   // Scrolling / wheel navigation
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -290,12 +297,18 @@ function App() {
     setIsDirty(histIdxRef.current !== savedIdxRef.current);
   }, []);
 
-  const pruneUndoHistory = useCallback(() => {
+  const pruneUndoHistory = useCallback(async () => {
     while (historyRef.current.length > MAX_UNDO_HISTORY) {
       const dropAt = savedIdxRef.current === 0 ? 1 : 0;
       if (historyRef.current.length <= dropAt) break;
-      const [removed] = historyRef.current.splice(dropAt, 1);
-      void invoke('discard_working_copy', { working: removed }).catch(() => {});
+      try {
+        historyRef.current = await invoke<HistorySnapshot[]>('prune_history_entry', {
+          history: historyRef.current,
+          dropIndex: dropAt,
+        });
+      } catch {
+        /* best-effort */
+      }
       if (histIdxRef.current > dropAt) histIdxRef.current -= 1;
       else if (histIdxRef.current === dropAt) histIdxRef.current = Math.max(0, dropAt - 1);
       if (savedIdxRef.current > dropAt) savedIdxRef.current -= 1;
@@ -308,23 +321,22 @@ function App() {
     if (!working) return;
     try {
       const size = await invoke<number>('file_byte_size', { path: working });
-      if (size > SNAPSHOT_BYTE_LIMIT) {
-        if (!snapshotSkipNotifiedRef.current) {
-          snapshotSkipNotifiedRef.current = true;
-          showToast('Undo snapshots disabled for files larger than 32 MB', 'error');
-        }
-        refreshUndoRedoState();
-        return;
+      const snapshot = await invoke<HistorySnapshot>('snapshot_pdf_entry', {
+        history: historyRef.current.slice(0, histIdxRef.current + 1),
+        source: working,
+      });
+      if (size > SNAPSHOT_BYTE_LIMIT && snapshot.kind === 'delta' && !deltaSnapshotNotifiedRef.current) {
+        deltaSnapshotNotifiedRef.current = true;
+        showToast('Large file: using compact undo snapshots', 'success');
       }
-      const snapshot = await invoke<string>('snapshot_pdf', { source: working });
       // Drop any redo branch we're overwriting.
-      historyRef.current.slice(histIdxRef.current + 1).forEach((p) => {
-        void invoke('discard_working_copy', { working: p }).catch(() => {});
+      historyRef.current.slice(histIdxRef.current + 1).forEach((entry) => {
+        void invoke('discard_history_entry', { entry }).catch(() => {});
       });
       historyRef.current = historyRef.current.slice(0, histIdxRef.current + 1);
       historyRef.current.push(snapshot);
       histIdxRef.current = historyRef.current.length - 1;
-      pruneUndoHistory();
+      await pruneUndoHistory();
       refreshUndoRedoState();
     } catch {
       /* history is best-effort */
@@ -408,11 +420,11 @@ function App() {
       const count = await invoke<number>('get_pdf_page_count', { path: working });
       setOriginalPath(path);
       setFilePath(working);
-      snapshotSkipNotifiedRef.current = false;
+      deltaSnapshotNotifiedRef.current = false;
       setIsDirty(false);
       // Reset undo/redo history with the freshly-opened state as the baseline.
-      historyRef.current.forEach((p) => void invoke('discard_working_copy', { working: p }).catch(() => {}));
-      const baseline = await invoke<string>('snapshot_pdf', { source: working });
+      historyRef.current.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
+      const baseline = await invoke<HistorySnapshot>('snapshot_pdf_entry', { history: [], source: working });
       historyRef.current = [baseline];
       histIdxRef.current = 0;
       savedIdxRef.current = 0;
@@ -1467,7 +1479,11 @@ function App() {
     if (histIdxRef.current <= 0) return;
     await withLoading(async () => {
       histIdxRef.current -= 1;
-      await invoke('save_working_copy', { working: historyRef.current[histIdxRef.current], target: filePath });
+      await invoke('restore_history_entry', {
+        history: historyRef.current,
+        index: histIdxRef.current,
+        target: filePath,
+      });
       await refreshAfterWorkingChange();
       refreshUndoRedoState();
     });
@@ -1477,7 +1493,11 @@ function App() {
     if (histIdxRef.current >= historyRef.current.length - 1) return;
     await withLoading(async () => {
       histIdxRef.current += 1;
-      await invoke('save_working_copy', { working: historyRef.current[histIdxRef.current], target: filePath });
+      await invoke('restore_history_entry', {
+        history: historyRef.current,
+        index: histIdxRef.current,
+        target: filePath,
+      });
       await refreshAfterWorkingChange();
       refreshUndoRedoState();
     });
@@ -1784,7 +1804,7 @@ function App() {
 
   const closePdf = () => {
     if (filePath) void invoke('discard_working_copy', { working: filePath }).catch(() => {});
-    historyRef.current.forEach((p) => void invoke('discard_working_copy', { working: p }).catch(() => {}));
+    historyRef.current.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
     historyRef.current = [];
     histIdxRef.current = 0;
     savedIdxRef.current = 0;

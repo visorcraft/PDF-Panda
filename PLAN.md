@@ -109,7 +109,7 @@ and verified:
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned); Ctrl/Cmd +/−/0 shortcuts | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves`, `move_page_rejects_invalid_index`, `move_page_rejects_invalid_from_index`, `move_page_same_index_is_noop`, `move_page_rejects_missing_file` |
 | Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `open_working_copy_creates_isolated_temp_file`, `working_copy_isolates_edits_until_saved`, `open_working_copy_rejects_missing_file`, `save_working_copy_rejects_missing_working_file`, UI validation |
-| Undo / Redo | Working-copy snapshot history (50-entry cap); skips snapshots for files &gt; 32 MB; dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_pdf_creates_unique_history_files`, `snapshot_undo_restore_reverts_working_copy`, `snapshot_pdf_rejects_missing_source`, `file_byte_size_returns_length`, UI validation |
+| Undo / Redo | Working-copy snapshot history (50-entry cap); files &gt; 32 MB use compact binary deltas; dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_pdf_creates_unique_history_files`, `snapshot_undo_restore_reverts_working_copy`, `encode_pdf_delta_roundtrip`, `snapshot_pdf_entry_uses_delta_for_large_files`, `prune_history_entry_rematerializes_orphaned_deltas`, `snapshot_pdf_rejects_missing_source`, `file_byte_size_returns_length`, UI validation |
 | Delete page | Delete key or toolbar → confirmation modal → tree-aware `delete_page` (rejects last-page delete, nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf`, `delete_page_rejects_invalid_index`, `delete_page_rejects_only_page`, `delete_page_rejects_missing_file` |
 | Rotate page | Toolbar button or Ctrl/Cmd+R → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps`, `rotate_page_rejects_invalid_index`, `rotate_page_rejects_missing_file` |
 | Insert PDF | Ctrl/Cmd+Shift+I two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree`, `insert_pdf_rejects_invalid_source_range`, `insert_pdf_rejects_source_range_out_of_bounds`, `insert_pdf_rejects_out_of_bounds_index`, `insert_pdf_rejects_missing_source_file`, `insert_pdf_rejects_missing_dest_file` |
@@ -122,7 +122,7 @@ and verified:
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 93 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 112 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -140,8 +140,9 @@ and verified:
   tagged-PDF semantics yet.
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
-- Undo/Redo uses whole-file snapshots (50-entry cap). Files larger than 32 MB skip
-  per-edit snapshots; delta snapshots remain a future optimization.
+- Undo/Redo uses whole-file snapshots for files ≤ 32 MB and compact binary deltas
+  for larger files (50-entry cap). If a single delta exceeds 32 MB it falls back
+  to a full snapshot.
 
 ## Plan Completion
 
@@ -168,6 +169,7 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Interactive form support (`get_pdf_form_fields` / `set_pdf_form_field` / `add_text_form_field`, **F** shortcut)
 - [x] Insert edge cases — AcroForm merge on insert, cross-insert font dedup, conflicting field rename
 - [x] Form depth — checkbox, choice list, and radio group field creation (`add_checkbox_form_field` / `add_choice_form_field` / `add_radio_form_field`)
+- [x] Large-file undo deltas — binary delta snapshots for files &gt; 32 MB (`snapshot_pdf_entry` / `restore_history_entry` / `prune_history_entry`)
 
 ### vNext roadmap
 
@@ -177,6 +179,5 @@ file blocks tagging or shipping `v0.2.0`.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
 - **Markdown depth:** OCR and tagged-PDF semantics.
-- **Undo/Redo:** delta snapshots for very large files.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
 - **Signing automation:** CI release signing (credentials required; see `docs/SIGNING.md`).

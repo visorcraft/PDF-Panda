@@ -101,7 +101,9 @@ and the default test suite don't need it.
   `remove_text_stamp`, `remove_image_stamp`, `add_redaction`, `remove_redaction`,
   `get_image_dimensions`, `add_page_image`, `get_pdf_form_fields`, `set_pdf_form_field`,
   `add_text_form_field`, `add_checkbox_form_field`, `add_choice_form_field`,
-  `add_radio_form_field`, `get_annotations`, `file_byte_size`.
+  `add_radio_form_field`, `get_annotations`, `open_working_copy`, `save_working_copy`,
+  `discard_working_copy`, `snapshot_pdf`, `snapshot_pdf_entry`, `restore_history_entry`,
+  `discard_history_entry`, `prune_history_entry`, `file_byte_size`.
 - `src/App.tsx` — the whole UI (toolbar, scrollable viewer, thumbnail sidebar,
   split/insert modals, highlight overlays, print surface).
 - `src-tauri/capabilities/default.json` — Tauri ACL (`core:default`). Custom app
