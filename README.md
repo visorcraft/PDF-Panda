@@ -31,6 +31,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Highlights** — draw rectangles, persisted in the PDF (`H`)
 - **Freehand drawing** — ink strokes on the page, persisted in the PDF (`D`)
 - **Shape outlines** — rectangle, ellipse, and line annotations (`S`)
+- **Stamps** — text and image preset stamps (`T`) — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export

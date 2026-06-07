@@ -25,6 +25,14 @@ const MAX_UNDO_HISTORY = 50;
 const SNAPSHOT_BYTE_LIMIT = 32 * 1024 * 1024;
 
 type ShapeKind = 'square' | 'circle' | 'line';
+type StampKind = 'text' | 'image';
+
+const STAMP_PRESETS = [
+  { id: 'approved', label: 'APPROVED', color: '#228b22' },
+  { id: 'draft', label: 'DRAFT', color: '#787878' },
+  { id: 'confidential', label: 'CONFIDENTIAL', color: '#b22222' },
+  { id: 'reviewed', label: 'REVIEWED', color: '#1e5aa0' },
+] as const;
 
 interface AnnotationData {
   subtype: string;
@@ -33,6 +41,12 @@ interface AnnotationData {
   contents: string | null;
   ink_points: number[] | null;
   line_endpoints: [number, number, number, number] | null;
+  stamp_kind: string | null;
+  stamp_preset: string | null;
+}
+
+function stampPresetMeta(preset: string | null | undefined) {
+  return STAMP_PRESETS.find((entry) => entry.id === preset);
 }
 
 function shapeStrokeColor(color: [number, number, number] | null): string {
@@ -161,6 +175,9 @@ function App() {
   const [drawMode, setDrawMode] = useState(false);
   const [shapeMode, setShapeMode] = useState(false);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('square');
+  const [stampMode, setStampMode] = useState(false);
+  const [stampKind, setStampKind] = useState<StampKind>('text');
+  const [stampPreset, setStampPreset] = useState<string>(STAMP_PRESETS[0].id);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
@@ -633,6 +650,32 @@ function App() {
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
     if (drawMode) return;
+    if (stampMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      void withLoading(async () => {
+        if (stampKind === 'image') {
+          await invoke('add_image_stamp', {
+            path: filePath,
+            pageIndex: currentPage,
+            x: coords.x,
+            y: coords.y,
+            preset: stampPreset,
+          });
+        } else {
+          await invoke('add_text_stamp', {
+            path: filePath,
+            pageIndex: currentPage,
+            x: coords.x,
+            y: coords.y,
+            preset: stampPreset,
+          });
+        }
+        markPdfEdited();
+        await refreshAnnotations();
+        showToast('Stamp added');
+      });
+      return;
+    }
     if (shapeMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (!drawing) {
@@ -763,6 +806,16 @@ function App() {
     });
   };
 
+  const removeStamp = (kind: StampKind, index: number) => {
+    const command = kind === 'text' ? 'remove_text_stamp' : 'remove_image_stamp';
+    void withLoading(async () => {
+      await invoke(command, { path: filePath, pageIndex: currentPage, index });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Stamp removed');
+    });
+  };
+
   const removeShape = (subtype: 'Square' | 'Circle' | 'Line', index: number) => {
     const command = subtype === 'Square' ? 'remove_square' : subtype === 'Circle' ? 'remove_circle' : 'remove_line';
     void withLoading(async () => {
@@ -831,6 +884,7 @@ function App() {
     setNoteMode(false);
     setDrawMode(false);
     setShapeMode(false);
+    setStampMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setHighlightMode((m) => !m);
@@ -846,6 +900,7 @@ function App() {
     setHighlightMode(false);
     setDrawMode(false);
     setShapeMode(false);
+    setStampMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setNoteMode((m) => !m);
@@ -856,6 +911,7 @@ function App() {
     setHighlightMode(false);
     setNoteMode(false);
     setShapeMode(false);
+    setStampMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setDrawMode((m) => !m);
@@ -871,6 +927,7 @@ function App() {
     setHighlightMode(false);
     setNoteMode(false);
     setDrawMode(false);
+    setStampMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setShapeMode((m) => !m);
@@ -879,6 +936,21 @@ function App() {
   const exitShapeMode = () => {
     cancelDrawing();
     setShapeMode(false);
+  };
+
+  const toggleStampMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShapeMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setStampMode((m) => !m);
+  };
+
+  const exitStampMode = () => {
+    setStampMode(false);
   };
 
   const exitNoteMode = () => {
@@ -1032,6 +1104,8 @@ function App() {
   drawModeRef.current = drawMode;
   const shapeModeRef = useRef(shapeMode);
   shapeModeRef.current = shapeMode;
+  const stampModeRef = useRef(stampMode);
+  stampModeRef.current = stampMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
   const exitNoteModeRef = useRef(exitNoteMode);
@@ -1040,6 +1114,8 @@ function App() {
   exitDrawModeRef.current = exitDrawMode;
   const exitShapeModeRef = useRef(exitShapeMode);
   exitShapeModeRef.current = exitShapeMode;
+  const exitStampModeRef = useRef(exitStampMode);
+  exitStampModeRef.current = exitStampMode;
   const toggleNoteModeRef = useRef(toggleNoteMode);
   toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
@@ -1056,6 +1132,8 @@ function App() {
   toggleDrawModeRef.current = toggleDrawMode;
   const toggleShapeModeRef = useRef(toggleShapeMode);
   toggleShapeModeRef.current = toggleShapeMode;
+  const toggleStampModeRef = useRef(toggleStampMode);
+  toggleStampModeRef.current = toggleStampMode;
   const zoomInRef = useRef(zoomIn);
   zoomInRef.current = zoomIn;
   const zoomOutRef = useRef(zoomOut);
@@ -1113,6 +1191,10 @@ function App() {
           exitShapeModeRef.current();
           return;
         }
+        if (stampModeRef.current && hasOpenPdfRef.current) {
+          exitStampModeRef.current();
+          return;
+        }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
           exitHighlightModeRef.current();
           return;
@@ -1156,6 +1238,11 @@ function App() {
         if (e.key.toLowerCase() === 's' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleShapeModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 't' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleStampModeRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1529,6 +1616,43 @@ function App() {
                 >
                   {shapeMode ? 'Shape: ON' : 'Shape'}
                 </button>
+                <button
+                  onClick={toggleStampMode}
+                  className={`btn ${stampMode ? 'btn-active' : ''}`}
+                  title="Toggle stamp mode — text and image stamps (T)"
+                >
+                  {stampMode ? 'Stamp: ON' : 'Stamp'}
+                </button>
+                {stampMode && (
+                  <div className="stamp-toolbar" role="group" aria-label="Stamp options">
+                    <div className="shape-kind-toggle" role="group" aria-label="Stamp kind">
+                      <button
+                        type="button"
+                        className={stampKind === 'text' ? 'active' : ''}
+                        onClick={() => setStampKind('text')}
+                      >
+                        Text
+                      </button>
+                      <button
+                        type="button"
+                        className={stampKind === 'image' ? 'active' : ''}
+                        onClick={() => setStampKind('image')}
+                      >
+                        Image
+                      </button>
+                    </div>
+                    <select
+                      className="stamp-preset-select"
+                      value={stampPreset}
+                      onChange={(e) => setStampPreset(e.target.value)}
+                      aria-label="Stamp preset"
+                    >
+                      {STAMP_PRESETS.map((preset) => (
+                        <option key={preset.id} value={preset.id}>{preset.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {shapeMode && (
                   <div className="shape-kind-toggle" role="group" aria-label="Shape kind">
                     <button
@@ -1612,7 +1736,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
@@ -1643,6 +1767,53 @@ function App() {
                         }}
                       />
                     ))}
+                    {/* Text stamps */}
+                    {annotations.filter((a) => a.stamp_kind === 'text').map((a, i) => {
+                      const meta = stampPresetMeta(a.stamp_preset);
+                      return (
+                        <div
+                          key={`text-stamp-${i}`}
+                          className="text-stamp-overlay"
+                          title={stampMode ? 'Click to remove' : undefined}
+                          onClick={stampMode ? (e) => { e.stopPropagation(); removeStamp('text', i); } : undefined}
+                          style={{
+                            left: a.rect[0],
+                            top: a.rect[1],
+                            width: a.rect[2] - a.rect[0],
+                            height: a.rect[3] - a.rect[1],
+                            borderColor: meta?.color ?? '#333',
+                            color: meta?.color ?? '#333',
+                            pointerEvents: stampMode ? 'auto' : 'none',
+                            cursor: stampMode ? 'pointer' : 'default',
+                          }}
+                        >
+                          {a.contents ?? meta?.label}
+                        </div>
+                      );
+                    })}
+                    {/* Image stamps */}
+                    {annotations.filter((a) => a.stamp_kind === 'image').map((a, i) => {
+                      const meta = stampPresetMeta(a.stamp_preset);
+                      return (
+                        <div
+                          key={`image-stamp-${i}`}
+                          className="image-stamp-overlay"
+                          title={stampMode ? 'Click to remove' : undefined}
+                          onClick={stampMode ? (e) => { e.stopPropagation(); removeStamp('image', i); } : undefined}
+                          style={{
+                            left: a.rect[0],
+                            top: a.rect[1],
+                            width: a.rect[2] - a.rect[0],
+                            height: a.rect[3] - a.rect[1],
+                            backgroundColor: meta?.color ?? '#666',
+                            pointerEvents: stampMode ? 'auto' : 'none',
+                            cursor: stampMode ? 'pointer' : 'default',
+                          }}
+                        >
+                          {meta?.label}
+                        </div>
+                      );
+                    })}
                     {/* Shape outlines */}
                     {annotations.filter((a) => a.subtype === 'Square').map((a, i) => (
                       <div

@@ -1822,6 +1822,231 @@ fn remove_line(path: String, page_index: u32, index: u32) -> Result<(), String> 
     Ok(())
 }
 
+const STAMP_PRESETS: &[(&str, &str)] =
+    &[("approved", "APPROVED"), ("draft", "DRAFT"), ("confidential", "CONFIDENTIAL"), ("reviewed", "REVIEWED")];
+
+const TEXT_STAMP_WIDTH: f64 = 132.0;
+const TEXT_STAMP_HEIGHT: f64 = 32.0;
+const IMAGE_STAMP_SIZE: f64 = 72.0;
+
+#[derive(serde::Serialize)]
+struct StampPresetInfo {
+    id: String,
+    label: String,
+    color: [u8; 3],
+}
+
+fn stamp_preset_label(preset: &str) -> Result<&'static str, String> {
+    STAMP_PRESETS
+        .iter()
+        .find(|(id, _)| *id == preset)
+        .map(|(_, label)| *label)
+        .ok_or_else(|| format!("Unknown stamp preset: {preset}"))
+}
+
+fn stamp_preset_color(preset: &str) -> [u8; 3] {
+    match preset {
+        "approved" => [34, 139, 34],
+        "draft" => [120, 120, 120],
+        "confidential" => [178, 34, 34],
+        "reviewed" => [30, 90, 160],
+        _ => [100, 100, 100],
+    }
+}
+
+fn stamp_text_default_appearance(preset: &str) -> &'static str {
+    match preset {
+        "approved" => "/Helvetica-Bold 14 Tf 0.0 0.55 0.0 rg",
+        "draft" => "/Helvetica-Bold 14 Tf 0.35 0.35 0.35 rg",
+        "confidential" => "/Helvetica-Bold 14 Tf 0.7 0.1 0.1 rg",
+        "reviewed" => "/Helvetica-Bold 14 Tf 0.12 0.35 0.63 rg",
+        _ => "/Helvetica-Bold 14 Tf 0.0 0.0 0.0 rg",
+    }
+}
+
+fn annot_panda_stamp(dict: &lopdf::Dictionary) -> Option<String> {
+    dict.get(b"PandaStamp").ok().and_then(|o| o.as_name().ok()).map(|b| String::from_utf8_lossy(b).to_string())
+}
+
+fn annot_panda_stamp_kind(dict: &lopdf::Dictionary) -> Option<String> {
+    dict.get(b"PandaStampKind").ok().and_then(|o| o.as_name().ok()).map(|b| String::from_utf8_lossy(b).to_string())
+}
+
+fn remove_panda_stamp(doc: &mut Document, page_id: ObjectId, kind: &str, index: u32) -> Result<(), String> {
+    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
+        Ok(Object::Array(arr)) => arr.clone(),
+        _ => return Err("No annotations on this page".to_string()),
+    };
+
+    let mut match_count = 0u32;
+    let mut target_pos: Option<usize> = None;
+    for (pos, annot_ref) in annots.iter().enumerate() {
+        let Object::Reference(id) = annot_ref else {
+            continue;
+        };
+        let is_match = doc
+            .get_object(*id)
+            .ok()
+            .and_then(|o| o.as_dict().ok())
+            .and_then(annot_panda_stamp_kind)
+            .map(|k| k == kind)
+            .unwrap_or(false);
+        if is_match {
+            if match_count == index {
+                target_pos = Some(pos);
+                break;
+            }
+            match_count += 1;
+        }
+    }
+
+    let pos = target_pos.ok_or_else(|| format!("{kind} stamp not found"))?;
+    let mut new_annots = annots;
+    new_annots.remove(pos);
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
+    Ok(())
+}
+
+#[tauri::command]
+fn list_stamp_presets() -> Vec<StampPresetInfo> {
+    STAMP_PRESETS
+        .iter()
+        .map(|(id, label)| StampPresetInfo {
+            id: (*id).to_string(),
+            label: (*label).to_string(),
+            color: stamp_preset_color(id),
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn add_text_stamp(path: String, page_index: u32, x: f64, y: f64, preset: String) -> Result<(), String> {
+    let label = stamp_preset_label(&preset)?;
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let x2 = x + TEXT_STAMP_WIDTH;
+    let y2 = y + TEXT_STAMP_HEIGHT;
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"FreeText".to_vec())),
+        (b"Rect".to_vec(), shape_rect_object(x, y, x2, y2)),
+        (b"Contents".to_vec(), Object::String(label.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+        (
+            b"DA".to_vec(),
+            Object::String(stamp_text_default_appearance(&preset).as_bytes().to_vec(), lopdf::StringFormat::Literal),
+        ),
+        (b"F".to_vec(), Object::Integer(4)),
+        (b"PandaStamp".to_vec(), Object::Name(preset.as_bytes().to_vec())),
+        (b"PandaStampKind".to_vec(), Object::Name(b"text".to_vec())),
+    ])));
+    push_page_annotation(&mut doc, page_id, annot)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn embed_stamp_image_xobject(doc: &mut Document, preset: &str) -> Result<ObjectId, String> {
+    let (r, g, b) = {
+        let c = stamp_preset_color(preset);
+        (c[0], c[1], c[2])
+    };
+    let width = 72u32;
+    let height = 72u32;
+    let mut rgb = Vec::with_capacity((width * height * 3) as usize);
+    for py in 0..height {
+        for px in 0..width {
+            let edge = px < 2 || py < 2 || px >= width - 2 || py >= height - 2;
+            let (pr, pg, pb) =
+                if edge { (r.saturating_sub(40), g.saturating_sub(40), b.saturating_sub(40)) } else { (r, g, b) };
+            rgb.extend_from_slice(&[pr, pg, pb]);
+        }
+    }
+    let img_id = doc.add_object(Object::Stream(Stream::new(
+        Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+            (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
+            (b"Width".to_vec(), Object::Integer(width as i64)),
+            (b"Height".to_vec(), Object::Integer(height as i64)),
+            (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+            (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+        ]),
+        rgb,
+    )));
+    Ok(img_id)
+}
+
+#[tauri::command]
+fn add_image_stamp(path: String, page_index: u32, x: f64, y: f64, preset: String) -> Result<(), String> {
+    stamp_preset_label(&preset)?;
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let img_id = embed_stamp_image_xobject(&mut doc, &preset)?;
+    let width = IMAGE_STAMP_SIZE;
+    let height = IMAGE_STAMP_SIZE;
+    let mut xobject_dict = Dictionary::new();
+    xobject_dict.set(b"Im1", Object::Reference(img_id));
+    let mut resources = Dictionary::new();
+    resources.set(b"XObject", Object::Dictionary(xobject_dict));
+    let form_id = doc.add_object(Object::Stream(Stream::new(
+        Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+            (b"Subtype".to_vec(), Object::Name(b"Form".to_vec())),
+            (
+                b"BBox".to_vec(),
+                Object::Array(vec![
+                    Object::Integer(0),
+                    Object::Integer(0),
+                    Object::Real(width as f32),
+                    Object::Real(height as f32),
+                ]),
+            ),
+            (b"Resources".to_vec(), Object::Dictionary(resources)),
+        ]),
+        format!("q {width} 0 0 {height} 0 0 cm /Im1 Do Q\n").into_bytes(),
+    )));
+    let ap = Dictionary::from_iter(vec![(b"N".to_vec(), Object::Reference(form_id))]);
+    let x2 = x + width;
+    let y2 = y + height;
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Stamp".to_vec())),
+        (b"Rect".to_vec(), shape_rect_object(x, y, x2, y2)),
+        (b"AP".to_vec(), Object::Dictionary(ap)),
+        (b"PandaStamp".to_vec(), Object::Name(preset.as_bytes().to_vec())),
+        (b"PandaStampKind".to_vec(), Object::Name(b"image".to_vec())),
+    ])));
+    push_page_annotation(&mut doc, page_id, annot)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_text_stamp(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    remove_panda_stamp(&mut doc, page_id, "text", index)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_image_stamp(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    remove_panda_stamp(&mut doc, page_id, "image", index)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 struct AnnotationData {
     subtype: String,
@@ -1830,6 +2055,8 @@ struct AnnotationData {
     contents: Option<String>,
     ink_points: Option<Vec<f64>>,
     line_endpoints: Option<[f64; 4]>,
+    stamp_kind: Option<String>,
+    stamp_preset: Option<String>,
 }
 
 fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
@@ -1909,7 +2136,18 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
                     } else {
                         None
                     };
-                    result.push(AnnotationData { subtype, rect, color, contents, ink_points, line_endpoints });
+                    let stamp_kind = annot_panda_stamp_kind(annot_dict);
+                    let stamp_preset = annot_panda_stamp(annot_dict);
+                    result.push(AnnotationData {
+                        subtype,
+                        rect,
+                        color,
+                        contents,
+                        ink_points,
+                        line_endpoints,
+                        stamp_kind,
+                        stamp_preset,
+                    });
                 }
             }
         }
@@ -2016,6 +2254,11 @@ fn main() {
             remove_square,
             remove_circle,
             remove_line,
+            list_stamp_presets,
+            add_text_stamp,
+            add_image_stamp,
+            remove_text_stamp,
+            remove_image_stamp,
             get_annotations,
             open_working_copy,
             save_working_copy,
@@ -2981,6 +3224,69 @@ mod tests {
         match add_line(path.clone(), 0, 1.0, 1.0, 1.0, 1.0) {
             Ok(_) => panic!("expected short line to fail"),
             Err(message) => assert!(message.contains("too short")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn list_stamp_presets_returns_known_labels() {
+        let presets = list_stamp_presets();
+        assert_eq!(presets.len(), 4);
+        assert!(presets.iter().any(|p| p.id == "approved" && p.label == "APPROVED"));
+    }
+
+    #[test]
+    fn text_stamp_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "text_stamp");
+        add_text_stamp(path.clone(), 0, 20.0, 30.0, "approved".to_string()).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].stamp_kind.as_deref(), Some("text"));
+        assert_eq!(annots[0].stamp_preset.as_deref(), Some("approved"));
+        assert_eq!(annots[0].contents.as_deref(), Some("APPROVED"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn image_stamp_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "image_stamp");
+        add_image_stamp(path.clone(), 0, 40.0, 50.0, "draft".to_string()).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].stamp_kind.as_deref(), Some("image"));
+        assert_eq!(annots[0].stamp_preset.as_deref(), Some("draft"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_text_stamp_deletes_the_right_one() {
+        let path = save(&mut build_pdf(1), "text_stamp_remove");
+        add_text_stamp(path.clone(), 0, 10.0, 10.0, "approved".to_string()).unwrap();
+        add_text_stamp(path.clone(), 0, 50.0, 50.0, "draft".to_string()).unwrap();
+        remove_text_stamp(path.clone(), 0, 0).unwrap();
+        let remaining = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].stamp_preset.as_deref(), Some("draft"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_stamp_rejects_unknown_preset() {
+        let path = save(&mut build_pdf(1), "text_stamp_bad");
+        match add_text_stamp(path.clone(), 0, 1.0, 1.0, "nope".to_string()) {
+            Ok(_) => panic!("expected unknown preset to fail"),
+            Err(message) => assert!(message.contains("Unknown stamp preset")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_image_stamp_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "image_stamp_invalid");
+        add_image_stamp(path.clone(), 0, 1.0, 1.0, "reviewed".to_string()).unwrap();
+        match remove_image_stamp(path.clone(), 0, 9) {
+            Ok(_) => panic!("expected invalid index to fail"),
+            Err(message) => assert!(message.contains("image stamp not found")),
         }
         let _ = std::fs::remove_file(&path);
     }
