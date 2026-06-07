@@ -33,16 +33,6 @@ Include, when possible:
 We aim to acknowledge reports within a few business days. We will coordinate
 disclosure and credit with you before publishing a fix.
 
-## Scope notes
-
-PDF Panda is an offline desktop application. Reports about missing cloud
-features, local file access by the user, or behaviour that requires opening a
-malicious PDF are in scope when they demonstrate unintended code execution,
-memory corruption, or similar harm beyond normal PDF parsing risks.
-
-Out of scope: issues in third-party dependencies without a demonstrable impact
-on PDF Panda, social engineering, and physical access to an unlocked machine.
-
 ## Contact
 
 Project home: [visorcraft.com](https://www.visorcraft.com)

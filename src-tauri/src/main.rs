@@ -989,6 +989,20 @@ fn move_page(path: String, from_index: u32, to_index: u32) -> Result<(), String>
     Ok(())
 }
 
+/// Deep-copy `page_index` and insert the copy immediately after it.
+#[tauri::command]
+fn duplicate_page(path: String, page_index: u32) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let page_count = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len();
+    let idx = page_index as usize;
+    if idx >= page_count {
+        return Err("Page index out of bounds".to_string());
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    insert_pdf(path_str.clone(), path_str, page_index + 1, page_index, page_index)?;
+    Ok(page_index + 1)
+}
+
 #[tauri::command]
 fn rotate_page(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
@@ -5532,6 +5546,7 @@ fn main() {
             get_pdf_thumbnails,
             delete_page,
             move_page,
+            duplicate_page,
             rotate_page,
             split_pdf,
             insert_pdf,
@@ -5879,6 +5894,39 @@ mod tests {
         assert_eq!(page_order(&path), vec![1, 2, 0]);
         assert_eq!(count_entry(&path), 3);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_page_inserts_copy_after_source() {
+        let path = save(&mut build_pdf(2), "duplicate");
+        duplicate_page(path.clone(), 0).unwrap();
+        let count = Document::load(&path).unwrap().get_pages().len();
+        assert_eq!(count, 3);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_page_returns_new_index() {
+        let path = save(&mut build_pdf(1), "duplicate_index");
+        let new_index = duplicate_page(path.clone(), 0).unwrap();
+        assert_eq!(new_index, 1);
+        assert_eq!(Document::load(&path).unwrap().get_pages().len(), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_page_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "duplicate_invalid");
+        let err = duplicate_page(path.clone(), 9).unwrap_err();
+        assert!(err.contains("out of bounds"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_page_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_duplicate_missing_{}.pdf", std::process::id()));
+        let err = duplicate_page(missing.to_string_lossy().into_owned(), 0).unwrap_err();
+        assert!(!err.is_empty());
     }
 
     #[test]

@@ -48,7 +48,7 @@ Three things we care about:
 - Open via in-app path entry, a **Recently Opened** list, a built-in PDF browser, or **native open/save dialogs**
 
 **Organize pages**
-- **Delete**, **rotate** (90° steps), and **drag-and-drop reorder**
+- **Delete**, **duplicate**, **rotate** (90° steps), and **drag-and-drop reorder**
 - **Insert** pages from another PDF (range + position; merges form fields, dedups fonts)
 - **Split** into multiple files by page range
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)

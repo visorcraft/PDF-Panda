@@ -863,6 +863,25 @@ function App() {
     });
   };
 
+  const handleDuplicatePage = async () => {
+    if (!filePath) return;
+    const sourcePage = currentPage;
+    await withLoading(async () => {
+      const newIndex = await invoke<number>('duplicate_page', {
+        path: filePath,
+        pageIndex: sourcePage,
+      });
+      markPdfEdited();
+      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
+      setPageCount(count);
+      setCurrentPage(newIndex);
+      setPageInput(String(newIndex + 1));
+      await renderPage(filePath, newIndex);
+      await loadThumbnails(filePath);
+      showToast(`Page ${sourcePage + 1} duplicated`);
+    });
+  };
+
   // Zoom
   const zoomIn = () => setZoom((z) => clampZoom(+(z + ZOOM_STEP).toFixed(2)));
   const zoomOut = () => setZoom((z) => clampZoom(+(z - ZOOM_STEP).toFixed(2)));
@@ -2056,6 +2075,8 @@ function App() {
   const handlePrintRef = useRef(async () => {});
   const handleRotatePageRef = useRef(handleRotatePage);
   handleRotatePageRef.current = handleRotatePage;
+  const handleDuplicatePageRef = useRef(handleDuplicatePage);
+  handleDuplicatePageRef.current = handleDuplicatePage;
   const toggleMarkdownViewRef = useRef(async () => {});
   const openDeleteModalRef = useRef(openDeleteModal);
   openDeleteModalRef.current = openDeleteModal;
@@ -2243,6 +2264,11 @@ function App() {
       if (key === 'r') {
         e.preventDefault();
         void handleRotatePageRef.current();
+        return;
+      }
+      if (key === 'd' && e.shiftKey) {
+        e.preventDefault();
+        void handleDuplicatePageRef.current();
         return;
       }
       if (key === 'm' && e.shiftKey) {
@@ -2866,6 +2892,7 @@ function App() {
                 <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
                 <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)" data-testid="rotate-page">Rotate</button>
+                <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
