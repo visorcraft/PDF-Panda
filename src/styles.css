@@ -297,6 +297,7 @@ body {
 }
 
 .markdown-path {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   color: #777;

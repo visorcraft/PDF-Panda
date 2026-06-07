@@ -114,7 +114,7 @@ and verified:
 | Rotate page | Toolbar button → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps` |
 | Insert PDF | Two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree` |
 | Split PDF | Ranges → separate files, orphans pruned | `split_pdf_creates_separate_files` |
-| Markdown | PDF/Markdown toggle, PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
+| Markdown | PDF/Markdown toggle, PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
 | Print | Renders all pages → native print dialog (`window.print()`) | Manual |
 | Highlight | Drag to highlight, persisted + read back | `highlight_add_and_read_back` |
@@ -129,8 +129,9 @@ and verified:
 - CI matrix runs all of the above on Linux, macOS, and Windows.
 
 **Known limitations (documented, not defects):**
-- Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), saves
-  beside the open PDF as `<pdf-name>.md`, and reconstructs headings/tables from
+- Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), defaults
+  to saving beside the open PDF as `<pdf-name>.md` (custom path via Save Markdown As…),
+  and reconstructs headings/tables from
   text geometry heuristics. It does not extract images, OCR scanned pages, or use
   tagged-PDF semantics; pages with no text layer are marked
   `_(no extractable text on this page)_`.
@@ -142,7 +143,7 @@ and verified:
 ## Remaining / Future Work
 
 - **Markdown depth:** no image extraction, OCR for scanned/no-text pages, or
-  tagged-PDF semantics; output always saves beside the PDF (no destination picker).
+  tagged-PDF semantics.
 - **Insert edge cases:** AcroForm / form-field merging is not handled; fonts
   shared across inserted pages aren't deduped beyond a single insert operation.
 - **Undo/Redo:** snapshot-based with a 50-entry cap; delta snapshots would still

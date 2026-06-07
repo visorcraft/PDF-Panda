@@ -53,6 +53,8 @@ interface PdfBrowserListing {
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
+const siblingMarkdownPath = (pdfPath: string) => pdfPath.replace(/\.pdf$/i, '.md');
+
 const readStoredString = (key: string): string => {
   try {
     return window.localStorage.getItem(key) ?? '';
@@ -106,6 +108,8 @@ function App() {
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsPath, setSaveAsPath] = useState<string>('');
+  const [showMarkdownSaveAsModal, setShowMarkdownSaveAsModal] = useState(false);
+  const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const historyRef = useRef<string[]>([]); // snapshot paths; historyRef[histIdx] == current working state
@@ -800,6 +804,29 @@ function App() {
     showToast('PDF closed');
   };
 
+  const saveMarkdownToPath = async (target: string, switchToMarkdown: boolean) => {
+    if (!filePath || !target) return;
+    let result = await invoke<MarkdownSaveResult>('save_pdf_markdown', {
+      path: filePath,
+      overwrite: false,
+      outputPath: target,
+    });
+    if (result.conflict) {
+      const overwrite = window.confirm('Overwrite Markdown File?');
+      if (!overwrite) return;
+      result = await invoke<MarkdownSaveResult>('save_pdf_markdown', {
+        path: filePath,
+        overwrite: true,
+        outputPath: target,
+      });
+    }
+    setMarkdownText(result.markdown);
+    setMarkdownPath(result.markdownPath);
+    setMarkdownRevision(pdfRevision);
+    if (switchToMarkdown) setViewMode('markdown');
+    showToast(result.written ? `Markdown saved to ${result.markdownPath}` : 'Markdown file is already up to date');
+  };
+
   const handleMarkdownView = async () => {
     if (!filePath) return;
     if (markdownText && markdownRevision === pdfRevision) {
@@ -807,17 +834,22 @@ function App() {
       return;
     }
     await withLoading(async () => {
-      let result = await invoke<MarkdownSaveResult>('save_pdf_markdown', { path: filePath, overwrite: false });
-      if (result.conflict) {
-        const overwrite = window.confirm('Overwrite Markdown File?');
-        if (!overwrite) return;
-        result = await invoke<MarkdownSaveResult>('save_pdf_markdown', { path: filePath, overwrite: true });
-      }
-      setMarkdownText(result.markdown);
-      setMarkdownPath(result.markdownPath);
-      setMarkdownRevision(pdfRevision);
-      setViewMode('markdown');
-      showToast(result.written ? `Markdown saved to ${result.markdownPath}` : 'Markdown file is already up to date');
+      await saveMarkdownToPath(siblingMarkdownPath(originalPath || filePath), true);
+    });
+  };
+
+  const openMarkdownSaveAs = () => {
+    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
+    setMarkdownSaveAsPath(defaultPath);
+    setShowMarkdownSaveAsModal(true);
+  };
+
+  const handleMarkdownSaveAs = async () => {
+    const target = markdownSaveAsPath.trim();
+    if (!filePath || !target) return;
+    await withLoading(async () => {
+      await saveMarkdownToPath(target, viewMode === 'markdown');
+      setShowMarkdownSaveAsModal(false);
     });
   };
 
@@ -1029,6 +1061,7 @@ function App() {
               <div className="markdown-header">
                 <span>Markdown</span>
                 {markdownPath && <span className="markdown-path">{markdownPath}</span>}
+                <button type="button" onClick={openMarkdownSaveAs} className="btn btn-secondary">Save As…</button>
               </div>
               <pre className="markdown-preview">{markdownText}</pre>
             </div>
@@ -1205,6 +1238,24 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
             <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {showMarkdownSaveAsModal && (
+        <Modal onClose={() => setShowMarkdownSaveAsModal(false)}>
+          <h3>Save Markdown As</h3>
+          <label>Save to path:</label>
+          <input
+            type="text"
+            value={markdownSaveAsPath}
+            onChange={(e) => setMarkdownSaveAsPath(e.target.value)}
+            className="modal-input"
+            placeholder="/path/to/output.md"
+          />
+          <div className="modal-actions">
+            <button onClick={() => setShowMarkdownSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={handleMarkdownSaveAs} className="btn" disabled={!markdownSaveAsPath.trim()}>Save</button>
           </div>
         </Modal>
       )}

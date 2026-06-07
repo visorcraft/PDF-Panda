@@ -113,7 +113,8 @@ with page-specific confirmation, rotate, insert, split, optimize (metadata strip
 + image recompress + prune + stream compress), print (native print dialog via
 `window.print()`), highlight (click-to-start → click-to-finish, persists,
 click-an-existing-highlight to remove), PDF/Markdown view toggle with sibling
-`.md` auto-save and overwrite confirmation, Markdown conversion (PDFium text
+`.md` auto-save (or Save Markdown As… custom path) and overwrite confirmation,
+Markdown conversion (PDFium text
 extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and
 column-table formatting).
 
@@ -126,8 +127,8 @@ the WebKitGTK view transition.
 **Known gaps / future work:**
 - Markdown output is heuristic layout reconstruction from PDF text geometry; it
   does not yet extract images, OCR scanned pages, or use tagged-PDF semantics.
-- Markdown always saves beside the open PDF as `<pdf-name>.md`; there is no custom
-  destination picker yet.
+- Markdown defaults to saving beside the open PDF as `<pdf-name>.md`; use Save
+  Markdown As… in the Markdown view for a custom path.
 - Native PDF file dialogs are intentionally avoided on the current Linux/Wayland
   target because the WebKitGTK/portal path can hang the app when opening a file.
 - AppImage bundling needs `appimagetool` installed (deb/rpm work out of the box).

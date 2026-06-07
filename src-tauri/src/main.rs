@@ -1016,9 +1016,7 @@ struct MarkdownSaveResult {
     conflict: bool,
 }
 
-fn write_markdown_file(pdf_path: &Path, markdown: &str, overwrite: bool) -> Result<MarkdownSaveResult, String> {
-    let markdown_path = pdf_path.with_extension("md");
-
+fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) -> Result<MarkdownSaveResult, String> {
     if markdown_path.exists() {
         let existing = std::fs::read(&markdown_path).map_err(|e| e.to_string())?;
         if existing == markdown.as_bytes() {
@@ -1049,10 +1047,17 @@ fn write_markdown_file(pdf_path: &Path, markdown: &str, overwrite: bool) -> Resu
 }
 
 #[tauri::command]
-fn save_pdf_markdown(path: String, overwrite: bool) -> Result<MarkdownSaveResult, String> {
+fn save_pdf_markdown(
+    path: String,
+    overwrite: bool,
+    output_path: Option<String>,
+) -> Result<MarkdownSaveResult, String> {
     let pdf_path = PathBuf::from(path);
     let markdown = pdf_to_markdown(&pdf_path)?;
-    write_markdown_file(&pdf_path, &markdown, overwrite)
+    let markdown_path = output_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| pdf_path.with_extension("md"));
+    write_markdown_file(&markdown_path, &markdown, overwrite)
 }
 
 #[tauri::command]
@@ -1729,7 +1734,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         let _ = std::fs::remove_file(&md_path);
 
-        let result = write_markdown_file(&pdf_path, "# Test\n", false).unwrap();
+        let result = write_markdown_file(&md_path, "# Test\n", false).unwrap();
 
         assert!(result.written);
         assert!(!result.conflict);
@@ -1744,7 +1749,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         std::fs::write(&md_path, "# Existing\n").unwrap();
 
-        let result = write_markdown_file(&pdf_path, "# New\n", false).unwrap();
+        let result = write_markdown_file(&md_path, "# New\n", false).unwrap();
 
         assert!(!result.written);
         assert!(result.conflict);
@@ -1758,7 +1763,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         std::fs::write(&md_path, "# Existing\n").unwrap();
 
-        let result = write_markdown_file(&pdf_path, "# New\n", true).unwrap();
+        let result = write_markdown_file(&md_path, "# New\n", true).unwrap();
 
         assert!(result.written);
         assert!(!result.conflict);
@@ -1772,12 +1777,26 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         std::fs::write(&md_path, "# Same\n").unwrap();
 
-        let result = write_markdown_file(&pdf_path, "# Same\n", false).unwrap();
+        let result = write_markdown_file(&md_path, "# Same\n", false).unwrap();
 
         assert!(!result.written);
         assert!(!result.conflict);
         assert_eq!(std::fs::read_to_string(&md_path).unwrap(), "# Same\n");
         let _ = std::fs::remove_file(&md_path);
+    }
+
+    #[test]
+    fn write_markdown_file_writes_custom_path() {
+        let custom = std::env::temp_dir().join(format!("pp_md_custom_{}.md", std::process::id()));
+        let _ = std::fs::remove_file(&custom);
+
+        let result = write_markdown_file(&custom, "# Custom\n", false).unwrap();
+
+        assert!(result.written);
+        assert!(!result.conflict);
+        assert_eq!(result.markdown_path, custom.to_string_lossy());
+        assert_eq!(std::fs::read_to_string(&custom).unwrap(), "# Custom\n");
+        let _ = std::fs::remove_file(&custom);
     }
 
     fn md_line(text: &str, top: f32, bottom: f32, cells: Vec<(&str, f32, f32)>) -> MarkdownTextLine {
