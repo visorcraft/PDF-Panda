@@ -47,7 +47,7 @@ avoids WebKitGTK DMABUF crash on some multi-GPU Wayland stacks.
 
 From `src-tauri/` unless noted:
 
-- `cargo test` — 118 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`)
+- `cargo test` — 121 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`)
 - `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
 - `cargo clippy --all-targets` (CI: `RUSTFLAGS=-Dwarnings`)
 - `cargo fmt --check` (single `rustfmt.toml` at repo root)
@@ -70,20 +70,22 @@ protect/open-with-password · annotations (highlight, note, ink, shapes, stamps,
 redact) · page image · forms (get/set/add text/checkbox/choice/radio) · working
 copy + undo history (`snapshot_pdf_entry`, `restore_history_entry`,
 `prune_history_entry`, delta snapshots >32 MB) · OCR (`ocr_available`,
-`ocr_pdf_page`; Tesseract on PATH) · `file_byte_size`.
+`ocr_pdf_page`; Tesseract on PATH) · native file dialogs
+(`native_file_dialogs_enabled`; `tauri-plugin-dialog`) · `file_byte_size`.
 
 ## Status
 
 **Shipped (v0.2.0):** open/close/save (working copy), view/zoom/thumbnails/nav,
 page edit (delete/rotate/reorder/insert/split), optimize, print, annotations
 (H/N/D/S/T/X), page image (I), forms (F), PDF↔Markdown toggle + assets export,
-undo/redo (50-entry cap; deltas for files >32 MB), in-app file browser (no native
-dialogs on Linux/Wayland — portal path hangs).
+undo/redo (50-entry cap; deltas for files >32 MB), in-app file browser + native
+open/save dialogs when `native_file_dialogs_enabled` (Wayland opt-in:
+`PDF_PANDA_NATIVE_DIALOGS=1`).
 
 **Ops:** tag `v*` → release workflow (`.github/workflows/release.yml`); optional
 signing — `docs/SIGNING.md`. Manual QA: `docs/MANUAL_E2E.md`.
 
-**Gaps:** see `PLAN.md` vNext roadmap (native dialogs, etc.). OCR needs
+**Gaps:** see `PLAN.md` vNext roadmap. OCR needs
 system Tesseract (`tesseract-ocr` package).
 
 **Gotchas:** Markdown-view thumbnail clicks defer PDF render (WebKitGTK race);

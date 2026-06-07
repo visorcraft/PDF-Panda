@@ -103,7 +103,7 @@ and verified:
 
 | Area | Implementation | Verified by |
 | --- | --- | --- |
-| Open PDF | In-app path modal (Ctrl/Cmd+O) with Recently Opened list and built-in PDF browser starting from the last opened-file directory (avoids unstable native dialog path on affected Wayland/WebKitGTK setups) | `list_pdf_browser_entries_lists_pdfs_and_directories`, UI validation |
+| Open PDF | In-app path modal (Ctrl/Cmd+O) with Recently Opened list, built-in PDF browser, and native Choose file… when `native_file_dialogs_enabled` (Wayland off unless `PDF_PANDA_NATIVE_DIALOGS=1`) | `list_pdf_browser_entries_lists_pdfs_and_directories`, `native_file_dialogs_policy_*`, UI validation |
 | Close PDF | Toolbar close or Ctrl/Cmd+W (unsaved prompt); clears document state and object URLs | UI validation |
 | View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down, Home/End keys | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned); Ctrl/Cmd +/−/0 shortcuts | Manual |
@@ -122,7 +122,7 @@ and verified:
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 118 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
+- `cargo test` — 121 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -177,10 +177,10 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Signing automation — tag-triggered release workflow with optional macOS/Windows signing and SHA256 checksums (`.github/workflows/release.yml`, `docs/SIGNING.md`)
 - [x] OCR integration — Tesseract OCR for scanned pages in Markdown export (`ocr_pdf_page`, `ocr_available`; env `TESSERACT_CMD`, `PDF_PANDA_OCR_LANG`)
 - [x] Markdown depth — tagged-PDF semantics (`/StructTreeRoot` → headings, lists, tables; PDFium/OCR fallback per page)
+- [x] File dialogs — native open/save via `tauri-plugin-dialog` (`native_file_dialogs_enabled`; macOS/Windows + Linux X11 by default, Wayland opt-in with `PDF_PANDA_NATIVE_DIALOGS=1`)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing and vector object manipulation.
 - **Security features:** Digital signatures.
 - **AI-powered tools:** Document summarization and intelligent extraction.
-- **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.

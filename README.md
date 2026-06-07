@@ -13,7 +13,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 ## Features
 
 ### Open & navigate
-- In-app path entry, **Recently Opened** list, and built-in PDF browser
+- In-app path entry, **Recently Opened** list, built-in PDF browser, and **native open/save dialogs** on macOS/Windows (Linux X11 by default; Wayland: set `PDF_PANDA_NATIVE_DIALOGS=1`)
 - Smooth viewer with **25%–400%** zoom and a thumbnail sidebar
 - Page navigation via toolbar, thumbnails, keyboard, and mouse wheel at scroll edges
 

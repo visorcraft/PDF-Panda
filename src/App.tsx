@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { open as openNativeDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -153,6 +154,34 @@ const fileNameFromPath = (path: string): string => {
   return slash >= 0 ? path.slice(slash + 1) : path;
 };
 
+const PDF_DIALOG_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
+const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
+
+const ensureExtension = (path: string, extension: string): string => {
+  const lower = path.toLowerCase();
+  const suffix = `.${extension}`;
+  return lower.endsWith(suffix) ? path : `${path}${suffix}`;
+};
+
+const pickPdfWithNativeDialog = async (defaultPath?: string): Promise<string | null> => {
+  const selected = await openNativeDialog({
+    multiple: false,
+    directory: false,
+    defaultPath: defaultPath?.trim() || undefined,
+    filters: PDF_DIALOG_FILTER,
+  });
+  if (selected === null) return null;
+  return typeof selected === 'string' ? selected : selected[0] ?? null;
+};
+
+const pickSaveWithNativeDialog = async (
+  defaultPath: string,
+  filters: { name: string; extensions: string[] }[],
+): Promise<string | null> => saveNativeDialog({
+  defaultPath: defaultPath.trim() || undefined,
+  filters,
+});
+
 function App() {
   const [filePath, setFilePath] = useState<string>(''); // working-copy path; all backend ops target this
   const [originalPath, setOriginalPath] = useState<string>(''); // user's real file (display / recents / Save target)
@@ -171,6 +200,7 @@ function App() {
   const [protectOwnerPassword, setProtectOwnerPassword] = useState('');
   const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
+  const [nativeDialogs, setNativeDialogs] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const historyRef = useRef<HistorySnapshot[]>([]); // historyRef[histIdx] == current working state
@@ -290,6 +320,12 @@ function App() {
   }, []);
 
   useEffect(() => { filePathRef.current = filePath; }, [filePath]);
+
+  useEffect(() => {
+    void invoke<boolean>('native_file_dialogs_enabled')
+      .then(setNativeDialogs)
+      .catch(() => setNativeDialogs(false));
+  }, []);
 
   const refreshUndoRedoState = useCallback(() => {
     setCanUndo(histIdxRef.current > 0);
@@ -1407,7 +1443,20 @@ function App() {
     });
   };
 
-  const openSaveAs = () => { setSaveAsPath(originalPath); setShowSaveAsModal(true); };
+  const chooseOpenPdfNative = async () => {
+    const path = await pickPdfWithNativeDialog(openFilePath || lastBrowserDir || originalPath);
+    if (!path) return;
+    setOpenFilePath(path);
+    const loaded = await loadPdfFromPath(path);
+    if (loaded) setShowOpenModal(false);
+  };
+
+  const chooseInsertPdfNative = async () => {
+    const path = await pickPdfWithNativeDialog(insertFilePath || lastBrowserDir || originalPath);
+    if (!path) return;
+    setInsertFilePath(path);
+    rememberBrowserDirectory(path);
+  };
 
   const handleSaveAs = async () => {
     const target = saveAsPath.trim();
@@ -1421,6 +1470,37 @@ function App() {
       setShowSaveAsModal(false);
       showToast(`Saved to ${target}`);
     });
+  };
+
+  const saveAsViaNativeDialog = async () => {
+    if (!filePath || !originalPath) return;
+    const picked = await pickSaveWithNativeDialog(saveAsPath || originalPath, PDF_DIALOG_FILTER);
+    if (!picked) return;
+    const target = ensureExtension(picked, 'pdf');
+    await withLoading(async () => {
+      await invoke('save_working_copy', { working: filePath, target });
+      setOriginalPath(target);
+      rememberOpenedPdf(target);
+      savedIdxRef.current = histIdxRef.current;
+      refreshUndoRedoState();
+      setShowSaveAsModal(false);
+      showToast(`Saved to ${target}`);
+    });
+  };
+
+  const chooseSaveAsNative = async () => {
+    const picked = await pickSaveWithNativeDialog(saveAsPath || originalPath, PDF_DIALOG_FILTER);
+    if (!picked) return;
+    setSaveAsPath(ensureExtension(picked, 'pdf'));
+  };
+
+  const openSaveAs = () => {
+    if (nativeDialogs) {
+      void saveAsViaNativeDialog();
+      return;
+    }
+    setSaveAsPath(originalPath);
+    setShowSaveAsModal(true);
   };
 
   // Run `action`, but if there are unsaved edits prompt Save/Discard/Cancel first.
@@ -1900,12 +1980,6 @@ function App() {
   };
   toggleMarkdownViewRef.current = toggleMarkdownView;
 
-  const openMarkdownSaveAs = () => {
-    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
-    setMarkdownSaveAsPath(defaultPath);
-    setShowMarkdownSaveAsModal(true);
-  };
-
   const handleMarkdownSaveAs = async () => {
     const target = markdownSaveAsPath.trim();
     if (!filePath || !target) return;
@@ -1913,6 +1987,35 @@ function App() {
       await saveMarkdownToPath(target, viewMode === 'markdown');
       setShowMarkdownSaveAsModal(false);
     });
+  };
+
+  const markdownSaveAsViaNativeDialog = async () => {
+    if (!filePath) return;
+    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
+    const picked = await pickSaveWithNativeDialog(markdownSaveAsPath || defaultPath, MARKDOWN_DIALOG_FILTER);
+    if (!picked) return;
+    const target = ensureExtension(picked, 'md');
+    await withLoading(async () => {
+      await saveMarkdownToPath(target, viewMode === 'markdown');
+      setShowMarkdownSaveAsModal(false);
+    });
+  };
+
+  const chooseMarkdownSaveAsNative = async () => {
+    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
+    const picked = await pickSaveWithNativeDialog(markdownSaveAsPath || defaultPath, MARKDOWN_DIALOG_FILTER);
+    if (!picked) return;
+    setMarkdownSaveAsPath(ensureExtension(picked, 'md'));
+  };
+
+  const openMarkdownSaveAs = () => {
+    if (nativeDialogs) {
+      void markdownSaveAsViaNativeDialog();
+      return;
+    }
+    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
+    setMarkdownSaveAsPath(defaultPath);
+    setShowMarkdownSaveAsModal(true);
   };
 
   const handleSplitPdf = async () => {
@@ -2686,6 +2789,9 @@ function App() {
               data-testid="open-pdf-path"
               autoFocus
             />
+            {nativeDialogs && (
+              <button onClick={() => void chooseOpenPdfNative()} className="btn" data-testid="native-open-pdf">Choose file…</button>
+            )}
             <button onClick={() => openPdfBrowser('open')} className="btn">Browse…</button>
           </div>
           {recentPdfs.length > 0 && (
@@ -2889,6 +2995,9 @@ function App() {
                   className="modal-input"
                   placeholder="/path/to/source.pdf"
                 />
+                {nativeDialogs && (
+                  <button onClick={() => void chooseInsertPdfNative()} className="btn">Choose file…</button>
+                )}
                 <button onClick={() => openPdfBrowser('insert')} className="btn">Browse…</button>
               </div>
             </div>
@@ -2922,13 +3031,18 @@ function App() {
         <Modal onClose={() => setShowMarkdownSaveAsModal(false)}>
           <h3>Save Markdown As</h3>
           <label>Save to path:</label>
-          <input
-            type="text"
-            value={markdownSaveAsPath}
-            onChange={(e) => setMarkdownSaveAsPath(e.target.value)}
-            className="modal-input"
-            placeholder="/path/to/output.md"
-          />
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={markdownSaveAsPath}
+              onChange={(e) => setMarkdownSaveAsPath(e.target.value)}
+              className="modal-input"
+              placeholder="/path/to/output.md"
+            />
+            {nativeDialogs && (
+              <button onClick={() => void chooseMarkdownSaveAsNative()} className="btn">Choose location…</button>
+            )}
+          </div>
           <div className="modal-actions">
             <button onClick={() => setShowMarkdownSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleMarkdownSaveAs} className="btn" disabled={!markdownSaveAsPath.trim()}>Save</button>
@@ -2998,13 +3112,18 @@ function App() {
         <Modal onClose={() => setShowSaveAsModal(false)}>
           <h3>Save As</h3>
           <label>Save to path:</label>
-          <input
-            type="text"
-            value={saveAsPath}
-            onChange={(e) => setSaveAsPath(e.target.value)}
-            className="modal-input"
-            placeholder="/path/to/output.pdf"
-          />
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={saveAsPath}
+              onChange={(e) => setSaveAsPath(e.target.value)}
+              className="modal-input"
+              placeholder="/path/to/output.pdf"
+            />
+            {nativeDialogs && (
+              <button onClick={() => void chooseSaveAsNative()} className="btn">Choose location…</button>
+            )}
+          </div>
           <div className="modal-actions">
             <button onClick={() => setShowSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleSaveAs} className="btn" disabled={!saveAsPath.trim()}>Save</button>

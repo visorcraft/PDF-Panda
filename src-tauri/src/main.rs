@@ -2739,6 +2739,43 @@ fn file_byte_size(path: String) -> Result<u64, String> {
     Ok(fs::metadata(path).map_err(|e| e.to_string())?.len())
 }
 
+fn native_file_dialogs_policy(
+    is_macos: bool,
+    is_windows: bool,
+    is_linux: bool,
+    wayland: bool,
+    native_dialogs_env: Option<&str>,
+    disable_env: Option<&str>,
+) -> bool {
+    if disable_env.is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true")) {
+        return false;
+    }
+    if is_macos || is_windows {
+        return true;
+    }
+    if is_linux {
+        if wayland {
+            return native_dialogs_env.is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
+        }
+        return true;
+    }
+    false
+}
+
+/// Whether the UI should offer native open/save pickers. macOS/Windows and Linux
+/// X11 use them by default; Linux Wayland requires `PDF_PANDA_NATIVE_DIALOGS=1`.
+#[tauri::command]
+fn native_file_dialogs_enabled() -> bool {
+    native_file_dialogs_policy(
+        cfg!(target_os = "macos"),
+        cfg!(target_os = "windows"),
+        cfg!(target_os = "linux"),
+        std::env::var_os("WAYLAND_DISPLAY").is_some(),
+        std::env::var("PDF_PANDA_NATIVE_DIALOGS").ok().as_deref(),
+        std::env::var("PDF_PANDA_DISABLE_NATIVE_DIALOGS").ok().as_deref(),
+    )
+}
+
 #[tauri::command]
 fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
     pdf_to_markdown(&PathBuf::from(path), None)
@@ -4242,10 +4279,12 @@ fn main() {
     }
 
     #[cfg(feature = "wdio")]
-    let builder =
-        tauri::Builder::default().plugin(tauri_plugin_wdio::init()).plugin(tauri_plugin_wdio_webdriver::init());
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_wdio::init())
+        .plugin(tauri_plugin_wdio_webdriver::init());
     #[cfg(not(feature = "wdio"))]
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
 
     builder
         .setup(|app| {
@@ -4312,7 +4351,8 @@ fn main() {
             restore_history_entry,
             discard_history_entry,
             prune_history_entry,
-            file_byte_size
+            file_byte_size,
+            native_file_dialogs_enabled
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -5037,6 +5077,24 @@ mod tests {
         let len = file_byte_size(path.clone()).unwrap();
         assert!(len > 0);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_enables_macos_and_windows() {
+        assert!(native_file_dialogs_policy(true, false, false, false, None, None));
+        assert!(native_file_dialogs_policy(false, true, false, false, None, None));
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_wayland_requires_opt_in() {
+        assert!(!native_file_dialogs_policy(false, false, true, true, None, None));
+        assert!(native_file_dialogs_policy(false, false, true, true, Some("1"), None));
+        assert!(native_file_dialogs_policy(false, false, true, false, None, None));
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_honors_disable_env() {
+        assert!(!native_file_dialogs_policy(true, false, false, false, None, Some("1")));
     }
 
     #[test]
