@@ -35,6 +35,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
 - **Redaction** — black-box redaction annotations persisted in the PDF (`X`)
 - **Page image insert** — embed PNG/JPEG images into page content (`I`)
+- **Form fields** — list, fill, and create text fields (`F`)
 - **Sticky notes** — place text notes on a page (`N`)
 
 ### Conversion & export

@@ -165,13 +165,14 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Redaction (`add_redaction` / `remove_redaction`, **X** shortcut)
 - [x] Markdown exotic image filters (DeviceGray, DeviceCMYK, Indexed, JPXDecode on save)
 - [x] Page image insertion (`add_page_image` / `get_image_dimensions`, **I** shortcut)
+- [x] Interactive form support (`get_pdf_form_fields` / `set_pdf_form_field` / `add_text_form_field`, **F** shortcut)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing and vector object manipulation.
 - **OCR integration:** Optical character recognition for scanned documents.
 - **Security features:** Digital signatures.
-- **Form support:** Interactive PDF form creation and filling.
+- **Form depth:** Checkbox/radio groups, choice lists, and AcroForm merge on insert.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
 - **Markdown depth:** OCR and tagged-PDF semantics.

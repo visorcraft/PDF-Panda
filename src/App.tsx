@@ -46,6 +46,16 @@ interface AnnotationData {
   is_redaction: boolean;
 }
 
+interface FormFieldData {
+  name: string;
+  field_type: string;
+  value: string;
+  page_index: number | null;
+  rect: [number, number, number, number] | null;
+  options: string[];
+  checked: boolean;
+}
+
 function stampPresetMeta(preset: string | null | undefined) {
   return STAMP_PRESETS.find((entry) => entry.id === preset);
 }
@@ -191,6 +201,12 @@ function App() {
   const [showImageInsertModal, setShowImageInsertModal] = useState(false);
   const [imageSourcePath, setImageSourcePath] = useState('');
   const [imageSourceDraft, setImageSourceDraft] = useState('');
+  const [showFormsPanel, setShowFormsPanel] = useState(false);
+  const [formFields, setFormFields] = useState<FormFieldData[]>([]);
+  const [formDrafts, setFormDrafts] = useState<Record<string, string>>({});
+  const [formAddMode, setFormAddMode] = useState(false);
+  const [showAddFormFieldModal, setShowAddFormFieldModal] = useState(false);
+  const [newFormFieldName, setNewFormFieldName] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
@@ -407,6 +423,7 @@ function App() {
       setZoom(1);
       await renderPage(working, 0);
       await loadThumbnails(working);
+      await loadFormFields(working);
       rememberOpenedPdf(path);
       if (previousWorking) void invoke('discard_working_copy', { working: previousWorking }).catch(() => {});
       return true;
@@ -678,6 +695,46 @@ function App() {
     setAnnotations(annots);
   };
 
+  const loadFormFields = useCallback(async (path: string = filePath) => {
+    if (!path) {
+      setFormFields([]);
+      setFormDrafts({});
+      return;
+    }
+    try {
+      const fields = await invoke<FormFieldData[]>('get_pdf_form_fields', { path });
+      setFormFields(fields);
+      const drafts: Record<string, string> = {};
+      fields.forEach((field) => {
+        if (field.field_type === 'checkbox' || field.field_type === 'radio') {
+          drafts[field.name] = field.checked ? 'true' : 'false';
+        } else {
+          drafts[field.name] = field.value;
+        }
+      });
+      setFormDrafts(drafts);
+    } catch {
+      setFormFields([]);
+      setFormDrafts({});
+    }
+  }, [filePath]);
+
+  const applyFormField = (name: string) => {
+    const field = formFields.find((entry) => entry.name === name);
+    if (!field || !filePath) return;
+    const draft = formDrafts[name] ?? '';
+    void withLoading(async () => {
+      await invoke('set_pdf_form_field', { path: filePath, name, value: draft });
+      markPdfEdited();
+      await loadFormFields(filePath);
+      showToast(`Updated ${name}`);
+    });
+  };
+
+  useEffect(() => {
+    if (filePath) void loadFormFields(filePath);
+  }, [filePath, pdfRevision, loadFormFields]);
+
   const cancelDrawing = () => {
     setDrawing(false);
     setHighlightStart(null);
@@ -691,6 +748,44 @@ function App() {
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
     if (drawMode) return;
+    if (formAddMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!drawing) {
+        setHighlightStart(coords);
+        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+        setDrawing(true);
+        return;
+      }
+      const start = highlightStart;
+      cancelDrawing();
+      if (!start || !newFormFieldName.trim()) return;
+      const rect = {
+        x: Math.min(start.x, coords.x),
+        y: Math.min(start.y, coords.y),
+        w: Math.abs(coords.x - start.x),
+        h: Math.abs(coords.y - start.y),
+      };
+      if (rect.w < 20 || rect.h < 10) return;
+      const fieldName = newFormFieldName.trim();
+      void withLoading(async () => {
+        await invoke('add_text_form_field', {
+          path: filePath,
+          pageIndex: currentPage,
+          name: fieldName,
+          x: rect.x,
+          y: rect.y,
+          width: rect.w,
+          height: rect.h,
+        });
+        markPdfEdited();
+        setFormAddMode(false);
+        setShowAddFormFieldModal(false);
+        setNewFormFieldName('');
+        await loadFormFields(filePath);
+        showToast(`Form field ${fieldName} added`);
+      });
+      return;
+    }
     if (imageInsertMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (!drawing) {
@@ -890,7 +985,7 @@ function App() {
       });
       return;
     }
-    if ((shapeMode || redactMode || imageInsertMode) && drawing && highlightStart) {
+    if ((shapeMode || redactMode || imageInsertMode || formAddMode) && drawing && highlightStart) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (shapeMode && shapeKind === 'line') {
         setShapeLineEnd(coords);
@@ -1046,6 +1141,42 @@ function App() {
   const exitImageInsertMode = () => {
     cancelDrawing();
     setImageInsertMode(false);
+    setFormAddMode(false);
+  };
+
+  const toggleFormsPanel = () => {
+    setShowFormsPanel((open) => !open);
+  };
+
+  const openAddFormFieldModal = () => {
+    if (!filePath) return;
+    setNewFormFieldName('');
+    setShowAddFormFieldModal(true);
+  };
+
+  const confirmAddFormField = () => {
+    const name = newFormFieldName.trim();
+    if (!name) {
+      showToast('Enter a field name', 'error');
+      return;
+    }
+    setShowAddFormFieldModal(false);
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShapeMode(false);
+    setStampMode(false);
+    setRedactMode(false);
+    setImageInsertMode(false);
+    setFormAddMode(false);
+    setFormAddMode(true);
+    showToast('Click twice on the page to place the field');
+  };
+
+  const exitFormAddMode = () => {
+    cancelDrawing();
+    setFormAddMode(false);
   };
 
   const toggleHighlightMode = () => {
@@ -1056,6 +1187,7 @@ function App() {
     setStampMode(false);
     setRedactMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setHighlightMode((m) => !m);
@@ -1074,6 +1206,7 @@ function App() {
     setStampMode(false);
     setRedactMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setNoteMode((m) => !m);
@@ -1087,6 +1220,7 @@ function App() {
     setStampMode(false);
     setRedactMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setDrawMode((m) => !m);
@@ -1105,6 +1239,7 @@ function App() {
     setStampMode(false);
     setRedactMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setShapeMode((m) => !m);
@@ -1123,6 +1258,7 @@ function App() {
     setShapeMode(false);
     setRedactMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setStampMode((m) => !m);
@@ -1140,6 +1276,7 @@ function App() {
     setShapeMode(false);
     setStampMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setRedactMode((m) => !m);
@@ -1248,6 +1385,7 @@ function App() {
     setShowSplitModal(false);
     setShowInsertModal(false);
     setShowImageInsertModal(false);
+    setShowAddFormFieldModal(false);
   }, [showUnsavedModal]);
 
   const refreshAfterWorkingChange = async () => {
@@ -1310,6 +1448,8 @@ function App() {
   redactModeRef.current = redactMode;
   const imageInsertModeRef = useRef(imageInsertMode);
   imageInsertModeRef.current = imageInsertMode;
+  const formAddModeRef = useRef(formAddMode);
+  formAddModeRef.current = formAddMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
   const exitNoteModeRef = useRef(exitNoteMode);
@@ -1324,6 +1464,10 @@ function App() {
   exitRedactModeRef.current = exitRedactMode;
   const exitImageInsertModeRef = useRef(exitImageInsertMode);
   exitImageInsertModeRef.current = exitImageInsertMode;
+  const exitFormAddModeRef = useRef(exitFormAddMode);
+  exitFormAddModeRef.current = exitFormAddMode;
+  const toggleFormsPanelRef = useRef(toggleFormsPanel);
+  toggleFormsPanelRef.current = toggleFormsPanel;
   const toggleNoteModeRef = useRef(toggleNoteMode);
   toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
@@ -1372,7 +1516,8 @@ function App() {
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal;
+    || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal
+    || showAddFormFieldModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -1414,6 +1559,10 @@ function App() {
         }
         if (imageInsertModeRef.current && hasOpenPdfRef.current) {
           exitImageInsertModeRef.current();
+          return;
+        }
+        if (formAddModeRef.current && hasOpenPdfRef.current) {
+          exitFormAddModeRef.current();
           return;
         }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
@@ -1474,6 +1623,11 @@ function App() {
         if (e.key.toLowerCase() === 'i' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleImageInsertModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 'f' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleFormsPanelRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1590,8 +1744,14 @@ function App() {
     setMarkdownRevision(null);
     setHighlightMode(false);
     setImageInsertMode(false);
+    setFormAddMode(false);
     setImageSourcePath('');
     setShowImageInsertModal(false);
+    setShowFormsPanel(false);
+    setFormFields([]);
+    setFormDrafts({});
+    setShowAddFormFieldModal(false);
+    setNewFormFieldName('');
     setAnnotations([]);
     setShowDeleteModal(false);
     setImageSrc((prev) => {
@@ -1814,6 +1974,69 @@ function App() {
         ) : (
           <p className="muted">No thumbnails loaded</p>
         )}
+        {filePath && showFormsPanel && (
+          <div className="forms-panel">
+            <div className="forms-panel-header">
+              <h3>Form Fields</h3>
+              <button type="button" onClick={openAddFormFieldModal} className="btn" title="Add text field">
+                + Field
+              </button>
+            </div>
+            {formFields.length === 0 ? (
+              <p className="muted">No fillable fields in this PDF.</p>
+            ) : (
+              <div className="form-field-list">
+                {formFields.map((field) => (
+                  <div key={field.name} className="form-field-row">
+                    <div className="form-field-meta">
+                      <strong>{field.name}</strong>
+                      <span className="muted">{field.field_type}</span>
+                    </div>
+                    {field.field_type === 'checkbox' || field.field_type === 'radio' ? (
+                      <label className="form-checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={formDrafts[field.name] === 'true'}
+                          onChange={(e) => setFormDrafts((prev) => ({
+                            ...prev,
+                            [field.name]: e.target.checked ? 'true' : 'false',
+                          }))}
+                        />
+                        <span>Checked</span>
+                      </label>
+                    ) : field.field_type === 'choice' && field.options.length > 0 ? (
+                      <select
+                        className="form-field-input"
+                        value={formDrafts[field.name] ?? ''}
+                        onChange={(e) => setFormDrafts((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                      >
+                        {field.options.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        className="form-field-input"
+                        value={formDrafts[field.name] ?? ''}
+                        disabled={field.field_type === 'button' || field.field_type === 'signature'}
+                        onChange={(e) => setFormDrafts((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={field.field_type === 'button' || field.field_type === 'signature'}
+                      onClick={() => applyFormField(field.name)}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* Main Content */}
@@ -1902,6 +2125,13 @@ function App() {
                   title="Insert image on page — PNG/JPEG (I)"
                 >
                   {imageInsertMode ? 'Image: ON' : 'Insert Image'}
+                </button>
+                <button
+                  onClick={toggleFormsPanel}
+                  className={`btn ${showFormsPanel ? 'btn-active' : ''}`}
+                  title="Form fields — fill and create text fields (F)"
+                >
+                  {showFormsPanel ? 'Forms: ON' : 'Forms'}
                 </button>
                 {imageInsertMode && imageSourcePath && (
                   <button
@@ -2026,7 +2256,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''} ${imageInsertMode ? 'image-insert-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''} ${imageInsertMode ? 'image-insert-cursor' : ''} ${formAddMode ? 'form-add-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
@@ -2315,6 +2545,35 @@ function App() {
                         }}
                       />
                     )}
+                    {formAddMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                      <div
+                        className="form-field-draft"
+                        style={{
+                          left: highlightRect.x,
+                          top: highlightRect.y,
+                          width: highlightRect.w,
+                          height: highlightRect.h,
+                        }}
+                      />
+                    )}
+                    {showFormsPanel && formFields
+                      .filter((field) => field.page_index === currentPage && field.rect)
+                      .map((field) => {
+                        const rect = field.rect!;
+                        return (
+                          <div
+                            key={field.name}
+                            className="form-field-overlay"
+                            style={{
+                              left: rect[0],
+                              top: rect[1],
+                              width: Math.max(0, rect[2] - rect[0]),
+                              height: Math.max(0, rect[3] - rect[1]),
+                            }}
+                            title={field.name}
+                          />
+                        );
+                      })}
                   </div>
                 </div>
               ) : (
@@ -2420,6 +2679,25 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowSplitModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleSplitPdf} className="btn">Split</button>
+          </div>
+        </Modal>
+      )}
+
+      {showAddFormFieldModal && (
+        <Modal onClose={() => setShowAddFormFieldModal(false)}>
+          <h3>Add Text Field</h3>
+          <p className="modal-help">Name the field, then click twice on the page to draw its box.</p>
+          <label>Field name:</label>
+          <input
+            type="text"
+            value={newFormFieldName}
+            onChange={(e) => setNewFormFieldName(e.target.value)}
+            className="modal-input"
+            placeholder="Email"
+          />
+          <div className="modal-actions">
+            <button onClick={() => setShowAddFormFieldModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={confirmAddFormField} className="btn" disabled={!newFormFieldName.trim()}>Place on page</button>
           </div>
         </Modal>
       )}

@@ -22,6 +22,7 @@ checklist before a release tag.
 - [ ] Text/image stamps add (T) and remove
 - [ ] Redaction boxes add (X) and remove
 - [ ] Page image insert (I) — path entry, two-click placement, re-render shows image
+- [ ] Form fields (F) — list fields, apply text/checkbox values, add text field
 
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict
