@@ -108,11 +108,11 @@ and verified:
 | View / navigate | pdfium page render, prev/next, thumbnail click, Arrow/Page Up/Down, Home/End keys | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned); Ctrl/Cmd +/−/0 shortcuts | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves`, `move_page_rejects_invalid_index`, `move_page_rejects_invalid_from_index`, `move_page_same_index_is_noop`, `move_page_rejects_missing_file` |
-| Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
-| Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_undo_restore_reverts_working_copy`, UI validation |
+| Save / Save As | Working-copy committed on demand; Ctrl/Cmd+S when dirty, Ctrl/Cmd+Shift+S for Save As; dirty prompt on close/open/quit | `open_working_copy_creates_isolated_temp_file`, `working_copy_isolates_edits_until_saved`, `open_working_copy_rejects_missing_file`, `save_working_copy_rejects_missing_working_file`, UI validation |
+| Undo / Redo | Working-copy snapshot history (50-entry cap); dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | `snapshot_pdf_creates_unique_history_files`, `snapshot_undo_restore_reverts_working_copy`, `snapshot_pdf_rejects_missing_source`, UI validation |
 | Delete page | Delete key or toolbar → confirmation modal → tree-aware `delete_page` (rejects last-page delete, nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf`, `delete_page_rejects_invalid_index`, `delete_page_rejects_only_page`, `delete_page_rejects_missing_file` |
 | Rotate page | Toolbar button or Ctrl/Cmd+R → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps`, `rotate_page_rejects_invalid_index`, `rotate_page_rejects_missing_file` |
-| Insert PDF | Ctrl/Cmd+Shift+I two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree`, `insert_pdf_rejects_invalid_source_range`, `insert_pdf_rejects_source_range_out_of_bounds`, `insert_pdf_rejects_out_of_bounds_index`, `insert_pdf_rejects_missing_source_file` |
+| Insert PDF | Ctrl/Cmd+Shift+I two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree`, `insert_pdf_rejects_invalid_source_range`, `insert_pdf_rejects_source_range_out_of_bounds`, `insert_pdf_rejects_out_of_bounds_index`, `insert_pdf_rejects_missing_source_file`, `insert_pdf_rejects_missing_dest_file` |
 | Split PDF | Ctrl/Cmd+Shift+K ranges → separate files, orphans pruned; rejects empty/invalid ranges | `split_pdf_creates_separate_files`, `split_pdf_rejects_invalid_range`, `split_pdf_rejects_empty_ranges`, `split_pdf_rejects_missing_file` |
 | Markdown | PDF/Markdown toggle (Ctrl/Cmd+Shift+M), PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save (or Save Markdown As… path) with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
@@ -121,7 +121,9 @@ and verified:
 | Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — unit tests covering every lopdf-based command and Markdown file-write conflict handling.
+- `cargo test` — 58 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+  every lopdf-based command, working-copy/snapshot flows, page-edit validation,
+  highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
 - `cargo fmt --check` — clean.
 - `tsc --noEmit` — clean.
@@ -140,6 +142,13 @@ and verified:
 - Undo/Redo and deferred save use whole-file working-copy snapshots — fine for
   typical PDFs; very large files are copied on each edit.
 
+## Plan Completion
+
+**MVP (Phases 1–6) is complete** as of tag `v0.2.0`. Every checklist item in
+Phases 1–6 is implemented, wired frontend ⇄ backend, and covered by the quality
+gates below. The **Remaining / Future Work** and **Future Roadmap** sections
+are post-MVP backlog only — they do not block release.
+
 ## Remaining / Future Work
 
 - **Markdown depth:** no image extraction, OCR for scanned/no-text pages, or
@@ -156,9 +165,11 @@ and verified:
   Linux via `scripts/build-linux-packages.sh` (deb/rpm) and `scripts/build-appimage.sh`
   (needs `appimagetool`); unsigned macOS/Windows via `scripts/build-macos.sh` /
   `scripts/build-windows.sh`; signing/notarization not set up yet.
-- **Testing:** save, undo/redo snapshot restore, PDF browser listing, page edit
-  validation (delete/move/rotate/insert/split), and Markdown file-write flows have
-  Rust unit tests; no automated UI/e2e coverage yet.
+- **Testing:** all lopdf-based commands, working-copy/snapshot save flows, PDF
+  browser listing, page-edit validation (delete/move/rotate/insert/split),
+  highlight CRUD, optimize/split error paths, and Markdown file-write flows have
+  Rust unit tests; PDFium render/Markdown extraction covered by ignored
+  `render_real_pdf_smoke`; no automated UI/e2e coverage yet.
 
 ## Future Roadmap (Post-MVP)
 

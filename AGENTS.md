@@ -73,7 +73,8 @@ DMABUF renderer for the target hardware.
 
 Run from `src-tauri/` unless noted:
 
-- `cargo test` — unit tests for every lopdf-based command (no PDFium needed).
+- `cargo test` — 58 unit tests for every lopdf-based command, working-copy flows,
+  and validation paths (no PDFium needed for the default suite).
 - Ignored end-to-end smoke test (needs PDFium + a file):
   `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
   This smoke test covers render → thumbnails → Markdown extraction → render
@@ -124,7 +125,9 @@ while in Markdown view must switch back to PDF mode before rendering the target
 page; the UI currently defers that render by animation frames to avoid racing
 the WebKitGTK view transition.
 
-**Known gaps / future work:**
+**MVP status:** Phases 1–6 complete (`v0.2.0`). See `PLAN.md` and `FEATURES.md`.
+
+**Known gaps / future work (post-MVP):**
 - Markdown output is heuristic layout reconstruction from PDF text geometry; it
   does not yet extract images, OCR scanned pages, or use tagged-PDF semantics.
 - Markdown defaults to saving beside the open PDF as `<pdf-name>.md`; use Save
@@ -132,6 +135,8 @@ the WebKitGTK view transition.
 - Native PDF file dialogs are intentionally avoided on the current Linux/Wayland
   target because the WebKitGTK/portal path can hang the app when opening a file.
 - AppImage bundling needs `appimagetool` installed (deb/rpm work out of the box).
+- Rust unit tests cover all lopdf commands and validation paths; no automated UI/e2e
+  tests yet. PDFium paths use ignored `render_real_pdf_smoke` when PDFium is present.
 
 ## Conventions
 

@@ -3,14 +3,17 @@
 PDF-Panda is a high-performance, cross-platform PDF editor built with Rust and Tauri.
 
 ## Features (MVP)
-* Open PDFs via a native file dialog
+* Open PDFs via in-app path entry, Recently Opened list, and built-in PDF browser
 * Page Management (Re-order via drag-and-drop, Insert, Delete, Rotate, Split)
-* High-Performance Viewer with zoom (25%–300%) and thumbnail navigation
+* High-Performance Viewer with zoom (25%–400%) and thumbnail navigation
 * Highlight annotations (persisted to the document)
 * Markdown Conversion (.md)
 * Optimized PDF Export (metadata strip, image recompression, stream compression)
 * Printing via the system's native print dialog
+* Save / Save As, Undo / Redo (50-entry cap), and non-destructive working-copy editing
 * Cross-platform support (Linux, macOS, Windows)
+
+See `FEATURES.md` for the full feature catalog and `PLAN.md` for implementation status.
 
 ## Tech Stack
 * **Backend:** Rust

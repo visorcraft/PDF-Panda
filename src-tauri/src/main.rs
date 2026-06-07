@@ -1021,7 +1021,7 @@ struct MarkdownSaveResult {
 
 fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) -> Result<MarkdownSaveResult, String> {
     if markdown_path.exists() {
-        let existing = std::fs::read(&markdown_path).map_err(|e| e.to_string())?;
+        let existing = std::fs::read(markdown_path).map_err(|e| e.to_string())?;
         if existing == markdown.as_bytes() {
             return Ok(MarkdownSaveResult {
                 markdown: markdown.to_string(),
@@ -1040,7 +1040,7 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
         }
     }
 
-    std::fs::write(&markdown_path, markdown).map_err(|e| e.to_string())?;
+    std::fs::write(markdown_path, markdown).map_err(|e| e.to_string())?;
     Ok(MarkdownSaveResult {
         markdown: markdown.to_string(),
         markdown_path: markdown_path.to_string_lossy().to_string(),
@@ -1050,16 +1050,10 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
 }
 
 #[tauri::command]
-fn save_pdf_markdown(
-    path: String,
-    overwrite: bool,
-    output_path: Option<String>,
-) -> Result<MarkdownSaveResult, String> {
+fn save_pdf_markdown(path: String, overwrite: bool, output_path: Option<String>) -> Result<MarkdownSaveResult, String> {
     let pdf_path = PathBuf::from(path);
     let markdown = pdf_to_markdown(&pdf_path)?;
-    let markdown_path = output_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| pdf_path.with_extension("md"));
+    let markdown_path = output_path.map(PathBuf::from).unwrap_or_else(|| pdf_path.with_extension("md"));
     write_markdown_file(&markdown_path, &markdown, overwrite)
 }
 
@@ -1794,16 +1788,18 @@ mod tests {
     fn insert_pdf_rejects_missing_source_file() {
         let dest = save(&mut build_pdf(2), "insert_dest_missing");
         let missing = std::env::temp_dir().join(format!("pp_insert_missing_{}.pdf", std::process::id()));
-        let err = insert_pdf(
-            dest.clone(),
-            missing.to_string_lossy().into_owned(),
-            0,
-            0,
-            0,
-        )
-        .unwrap_err();
+        let err = insert_pdf(dest.clone(), missing.to_string_lossy().into_owned(), 0, 0, 0).unwrap_err();
         assert!(!err.is_empty());
         let _ = std::fs::remove_file(&dest);
+    }
+
+    #[test]
+    fn insert_pdf_rejects_missing_dest_file() {
+        let src = save(&mut build_pdf(1), "insert_src_missing_dest");
+        let missing = std::env::temp_dir().join(format!("pp_insert_dest_missing_{}.pdf", std::process::id()));
+        let err = insert_pdf(missing.to_string_lossy().into_owned(), src.clone(), 0, 0, 0).unwrap_err();
+        assert!(!err.is_empty());
+        let _ = std::fs::remove_file(&src);
     }
 
     #[test]
@@ -2000,7 +1996,7 @@ mod tests {
         let names: Vec<&str> = listing.entries.iter().map(|entry| entry.name.as_str()).collect();
         assert!(names.contains(&"nested"));
         assert!(names.contains(&"sample.pdf"));
-        assert!(!names.iter().any(|name| *name == "notes.txt"));
+        assert!(!names.contains(&"notes.txt"));
         assert!(listing.entries.iter().find(|e| e.name == "nested").unwrap().is_dir);
         assert!(!listing.entries.iter().find(|e| e.name == "sample.pdf").unwrap().is_dir);
 
@@ -2018,10 +2014,7 @@ mod tests {
         let _ = fs::remove_file(&standalone);
 
         let listing = list_pdf_browser_entries(Some(pdf_path.to_string_lossy().into_owned())).unwrap();
-        assert_eq!(
-            listing.current_dir,
-            dir.canonicalize().unwrap().to_string_lossy()
-        );
+        assert_eq!(listing.current_dir, dir.canonicalize().unwrap().to_string_lossy());
         assert!(listing.entries.iter().any(|entry| entry.name == "target.pdf"));
 
         let _ = fs::remove_dir_all(&dir);
@@ -2040,6 +2033,29 @@ mod tests {
     fn discard_working_copy_missing_path_succeeds() {
         let missing = std::env::temp_dir().join(format!("pp_missing_wc_{}.pdf", std::process::id()));
         discard_working_copy(missing.to_string_lossy().into_owned()).unwrap();
+    }
+
+    #[test]
+    fn open_working_copy_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_open_wc_missing_{}.pdf", std::process::id()));
+        let err = open_working_copy(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn save_working_copy_rejects_missing_working_file() {
+        let missing = std::env::temp_dir().join(format!("pp_save_wc_missing_{}.pdf", std::process::id()));
+        let target = std::env::temp_dir().join(format!("pp_save_wc_target_{}.pdf", std::process::id()));
+        let err = save_working_copy(missing.to_string_lossy().into_owned(), target.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn snapshot_pdf_rejects_missing_source() {
+        let missing = std::env::temp_dir().join(format!("pp_snapshot_missing_{}.pdf", std::process::id()));
+        let err = snapshot_pdf(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
     }
 
     #[test]
