@@ -1771,6 +1771,16 @@ mod tests {
     }
 
     #[test]
+    fn insert_pdf_rejects_source_range_out_of_bounds() {
+        let dest = save(&mut build_pdf(2), "insert_dest_src_oob");
+        let src = save(&mut build_pdf(1), "insert_src_oob");
+        let err = insert_pdf(dest.clone(), src.clone(), 0, 0, 5).unwrap_err();
+        assert!(err.contains("Invalid insert page range"));
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
     fn insert_pdf_rejects_out_of_bounds_index() {
         let dest = save(&mut build_pdf(2), "insert_dest_bounds");
         let src = save(&mut build_pdf(1), "insert_src_bounds");
@@ -1824,6 +1834,14 @@ mod tests {
     fn move_page_rejects_invalid_index() {
         let path = save(&mut build_pdf(2), "move_invalid");
         let err = move_page(path.clone(), 0, 9).unwrap_err();
+        assert!(err.contains("Index out of bounds"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_page_rejects_invalid_from_index() {
+        let path = save(&mut build_pdf(2), "move_invalid_from");
+        let err = move_page(path.clone(), 9, 0).unwrap_err();
         assert!(err.contains("Index out of bounds"));
         let _ = std::fs::remove_file(&path);
     }
