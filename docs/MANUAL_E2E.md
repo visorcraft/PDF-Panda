@@ -14,7 +14,9 @@ before a release tag.
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Find text (Ctrl/Cmd+F) — search, next/previous, highlight on page
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
-- [ ] Delete / duplicate / rotate / reorder / insert / merge / extract / split / export PNG
+- [ ] Delete / duplicate / rotate / rotate all / reverse / blank page / delete range / reorder / insert / merge / extract / split
+- [ ] Export PNG/JPEG, page numbers, watermark, crop, flatten annotations
+- [ ] Add bookmark from Bookmarks panel
 - [ ] Metadata modal — edit title/author; Apply marks dirty; Save persists
 
 ## Annotations
@@ -35,7 +37,7 @@ before a release tag.
 - [ ] Markdown toggle; save with overwrite conflict
 - [ ] Summarize (Ctrl/Cmd+Shift+E); sibling `.summary.md`
 - [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
-- [ ] Export PNG (Ctrl/Cmd+Shift+B) — current page, range, or all pages
+- [ ] Export image (Ctrl/Cmd+Shift+B) — PNG or JPEG, current page, range, or all pages
 - [ ] Optimize, password-protect export, and print
 - [ ] Open an encrypted `_protected.pdf` with password prompt
 
