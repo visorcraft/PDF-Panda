@@ -109,7 +109,7 @@ and verified:
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
 | Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
 | Save / Save As | Working-copy committed on demand; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
-| Undo / Redo | Working-copy snapshot history; dirty state tracks vs. saved point | UI validation |
+| Undo / Redo | Working-copy snapshot history; dirty state tracks vs. saved point; Ctrl/Cmd+Z undo, Ctrl+Y / Ctrl/Cmd+Shift+Z redo | UI validation |
 | Delete page | Confirmation modal → tree-aware `delete_page` (lopdf `delete_pages`, handles nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf` |
 | Rotate page | Toolbar button → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps` |
 | Insert PDF | Two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree` |
@@ -145,8 +145,8 @@ and verified:
   tagged-PDF semantics; output always saves beside the PDF (no destination picker).
 - **Insert edge cases:** AcroForm / form-field merging is not handled; fonts
   shared across inserted pages aren't deduped beyond a single insert operation.
-- **Undo/Redo:** snapshot-based with unbounded history and no keyboard shortcuts
-  (Ctrl+Z / Ctrl+Y) yet; deltas / bounded depth would help for very large files.
+- **Undo/Redo:** snapshot-based with unbounded history; deltas / bounded depth
+  would help for very large files.
 - **File dialogs:** native open/save dialogs are intentionally avoided on the
   Wayland/WebKitGTK target (in-app path + browser used); revisit when the desktop
   portal path is stable.

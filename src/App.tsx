@@ -699,6 +699,44 @@ function App() {
     });
   };
 
+  const undoRedoRef = useRef({ undo, redo });
+  undoRedoRef.current = { undo, redo };
+  const canUndoRef = useRef(canUndo);
+  const canRedoRef = useRef(canRedo);
+  const hasOpenPdfRef = useRef(!!filePath);
+  canUndoRef.current = canUndo;
+  canRedoRef.current = canRedo;
+  hasOpenPdfRef.current = !!filePath;
+
+  useEffect(() => {
+    const isTextInput = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      if (target.isContentEditable) return true;
+      const tag = target.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!hasOpenPdfRef.current) return;
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (isTextInput(e.target)) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey && canUndoRef.current) {
+        e.preventDefault();
+        void undoRedoRef.current.undo();
+        return;
+      }
+      if (canRedoRef.current && ((key === 'y' && !e.shiftKey) || (key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        void undoRedoRef.current.redo();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const closePdf = () => {
     if (filePath) void invoke('discard_working_copy', { working: filePath }).catch(() => {});
     historyRef.current.forEach((p) => void invoke('discard_working_copy', { working: p }).catch(() => {}));
@@ -883,8 +921,8 @@ function App() {
               <>
                 <button onClick={handleSave} className="btn" disabled={!isDirty}>{isDirty ? 'Save •' : 'Save'}</button>
                 <button onClick={openSaveAs} className="btn">Save As…</button>
-                <button onClick={undo} className="btn" disabled={!canUndo}>Undo</button>
-                <button onClick={redo} className="btn" disabled={!canRedo}>Redo</button>
+                <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
+                <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
                 <button onClick={handleRotatePage} className="btn">Rotate</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1}>Delete</button>
                 <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
