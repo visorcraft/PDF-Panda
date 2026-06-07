@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src/assets/panda_face.png" alt="PDF-Panda logo" width="200" />
+  <img src="src/assets/panda.png" alt="PDF Panda logo" width="200" />
 </p>
 
-<h1 align="center">PDF-Panda</h1>
+<h1 align="center">PDF Panda</h1>
 
 <p align="center">
   <a href="https://github.com/visorcraft/PDF-Panda/releases/latest"><img src="https://img.shields.io/github/v/release/visorcraft/PDF-Panda?sort=semver" alt="Latest release" /></a>
