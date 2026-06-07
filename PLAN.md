@@ -76,6 +76,24 @@ This document outlines the phased approach for developing PDF-Panda, the high-pe
     - [x] Perform performance profiling to ensure "bleeding edge" speed.
     - [x] Finalize documentation and prepare the first release tag.
 
+## Phase 6: Post-MVP Hardening & Branding (v0.2.0)
+*Goal: Make editing non-destructive, fix page-tree correctness bugs, and establish the PDF-Panda brand.*
+
+- [x] **Branding**
+    - [x] Rename project `pdf-editor` → `pdf-panda` (npm/crate/binary, `com.pdf-panda.dev` identifier, window title, docs).
+    - [x] Transparent panda logo asset set: app icons (face ≤32px / full panda at larger sizes), hybrid `.ico`/`.icns`, web favicons.
+    - [x] Linux taskbar icon via a `.desktop` entry + hicolor icons (packaged builds generate these automatically).
+- [x] **Non-destructive editing**
+    - [x] Deferred save via a working copy — the user's original file is untouched until they save.
+    - [x] `Save` and `Save As…`, unsaved-changes prompt on close / open-another / quit, dirty indicator (toolbar `•` + window title).
+    - [x] `Undo` / `Redo` via working-copy snapshots.
+- [x] **Correctness fixes**
+    - [x] Nested page-tree support: tree-aware delete, flatten-based move/insert (the old flat-tree assumption corrupted such PDFs).
+    - [x] Insert now deep-copies the inserted pages' content/resources (no more dangling references).
+    - [x] Markdown: map dingbat-font bullet glyphs (e.g. Wingdings `n` = ▪) to list bullets.
+    - [x] Insert dialog: two-column layout; From/To bound to the source PDF's page count.
+    - [x] Add window `set-title` / `destroy` ACL permissions (dirty title + quit prompt).
+
 ---
 
 ## Status & Verification
@@ -89,15 +107,18 @@ and verified:
 | Close PDF | Toolbar close action clears current document state and generated object URLs | UI validation |
 | View / navigate | pdfium page render, prev/next, thumbnail click | Manual + render pipeline |
 | Zoom | 25%–400%, CSS-scaled (overlays stay aligned) | Manual |
-| Thumbnails | Async generation, drag-and-drop reorder | `move_page_reorders` test |
-| Delete page | Page-specific confirmation modal → `delete_page` (keeps `/Count`) | `delete_page_reduces_pages_and_fixes_count`, UI validation |
-| Rotate page | Toolbar button → `rotate_page` (90° steps) | `rotate_page_accumulates_in_90_steps` |
-| Insert PDF | Modal w/ source + range + position | `insert_pdf_adds_pages_at_index` |
+| Thumbnails | Async generation, drag-and-drop reorder (nested-tree safe) | `move_page_reorders`, `move_page_on_nested_tree_reorders_leaves` |
+| Save / Save As | Working-copy committed on demand; dirty prompt on close/open/quit | `working_copy_isolates_edits_until_saved`, UI validation |
+| Undo / Redo | Working-copy snapshot history; dirty state tracks vs. saved point | UI validation |
+| Delete page | Confirmation modal → tree-aware `delete_page` (lopdf `delete_pages`, handles nested trees) | `delete_page_reduces_pages_and_fixes_count`, `delete_page_on_nested_tree_removes_only_one_leaf` |
+| Rotate page | Toolbar button → `rotate_page` (90° steps, leaf-id based) | `rotate_page_accumulates_in_90_steps` |
+| Insert PDF | Two-column modal (source + range + position); flattens target, deep-copies inserted pages' objects | `insert_pdf_adds_pages_at_index`, `insert_pdf_imports_pages_into_nested_tree` |
 | Split PDF | Ranges → separate files, orphans pruned | `split_pdf_creates_separate_files` |
-| Markdown | PDF/Markdown view toggle, PDFium text extraction with heuristic headings, TOC/table, and column-table formatting; sibling `.md` auto-save with overwrite conflict detection | `write_markdown_file_*`, Markdown formatter tests, ignored `render_real_pdf_smoke` |
+| Markdown | PDF/Markdown toggle, PDFium text extraction with heuristic headings/TOC/tables + dingbat-bullet mapping; sibling `.md` auto-save with overwrite conflict detection | `write_markdown_file_*`, `symbol_font_bullets_become_markdown_bullets`, ignored `render_real_pdf_smoke` |
 | Optimize | Metadata strip + image recompress + prune + stream compress | `optimize_pdf_writes_output_file` |
 | Print | Renders all pages → native print dialog (`window.print()`) | Manual |
 | Highlight | Drag to highlight, persisted + read back | `highlight_add_and_read_back` |
+| Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
 - `cargo test` — unit tests covering every lopdf-based command and Markdown file-write conflict handling.
@@ -113,6 +134,24 @@ and verified:
   text geometry heuristics. It does not extract images, OCR scanned pages, or use
   tagged-PDF semantics; pages with no text layer are marked
   `_(no extractable text on this page)_`.
-- Page-tree edits assume a flat page tree (the common case).
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
+- Undo/Redo and deferred save use whole-file working-copy snapshots — fine for
+  typical PDFs; very large files are copied on each edit.
+
+## Remaining / Future Work
+
+- **Markdown depth:** no image extraction, OCR for scanned/no-text pages, or
+  tagged-PDF semantics; output always saves beside the PDF (no destination picker).
+- **Insert edge cases:** AcroForm / form-field merging is not handled; fonts
+  shared across inserted pages aren't deduped beyond a single insert operation.
+- **Undo/Redo:** snapshot-based with unbounded history and no keyboard shortcuts
+  (Ctrl+Z / Ctrl+Y) yet; deltas / bounded depth would help for very large files.
+- **File dialogs:** native open/save dialogs are intentionally avoided on the
+  Wayland/WebKitGTK target (in-app path + browser used); revisit when the desktop
+  portal path is stable.
+- **Annotations:** rectangle highlights only — no notes, freehand, or other types.
+- **Packaging / distribution:** AppImage needs `appimagetool`; no signed/notarized
+  macOS or Windows installers yet.
+- **Testing:** core logic is unit-tested; no automated UI/e2e coverage of the
+  save / undo / insert flows.
