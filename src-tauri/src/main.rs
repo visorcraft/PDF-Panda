@@ -1895,6 +1895,17 @@ mod tests {
     }
 
     #[test]
+    fn open_working_copy_creates_isolated_temp_file() {
+        let path = save(&mut build_pdf(1), "wc_open");
+        let working = open_working_copy(path.clone()).unwrap();
+        assert_ne!(working, path);
+        assert!(PathBuf::from(&working).exists());
+        assert_eq!(fs::read(&working).unwrap(), fs::read(&path).unwrap());
+        discard_working_copy(working).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn working_copy_isolates_edits_until_saved() {
         let original = std::env::temp_dir().join(format!("pp_wc_orig_{}.pdf", std::process::id()));
         fs::write(&original, b"ORIGINAL").unwrap();
