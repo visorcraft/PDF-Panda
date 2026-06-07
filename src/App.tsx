@@ -24,12 +24,20 @@ const MAX_UNDO_HISTORY = 50;
 // Skip undo snapshots above this size to avoid copying very large PDFs on every edit.
 const SNAPSHOT_BYTE_LIMIT = 32 * 1024 * 1024;
 
+type ShapeKind = 'square' | 'circle' | 'line';
+
 interface AnnotationData {
   subtype: string;
   rect: [number, number, number, number];
   color: [number, number, number] | null;
   contents: string | null;
   ink_points: number[] | null;
+  line_endpoints: [number, number, number, number] | null;
+}
+
+function shapeStrokeColor(color: [number, number, number] | null): string {
+  if (!color) return 'rgb(255,0,0)';
+  return `rgb(${color[0] * 255},${color[1] * 255},${color[2] * 255})`;
 }
 
 function inkPointsToPolyline(points: number[] | null | undefined): string {
@@ -151,6 +159,8 @@ function App() {
   const [highlightMode, setHighlightMode] = useState(false);
   const [noteMode, setNoteMode] = useState(false);
   const [drawMode, setDrawMode] = useState(false);
+  const [shapeMode, setShapeMode] = useState(false);
+  const [shapeKind, setShapeKind] = useState<ShapeKind>('square');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
@@ -159,6 +169,7 @@ function App() {
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [inkDrawing, setInkDrawing] = useState(false);
   const [inkDraft, setInkDraft] = useState<number[]>([]);
+  const [shapeLineEnd, setShapeLineEnd] = useState<{ x: number; y: number } | null>(null);
   const [drawing, setDrawing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const snapshotSkipNotifiedRef = useRef(false);
@@ -615,12 +626,67 @@ function App() {
     setHighlightRect(null);
     setInkDrawing(false);
     setInkDraft([]);
+    setShapeLineEnd(null);
   };
 
   // Highlighting is a two-click gesture: click once to set the start corner,
   // move the mouse to rubber-band the selection, click again to finish.
   const handlePageClick = (e: React.MouseEvent) => {
     if (drawMode) return;
+    if (shapeMode) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (!drawing) {
+        setHighlightStart(coords);
+        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+        setShapeLineEnd(coords);
+        setDrawing(true);
+        return;
+      }
+      const start = highlightStart;
+      cancelDrawing();
+      if (!start) return;
+      if (shapeKind === 'line') {
+        const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
+        if (dist < 5) return;
+        void withLoading(async () => {
+          await invoke('add_line', {
+            path: filePath,
+            pageIndex: currentPage,
+            x1: start.x,
+            y1: start.y,
+            x2: coords.x,
+            y2: coords.y,
+          });
+          markPdfEdited();
+          await refreshAnnotations();
+          showToast('Line added');
+        });
+        return;
+      }
+      const rect = {
+        x: Math.min(start.x, coords.x),
+        y: Math.min(start.y, coords.y),
+        w: Math.abs(coords.x - start.x),
+        h: Math.abs(coords.y - start.y),
+      };
+      if (rect.w < 5 || rect.h < 5) return;
+      void withLoading(async () => {
+        const args = {
+          path: filePath,
+          pageIndex: currentPage,
+          x1: rect.x,
+          y1: rect.y,
+          x2: rect.x + rect.w,
+          y2: rect.y + rect.h,
+        };
+        if (shapeKind === 'circle') await invoke('add_circle', args);
+        else await invoke('add_square', args);
+        markPdfEdited();
+        await refreshAnnotations();
+        showToast(shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added');
+      });
+      return;
+    }
     if (noteMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       setPendingNotePos(coords);
@@ -673,6 +739,20 @@ function App() {
       });
       return;
     }
+    if (shapeMode && drawing && highlightStart) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (shapeKind === 'line') {
+        setShapeLineEnd(coords);
+        return;
+      }
+      setHighlightRect({
+        x: Math.min(highlightStart.x, coords.x),
+        y: Math.min(highlightStart.y, coords.y),
+        w: Math.abs(coords.x - highlightStart.x),
+        h: Math.abs(coords.y - highlightStart.y),
+      });
+      return;
+    }
     if (!highlightMode || !drawing || !highlightStart) return;
     const coords = getImageCoords(e.clientX, e.clientY);
     setHighlightRect({
@@ -680,6 +760,16 @@ function App() {
       y: Math.min(highlightStart.y, coords.y),
       w: Math.abs(coords.x - highlightStart.x),
       h: Math.abs(coords.y - highlightStart.y),
+    });
+  };
+
+  const removeShape = (subtype: 'Square' | 'Circle' | 'Line', index: number) => {
+    const command = subtype === 'Square' ? 'remove_square' : subtype === 'Circle' ? 'remove_circle' : 'remove_line';
+    void withLoading(async () => {
+      await invoke(command, { path: filePath, pageIndex: currentPage, index });
+      markPdfEdited();
+      await refreshAnnotations();
+      showToast('Shape removed');
     });
   };
 
@@ -740,6 +830,7 @@ function App() {
     cancelDrawing();
     setNoteMode(false);
     setDrawMode(false);
+    setShapeMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setHighlightMode((m) => !m);
@@ -754,6 +845,7 @@ function App() {
     cancelDrawing();
     setHighlightMode(false);
     setDrawMode(false);
+    setShapeMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setNoteMode((m) => !m);
@@ -763,6 +855,7 @@ function App() {
     cancelDrawing();
     setHighlightMode(false);
     setNoteMode(false);
+    setShapeMode(false);
     setShowNoteModal(false);
     setPendingNotePos(null);
     setDrawMode((m) => !m);
@@ -771,6 +864,21 @@ function App() {
   const exitDrawMode = () => {
     cancelDrawing();
     setDrawMode(false);
+  };
+
+  const toggleShapeMode = () => {
+    cancelDrawing();
+    setHighlightMode(false);
+    setNoteMode(false);
+    setDrawMode(false);
+    setShowNoteModal(false);
+    setPendingNotePos(null);
+    setShapeMode((m) => !m);
+  };
+
+  const exitShapeMode = () => {
+    cancelDrawing();
+    setShapeMode(false);
   };
 
   const exitNoteMode = () => {
@@ -922,12 +1030,16 @@ function App() {
   noteModeRef.current = noteMode;
   const drawModeRef = useRef(drawMode);
   drawModeRef.current = drawMode;
+  const shapeModeRef = useRef(shapeMode);
+  shapeModeRef.current = shapeMode;
   const exitHighlightModeRef = useRef(exitHighlightMode);
   exitHighlightModeRef.current = exitHighlightMode;
   const exitNoteModeRef = useRef(exitNoteMode);
   exitNoteModeRef.current = exitNoteMode;
   const exitDrawModeRef = useRef(exitDrawMode);
   exitDrawModeRef.current = exitDrawMode;
+  const exitShapeModeRef = useRef(exitShapeMode);
+  exitShapeModeRef.current = exitShapeMode;
   const toggleNoteModeRef = useRef(toggleNoteMode);
   toggleNoteModeRef.current = toggleNoteMode;
   const goToPageRef = useRef(goToPage);
@@ -942,6 +1054,8 @@ function App() {
   toggleHighlightModeRef.current = toggleHighlightMode;
   const toggleDrawModeRef = useRef(toggleDrawMode);
   toggleDrawModeRef.current = toggleDrawMode;
+  const toggleShapeModeRef = useRef(toggleShapeMode);
+  toggleShapeModeRef.current = toggleShapeMode;
   const zoomInRef = useRef(zoomIn);
   zoomInRef.current = zoomIn;
   const zoomOutRef = useRef(zoomOut);
@@ -995,6 +1109,10 @@ function App() {
           exitDrawModeRef.current();
           return;
         }
+        if (shapeModeRef.current && hasOpenPdfRef.current) {
+          exitShapeModeRef.current();
+          return;
+        }
         if (highlightModeRef.current && hasOpenPdfRef.current) {
           exitHighlightModeRef.current();
           return;
@@ -1033,6 +1151,11 @@ function App() {
         if (e.key.toLowerCase() === 'd' && viewModeRef.current === 'pdf') {
           e.preventDefault();
           toggleDrawModeRef.current();
+          return;
+        }
+        if (e.key.toLowerCase() === 's' && viewModeRef.current === 'pdf') {
+          e.preventDefault();
+          toggleShapeModeRef.current();
           return;
         }
         if (e.key === 'Home' && page > 0) {
@@ -1399,6 +1522,38 @@ function App() {
                 >
                   {drawMode ? 'Draw: ON' : 'Draw'}
                 </button>
+                <button
+                  onClick={toggleShapeMode}
+                  className={`btn ${shapeMode ? 'btn-active' : ''}`}
+                  title="Toggle shape mode — rectangle, ellipse, line (S)"
+                >
+                  {shapeMode ? 'Shape: ON' : 'Shape'}
+                </button>
+                {shapeMode && (
+                  <div className="shape-kind-toggle" role="group" aria-label="Shape kind">
+                    <button
+                      type="button"
+                      className={shapeKind === 'square' ? 'active' : ''}
+                      onClick={() => setShapeKind('square')}
+                    >
+                      Rect
+                    </button>
+                    <button
+                      type="button"
+                      className={shapeKind === 'circle' ? 'active' : ''}
+                      onClick={() => setShapeKind('circle')}
+                    >
+                      Ellipse
+                    </button>
+                    <button
+                      type="button"
+                      className={shapeKind === 'line' ? 'active' : ''}
+                      onClick={() => setShapeKind('line')}
+                    >
+                      Line
+                    </button>
+                  </div>
+                )}
                 <button onClick={() => guardUnsaved(closePdf)} className="btn" title="Close (Ctrl+W)">Close</button>
               </>
             )}
@@ -1457,7 +1612,7 @@ function App() {
             </div>
           ) : (
             <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''}`}
+              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''}`}
               onClick={handlePageClick}
               onMouseDown={handleDrawMouseDown}
               onMouseMove={handlePageMouseMove}
@@ -1488,12 +1643,79 @@ function App() {
                         }}
                       />
                     ))}
-                    {/* Freehand ink strokes */}
+                    {/* Shape outlines */}
+                    {annotations.filter((a) => a.subtype === 'Square').map((a, i) => (
+                      <div
+                        key={`square-${i}`}
+                        className="shape-overlay shape-square"
+                        title={shapeMode ? 'Click to remove' : undefined}
+                        onClick={shapeMode ? (e) => { e.stopPropagation(); removeShape('Square', i); } : undefined}
+                        style={{
+                          left: a.rect[0],
+                          top: a.rect[1],
+                          width: a.rect[2] - a.rect[0],
+                          height: a.rect[3] - a.rect[1],
+                          borderColor: shapeStrokeColor(a.color),
+                          pointerEvents: shapeMode ? 'auto' : 'none',
+                          cursor: shapeMode ? 'pointer' : 'default',
+                        }}
+                      />
+                    ))}
+                    {annotations.filter((a) => a.subtype === 'Circle').map((a, i) => (
+                      <div
+                        key={`circle-${i}`}
+                        className="shape-overlay shape-circle"
+                        title={shapeMode ? 'Click to remove' : undefined}
+                        onClick={shapeMode ? (e) => { e.stopPropagation(); removeShape('Circle', i); } : undefined}
+                        style={{
+                          left: a.rect[0],
+                          top: a.rect[1],
+                          width: a.rect[2] - a.rect[0],
+                          height: a.rect[3] - a.rect[1],
+                          borderColor: shapeStrokeColor(a.color),
+                          pointerEvents: shapeMode ? 'auto' : 'none',
+                          cursor: shapeMode ? 'pointer' : 'default',
+                        }}
+                      />
+                    ))}
+                    {/* Freehand ink strokes and line shapes */}
                     <svg
                       className="ink-overlay"
                       viewBox={`0 0 ${BASE_W} ${BASE_H}`}
-                      aria-hidden={!drawMode}
+                      aria-hidden={!drawMode && !shapeMode}
                     >
+                      {annotations.filter((a) => a.subtype === 'Line' && a.line_endpoints).map((a, i) => {
+                        const [x1, y1, x2, y2] = a.line_endpoints!;
+                        const stroke = shapeStrokeColor(a.color);
+                        return (
+                          <g key={`line-${i}`}>
+                            {shapeMode && (
+                              <line
+                                x1={x1}
+                                y1={y1}
+                                x2={x2}
+                                y2={y2}
+                                stroke="transparent"
+                                strokeWidth={12}
+                                strokeLinecap="round"
+                                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); removeShape('Line', i); }}
+                              />
+                            )}
+                            <line
+                              x1={x1}
+                              y1={y1}
+                              x2={x2}
+                              y2={y2}
+                              stroke={stroke}
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              style={{ pointerEvents: 'none' }}
+                            />
+                          </g>
+                        );
+                      })}
                       {annotations.filter((a) => a.subtype === 'Ink').map((a, i) => {
                         const points = inkPointsToPolyline(a.ink_points);
                         const stroke = a.color
@@ -1537,6 +1759,18 @@ function App() {
                           style={{ pointerEvents: 'none', opacity: 0.75 }}
                         />
                       )}
+                      {shapeMode && drawing && highlightStart && shapeKind === 'line' && shapeLineEnd && (
+                        <line
+                          x1={highlightStart.x}
+                          y1={highlightStart.y}
+                          x2={shapeLineEnd.x}
+                          y2={shapeLineEnd.y}
+                          stroke="rgb(255,0,0)"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          style={{ pointerEvents: 'none', opacity: 0.75 }}
+                        />
+                      )}
                     </svg>
                     {/* Sticky text notes */}
                     {annotations.filter((a) => a.subtype === 'Text').map((a, i) => (
@@ -1558,9 +1792,21 @@ function App() {
                       </div>
                     ))}
                     {/* Current highlight drag */}
-                    {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
+                    {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && highlightMode && (
                       <div
                         className="highlight-draft"
+                        style={{
+                          left: highlightRect.x,
+                          top: highlightRect.y,
+                          width: highlightRect.w,
+                          height: highlightRect.h,
+                        }}
+                      />
+                    )}
+                    {/* Current shape drag */}
+                    {shapeMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && shapeKind !== 'line' && (
+                      <div
+                        className={`shape-draft ${shapeKind === 'circle' ? 'shape-circle' : 'shape-square'}`}
                         style={{
                           left: highlightRect.x,
                           top: highlightRect.y,

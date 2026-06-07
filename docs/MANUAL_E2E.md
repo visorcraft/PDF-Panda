@@ -18,6 +18,7 @@ checklist before a release tag.
 - [ ] Highlight add (H) and remove
 - [ ] Sticky note add (N) and remove
 - [ ] Freehand draw add (D) and remove
+- [ ] Shape outlines add (S — rect/ellipse/line) and remove
 
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict

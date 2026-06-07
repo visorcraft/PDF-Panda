@@ -1650,6 +1650,178 @@ fn remove_ink_stroke(path: String, page_index: u32, index: u32) -> Result<(), St
     Ok(())
 }
 
+fn shape_rect_object(x1: f64, y1: f64, x2: f64, y2: f64) -> Object {
+    Object::Array(vec![
+        Object::Real(x1 as f32),
+        Object::Real(y1 as f32),
+        Object::Real(x2 as f32),
+        Object::Real(y2 as f32),
+    ])
+}
+
+fn shape_outline_fields(x1: f64, y1: f64, x2: f64, y2: f64) -> Vec<(Vec<u8>, Object)> {
+    vec![
+        (b"Rect".to_vec(), shape_rect_object(x1.min(x2), y1.min(y2), x1.max(x2), y1.max(y2))),
+        (b"C".to_vec(), Object::Array(vec![Object::Real(1.0), Object::Real(0.0), Object::Real(0.0)])),
+        (b"Border".to_vec(), Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(2.0)])),
+    ]
+}
+
+fn push_page_annotation(doc: &mut Document, page_id: ObjectId, annot: ObjectId) -> Result<(), String> {
+    let annots = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
+    match annots {
+        Ok(Object::Array(ref mut arr)) => arr.push(Object::Reference(annot)),
+        _ => {
+            doc.get_dictionary_mut(page_id)
+                .map_err(|e| e.to_string())?
+                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
+        }
+    }
+    Ok(())
+}
+
+fn remove_annotation_by_subtype(
+    doc: &mut Document,
+    page_id: ObjectId,
+    subtype: &str,
+    index: u32,
+    not_found_msg: &str,
+) -> Result<(), String> {
+    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
+        Ok(Object::Array(arr)) => arr.clone(),
+        _ => return Err("No annotations on this page".to_string()),
+    };
+
+    let mut match_count = 0u32;
+    let mut target_pos: Option<usize> = None;
+    for (pos, annot_ref) in annots.iter().enumerate() {
+        let Object::Reference(id) = annot_ref else {
+            continue;
+        };
+        let matches = doc
+            .get_object(*id)
+            .ok()
+            .and_then(|o| o.as_dict().ok())
+            .and_then(|d| d.get(b"Subtype").ok())
+            .and_then(|o| o.as_name().ok())
+            .map(|n| String::from_utf8_lossy(n) == subtype)
+            .unwrap_or(false);
+        if matches {
+            if match_count == index {
+                target_pos = Some(pos);
+                break;
+            }
+            match_count += 1;
+        }
+    }
+
+    let pos = target_pos.ok_or_else(|| not_found_msg.to_string())?;
+    let mut new_annots = annots;
+    new_annots.remove(pos);
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
+    Ok(())
+}
+
+#[tauri::command]
+fn add_square(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let mut fields = vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Square".to_vec())),
+    ];
+    fields.extend(shape_outline_fields(x1, y1, x2, y2));
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(fields)));
+    push_page_annotation(&mut doc, page_id, annot)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn add_circle(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let mut fields = vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Circle".to_vec())),
+    ];
+    fields.extend(shape_outline_fields(x1, y1, x2, y2));
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(fields)));
+    push_page_annotation(&mut doc, page_id, annot)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn add_line(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
+    if (x2 - x1).hypot(y2 - y1) < 5.0 {
+        return Err("Line is too short".to_string());
+    }
+
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let mut fields = vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Line".to_vec())),
+        (
+            b"L".to_vec(),
+            Object::Array(vec![
+                Object::Real(x1 as f32),
+                Object::Real(y1 as f32),
+                Object::Real(x2 as f32),
+                Object::Real(y2 as f32),
+            ]),
+        ),
+    ];
+    fields.extend(shape_outline_fields(x1, y1, x2, y2));
+    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(fields)));
+    push_page_annotation(&mut doc, page_id, annot)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_square(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    remove_annotation_by_subtype(&mut doc, page_id, "Square", index, "Square shape not found")?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_circle(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    remove_annotation_by_subtype(&mut doc, page_id, "Circle", index, "Circle shape not found")?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_line(path: String, page_index: u32, index: u32) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    remove_annotation_by_subtype(&mut doc, page_id, "Line", index, "Line shape not found")?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 struct AnnotationData {
     subtype: String,
@@ -1657,6 +1829,7 @@ struct AnnotationData {
     color: Option<[f64; 3]>,
     contents: Option<String>,
     ink_points: Option<Vec<f64>>,
+    line_endpoints: Option<[f64; 4]>,
 }
 
 fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
@@ -1728,7 +1901,15 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
                     } else {
                         None
                     };
-                    result.push(AnnotationData { subtype, rect, color, contents, ink_points });
+                    let line_endpoints = if subtype == "Line" {
+                        annot_dict.get(b"L").ok().and_then(|o| o.as_array().ok()).map(|arr| {
+                            let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
+                            [get(0), get(1), get(2), get(3)]
+                        })
+                    } else {
+                        None
+                    };
+                    result.push(AnnotationData { subtype, rect, color, contents, ink_points, line_endpoints });
                 }
             }
         }
@@ -1829,6 +2010,12 @@ fn main() {
             remove_text_note,
             add_ink_stroke,
             remove_ink_stroke,
+            add_square,
+            add_circle,
+            add_line,
+            remove_square,
+            remove_circle,
+            remove_line,
             get_annotations,
             open_working_copy,
             save_working_copy,
@@ -2731,6 +2918,71 @@ mod tests {
         let missing = std::env::temp_dir().join(format!("pp_remove_ink_missing_{}.pdf", std::process::id()));
         let err = remove_ink_stroke(missing.to_string_lossy().into_owned(), 0, 0).unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn square_shape_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "square");
+        add_square(path.clone(), 0, 10.0, 20.0, 110.0, 80.0).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].subtype, "Square");
+        assert_eq!(annots[0].rect, [10.0, 20.0, 110.0, 80.0]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn circle_shape_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "circle");
+        add_circle(path.clone(), 0, 5.0, 5.0, 55.0, 35.0).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].subtype, "Circle");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn line_shape_add_and_read_back() {
+        let path = save(&mut build_pdf(1), "line");
+        add_line(path.clone(), 0, 10.0, 10.0, 90.0, 70.0).unwrap();
+        let annots = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(annots.len(), 1);
+        assert_eq!(annots[0].subtype, "Line");
+        assert_eq!(annots[0].line_endpoints, Some([10.0, 10.0, 90.0, 70.0]));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_square_deletes_the_right_one() {
+        let path = save(&mut build_pdf(1), "square_remove");
+        add_square(path.clone(), 0, 1.0, 1.0, 10.0, 10.0).unwrap();
+        add_square(path.clone(), 0, 20.0, 20.0, 30.0, 30.0).unwrap();
+        remove_square(path.clone(), 0, 0).unwrap();
+        let remaining = get_annotations(path.clone(), 0).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].rect, [20.0, 20.0, 30.0, 30.0]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn remove_line_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "line_invalid");
+        add_line(path.clone(), 0, 1.0, 1.0, 20.0, 20.0).unwrap();
+        match remove_line(path.clone(), 0, 9) {
+            Ok(_) => panic!("expected invalid index to fail"),
+            Err(message) => assert!(message.contains("Line shape not found")),
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_line_rejects_too_short() {
+        let path = save(&mut build_pdf(1), "line_short");
+        match add_line(path.clone(), 0, 1.0, 1.0, 1.0, 1.0) {
+            Ok(_) => panic!("expected short line to fail"),
+            Err(message) => assert!(message.contains("too short")),
+        }
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

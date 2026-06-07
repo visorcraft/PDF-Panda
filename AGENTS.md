@@ -95,7 +95,8 @@ and the default test suite don't need it.
   `rotate_page`, `split_pdf`, `insert_pdf`, `convert_pdf_to_markdown`,
   `save_pdf_markdown`, `optimize_pdf`, `add_highlight`, `remove_highlight`,
   `add_text_note`, `remove_text_note`, `add_ink_stroke`, `remove_ink_stroke`,
-  `get_annotations`, `file_byte_size`.
+  `add_square`, `add_circle`, `add_line`, `remove_square`, `remove_circle`,
+  `remove_line`, `get_annotations`, `file_byte_size`.
 - `src/App.tsx` — the whole UI (toolbar, scrollable viewer, thumbnail sidebar,
   split/insert modals, highlight overlays, print surface).
 - `src-tauri/capabilities/default.json` — Tauri ACL (`core:default`). Custom app
@@ -116,7 +117,8 @@ with page-specific confirmation, rotate, insert, split, optimize (metadata strip
 `window.print()`), highlight (click-to-start → click-to-finish, persists,
 click-an-existing-highlight to remove), sticky text notes (N — click to place,
 click-to-remove in note mode), freehand ink drawing (D — drag to draw,
-click-to-remove in draw mode), PDF/Markdown view toggle with sibling
+click-to-remove in draw mode), shape outlines (S — rectangle/ellipse/line,
+click-to-remove in shape mode), PDF/Markdown view toggle with sibling
 `.md` auto-save (or Save Markdown As… custom path) and overwrite confirmation,
 Markdown conversion (PDFium text
 extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and
