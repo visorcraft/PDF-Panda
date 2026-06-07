@@ -1895,6 +1895,13 @@ mod tests {
     }
 
     #[test]
+    fn get_pdf_page_count_reports_document_length() {
+        let path = save(&mut build_pdf(5), "page_count");
+        assert_eq!(get_pdf_page_count(path.clone()).unwrap(), 5);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
     fn list_pdf_browser_entries_lists_pdfs_and_directories() {
         let dir = std::env::temp_dir().join(format!("pp_browser_{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
