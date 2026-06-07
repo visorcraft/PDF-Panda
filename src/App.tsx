@@ -756,6 +756,8 @@ function App() {
   const resetZoomRef = useRef(resetZoom);
   resetZoomRef.current = resetZoom;
   const requestClosePdfRef = useRef<() => void>(() => {});
+  const openPdfRef = useRef(openPdf);
+  openPdfRef.current = openPdf;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -766,8 +768,15 @@ function App() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!hasOpenPdfRef.current) return;
       if (isTextInput(e.target)) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        openPdfRef.current();
+        return;
+      }
+
+      if (!hasOpenPdfRef.current) return;
 
       if (e.key === 'Escape' && highlightModeRef.current) {
         exitHighlightModeRef.current();
@@ -1056,7 +1065,7 @@ function App() {
         {/* Fixed header: toolbar + page/zoom controls stay put while the page scrolls */}
         <div className="header">
           <div className="toolbar">
-            <button onClick={openPdf} className="btn btn-active">Open PDF</button>
+            <button onClick={openPdf} className="btn btn-active" title="Open PDF (Ctrl+O)">Open PDF</button>
             {filePath && (
               <>
                 <button onClick={handleSave} className="btn" disabled={!isDirty} title="Save (Ctrl+S)">{isDirty ? 'Save •' : 'Save'}</button>
