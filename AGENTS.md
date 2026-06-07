@@ -1,4 +1,4 @@
-# AGENTS.md — PDF-Panda
+# AGENTS.md — PDF Panda
 
 ## Agent Working Style
 
@@ -15,7 +15,7 @@ making changes.**
 
 ## What this is
 
-A cross-platform desktop PDF editor named PDF-Panda (MVP). Tauri 2 backend (Rust) + React/
+A cross-platform desktop PDF editor named PDF Panda (MVP). Tauri 2 backend (Rust) + React/
 TypeScript frontend. Page management, viewing, annotation, Markdown conversion,
 and optimized export. GPL v3. Remote: `visorcraft/PDF-Panda`. Current tag:
 `v0.2.0`.

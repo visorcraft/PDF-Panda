@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "PDF-Panda",
+  "productName": "PDF Panda",
   "version": "0.2.0",
   "identifier": "com.pdf-panda.dev",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "PDF-Panda",
+        "title": "PDF Panda",
         "width": 800,
         "height": 600
       }

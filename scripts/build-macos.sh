@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Build unsigned macOS bundles for PDF-Panda (.app / .dmg).
+# Build unsigned macOS bundles for PDF Panda (.app / .dmg).
 #
 # Usage: scripts/build-macos.sh
 set -eu

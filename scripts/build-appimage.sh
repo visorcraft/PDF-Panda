@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Build a Linux AppImage for PDF-Panda.
+# Build a Linux AppImage for PDF Panda.
 #
 # Requires appimagetool (or APPIMAGETOOL pointing at it). deb/rpm bundles work
 # without it; AppImage packaging does not.

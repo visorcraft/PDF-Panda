@@ -1,12 +1,12 @@
-# PDF-Panda
+# PDF Panda
 
 A fast, cross-platform PDF editor built with **Rust** and **Tauri**. Open a document, rearrange pages, annotate, export to Markdown, and save optimized copies — without leaving a lightweight native app.
 
 **Current release:** v0.2.0 · **License:** [GPL v3](LICENSE)
 
-## Why PDF-Panda?
+## Why PDF Panda?
 
-PDF-Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools.
+PDF Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools.
 
 Runs on **Linux**, **macOS**, and **Windows**.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Build unsigned Windows installers for PDF-Panda (msi/nsis per Tauri defaults).
+# Build unsigned Windows installers for PDF Panda (msi/nsis per Tauri defaults).
 #
 # Usage: scripts/build-windows.sh
 set -eu

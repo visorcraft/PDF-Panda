@@ -1,6 +1,6 @@
 # Release Signing
 
-PDF-Panda release packages are **unsigned by default**. Use this guide when you have
+PDF Panda release packages are **unsigned by default**. Use this guide when you have
 platform signing credentials.
 
 ## macOS (notarization)

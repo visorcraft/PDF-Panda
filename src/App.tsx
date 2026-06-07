@@ -255,7 +255,7 @@ function App() {
   useEffect(() => {
     isDirtyRef.current = isDirty;
     const name = originalPath ? (originalPath.split('/').pop() ?? '') : '';
-    const title = name ? `${isDirty ? '• ' : ''}${name} — PDF-Panda` : 'PDF-Panda';
+    const title = name ? `${isDirty ? '• ' : ''}${name} — PDF Panda` : 'PDF Panda';
     void getCurrentWindow().setTitle(title);
   }, [isDirty, originalPath]);
 

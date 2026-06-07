@@ -1,6 +1,6 @@
-# Implementation Plan - PDF-Panda (MVP)
+# Implementation Plan - PDF Panda (MVP)
 
-This document outlines the phased approach for developing PDF-Panda, the high-performance, cross-platform PDF editor.
+This document outlines the phased approach for developing PDF Panda, the high-performance, cross-platform PDF editor.
 
 **Full Tech Stack:**
 * **Backend Language:** Rust (Bleeding edge)
@@ -77,7 +77,7 @@ This document outlines the phased approach for developing PDF-Panda, the high-pe
     - [x] Finalize documentation and prepare the first release tag.
 
 ## Phase 6: Post-MVP Hardening & Branding (v0.2.0)
-*Goal: Make editing non-destructive, fix page-tree correctness bugs, and establish the PDF-Panda brand.*
+*Goal: Make editing non-destructive, fix page-tree correctness bugs, and establish the PDF Panda brand.*
 
 - [x] **Branding**
     - [x] Rename project `pdf-editor` → `pdf-panda` (npm/crate/binary, `com.pdf-panda.dev` identifier, window title, docs).
@@ -118,7 +118,7 @@ and verified:
 | Optimize | Metadata strip + image recompress + prune + stream compress; Ctrl/Cmd+Shift+O | `optimize_pdf_writes_output_file`, `optimize_pdf_rejects_missing_file` |
 | Print | Renders all pages → native print dialog (`window.print()`); Ctrl/Cmd+P | Manual |
 | Highlight / Notes | Rectangle highlights (H) and sticky text notes (N); click-to-remove in active mode; Escape exits annotation mode or dismisses modals | `highlight_*`, `text_note_add_and_read_back`, `remove_text_note_*`, `get_annotations_rejects_*`, `add_highlight_rejects_*`, `remove_highlight_rejects_*` |
-| Branding | PDF-Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
+| Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
 - `cargo test` — 61 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering

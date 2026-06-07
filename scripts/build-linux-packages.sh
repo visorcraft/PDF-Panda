@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Build Linux deb and rpm packages for PDF-Panda.
+# Build Linux deb and rpm packages for PDF Panda.
 #
 # Usage: scripts/build-linux-packages.sh
 set -eu
