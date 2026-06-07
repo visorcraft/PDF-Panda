@@ -16,6 +16,7 @@ src-tauri/bin/
 # AI agent context files (kept local, not committed)
 AGENTS.md
 CLAUDE.md
+PLAN.md
 
 # Vendored PDFium runtime library (downloaded prebuilt, not committed — see README)
 src-tauri/vendor/

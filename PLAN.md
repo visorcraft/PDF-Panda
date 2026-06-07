@@ -155,3 +155,20 @@ and verified:
   macOS or Windows installers yet.
 - **Testing:** core logic is unit-tested; no automated UI/e2e coverage of the
   save / undo / insert flows.
+
+## Future Roadmap (Post-MVP)
+
+Aligned with `FEATURES.md`. Overlaps with **Remaining / Future Work** above are
+called out rather than duplicated.
+
+- **Advanced editing:** In-PDF text editing, vector object manipulation, and
+  image insertion (beyond current page-level operations).
+- **OCR integration:** Optical character recognition for scanned documents and
+  pages with no text layer (see also Markdown depth above).
+- **Enhanced annotations:** Sticky notes, stamps, shapes, and freehand drawing
+  (see also annotations bullet above — highlights only today).
+- **Security features:** Password protection, digital signatures, and redaction
+  tools.
+- **Form support:** Creation and filling of interactive PDF forms (broader than
+  insert-time AcroForm merging noted above).
+- **AI-powered tools:** Document summarization and intelligent content extraction.
