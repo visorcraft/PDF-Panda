@@ -180,7 +180,7 @@ interface PdfDocumentMetadata {
   mod_date: string | null;
 }
 
-type PdfBrowserTarget = 'open' | 'insert';
+type PdfBrowserTarget = 'open' | 'insert' | 'merge';
 
 interface PdfBrowserEntry {
   name: string;
@@ -455,6 +455,11 @@ function App() {
   const [insertStartPage, setInsertStartPage] = useState<number>(0);
   const [insertEndPage, setInsertEndPage] = useState<number>(0);
   const [insertSourcePageCount, setInsertSourcePageCount] = useState<number | null>(null);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeFilePath, setMergeFilePath] = useState('');
+  const [mergeStartPage, setMergeStartPage] = useState(0);
+  const [mergeEndPage, setMergeEndPage] = useState(0);
+  const [mergeSourcePageCount, setMergeSourcePageCount] = useState<number | null>(null);
 
   // When a source PDF is chosen for Insert, load *its* page count so the From/To
   // range reflects the source document (not the currently open one) and defaults
@@ -478,6 +483,26 @@ function App() {
     })();
     return () => { cancelled = true; };
   }, [insertFilePath]);
+
+  useEffect(() => {
+    if (!mergeFilePath) {
+      setMergeSourcePageCount(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const count = await invoke<number>('get_pdf_page_count', { path: mergeFilePath });
+        if (cancelled) return;
+        setMergeSourcePageCount(count);
+        setMergeStartPage(0);
+        setMergeEndPage(Math.max(0, count - 1));
+      } catch {
+        if (!cancelled) setMergeSourcePageCount(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mergeFilePath]);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -702,7 +727,9 @@ function App() {
     setShowBrowserModal(true);
     const startPath = target === 'open'
       ? lastBrowserDir || directoryFromPath(openFilePath) || directoryFromPath(originalPath)
-      : directoryFromPath(insertFilePath) || lastBrowserDir || directoryFromPath(originalPath);
+      : directoryFromPath(target === 'insert' ? insertFilePath : mergeFilePath)
+        || lastBrowserDir
+        || directoryFromPath(originalPath);
     void loadPdfBrowser(startPath);
   };
 
@@ -721,8 +748,11 @@ function App() {
       const loaded = await loadPdfFromPath(entry.path);
       if (!loaded) return;
       setShowOpenModal(false);
-    } else {
+    } else if (browserTarget === 'insert') {
       setInsertFilePath(entry.path);
+      rememberBrowserDirectory(entry.path);
+    } else {
+      setMergeFilePath(entry.path);
       rememberBrowserDirectory(entry.path);
     }
     setShowBrowserModal(false);
@@ -823,6 +853,11 @@ function App() {
   const openSplitModal = () => {
     if (!filePath) return;
     setShowSplitModal(true);
+  };
+
+  const openMergeModal = () => {
+    if (!filePath) return;
+    setShowMergeModal(true);
   };
 
   const handleDeletePage = async () => {
@@ -1853,6 +1888,13 @@ function App() {
     rememberBrowserDirectory(path);
   };
 
+  const chooseMergePdfNative = async () => {
+    const path = await pickPdfWithNativeDialog(mergeFilePath || lastBrowserDir || originalPath);
+    if (!path) return;
+    setMergeFilePath(path);
+    rememberBrowserDirectory(path);
+  };
+
   const handleSaveAs = async () => {
     const target = saveAsPath.trim();
     if (!filePath || !target) return;
@@ -1934,6 +1976,7 @@ function App() {
     setShowDeleteModal(false);
     setShowSplitModal(false);
     setShowInsertModal(false);
+    setShowMergeModal(false);
     setShowImageInsertModal(false);
     setShowAddFormFieldModal(false);
     setShowSummaryModal(false);
@@ -2084,6 +2127,8 @@ function App() {
   openInsertModalRef.current = openInsertModal;
   const openSplitModalRef = useRef(openSplitModal);
   openSplitModalRef.current = openSplitModal;
+  const openMergeModalRef = useRef(openMergeModal);
+  openMergeModalRef.current = openMergeModal;
   const handleOptimizePdfRef = useRef(async () => {});
   const handleSummarizePdfRef = useRef(async () => {});
   const openSignModalRef = useRef<() => void>(() => {});
@@ -2093,7 +2138,7 @@ function App() {
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal || showMetadataModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showInsertModal || showNoteModal || showImageInsertModal
+    || showSplitModal || showInsertModal || showMergeModal || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
 
   useEffect(() => {
@@ -2299,6 +2344,11 @@ function App() {
       if (key === 'k' && e.shiftKey) {
         e.preventDefault();
         openSplitModalRef.current();
+        return;
+      }
+      if (key === 'g' && e.shiftKey) {
+        e.preventDefault();
+        openMergeModalRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -2539,6 +2589,27 @@ function App() {
       setInsertAtPage(0);
       setInsertStartPage(0);
       setInsertEndPage(0);
+      await loadThumbnails(filePath);
+      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
+      setPageCount(count);
+    });
+  };
+
+  const handleMergePdf = async () => {
+    if (!filePath || !mergeFilePath) return;
+    await withLoading(async () => {
+      const added = await invoke<number>('merge_pdf', {
+        path: filePath,
+        mergePath: mergeFilePath,
+        mergeStart: mergeStartPage,
+        mergeEnd: mergeEndPage,
+      });
+      markPdfEdited();
+      showToast(`Merged ${added} page${added === 1 ? '' : 's'} from source PDF`);
+      setShowMergeModal(false);
+      setMergeFilePath('');
+      setMergeStartPage(0);
+      setMergeEndPage(0);
       await loadThumbnails(filePath);
       const count = await invoke<number>('get_pdf_page_count', { path: filePath });
       setPageCount(count);
@@ -2895,6 +2966,7 @@ function App() {
                 <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
+                <button onClick={openMergeModal} className="btn" title="Merge PDF — append pages (Ctrl+Shift+G)">Merge</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
                   <button
@@ -3724,6 +3796,66 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowImageInsertModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void confirmImageSource()} className="btn" disabled={!imageSourceDraft.trim()}>Place on page</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Merge Modal */}
+      {showMergeModal && (
+        <Modal onClose={() => { setShowMergeModal(false); setMergeFilePath(''); }}>
+          <h3>Merge PDF</h3>
+          <p className="modal-help">Append pages from another PDF to the end of this document.</p>
+          <div className="insert-grid">
+            <div className="insert-source">
+              <label>Source PDF to merge:</label>
+              <div className="modal-path-row">
+                <input
+                  type="text"
+                  value={mergeFilePath}
+                  onChange={(e) => setMergeFilePath(e.target.value)}
+                  className="modal-input"
+                  placeholder="/path/to/source.pdf"
+                />
+                {nativeDialogs && (
+                  <button onClick={() => void chooseMergePdfNative()} className="btn">Choose file…</button>
+                )}
+                <button onClick={() => openPdfBrowser('merge')} className="btn">Browse…</button>
+              </div>
+            </div>
+            <label>
+              From page {mergeSourcePageCount ? `(1-${mergeSourcePageCount})` : ''} of source:
+              <input
+                type="number"
+                value={mergeStartPage + 1}
+                onChange={(e) => setMergeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))}
+                min="1"
+                max={mergeSourcePageCount ?? undefined}
+                disabled={!mergeSourcePageCount}
+                className="modal-input"
+              />
+            </label>
+            <label>
+              To page {mergeSourcePageCount ? `(1-${mergeSourcePageCount})` : ''} of source:
+              <input
+                type="number"
+                value={mergeEndPage + 1}
+                onChange={(e) => setMergeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))}
+                min="1"
+                max={mergeSourcePageCount ?? undefined}
+                disabled={!mergeSourcePageCount}
+                className="modal-input"
+              />
+            </label>
+          </div>
+          {mergeSourcePageCount ? (
+            <p className="modal-help">
+              Appends page{mergeStartPage === mergeEndPage ? '' : 's'} {mergeStartPage + 1}
+              {mergeStartPage === mergeEndPage ? '' : `–${mergeEndPage + 1}`} of the source ({mergeSourcePageCount} pages) after page {pageCount ?? 0} of this document.
+            </p>
+          ) : null}
+          <div className="modal-actions">
+            <button onClick={() => { setShowMergeModal(false); setMergeFilePath(''); }} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleMergePdf()} className="btn" disabled={!mergeFilePath}>Merge</button>
           </div>
         </Modal>
       )}

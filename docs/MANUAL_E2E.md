@@ -13,7 +13,7 @@ before a release tag.
 ## View & edit
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
-- [ ] Delete / duplicate / rotate / reorder / insert / split
+- [ ] Delete / duplicate / rotate / reorder / insert / merge / split
 - [ ] Metadata modal — edit title/author; Apply marks dirty; Save persists
 
 ## Annotations

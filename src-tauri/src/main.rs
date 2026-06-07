@@ -1003,6 +1003,28 @@ fn duplicate_page(path: String, page_index: u32) -> Result<u32, String> {
     Ok(page_index + 1)
 }
 
+/// Append pages from `merge_path` to the end of `path`.
+#[tauri::command]
+fn merge_pdf(path: String, merge_path: String, merge_start: u32, merge_end: u32) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let merge_path_buf = PathBuf::from(&merge_path);
+    if path_buf == merge_path_buf {
+        return Err("Cannot merge a PDF into itself".to_string());
+    }
+
+    let at_index = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let source_count = Document::load(&merge_path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if source_count == 0 {
+        return Err("Source PDF has no pages".to_string());
+    }
+    if merge_start > merge_end || merge_end >= source_count {
+        return Err("Invalid merge page range".to_string());
+    }
+
+    insert_pdf(path, merge_path, at_index, merge_start, merge_end)?;
+    Ok(merge_end - merge_start + 1)
+}
+
 #[tauri::command]
 fn rotate_page(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
@@ -5547,6 +5569,7 @@ fn main() {
             delete_page,
             move_page,
             duplicate_page,
+            merge_pdf,
             rotate_page,
             split_pdf,
             insert_pdf,
@@ -5927,6 +5950,64 @@ mod tests {
         let missing = std::env::temp_dir().join(format!("pp_duplicate_missing_{}.pdf", std::process::id()));
         let err = duplicate_page(missing.to_string_lossy().into_owned(), 0).unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn merge_pdf_appends_source_pages() {
+        let dest = save(&mut build_pdf(2), "merge_dest");
+        let src = save(&mut build_pdf(3), "merge_src");
+        let added = merge_pdf(dest.clone(), src.clone(), 0, 2).unwrap();
+        assert_eq!(added, 3);
+        assert_eq!(Document::load(&dest).unwrap().get_pages().len(), 5);
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
+    fn merge_pdf_appends_partial_range() {
+        let dest = save(&mut build_pdf(1), "merge_dest_partial");
+        let src = save(&mut build_pdf(4), "merge_src_partial");
+        let added = merge_pdf(dest.clone(), src.clone(), 1, 2).unwrap();
+        assert_eq!(added, 2);
+        assert_eq!(Document::load(&dest).unwrap().get_pages().len(), 3);
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
+    fn merge_pdf_rejects_self_merge() {
+        let path = save(&mut build_pdf(1), "merge_self");
+        let err = merge_pdf(path.clone(), path.clone(), 0, 0).unwrap_err();
+        assert!(err.contains("itself"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn merge_pdf_rejects_invalid_range() {
+        let dest = save(&mut build_pdf(1), "merge_dest_invalid");
+        let src = save(&mut build_pdf(2), "merge_src_invalid");
+        let err = merge_pdf(dest.clone(), src.clone(), 2, 1).unwrap_err();
+        assert!(err.contains("Invalid merge page range"));
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
+    fn merge_pdf_rejects_missing_dest_file() {
+        let src = save(&mut build_pdf(1), "merge_src_only");
+        let missing = std::env::temp_dir().join(format!("pp_merge_dest_missing_{}.pdf", std::process::id()));
+        let err = merge_pdf(missing.to_string_lossy().into_owned(), src.clone(), 0, 0).unwrap_err();
+        assert!(!err.is_empty());
+        let _ = std::fs::remove_file(&src);
+    }
+
+    #[test]
+    fn merge_pdf_rejects_missing_source_file() {
+        let dest = save(&mut build_pdf(1), "merge_dest_only");
+        let missing = std::env::temp_dir().join(format!("pp_merge_src_missing_{}.pdf", std::process::id()));
+        let err = merge_pdf(dest.clone(), missing.to_string_lossy().into_owned(), 0, 0).unwrap_err();
+        assert!(!err.is_empty());
+        let _ = std::fs::remove_file(&dest);
     }
 
     #[test]

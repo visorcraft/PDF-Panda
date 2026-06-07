@@ -50,6 +50,7 @@ Three things we care about:
 **Organize pages**
 - **Delete**, **duplicate**, **rotate** (90° steps), and **drag-and-drop reorder**
 - **Insert** pages from another PDF (range + position; merges form fields, dedups fonts)
+- **Merge** another PDF by appending its pages to the end (page range supported)
 - **Split** into multiple files by page range
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
