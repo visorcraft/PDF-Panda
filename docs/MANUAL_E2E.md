@@ -14,9 +14,9 @@ before a release tag.
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Find text (Ctrl/Cmd+F) — search, next/previous, highlight on page
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
-- [ ] Delete / duplicate / rotate / rotate all / reverse / blank page / delete range / reorder / insert / merge / extract / split
-- [ ] Export PNG/JPEG, page numbers, watermark, crop, flatten annotations
-- [ ] Add bookmark from Bookmarks panel
+- [ ] Delete / duplicate / dup. range / rotate / rotate CCW / reset rot. / rotate all / reset all rot. / reverse / blank / delete range / reorder / insert / merge / extract / split
+- [ ] Export PNG/JPEG/WebP, page dimensions in viewer, page numbers, watermark, crop (single/all/clear), flatten annotations
+- [ ] Add / rename / remove bookmark from Bookmarks panel
 - [ ] Metadata modal — edit title/author; Apply marks dirty; Save persists
 
 ## Annotations

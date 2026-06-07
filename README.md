@@ -55,8 +55,9 @@ Three things we care about:
 - **Split** into multiple files by page range
 - **Extract** a page range into a new PDF without changing the open document
 - **Reverse** page order, **rotate all** pages, insert a **blank page**, or **delete a page range**
-- **Export PNG/JPEG** — render current page, a range, or all pages (1600×2264)
-- **Add bookmarks**, **page numbers**, **text watermarks**, **crop** margins, and **flatten** annotations
+- **Export PNG/JPEG/WebP** — render current page, a range, or all pages (1600×2264)
+- **Rotate CCW**, **reset rotation** (page or all), **duplicate page range**
+- **Add/rename/remove bookmarks**, **page dimensions** in the viewer, **page numbers**, **text watermarks**, **crop** (single, all, or clear), and **flatten** annotations
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
 **Annotate & mark up**
@@ -73,7 +74,7 @@ Three things we care about:
 - **PDF → Markdown** with tagged-PDF structure (headings, lists, tables), heuristic layout, and a **Tesseract OCR** fallback for scanned pages
 - **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
-- **Export PNG/JPEG** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
+- **Export PNG/JPEG/WebP** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
 - **Print** via the system print dialog
 
 ---

@@ -175,6 +175,12 @@ interface PdfBookmarkEntry {
   page_index: number | null;
 }
 
+interface PdfPageSize {
+  width: number;
+  height: number;
+  rotation: number;
+}
+
 interface PdfDocumentMetadata {
   title: string | null;
   author: string | null;
@@ -188,7 +194,7 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge';
 type PngExportScope = 'current' | 'range' | 'all';
-type ImageExportFormat = 'png' | 'jpeg';
+type ImageExportFormat = 'png' | 'jpeg' | 'webp';
 type PageRangeScope = 'current' | 'range' | 'all';
 
 interface PdfBrowserEntry {
@@ -284,6 +290,7 @@ const fileNameFromPath = (path: string): string => {
 const PDF_DIALOG_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
 const PNG_DIALOG_FILTER = [{ name: 'PNG', extensions: ['png'] }];
 const JPEG_DIALOG_FILTER = [{ name: 'JPEG', extensions: ['jpg', 'jpeg'] }];
+const WEBP_DIALOG_FILTER = [{ name: 'WebP', extensions: ['webp'] }];
 const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 const CERT_DIALOG_FILTER = [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }];
 
@@ -494,6 +501,14 @@ function App() {
   const [flattenEndPage, setFlattenEndPage] = useState(0);
   const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
   const [bookmarkTitle, setBookmarkTitle] = useState('');
+  const [showRenameBookmarkModal, setShowRenameBookmarkModal] = useState(false);
+  const [renameBookmarkIndex, setRenameBookmarkIndex] = useState(0);
+  const [renameBookmarkTitle, setRenameBookmarkTitle] = useState('');
+  const [showDuplicateRangeModal, setShowDuplicateRangeModal] = useState(false);
+  const [duplicateRangeStartPage, setDuplicateRangeStartPage] = useState(0);
+  const [duplicateRangeEndPage, setDuplicateRangeEndPage] = useState(0);
+  const [cropApplyAll, setCropApplyAll] = useState(false);
+  const [pageSizes, setPageSizes] = useState<PdfPageSize[]>([]);
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [insertFilePath, setInsertFilePath] = useState<string>('');
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
@@ -927,11 +942,28 @@ function App() {
     return { start, end };
   };
 
+  const imageExportExtension = (format: ImageExportFormat) => {
+    if (format === 'jpeg') return 'jpg';
+    if (format === 'webp') return 'webp';
+    return 'png';
+  };
+
   const defaultImageExportOutput = (format: ImageExportFormat, scope: PngExportScope, start: number, _end: number) => {
     const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    const ext = format === 'jpeg' ? 'jpg' : 'png';
+    const ext = imageExportExtension(format);
     if (scope === 'current') return `${base}_page_${start + 1}.${ext}`;
     return `${base}_pages`;
+  };
+
+  const imageExportCommand = (format: ImageExportFormat, multi: boolean) => {
+    if (multi) {
+      if (format === 'jpeg') return 'export_pdf_pages_jpeg';
+      if (format === 'webp') return 'export_pdf_pages_webp';
+      return 'export_pdf_pages_png';
+    }
+    if (format === 'jpeg') return 'export_pdf_page_jpeg';
+    if (format === 'webp') return 'export_pdf_page_webp';
+    return 'export_pdf_page_png';
   };
 
   const openExportPngModal = () => {
@@ -952,20 +984,18 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    const ext = imageExportFormat === 'jpeg' ? 'jpg' : 'png';
-    const label = imageExportFormat.toUpperCase();
+    const ext = imageExportExtension(imageExportFormat);
+    const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat.toUpperCase();
     await withLoading(async () => {
       if (pngExportScope === 'current') {
-        const cmd = imageExportFormat === 'jpeg' ? 'export_pdf_page_jpeg' : 'export_pdf_page_png';
-        const written = await invoke<string>(cmd, {
+        const written = await invoke<string>(imageExportCommand(imageExportFormat, false), {
           path: filePath,
           pageIndex: currentPage,
           outputPath: ensureExtension(output, ext),
         });
         showToast(`Exported ${label} to ${written}`);
       } else {
-        const cmd = imageExportFormat === 'jpeg' ? 'export_pdf_pages_jpeg' : 'export_pdf_pages_png';
-        const written = await invoke<string[]>(cmd, {
+        const written = await invoke<string[]>(imageExportCommand(imageExportFormat, true), {
           path: filePath,
           startPage: start,
           endPage: end,
@@ -978,8 +1008,12 @@ function App() {
   };
 
   const chooseExportPngOutputNative = async () => {
-    const ext = imageExportFormat === 'jpeg' ? 'jpg' : 'png';
-    const filters = imageExportFormat === 'jpeg' ? JPEG_DIALOG_FILTER : PNG_DIALOG_FILTER;
+    const ext = imageExportExtension(imageExportFormat);
+    const filters = imageExportFormat === 'jpeg'
+      ? JPEG_DIALOG_FILTER
+      : imageExportFormat === 'webp'
+        ? WEBP_DIALOG_FILTER
+        : PNG_DIALOG_FILTER;
     if (pngExportScope === 'current') {
       const picked = await pickSaveWithNativeDialog(
         ensureExtension(
@@ -997,8 +1031,21 @@ function App() {
       filters,
     );
     if (!picked) return;
-    setPngExportOutputPath(picked.replace(/\.(png|jpe?g)$/i, ''));
+    setPngExportOutputPath(picked.replace(/\.(png|jpe?g|webp)$/i, ''));
   };
+
+  const loadPageSizes = useCallback(async (path: string = filePath) => {
+    if (!path) {
+      setPageSizes([]);
+      return;
+    }
+    try {
+      const sizes = await invoke<PdfPageSize[]>('get_pdf_page_sizes', { path });
+      setPageSizes(sizes);
+    } catch {
+      setPageSizes([]);
+    }
+  }, [filePath]);
 
   const reloadOpenPdf = async (nextPage = currentPage) => {
     if (!filePath) return;
@@ -1011,6 +1058,63 @@ function App() {
     await renderPage(filePath, page);
     await loadThumbnails(filePath);
     void loadPdfBookmarks(filePath);
+    void loadPageSizes(filePath);
+  };
+
+  const handleRotatePageCcw = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('rotate_page_ccw', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast('Page rotated 90° counter-clockwise');
+    });
+  };
+
+  const handleResetPageRotation = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('reset_page_rotation', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast('Page rotation reset');
+    });
+  };
+
+  const handleResetAllRotations = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const count = await invoke<number>('reset_all_page_rotations', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Reset rotation on ${count} page${count === 1 ? '' : 's'}`);
+    });
+  };
+
+  const openDuplicateRangeModal = () => {
+    if (!filePath || pageCount === null) return;
+    setDuplicateRangeStartPage(currentPage);
+    setDuplicateRangeEndPage(currentPage);
+    setShowDuplicateRangeModal(true);
+  };
+
+  const handleDuplicatePageRange = async () => {
+    if (!filePath) return;
+    if (duplicateRangeStartPage > duplicateRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const count = await invoke<number>('duplicate_page_range', {
+        path: filePath,
+        startPage: duplicateRangeStartPage,
+        endPage: duplicateRangeEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(duplicateRangeEndPage + 1);
+      setShowDuplicateRangeModal(false);
+      showToast(`Duplicated ${count} page${count === 1 ? '' : 's'}`);
+    });
   };
 
   const handleReversePages = async () => {
@@ -1146,12 +1250,28 @@ function App() {
     setCropMarginRight(50);
     setCropMarginBottom(50);
     setCropMarginLeft(50);
+    setCropApplyAll(false);
+    void loadPageSizes(filePath);
     setShowCropModal(true);
   };
 
   const handleCropPage = async () => {
     if (!filePath) return;
     await withLoading(async () => {
+      if (cropApplyAll) {
+        const count = await invoke<number>('crop_all_pages', {
+          path: filePath,
+          marginTop: cropMarginTop,
+          marginRight: cropMarginRight,
+          marginBottom: cropMarginBottom,
+          marginLeft: cropMarginLeft,
+        });
+        markPdfEdited();
+        await reloadOpenPdf(currentPage);
+        setShowCropModal(false);
+        showToast(`Cropped ${count} page${count === 1 ? '' : 's'}`);
+        return;
+      }
       await invoke('crop_page', {
         path: filePath,
         pageIndex: currentPage,
@@ -1164,6 +1284,16 @@ function App() {
       await reloadOpenPdf(currentPage);
       setShowCropModal(false);
       showToast(`Cropped page ${currentPage + 1}`);
+    });
+  };
+
+  const handleClearPageCrop = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('clear_page_crop', { path: filePath, pageIndex: currentPage });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Cleared crop on page ${currentPage + 1}`);
     });
   };
 
@@ -1213,6 +1343,37 @@ function App() {
       await loadPdfBookmarks(filePath);
       setShowAddBookmarkModal(false);
       showToast('Bookmark added');
+    });
+  };
+
+  const openRenameBookmarkModal = (index: number, title: string) => {
+    setRenameBookmarkIndex(index);
+    setRenameBookmarkTitle(title);
+    setShowRenameBookmarkModal(true);
+  };
+
+  const handleRenameBookmark = async () => {
+    if (!filePath || !renameBookmarkTitle.trim()) return;
+    await withLoading(async () => {
+      await invoke('rename_pdf_bookmark', {
+        path: filePath,
+        bookmarkIndex: renameBookmarkIndex,
+        title: renameBookmarkTitle.trim(),
+      });
+      markPdfEdited();
+      await loadPdfBookmarks(filePath);
+      setShowRenameBookmarkModal(false);
+      showToast('Bookmark renamed');
+    });
+  };
+
+  const handleRemoveBookmark = async (index: number) => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('remove_pdf_bookmark', { path: filePath, bookmarkIndex: index });
+      markPdfEdited();
+      await loadPdfBookmarks(filePath);
+      showToast('Bookmark removed');
     });
   };
 
@@ -1478,6 +1639,10 @@ function App() {
   useEffect(() => {
     if (filePath) void loadPdfBookmarks(filePath);
   }, [filePath, pdfRevision, loadPdfBookmarks]);
+
+  useEffect(() => {
+    if (filePath) void loadPageSizes(filePath);
+  }, [filePath, pdfRevision, loadPageSizes]);
 
   const cancelDrawing = () => {
     setDrawing(false);
@@ -2394,6 +2559,8 @@ function App() {
     setShowCropModal(false);
     setShowFlattenModal(false);
     setShowAddBookmarkModal(false);
+    setShowRenameBookmarkModal(false);
+    setShowDuplicateRangeModal(false);
     setShowInsertModal(false);
     setShowMergeModal(false);
     setShowSearchModal(false);
@@ -2585,6 +2752,7 @@ function App() {
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
     || showSplitModal || showExtractModal || showExportPngModal || showDeleteRangeModal
     || showPageNumbersModal || showWatermarkModal || showCropModal || showFlattenModal || showAddBookmarkModal
+    || showRenameBookmarkModal || showDuplicateRangeModal
     || showInsertModal || showMergeModal || showSearchModal
     || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
@@ -2884,6 +3052,7 @@ function App() {
     setShowSignaturesPanel(false);
     setShowBookmarksPanel(false);
     setPdfBookmarks([]);
+    setPageSizes([]);
     setPdfSignatures([]);
     setSignatureVerification(null);
     setShowSignModal(false);
@@ -3326,21 +3495,27 @@ function App() {
             ) : (
               <div className="bookmark-list">
                 {pdfBookmarks.map((bookmark, index) => (
-                  <button
+                  <div
                     key={`${bookmark.title}-${index}`}
-                    type="button"
-                    className={`bookmark-row ${bookmark.page_index === currentPage ? 'active' : ''}`}
+                    className={`bookmark-row-wrap ${bookmark.page_index === currentPage ? 'active' : ''}`}
                     style={{ paddingLeft: `${12 + bookmark.depth * 14}px` }}
-                    disabled={bookmark.page_index === null}
-                    onClick={() => {
-                      if (bookmark.page_index !== null) goToPage(bookmark.page_index);
-                    }}
                   >
-                    <span className="bookmark-title">{bookmark.title}</span>
-                    {bookmark.page_index !== null && (
-                      <span className="muted bookmark-page">p.{bookmark.page_index + 1}</span>
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      className="bookmark-row"
+                      disabled={bookmark.page_index === null}
+                      onClick={() => {
+                        if (bookmark.page_index !== null) goToPage(bookmark.page_index);
+                      }}
+                    >
+                      <span className="bookmark-title">{bookmark.title}</span>
+                      {bookmark.page_index !== null && (
+                        <span className="muted bookmark-page">p.{bookmark.page_index + 1}</span>
+                      )}
+                    </button>
+                    <button type="button" className="btn btn-secondary" title="Rename bookmark" onClick={() => openRenameBookmarkModal(index, bookmark.title)}>✎</button>
+                    <button type="button" className="btn btn-secondary" title="Remove bookmark" onClick={() => void handleRemoveBookmark(index)}>×</button>
+                  </div>
                 ))}
               </div>
             )}
@@ -3466,9 +3641,13 @@ function App() {
                 <button onClick={openSaveAs} className="btn" title="Save As… (Ctrl+Shift+S)">Save As…</button>
                 <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
-                <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)" data-testid="rotate-page">Rotate</button>
+                <button onClick={handleRotatePage} className="btn" title="Rotate 90° CW (Ctrl+R)" data-testid="rotate-page">Rotate</button>
+                <button onClick={() => void handleRotatePageCcw()} className="btn" title="Rotate 90° CCW">Rotate CCW</button>
+                <button onClick={() => void handleResetPageRotation()} className="btn" title="Reset current page rotation">Reset Rot.</button>
                 <button onClick={() => void handleRotateAllPages()} className="btn" title="Rotate all pages 90°">Rotate All</button>
+                <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
                 <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
+                <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
                 <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank Page</button>
                 <button onClick={() => void handleReversePages()} className="btn" title="Reverse page order (Ctrl+Shift+Y)">Reverse</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
@@ -3498,7 +3677,7 @@ function App() {
                   </button>
                 </div>
                 <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
-                <button onClick={openExportPngModal} className="btn" title="Export pages as PNG/JPEG (Ctrl+Shift+B)" data-testid="export-png">Export Image</button>
+                <button onClick={openExportPngModal} className="btn" title="Export pages as PNG/JPEG/WebP (Ctrl+Shift+B)" data-testid="export-png">Export Image</button>
                 <button onClick={openPageNumbersModal} className="btn" title="Add page numbers">Page Numbers</button>
                 <button onClick={openWatermarkModal} className="btn" title="Add text watermark">Watermark</button>
                 <button onClick={openCropModal} className="btn" title="Crop current page margins">Crop</button>
@@ -3709,6 +3888,12 @@ function App() {
                   aria-label="Current page"
                 />
                 <span className="muted" data-testid="page-count">/ {pageCount}</span>
+                {pageSizes[currentPage] && (
+                  <span className="muted" title="Page size in PDF points">
+                    {' '}· {Math.round(pageSizes[currentPage].width)}×{Math.round(pageSizes[currentPage].height)}pt
+                    {pageSizes[currentPage].rotation !== 0 ? ` · ${pageSizes[currentPage].rotation}°` : ''}
+                  </span>
+                )}
               </span>
               <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
 
@@ -4207,7 +4392,7 @@ function App() {
       {showExportPngModal && (
         <Modal onClose={() => setShowExportPngModal(false)}>
           <h3>Export Image</h3>
-          <p className="modal-help">Render PDF pages to PNG or JPEG images (1600×2264). The open PDF is not modified.</p>
+          <p className="modal-help">Render PDF pages to PNG, JPEG, or WebP images (1600×2264). The open PDF is not modified.</p>
           <label>Format:</label>
           <select
             className="modal-input"
@@ -4222,6 +4407,7 @@ function App() {
           >
             <option value="png">PNG</option>
             <option value="jpeg">JPEG</option>
+            <option value="webp">WebP</option>
           </select>
           <label>Pages to export:</label>
           <select
@@ -4288,7 +4474,7 @@ function App() {
           </div>
           {pngExportScope !== 'current' && (
             <p className="modal-help">
-              Files are written as page-001.{imageExportFormat === 'jpeg' ? 'jpg' : 'png'}, page-002.{imageExportFormat === 'jpeg' ? 'jpg' : 'png'}, … inside the directory.
+              Files are written as page-001.{imageExportExtension(imageExportFormat)}, page-002.{imageExportExtension(imageExportFormat)}, … inside the directory.
             </p>
           )}
           <div className="modal-actions">
@@ -4387,15 +4573,45 @@ function App() {
       {/* Crop Modal */}
       {showCropModal && (
         <Modal onClose={() => setShowCropModal(false)}>
-          <h3>Crop Page {currentPage + 1}</h3>
-          <p className="modal-help">Trim margins on the current page (viewer pixels, max ~800×1132).</p>
+          <h3>Crop {cropApplyAll ? 'All Pages' : `Page ${currentPage + 1}`}</h3>
+          <p className="modal-help">Trim margins (viewer pixels, max ~800×1132).</p>
+          {pageSizes[currentPage] && !cropApplyAll && (
+            <p className="muted">MediaBox: {Math.round(pageSizes[currentPage].width)}×{Math.round(pageSizes[currentPage].height)} pt</p>
+          )}
+          <label>
+            <input type="checkbox" checked={cropApplyAll} onChange={(e) => setCropApplyAll(e.target.checked)} />
+            {' '}Apply to all pages
+          </label>
           <label>Top margin: <input type="number" value={cropMarginTop} onChange={(e) => setCropMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Right margin: <input type="number" value={cropMarginRight} onChange={(e) => setCropMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Bottom margin: <input type="number" value={cropMarginBottom} onChange={(e) => setCropMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Left margin: <input type="number" value={cropMarginLeft} onChange={(e) => setCropMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <div className="modal-actions">
             <button onClick={() => setShowCropModal(false)} className="btn btn-secondary">Cancel</button>
+            {!cropApplyAll && (
+              <button onClick={() => void handleClearPageCrop()} className="btn btn-secondary">Clear crop</button>
+            )}
             <button onClick={() => void handleCropPage()} className="btn">Crop</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Duplicate Range Modal */}
+      {showDuplicateRangeModal && (
+        <Modal onClose={() => setShowDuplicateRangeModal(false)}>
+          <h3>Duplicate Page Range</h3>
+          <p className="modal-help">Deep-copy a page range and insert the copies immediately after the range.</p>
+          <label>
+            From page (1-{pageCount ?? 0}):
+            <input type="number" value={duplicateRangeStartPage + 1} onChange={(e) => setDuplicateRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" />
+          </label>
+          <label>
+            To page (1-{pageCount ?? 0}):
+            <input type="number" value={duplicateRangeEndPage + 1} onChange={(e) => setDuplicateRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" />
+          </label>
+          <div className="modal-actions">
+            <button onClick={() => setShowDuplicateRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleDuplicatePageRange()} className="btn">Duplicate</button>
           </div>
         </Modal>
       )}
@@ -4434,6 +4650,19 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowAddBookmarkModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleAddBookmark()} className="btn" disabled={!bookmarkTitle.trim()}>Add</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Rename Bookmark Modal */}
+      {showRenameBookmarkModal && (
+        <Modal onClose={() => setShowRenameBookmarkModal(false)}>
+          <h3>Rename Bookmark</h3>
+          <label>Title:</label>
+          <input type="text" value={renameBookmarkTitle} onChange={(e) => setRenameBookmarkTitle(e.target.value)} className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowRenameBookmarkModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleRenameBookmark()} className="btn" disabled={!renameBookmarkTitle.trim()}>Rename</button>
           </div>
         </Modal>
       )}
