@@ -1757,6 +1757,30 @@ mod tests {
     }
 
     #[test]
+    fn delete_page_rejects_invalid_index() {
+        let path = save(&mut build_pdf(2), "delete_invalid");
+        let err = delete_page(path.clone(), 9).unwrap_err();
+        assert!(err.contains("Page index out of bounds"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_page_rejects_invalid_index() {
+        let path = save(&mut build_pdf(2), "move_invalid");
+        let err = move_page(path.clone(), 0, 9).unwrap_err();
+        assert!(err.contains("Index out of bounds"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_page_rejects_invalid_index() {
+        let path = save(&mut build_pdf(1), "rotate_invalid");
+        let err = rotate_page(path.clone(), 9).unwrap_err();
+        assert!(err.contains("Page not found"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn write_markdown_file_creates_sibling_md() {
         let pdf_path = tmp("markdown_write");
         let md_path = pdf_path.with_extension("md");

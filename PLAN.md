@@ -155,8 +155,9 @@ and verified:
 - **Packaging / distribution:** Linux via `scripts/build-linux-packages.sh` (deb/rpm)
   and `scripts/build-appimage.sh` (needs `appimagetool`); unsigned macOS/Windows via
   `scripts/build-macos.sh` / `scripts/build-windows.sh`; signing/notarization not set up yet.
-- **Testing:** save, undo/redo snapshot restore, insert/split validation, and
-  Markdown file-write flows have Rust unit tests; no automated UI/e2e coverage yet.
+- **Testing:** save, undo/redo snapshot restore, page edit validation (delete/move/
+  rotate/insert/split), and Markdown file-write flows have Rust unit tests; no
+  automated UI/e2e coverage yet.
 
 ## Future Roadmap (Post-MVP)
 
