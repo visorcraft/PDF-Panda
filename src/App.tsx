@@ -19,6 +19,8 @@ const WHEEL_NAV_COOLDOWN = 350;
 const RECENT_PDFS_KEY = 'pdf-panda:recent-pdfs';
 const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
 const RECENT_PDF_LIMIT = 8;
+// Cap undo snapshots so very large PDFs don't accumulate unbounded working copies.
+const MAX_UNDO_HISTORY = 50;
 
 interface AnnotationData {
   subtype: string;
@@ -200,6 +202,18 @@ function App() {
     setIsDirty(histIdxRef.current !== savedIdxRef.current);
   }, []);
 
+  const pruneUndoHistory = useCallback(() => {
+    while (historyRef.current.length > MAX_UNDO_HISTORY) {
+      const dropAt = savedIdxRef.current === 0 ? 1 : 0;
+      if (historyRef.current.length <= dropAt) break;
+      const [removed] = historyRef.current.splice(dropAt, 1);
+      void invoke('discard_working_copy', { working: removed }).catch(() => {});
+      if (histIdxRef.current > dropAt) histIdxRef.current -= 1;
+      else if (histIdxRef.current === dropAt) histIdxRef.current = Math.max(0, dropAt - 1);
+      if (savedIdxRef.current > dropAt) savedIdxRef.current -= 1;
+    }
+  }, []);
+
   // Snapshot the working copy into the undo history after an edit.
   const recordHistory = useCallback(async () => {
     const working = filePathRef.current;
@@ -213,11 +227,12 @@ function App() {
       historyRef.current = historyRef.current.slice(0, histIdxRef.current + 1);
       historyRef.current.push(snapshot);
       histIdxRef.current = historyRef.current.length - 1;
+      pruneUndoHistory();
       refreshUndoRedoState();
     } catch {
       /* history is best-effort */
     }
-  }, [refreshUndoRedoState]);
+  }, [pruneUndoHistory, refreshUndoRedoState]);
 
   const markPdfEdited = useCallback(() => {
     setPdfRevision((revision) => revision + 1);
