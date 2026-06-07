@@ -785,6 +785,16 @@ function App() {
           toggleHighlightModeRef.current();
           return;
         }
+        if (e.key === 'Home' && page > 0) {
+          e.preventDefault();
+          goToPageRef.current(0);
+          return;
+        }
+        if (e.key === 'End' && count !== null && page < count - 1) {
+          e.preventDefault();
+          goToPageRef.current(count - 1);
+          return;
+        }
       }
 
       if (!e.ctrlKey && !e.metaKey) return;
