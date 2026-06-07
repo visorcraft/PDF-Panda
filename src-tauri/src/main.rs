@@ -1917,6 +1917,26 @@ mod tests {
     }
 
     #[test]
+    fn list_pdf_browser_entries_from_file_path_uses_parent_dir() {
+        let dir = std::env::temp_dir().join(format!("pp_browser_file_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let standalone = save(&mut build_pdf(1), "browser_file_src");
+        let pdf_path = dir.join("target.pdf");
+        fs::copy(&standalone, &pdf_path).unwrap();
+        let _ = fs::remove_file(&standalone);
+
+        let listing = list_pdf_browser_entries(Some(pdf_path.to_string_lossy().into_owned())).unwrap();
+        assert_eq!(
+            listing.current_dir,
+            dir.canonicalize().unwrap().to_string_lossy()
+        );
+        assert!(listing.entries.iter().any(|entry| entry.name == "target.pdf"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn open_working_copy_creates_isolated_temp_file() {
         let path = save(&mut build_pdf(1), "wc_open");
         let working = open_working_copy(path.clone()).unwrap();
