@@ -749,6 +749,12 @@ function App() {
   viewModeRef.current = viewMode;
   const toggleHighlightModeRef = useRef(toggleHighlightMode);
   toggleHighlightModeRef.current = toggleHighlightMode;
+  const zoomInRef = useRef(zoomIn);
+  zoomInRef.current = zoomIn;
+  const zoomOutRef = useRef(zoomOut);
+  zoomOutRef.current = zoomOut;
+  const resetZoomRef = useRef(resetZoom);
+  resetZoomRef.current = resetZoom;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -804,6 +810,21 @@ function App() {
         e.preventDefault();
         if (e.shiftKey) openSaveAsRef.current();
         else if (isDirtyRef.current) void handleSaveRef.current();
+        return;
+      }
+      if (key === '=' || key === '+') {
+        e.preventDefault();
+        zoomInRef.current();
+        return;
+      }
+      if (key === '-') {
+        e.preventDefault();
+        zoomOutRef.current();
+        return;
+      }
+      if (key === '0') {
+        e.preventDefault();
+        resetZoomRef.current();
         return;
       }
       if (key === 'z' && !e.shiftKey && canUndoRef.current) {
