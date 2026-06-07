@@ -1830,6 +1830,42 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_pdf_creates_unique_history_files() {
+        let path = save(&mut build_pdf(1), "snap_unique");
+        let first = snapshot_pdf(path.clone()).unwrap();
+        let second = snapshot_pdf(path.clone()).unwrap();
+        assert_ne!(first, second);
+        assert!(PathBuf::from(&first).exists());
+        assert!(PathBuf::from(&second).exists());
+        discard_working_copy(first).unwrap();
+        discard_working_copy(second).unwrap();
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn snapshot_undo_restore_reverts_working_copy() {
+        let path = save(&mut build_pdf(2), "undo_snap");
+        let working = open_working_copy(path.clone()).unwrap();
+        let baseline = snapshot_pdf(working.clone()).unwrap();
+        assert_eq!(get_pdf_page_count(working.clone()).unwrap(), 2);
+
+        delete_page(working.clone(), 0).unwrap();
+        assert_eq!(get_pdf_page_count(working.clone()).unwrap(), 1);
+        let edited = snapshot_pdf(working.clone()).unwrap();
+
+        save_working_copy(baseline.clone(), working.clone()).unwrap();
+        assert_eq!(get_pdf_page_count(working.clone()).unwrap(), 2);
+
+        save_working_copy(edited.clone(), working.clone()).unwrap();
+        assert_eq!(get_pdf_page_count(working.clone()).unwrap(), 1);
+
+        discard_working_copy(working).unwrap();
+        discard_working_copy(baseline).unwrap();
+        discard_working_copy(edited).unwrap();
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
     fn markdown_lines_promote_probable_headings() {
         let lines = vec![
             md_line("Cigna Employee-Paid Voluntary Benefits!", 720.0, 704.0, vec![]),
