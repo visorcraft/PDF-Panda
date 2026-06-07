@@ -455,6 +455,10 @@ function App() {
   const [deletePageInput, setDeletePageInput] = useState('1');
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitRanges, setSplitRanges] = useState<string>('');
+  const [showExtractModal, setShowExtractModal] = useState(false);
+  const [extractStartPage, setExtractStartPage] = useState(0);
+  const [extractEndPage, setExtractEndPage] = useState(0);
+  const [extractOutputPath, setExtractOutputPath] = useState('');
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [insertFilePath, setInsertFilePath] = useState<string>('');
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
@@ -867,6 +871,19 @@ function App() {
   const openSplitModal = () => {
     if (!filePath) return;
     setShowSplitModal(true);
+  };
+
+  const defaultExtractOutputPath = (start: number, end: number) => {
+    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
+    return `${base}_pages_${start + 1}-${end + 1}.pdf`;
+  };
+
+  const openExtractModal = () => {
+    if (!filePath || pageCount === null) return;
+    setExtractStartPage(currentPage);
+    setExtractEndPage(currentPage);
+    setExtractOutputPath(defaultExtractOutputPath(currentPage, currentPage));
+    setShowExtractModal(true);
   };
 
   const openMergeModal = () => {
@@ -2039,6 +2056,7 @@ function App() {
     setShowBrowserModal(false);
     setShowDeleteModal(false);
     setShowSplitModal(false);
+    setShowExtractModal(false);
     setShowInsertModal(false);
     setShowMergeModal(false);
     setShowSearchModal(false);
@@ -2193,6 +2211,8 @@ function App() {
   openInsertModalRef.current = openInsertModal;
   const openSplitModalRef = useRef(openSplitModal);
   openSplitModalRef.current = openSplitModal;
+  const openExtractModalRef = useRef(openExtractModal);
+  openExtractModalRef.current = openExtractModal;
   const openMergeModalRef = useRef(openMergeModal);
   openMergeModalRef.current = openMergeModal;
   const openSearchModalRef = useRef(openSearchModal);
@@ -2210,7 +2230,7 @@ function App() {
   anyModalOpenRef.current =
     showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal || showMetadataModal
     || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showInsertModal || showMergeModal || showSearchModal || showNoteModal || showImageInsertModal
+    || showSplitModal || showExtractModal || showInsertModal || showMergeModal || showSearchModal || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
 
   useEffect(() => {
@@ -2421,6 +2441,11 @@ function App() {
       if (key === 'k' && e.shiftKey) {
         e.preventDefault();
         openSplitModalRef.current();
+        return;
+      }
+      if (key === 'j' && e.shiftKey) {
+        e.preventDefault();
+        openExtractModalRef.current();
         return;
       }
       if (key === 'g' && e.shiftKey) {
@@ -2647,6 +2672,34 @@ function App() {
       setShowSplitModal(false);
       setSplitRanges('');
     });
+  };
+
+  const handleExtractPdf = async () => {
+    const output = extractOutputPath.trim();
+    if (!filePath || !output) return;
+    if (extractStartPage > extractEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const written = await invoke<string>('extract_pdf_pages', {
+        path: filePath,
+        outputPath: output,
+        startPage: extractStartPage,
+        endPage: extractEndPage,
+      });
+      showToast(`Extracted pages to ${written}`);
+      setShowExtractModal(false);
+    });
+  };
+
+  const chooseExtractOutputNative = async () => {
+    const picked = await pickSaveWithNativeDialog(
+      extractOutputPath || defaultExtractOutputPath(extractStartPage, extractEndPage),
+      PDF_DIALOG_FILTER,
+    );
+    if (!picked) return;
+    setExtractOutputPath(ensureExtension(picked, 'pdf'));
   };
 
   const handleInsertPdf = async () => {
@@ -3045,6 +3098,7 @@ function App() {
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
                 <button onClick={openMergeModal} className="btn" title="Merge PDF — append pages (Ctrl+Shift+G)">Merge</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
+                <button onClick={openExtractModal} className="btn" title="Extract pages to new PDF (Ctrl+Shift+J)" data-testid="extract-pdf">Extract</button>
                 <button onClick={openSearchModal} className="btn" title="Find text (Ctrl+F)" data-testid="search-pdf">Find</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
                   <button
@@ -3762,6 +3816,61 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowDeleteModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={handleDeletePage} className="btn btn-danger">Delete page</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Extract Modal */}
+      {showExtractModal && (
+        <Modal onClose={() => setShowExtractModal(false)}>
+          <h3>Extract Pages</h3>
+          <p className="modal-help">Save a page range from this document into a new PDF. The open file is not modified.</p>
+          <label>
+            From page (1-{pageCount ?? 0}):
+            <input
+              type="number"
+              value={extractStartPage + 1}
+              onChange={(e) => {
+                const start = Math.max(0, parseInt(e.target.value, 10) - 1);
+                setExtractStartPage(start);
+                setExtractOutputPath(defaultExtractOutputPath(start, extractEndPage));
+              }}
+              min="1"
+              max={pageCount ?? undefined}
+              className="modal-input"
+            />
+          </label>
+          <label>
+            To page (1-{pageCount ?? 0}):
+            <input
+              type="number"
+              value={extractEndPage + 1}
+              onChange={(e) => {
+                const end = Math.max(0, parseInt(e.target.value, 10) - 1);
+                setExtractEndPage(end);
+                setExtractOutputPath(defaultExtractOutputPath(extractStartPage, end));
+              }}
+              min="1"
+              max={pageCount ?? undefined}
+              className="modal-input"
+            />
+          </label>
+          <label>Output PDF path:</label>
+          <div className="modal-path-row">
+            <input
+              type="text"
+              value={extractOutputPath}
+              onChange={(e) => setExtractOutputPath(e.target.value)}
+              className="modal-input"
+              placeholder="/path/to/output.pdf"
+            />
+            {nativeDialogs && (
+              <button onClick={() => void chooseExtractOutputNative()} className="btn">Choose file…</button>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button onClick={() => setShowExtractModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExtractPdf()} className="btn" disabled={!extractOutputPath.trim()}>Extract</button>
           </div>
         </Modal>
       )}

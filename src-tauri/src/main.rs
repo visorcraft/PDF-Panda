@@ -4032,6 +4032,35 @@ fn split_pdf(path: String, page_ranges: Vec<(u32, u32)>) -> Result<Vec<String>, 
     Ok(output_paths)
 }
 
+/// Write a new PDF containing only `start_page`..=`end_page` from `path`.
+#[tauri::command]
+fn extract_pdf_pages(path: String, output_path: String, start_page: u32, end_page: u32) -> Result<String, String> {
+    let path = PathBuf::from(&path);
+    let output_path = PathBuf::from(&output_path);
+    if path == output_path {
+        return Err("Output path must differ from the source PDF".to_string());
+    }
+
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let (all_kids, pages_ref) = get_pages_kids(&doc)?;
+    let total_pages = all_kids.len() as u32;
+    if start_page >= total_pages || end_page >= total_pages || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+
+    let range_kids: Vec<Object> = all_kids[start_page as usize..=end_page as usize].to_vec();
+    set_pages_kids(&mut doc, pages_ref, range_kids)?;
+    doc.prune_objects();
+
+    if let Some(parent) = output_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    doc.save(&output_path).map_err(|e| e.to_string())?;
+    Ok(output_path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn insert_pdf(
     path: String,
@@ -5656,6 +5685,7 @@ fn main() {
             merge_pdf,
             rotate_page,
             split_pdf,
+            extract_pdf_pages,
             insert_pdf,
             convert_pdf_to_markdown,
             save_pdf_markdown,
@@ -6119,6 +6149,45 @@ mod tests {
         assert_eq!(matches[0].page_index, 0);
         assert!(matches[0].rect[2] > matches[0].rect[0]);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_pdf_pages_writes_selected_range() {
+        let source = save(&mut build_pdf(4), "extract_source");
+        let output = tmp("extract_output");
+        let written = extract_pdf_pages(source.clone(), output.to_string_lossy().into_owned(), 1, 2).unwrap();
+        assert_eq!(written, output.to_string_lossy());
+        assert_eq!(Document::load(&output).unwrap().get_pages().len(), 2);
+        assert_eq!(Document::load(&source).unwrap().get_pages().len(), 4);
+        let _ = std::fs::remove_file(&source);
+        let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn extract_pdf_pages_rejects_invalid_range() {
+        let source = save(&mut build_pdf(2), "extract_invalid");
+        let output = tmp("extract_invalid_out");
+        let err = extract_pdf_pages(source.clone(), output.to_string_lossy().into_owned(), 2, 1).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&source);
+    }
+
+    #[test]
+    fn extract_pdf_pages_rejects_same_output_path() {
+        let source = save(&mut build_pdf(2), "extract_same");
+        let err = extract_pdf_pages(source.clone(), source.clone(), 0, 0).unwrap_err();
+        assert!(err.contains("differ"));
+        let _ = std::fs::remove_file(&source);
+    }
+
+    #[test]
+    fn extract_pdf_pages_rejects_missing_file() {
+        let missing = std::env::temp_dir().join(format!("pp_extract_missing_{}.pdf", std::process::id()));
+        let output = tmp("extract_missing_out");
+        let err =
+            extract_pdf_pages(missing.to_string_lossy().into_owned(), output.to_string_lossy().into_owned(), 0, 0)
+                .unwrap_err();
+        assert!(!err.is_empty());
     }
 
     #[test]

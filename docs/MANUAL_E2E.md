@@ -14,7 +14,7 @@ before a release tag.
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Find text (Ctrl/Cmd+F) — search, next/previous, highlight on page
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
-- [ ] Delete / duplicate / rotate / reorder / insert / merge / split
+- [ ] Delete / duplicate / rotate / reorder / insert / merge / extract / split
 - [ ] Metadata modal — edit title/author; Apply marks dirty; Save persists
 
 ## Annotations

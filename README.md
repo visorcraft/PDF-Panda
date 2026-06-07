@@ -53,6 +53,7 @@ Three things we care about:
 - **Insert** pages from another PDF (range + position; merges form fields, dedups fonts)
 - **Merge** another PDF by appending its pages to the end (page range supported)
 - **Split** into multiple files by page range
+- **Extract** a page range into a new PDF without changing the open document
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
 **Annotate & mark up**
@@ -147,7 +148,7 @@ secrets — see [`docs/SIGNING.md`](docs/SIGNING.md)).
 | Ctrl/Cmd+Shift+E | Summarize |
 | Ctrl/Cmd+Shift+U | Digital sign |
 | Ctrl/Cmd+F | Find text in PDF |
-| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+G / Ctrl/Cmd+Shift+K | Insert / Merge / Split PDF |
+| Ctrl/Cmd+Shift+I / Ctrl/Cmd+Shift+G / Ctrl/Cmd+Shift+J / Ctrl/Cmd+Shift+K | Insert / Merge / Extract / Split PDF |
 | Ctrl/Cmd+0, Ctrl/Cmd +/− | Reset / change zoom |
 | H N D S T X E G I F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
 | Delete · Escape | Delete page (confirm) · exit tool or close modal |
