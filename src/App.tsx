@@ -761,6 +761,7 @@ function App() {
   const handlePrintRef = useRef(async () => {});
   const handleRotatePageRef = useRef(handleRotatePage);
   handleRotatePageRef.current = handleRotatePage;
+  const toggleMarkdownViewRef = useRef(async () => {});
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -838,6 +839,11 @@ function App() {
       if (key === 'r') {
         e.preventDefault();
         void handleRotatePageRef.current();
+        return;
+      }
+      if (key === 'm' && e.shiftKey) {
+        e.preventDefault();
+        void toggleMarkdownViewRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -943,6 +949,16 @@ function App() {
       await saveMarkdownToPath(siblingMarkdownPath(originalPath || filePath), true);
     });
   };
+
+  const toggleMarkdownView = async () => {
+    if (!filePath) return;
+    if (viewMode === 'markdown') {
+      setViewMode('pdf');
+      return;
+    }
+    await handleMarkdownView();
+  };
+  toggleMarkdownViewRef.current = toggleMarkdownView;
 
   const openMarkdownSaveAs = () => {
     const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
@@ -1101,9 +1117,10 @@ function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleMarkdownView}
+                    onClick={() => void toggleMarkdownView()}
                     className={viewMode === 'markdown' ? 'active' : ''}
                     aria-pressed={viewMode === 'markdown'}
+                    title="Toggle Markdown view (Ctrl+Shift+M)"
                   >
                     Markdown
                   </button>
