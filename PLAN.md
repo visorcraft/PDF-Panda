@@ -177,7 +177,7 @@ Completed in this pass (moved out of backlog):
 
 ## Future Roadmap (Post-MVP)
 
-Aligned with `FEATURES.md`.
+Post-MVP backlog (also summarized in `README.md` **Features** and **Deferred** sections above).
 
 - **Advanced editing:** In-PDF text editing, vector object manipulation, image
   insertion beyond page-level operations.

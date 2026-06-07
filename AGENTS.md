@@ -126,10 +126,10 @@ while in Markdown view must switch back to PDF mode before rendering the target
 page; the UI currently defers that render by animation frames to avoid racing
 the WebKitGTK view transition.
 
-**MVP status:** Phases 1–6 complete (`v0.2.0`). See `PLAN.md` and `FEATURES.md`.
+**MVP status:** Phases 1–6 complete (`v0.2.0`). See `PLAN.md` and `README.md`.
 
-**Known gaps / future work (post-MVP):** see `PLAN.md` **Deferred** section and
-`FEATURES.md` roadmap. Signing steps: `docs/SIGNING.md`.
+**Known gaps / future work (post-MVP):** see `PLAN.md` **Deferred** section.
+Signing steps: `docs/SIGNING.md`.
 
 **Still open:**
 - Markdown output is heuristic layout reconstruction from PDF text geometry; it
