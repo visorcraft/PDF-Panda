@@ -335,11 +335,60 @@ body {
   pointer-events: none;
 }
 
+.bookmarks-panel,
 .signatures-panel,
 .forms-panel {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid #e6e6e6;
+}
+
+.bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #fafafa;
+  color: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bookmark-row:hover:not(:disabled) {
+  border-color: #d8d8d8;
+  background: #f2f2f2;
+}
+
+.bookmark-row.active {
+  border-color: rgba(45, 138, 78, 0.55);
+  background: rgba(45, 138, 78, 0.08);
+}
+
+.bookmark-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.bookmark-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-page {
+  flex-shrink: 0;
+  font-size: 11px;
 }
 
 .signature-list {

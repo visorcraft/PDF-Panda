@@ -101,6 +101,107 @@ fn get_pdf_page_count(path: String) -> Result<u32, String> {
     Ok(document.pages().len() as u32)
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct PdfBookmarkEntry {
+    title: String,
+    depth: u32,
+    page_index: Option<u32>,
+}
+
+fn page_index_for_object(doc: &Document, object_id: ObjectId) -> Option<u32> {
+    doc.get_pages().iter().find(|(_, id)| **id == object_id).map(|(num, _)| num - 1)
+}
+
+fn outline_title(dict: &Dictionary) -> String {
+    dict.get(b"Title")
+        .ok()
+        .and_then(|value| value.as_str().ok())
+        .map(|value| String::from_utf8_lossy(value).into_owned())
+        .unwrap_or_else(|| "Untitled".to_string())
+}
+
+fn resolve_dest_object(doc: &Document, dest: &Object) -> Option<u32> {
+    match dest {
+        Object::Array(items) if !items.is_empty() => {
+            items[0].as_reference().ok().and_then(|id| page_index_for_object(doc, id))
+        }
+        Object::String(name, _) | Object::Name(name) => resolve_named_dest(doc, name.as_slice()),
+        Object::Reference(id) => page_index_for_object(doc, *id),
+        _ => None,
+    }
+}
+
+fn resolve_named_dest(doc: &Document, name: &[u8]) -> Option<u32> {
+    let catalog = doc.catalog().ok()?;
+    let dests_id = catalog.get(b"Dests").ok()?.as_reference().ok()?;
+    let dests = doc.get_dictionary(dests_id).ok()?;
+    let names = dests.get(b"Names").ok()?.as_array().ok()?;
+    let mut index = 0usize;
+    while index + 1 < names.len() {
+        let matches = names[index].as_str().ok().is_some_and(|value| value == name);
+        if matches {
+            return resolve_dest_object(doc, &names[index + 1]);
+        }
+        index += 2;
+    }
+    None
+}
+
+fn resolve_outline_destination(doc: &Document, dict: &Dictionary) -> Option<u32> {
+    if let Ok(dest) = dict.get(b"Dest") {
+        if let Some(page_index) = resolve_dest_object(doc, dest) {
+            return Some(page_index);
+        }
+    }
+    let action = dict.get(b"A").ok()?.as_dict().ok()?;
+    let subtype = action.get(b"S").ok().and_then(|value| value.as_name().ok());
+    if subtype != Some(b"GoTo".as_slice()) {
+        return None;
+    }
+    resolve_dest_object(doc, action.get(b"D").ok()?)
+}
+
+fn collect_outline_items(doc: &Document, item_id: ObjectId, depth: u32, entries: &mut Vec<PdfBookmarkEntry>) {
+    let mut current = Some(item_id);
+    while let Some(id) = current {
+        let dict = match doc.get_dictionary(id) {
+            Ok(dict) => dict,
+            Err(_) => break,
+        };
+        entries.push(PdfBookmarkEntry {
+            title: outline_title(dict),
+            depth,
+            page_index: resolve_outline_destination(doc, dict),
+        });
+        if let Ok(first) = dict.get(b"First") {
+            if let Ok(child_id) = first.as_reference() {
+                collect_outline_items(doc, child_id, depth + 1, entries);
+            }
+        }
+        current = dict.get(b"Next").ok().and_then(|value| value.as_reference().ok());
+    }
+}
+
+/// Return the PDF outline/bookmark tree as a flat, depth-indented list.
+#[tauri::command]
+fn get_pdf_bookmarks(path: String) -> Result<Vec<PdfBookmarkEntry>, String> {
+    let path = PathBuf::from(path);
+    let doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let catalog = doc.catalog().map_err(|e| e.to_string())?;
+    let outlines_id = match catalog.get(b"Outlines") {
+        Ok(Object::Reference(id)) => *id,
+        _ => return Ok(Vec::new()),
+    };
+    let outlines = doc.get_dictionary(outlines_id).map_err(|e| e.to_string())?;
+    let first_id = match outlines.get(b"First") {
+        Ok(Object::Reference(id)) => *id,
+        _ => return Ok(Vec::new()),
+    };
+    let mut entries = Vec::new();
+    collect_outline_items(&doc, first_id, 0, &mut entries);
+    Ok(entries)
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PdfBrowserEntry {
@@ -5297,6 +5398,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             list_pdf_browser_entries,
             get_pdf_page_count,
+            get_pdf_bookmarks,
             render_pdf_page,
             get_pdf_thumbnails,
             delete_page,
@@ -6554,6 +6656,70 @@ mod tests {
             return None;
         }
         Some(p12)
+    }
+
+    fn build_pdf_with_outlines(n: usize) -> Document {
+        let mut doc = build_pdf(n);
+        let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
+        let pages = doc.get_pages();
+        let page_one = *pages.get(&1).unwrap();
+        let page_two = pages.get(&2).copied();
+
+        let outlines_id = doc.new_object_id();
+        let mut chapter_one = Dictionary::new();
+        chapter_one.set("Title", Object::String(b"Chapter 1".to_vec(), lopdf::StringFormat::Literal));
+        chapter_one.set("Dest", Object::Array(vec![Object::Reference(page_one), Object::Name(b"Fit".to_vec())]));
+        chapter_one.set("Parent", Object::Reference(outlines_id));
+        let chapter_one_id = doc.add_object(Object::Dictionary(chapter_one));
+
+        let chapter_two_id = page_two.map(|page_id| {
+            let mut chapter_two = Dictionary::new();
+            chapter_two.set("Title", Object::String(b"Chapter 2".to_vec(), lopdf::StringFormat::Literal));
+            chapter_two.set("Dest", Object::Array(vec![Object::Reference(page_id), Object::Name(b"Fit".to_vec())]));
+            chapter_two.set("Parent", Object::Reference(outlines_id));
+            chapter_two.set("Prev", Object::Reference(chapter_one_id));
+            let chapter_two_id = doc.add_object(Object::Dictionary(chapter_two));
+            if let Ok(Object::Dictionary(chapter_one)) = doc.get_object_mut(chapter_one_id) {
+                chapter_one.set("Next", Object::Reference(chapter_two_id));
+            }
+            chapter_two_id
+        });
+
+        if let Ok(Object::Dictionary(chapter_one)) = doc.get_object_mut(chapter_one_id) {
+            if let Some(next_id) = chapter_two_id {
+                chapter_one.set("Next", Object::Reference(next_id));
+            }
+        }
+
+        let mut outlines = Dictionary::new();
+        outlines.set("Type", Object::Name(b"Outlines".to_vec()));
+        outlines.set("First", Object::Reference(chapter_one_id));
+        outlines.set("Last", Object::Reference(chapter_two_id.unwrap_or(chapter_one_id)));
+        outlines.set("Count", Object::Integer(if chapter_two_id.is_some() { 2 } else { 1 }));
+        doc.objects.insert(outlines_id, Object::Dictionary(outlines));
+        doc.get_dictionary_mut(catalog_id).expect("catalog").set("Outlines", Object::Reference(outlines_id));
+        doc
+    }
+
+    #[test]
+    fn get_pdf_bookmarks_empty_without_outline() {
+        let path = save(&mut build_pdf(1), "bookmark_empty");
+        let bookmarks = get_pdf_bookmarks(path.clone()).unwrap();
+        assert!(bookmarks.is_empty());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn get_pdf_bookmarks_reads_outline_tree() {
+        let path = save(&mut build_pdf_with_outlines(2), "bookmark_tree");
+        let bookmarks = get_pdf_bookmarks(path.clone()).unwrap();
+        assert_eq!(bookmarks.len(), 2);
+        assert_eq!(bookmarks[0].title, "Chapter 1");
+        assert_eq!(bookmarks[0].depth, 0);
+        assert_eq!(bookmarks[0].page_index, Some(0));
+        assert_eq!(bookmarks[1].title, "Chapter 2");
+        assert_eq!(bookmarks[1].page_index, Some(1));
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

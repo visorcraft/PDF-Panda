@@ -11,7 +11,7 @@ before a release tag.
 - [ ] Save As writes a new file; unsaved prompt on close/open/quit
 
 ## View & edit
-- [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges)
+- [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
 - [ ] Delete / rotate / reorder / insert / split
 
@@ -25,8 +25,13 @@ before a release tag.
 - [ ] Page image insert (I) — path entry, two-click placement, re-render shows image
 - [ ] Form fields (F) — list fields, apply values, add text/checkbox/choice/radio fields
 
+## Security & signatures
+- [ ] Digital sign (Ctrl/Cmd+Shift+U) with PKCS#12; Signatures panel verify status
+- [ ] In-PDF page text (E) and vector rectangles (G); Edits modal
+
 ## Export
 - [ ] Markdown toggle; save with overwrite conflict
+- [ ] Summarize (Ctrl/Cmd+Shift+E); sibling `.summary.md`
 - [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
 - [ ] Optimize, password-protect export, and print
 - [ ] Open an encrypted `_protected.pdf` with password prompt

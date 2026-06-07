@@ -163,6 +163,12 @@ interface PdfSignatureVerificationSummary {
   signatures: PdfSignatureVerificationEntry[];
 }
 
+interface PdfBookmarkEntry {
+  title: string;
+  depth: number;
+  page_index: number | null;
+}
+
 type PdfBrowserTarget = 'open' | 'insert';
 
 interface PdfBrowserEntry {
@@ -323,6 +329,8 @@ function App() {
   const [showSignaturesPanel, setShowSignaturesPanel] = useState(false);
   const [pdfSignatures, setPdfSignatures] = useState<PdfSignatureInfo[]>([]);
   const [signatureVerification, setSignatureVerification] = useState<PdfSignatureVerificationSummary | null>(null);
+  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
+  const [pdfBookmarks, setPdfBookmarks] = useState<PdfBookmarkEntry[]>([]);
   const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
   const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
   const [nativeDialogs, setNativeDialogs] = useState(false);
@@ -930,6 +938,19 @@ function App() {
     }
   }, [filePath]);
 
+  const loadPdfBookmarks = useCallback(async (path: string = filePath) => {
+    if (!path) {
+      setPdfBookmarks([]);
+      return;
+    }
+    try {
+      const bookmarks = await invoke<PdfBookmarkEntry[]>('get_pdf_bookmarks', { path });
+      setPdfBookmarks(bookmarks);
+    } catch {
+      setPdfBookmarks([]);
+    }
+  }, [filePath]);
+
   const loadPdfSignatures = useCallback(async (path: string = filePath) => {
     if (!path) {
       setPdfSignatures([]);
@@ -968,6 +989,10 @@ function App() {
   useEffect(() => {
     if (filePath) void loadPdfSignatures(filePath);
   }, [filePath, pdfRevision, loadPdfSignatures]);
+
+  useEffect(() => {
+    if (filePath) void loadPdfBookmarks(filePath);
+  }, [filePath, pdfRevision, loadPdfBookmarks]);
 
   const cancelDrawing = () => {
     setDrawing(false);
@@ -2287,6 +2312,8 @@ function App() {
     setShowImageInsertModal(false);
     setShowFormsPanel(false);
     setShowSignaturesPanel(false);
+    setShowBookmarksPanel(false);
+    setPdfBookmarks([]);
     setPdfSignatures([]);
     setSignatureVerification(null);
     setShowSignModal(false);
@@ -2629,6 +2656,39 @@ function App() {
         ) : (
           <p className="muted">No thumbnails loaded</p>
         )}
+        {filePath && showBookmarksPanel && (
+          <div className="bookmarks-panel">
+            <div className="forms-panel-header">
+              <h3>Bookmarks</h3>
+              <button type="button" onClick={() => void loadPdfBookmarks(filePath)} className="btn" title="Reload bookmarks">
+                Refresh
+              </button>
+            </div>
+            {pdfBookmarks.length === 0 ? (
+              <p className="muted">No bookmarks in this PDF.</p>
+            ) : (
+              <div className="bookmark-list">
+                {pdfBookmarks.map((bookmark, index) => (
+                  <button
+                    key={`${bookmark.title}-${index}`}
+                    type="button"
+                    className={`bookmark-row ${bookmark.page_index === currentPage ? 'active' : ''}`}
+                    style={{ paddingLeft: `${12 + bookmark.depth * 14}px` }}
+                    disabled={bookmark.page_index === null}
+                    onClick={() => {
+                      if (bookmark.page_index !== null) goToPage(bookmark.page_index);
+                    }}
+                  >
+                    <span className="bookmark-title">{bookmark.title}</span>
+                    {bookmark.page_index !== null && (
+                      <span className="muted bookmark-page">p.{bookmark.page_index + 1}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {filePath && showSignaturesPanel && (
           <div className="signatures-panel">
             <div className="forms-panel-header">
@@ -2797,6 +2857,14 @@ function App() {
                   data-testid="signatures-panel"
                 >
                   {showSignaturesPanel ? 'Signatures: ON' : 'Signatures'}
+                </button>
+                <button
+                  onClick={() => setShowBookmarksPanel((prev) => !prev)}
+                  className={`btn ${showBookmarksPanel ? 'btn-active' : ''}`}
+                  title="PDF outline bookmarks"
+                  data-testid="bookmarks-panel"
+                >
+                  {showBookmarksPanel ? 'Bookmarks: ON' : 'Bookmarks'}
                 </button>
                 <button
                   onClick={toggleRedactMode}

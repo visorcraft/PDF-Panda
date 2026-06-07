@@ -1,12 +1,12 @@
 # PDF Panda
 
-A fast, cross-platform PDF editor built with **Rust** and **Tauri**. Open a document, rearrange pages, annotate, export to Markdown, and save optimized copies — without leaving a lightweight native app.
+A fast, cross-platform PDF editor built with **Rust** and **Tauri**. Open a document, rearrange pages, annotate, sign, export to Markdown, and save optimized copies — without leaving a lightweight native app.
 
 **Current release:** v0.2.0 · **License:** [GPL v3](LICENSE)
 
 ## Why PDF Panda?
 
-PDF Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools. A WebdriverIO smoke suite covers launch, open-via-path, and edit flows (`scripts/e2e-test.sh`).
+PDF Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, sign, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools. A WebdriverIO smoke suite covers launch, open-via-path, and edit flows (`scripts/e2e-test.sh`).
 
 Runs on **Linux**, **macOS**, and **Windows**.
 
@@ -16,17 +16,17 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - In-app path entry, **Recently Opened** list, built-in PDF browser, and **native open/save dialogs** on macOS/Windows (Linux X11 by default; Wayland: set `PDF_PANDA_NATIVE_DIALOGS=1`)
 - **Close** current document (Ctrl/Cmd+W) with unsaved-changes prompt
 - Smooth viewer with **25%–400%** zoom and a thumbnail sidebar
-- Page navigation via toolbar, thumbnails, keyboard, and mouse wheel at scroll edges
+- Page navigation via toolbar, thumbnails, keyboard, mouse wheel at scroll edges, and **Bookmarks** outline panel
 
 ### Page editing
 - **Delete**, **rotate** (90° steps), and **drag-and-drop reorder**
 - **Insert** pages from another PDF (range + position; merges AcroForm fields, dedups fonts)
 - **Split** into multiple files by page ranges
-- **In-PDF text** — place Helvetica text blocks in page content (`E`); edit or remove via the Edits modal
-- **Vector rectangles** — draw stroke rectangles in page content (`G`); manage via Edits modal
+- **In-PDF text** — place Helvetica text blocks in page content (`E`); edit or remove via the **Edits** modal
+- **Vector rectangles** — draw stroke rectangles in page content (`G`); manage via **Edits** modal
 
 ### Security
-- **Digital signatures** — sign with a PKCS#12 certificate (.p12/.pfx); list and verify signatures in the Signatures panel (Ctrl/Cmd+Shift+U)
+- **Digital signatures** — PAdES signing with a PKCS#12 certificate (.p12/.pfx); list and verify signatures in the **Signatures** sidebar panel (Ctrl/Cmd+Shift+U)
 - **Password protect** — export an encrypted `_protected.pdf` copy; open encrypted PDFs with a password prompt
 
 ### Save & history
@@ -51,6 +51,30 @@ Runs on **Linux**, **macOS**, and **Windows**.
 - **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX) to a sibling `_assets` folder; **Tesseract OCR** for scanned pages without a text layer (`tesseract-ocr` on PATH, optional `PDF_PANDA_OCR_LANG`)
 - **Optimize** — strip metadata, recompress images, prune unused objects (Ctrl/Cmd+Shift+O)
 - **Print** via the system print dialog (Ctrl/Cmd+P)
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| Ctrl/Cmd+O | Open PDF |
+| Ctrl/Cmd+S | Save (when dirty) |
+| Ctrl/Cmd+Shift+S | Save As |
+| Ctrl/Cmd+W | Close PDF |
+| Ctrl/Cmd+Z | Undo |
+| Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z | Redo |
+| Ctrl/Cmd+R | Rotate page |
+| Ctrl/Cmd+P | Print |
+| Ctrl/Cmd+Shift+M | PDF ↔ Markdown |
+| Ctrl/Cmd+Shift+O | Optimize |
+| Ctrl/Cmd+Shift+E | Summarize |
+| Ctrl/Cmd+Shift+U | Digital sign |
+| Ctrl/Cmd+Shift+I | Insert PDF |
+| Ctrl/Cmd+Shift+K | Split PDF |
+| Ctrl/Cmd+0 | Reset zoom to 100% |
+| Ctrl/Cmd +/− | Zoom in/out |
+| H / N / D / S / T / X / E / G / I / F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
+| Delete | Delete page (with confirmation) |
+| Escape | Exit active tool or dismiss modals |
 
 ## Quick start
 
@@ -110,6 +134,7 @@ Packaging helpers live under `scripts/` (`build-linux-packages.sh`, `build-appim
 | Frontend | Vite 8, React 19, TypeScript 6 |
 | Render | [pdfium-render](https://crates.io/crates/pdfium-render) |
 | Structure edits | [lopdf](https://crates.io/crates/lopdf) |
+| Digital signatures | [underskrift](https://crates.io/crates/underskrift) (PAdES PKCS#12) |
 | File dialogs | [tauri-plugin-dialog](https://v2.tauri.app/plugin/dialog/) |
 | Build accel (Linux) | mold, sccache |
 
@@ -119,6 +144,9 @@ Packaging helpers live under `scripts/` (`build-linux-packages.sh`, `build-appim
 scripts/smoke-test.sh               # unit tests, clippy, fmt, and tsc (CI parity)
 npm run test:e2e                    # WebdriverIO smoke (Linux; needs xvfb-run)
 ```
+
+From `src-tauri/`: `cargo test` runs **137** unit tests (+ 3 ignored integration
+smokes that need PDFium, a sample PDF, or Tesseract).
 
 Optional smoke test with a real PDF and PDFium installed:
 
@@ -131,8 +159,9 @@ PDF_PANDA_TEST_PDF=/path/to/file.pdf \
 [`PLAN.md`](PLAN.md) for the full feature matrix.
 
 Tagged releases (`git tag v0.2.1 && git push origin v0.2.1`) trigger the GitHub
-Actions release workflow (unsigned by default; optional macOS/Windows signing via
-repository secrets). See [`docs/SIGNING.md`](docs/SIGNING.md).  
+Actions release workflow (unsigned by default; optional macOS/Windows **package**
+signing via repository secrets). See [`docs/SIGNING.md`](docs/SIGNING.md) — that
+doc covers release artifacts, not in-PDF cryptographic signatures.  
 Manual QA checklist: [`docs/MANUAL_E2E.md`](docs/MANUAL_E2E.md).
 
 ## Contributing
