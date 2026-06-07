@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
@@ -196,6 +197,80 @@ fn render_page_png(path: &Path, page_index: u32, width: i32, height: i32) -> Res
     let mut buffer = Vec::new();
     image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png).map_err(|e| e.to_string())?;
     Ok(buffer)
+}
+
+const OCR_RENDER_W: i32 = 1200;
+const OCR_RENDER_H: i32 = 1697;
+
+fn ocr_language() -> String {
+    std::env::var("PDF_PANDA_OCR_LANG").unwrap_or_else(|_| "eng".into())
+}
+
+fn resolve_tesseract() -> Option<PathBuf> {
+    if let Ok(cmd) = std::env::var("TESSERACT_CMD") {
+        let path = PathBuf::from(cmd);
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+    let name = if cfg!(windows) { "tesseract.exe" } else { "tesseract" };
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|candidate| candidate.is_file())
+    })
+}
+
+/// Run Tesseract on a PNG buffer. `Ok(None)` when Tesseract is not installed.
+fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
+    let tesseract = match resolve_tesseract() {
+        Some(path) => path,
+        None => return Ok(None),
+    };
+
+    let tmp_dir = std::env::temp_dir().join(format!(
+        "pdf_panda_ocr_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
+    let image_path = tmp_dir.join("page.png");
+    fs::write(&image_path, png).map_err(|e| e.to_string())?;
+
+    let output = Command::new(&tesseract)
+        .arg(&image_path)
+        .arg("stdout")
+        .arg("-l")
+        .arg(ocr_language())
+        .output()
+        .map_err(|e| format!("failed to run {}: {e}", tesseract.display()))?;
+
+    let _ = fs::remove_dir_all(&tmp_dir);
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("tesseract failed: {stderr}"));
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if text.is_empty() { Ok(None) } else { Ok(Some(text)) }
+}
+
+#[tauri::command]
+fn ocr_available() -> bool {
+    resolve_tesseract().is_some()
+}
+
+/// OCR a single rendered PDF page (for scanned documents without a text layer).
+#[tauri::command]
+fn ocr_pdf_page(path: String, page: u32) -> Result<String, String> {
+    let path = PathBuf::from(path);
+    let png = render_page_png(&path, page, OCR_RENDER_W, OCR_RENDER_H)?;
+    match ocr_png_bytes(&png)? {
+        Some(text) => Ok(text),
+        None => Err("Tesseract OCR is not installed (set TESSERACT_CMD or add tesseract to PATH)".into()),
+    }
 }
 
 #[tauri::command]
@@ -2082,6 +2157,30 @@ struct MarkdownImageSink<'a> {
     rel_prefix: &'a str,
 }
 
+fn append_scanned_page_markdown(
+    markdown: &mut String,
+    path: &Path,
+    page_index: u32,
+    image_sink: Option<&MarkdownImageSink<'_>>,
+) -> Result<(), String> {
+    let png = render_page_png(path, page_index, OCR_RENDER_W, OCR_RENDER_H)?;
+    let ocr_text = ocr_png_bytes(&png)?;
+
+    if let Some(sink) = image_sink {
+        fs::create_dir_all(sink.assets_dir).map_err(|e| e.to_string())?;
+        let file_name = format!("page-{}.png", page_index + 1);
+        fs::write(sink.assets_dir.join(&file_name), &png).map_err(|e| e.to_string())?;
+        markdown.push_str(&format!("![Page {}]({}/{})\n\n", page_index + 1, sink.rel_prefix, file_name));
+    }
+
+    if let Some(text) = ocr_text {
+        markdown.push_str(&plain_text_to_markdown(&text));
+    } else if image_sink.is_none() {
+        markdown.push_str("_(Scanned page — install Tesseract OCR for text extraction.)_\n\n");
+    }
+    Ok(())
+}
+
 fn pdf_filter_has_name(filter: &Object, target: &[u8]) -> bool {
     match filter {
         Object::Name(name) => name == target,
@@ -2301,15 +2400,7 @@ fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> R
             let all_text = text.all();
             let trimmed = all_text.trim();
             if trimmed.is_empty() {
-                if let Some(sink) = image_sink {
-                    std::fs::create_dir_all(sink.assets_dir).map_err(|e| e.to_string())?;
-                    let file_name = format!("page-{}.png", index + 1);
-                    let png = render_page_png(path, index as u32, 800, 1132)?;
-                    std::fs::write(sink.assets_dir.join(&file_name), png).map_err(|e| e.to_string())?;
-                    markdown.push_str(&format!("![Page {}]({}/{})\n\n", index + 1, sink.rel_prefix, file_name));
-                } else {
-                    markdown.push_str(&plain_text_to_markdown(trimmed));
-                }
+                append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink)?;
             } else {
                 markdown.push_str(&plain_text_to_markdown(trimmed));
             }
@@ -3861,6 +3952,8 @@ fn main() {
             insert_pdf,
             convert_pdf_to_markdown,
             save_pdf_markdown,
+            ocr_available,
+            ocr_pdf_page,
             optimize_pdf,
             pdf_is_encrypted,
             verify_pdf_password,
@@ -4698,6 +4791,50 @@ mod tests {
 
         discard_history_entry(pruned[0].clone()).unwrap();
         discard_working_copy(working).unwrap();
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn ocr_available_reports_tesseract_presence() {
+        let available = ocr_available();
+        assert_eq!(available, resolve_tesseract().is_some());
+    }
+
+    #[test]
+    fn ocr_pdf_page_rejects_missing_file() {
+        let missing = tmp("ocr_missing");
+        let err = ocr_pdf_page(missing.to_string_lossy().into_owned(), 0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn ocr_png_bytes_without_tesseract_returns_none() {
+        let prev_path = std::env::var_os("PATH");
+        let prev_cmd = std::env::var_os("TESSERACT_CMD");
+        std::env::remove_var("PATH");
+        std::env::remove_var("TESSERACT_CMD");
+        let result = ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
+        if let Some(path) = prev_path {
+            std::env::set_var("PATH", path);
+        }
+        if let Some(cmd) = prev_cmd {
+            std::env::set_var("TESSERACT_CMD", cmd);
+        }
+        assert_eq!(result.unwrap(), None);
+    }
+
+    /// Needs PDFium + Tesseract. Run: `cargo test ocr_rendered_page_smoke -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn ocr_rendered_page_smoke() {
+        if resolve_tesseract().is_none() {
+            eprintln!("skip: tesseract not installed");
+            return;
+        }
+        let path = save(&mut build_pdf(1), "ocr_smoke");
+        let png = render_page_png(Path::new(&path), 0, OCR_RENDER_W, OCR_RENDER_H).unwrap();
+        let text = ocr_png_bytes(&png).unwrap().unwrap_or_default();
+        assert!(!text.is_empty());
         let _ = fs::remove_file(&path);
     }
 

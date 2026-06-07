@@ -122,7 +122,7 @@ and verified:
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 112 unit tests (+ 2 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`) covering
+- `cargo test` — 115 unit tests (+ 3 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`, `ocr_rendered_page_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -137,8 +137,9 @@ and verified:
   to saving beside the open PDF as `<pdf-name>.md` (custom path via Save Markdown As…),
   and reconstructs headings/tables from text geometry heuristics. On save it also
   exports page renders (no-text pages) and embedded XObject images (JPEG, PNG,
-  DeviceGray, DeviceCMYK, Indexed, JPXDecode) to `<pdf-name>_assets/`. No OCR or
-  tagged-PDF semantics yet.
+  DeviceGray, DeviceCMYK, Indexed, JPXDecode) to `<pdf-name>_assets/`. Scanned pages
+  without a text layer use Tesseract OCR when installed (`PDF_PANDA_OCR_LANG`,
+  `TESSERACT_CMD`). Tagged-PDF semantics are not implemented yet.
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
 - Undo/Redo uses whole-file snapshots for files ≤ 32 MB and compact binary deltas
@@ -173,12 +174,12 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Large-file undo deltas — binary delta snapshots for files &gt; 32 MB (`snapshot_pdf_entry` / `restore_history_entry` / `prune_history_entry`)
 - [x] Automated UI/e2e — WebdriverIO + embedded WebDriver smoke suite (`scripts/e2e-test.sh`, `e2e/specs/smoke.spec.ts`)
 - [x] Signing automation — tag-triggered release workflow with optional macOS/Windows signing and SHA256 checksums (`.github/workflows/release.yml`, `docs/SIGNING.md`)
+- [x] OCR integration — Tesseract OCR for scanned pages in Markdown export (`ocr_pdf_page`, `ocr_available`; env `TESSERACT_CMD`, `PDF_PANDA_OCR_LANG`)
 
 ### vNext roadmap
 
 - **Advanced editing:** In-PDF text editing and vector object manipulation.
-- **OCR integration:** Optical character recognition for scanned documents.
 - **Security features:** Digital signatures.
 - **AI-powered tools:** Document summarization and intelligent extraction.
-- **Markdown depth:** OCR and tagged-PDF semantics.
+- **Markdown depth:** tagged-PDF semantics.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
