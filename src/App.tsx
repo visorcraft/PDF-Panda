@@ -764,6 +764,7 @@ function App() {
   const toggleMarkdownViewRef = useRef(async () => {});
   const openDeleteModalRef = useRef(openDeleteModal);
   openDeleteModalRef.current = openDeleteModal;
+  const handleOptimizePdfRef = useRef(async () => {});
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -851,6 +852,11 @@ function App() {
       if (key === 'm' && e.shiftKey) {
         e.preventDefault();
         void toggleMarkdownViewRef.current();
+        return;
+      }
+      if (key === 'o' && e.shiftKey) {
+        e.preventDefault();
+        void handleOptimizePdfRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -1026,6 +1032,7 @@ function App() {
       showToast(result);
     });
   };
+  handleOptimizePdfRef.current = handleOptimizePdf;
 
   const handlePrint = async () => {
     if (!filePath || pageCount === null) return;
@@ -1132,7 +1139,7 @@ function App() {
                     Markdown
                   </button>
                 </div>
-                <button onClick={handleOptimizePdf} className="btn">Optimize</button>
+                <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
                 <button onClick={handlePrint} className="btn" title="Print (Ctrl+P)">Print</button>
                 <button
                   onClick={toggleHighlightMode}
