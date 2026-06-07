@@ -1000,12 +1000,117 @@ struct MarkdownImageSink<'a> {
     rel_prefix: &'a str,
 }
 
-fn pdf_filter_is_dctdecode(filter: &Object) -> bool {
+fn pdf_filter_has_name(filter: &Object, target: &[u8]) -> bool {
     match filter {
-        Object::Name(name) => name == b"DCTDecode",
-        Object::Array(items) => items.iter().any(|item| matches!(item, Object::Name(name) if name == b"DCTDecode")),
+        Object::Name(name) => name == target,
+        Object::Array(items) => items.iter().any(|item| matches!(item, Object::Name(name) if name == target)),
         _ => false,
     }
+}
+
+fn pdf_filter_is_dctdecode(filter: &Object) -> bool {
+    pdf_filter_has_name(filter, b"DCTDecode")
+}
+
+fn pdf_numeric_i64(obj: &Object) -> Option<i64> {
+    match obj {
+        Object::Integer(v) => Some(*v),
+        Object::Real(v) => Some(*v as i64),
+        _ => None,
+    }
+}
+
+fn pdf_colorspace_name(colorspace: &Object) -> Option<Vec<u8>> {
+    match colorspace {
+        Object::Name(name) => Some(name.to_vec()),
+        Object::Array(items) => items.first().and_then(|o| o.as_name().ok()).map(|n| n.to_vec()),
+        _ => None,
+    }
+}
+
+fn pdf_colorspace_is(colorspace: &Object, target: &[u8]) -> bool {
+    pdf_colorspace_name(colorspace).as_deref() == Some(target)
+}
+
+fn cmyk_pixel_to_rgb(c: u8, m: u8, y: u8, k: u8) -> [u8; 3] {
+    let c = c as f32 / 255.0;
+    let m = m as f32 / 255.0;
+    let y = y as f32 / 255.0;
+    let k = k as f32 / 255.0;
+    [
+        (255.0 * (1.0 - c) * (1.0 - k)).round() as u8,
+        (255.0 * (1.0 - m) * (1.0 - k)).round() as u8,
+        (255.0 * (1.0 - y) * (1.0 - k)).round() as u8,
+    ]
+}
+
+fn indexed_palette_rgb(colorspace: &Object) -> Option<Vec<u8>> {
+    let items = colorspace.as_array().ok()?;
+    if !pdf_colorspace_is(colorspace, b"Indexed") {
+        return None;
+    }
+    let lookup = items.get(3)?;
+    let Object::String(bytes, _) = lookup else {
+        return None;
+    };
+    Some(bytes.clone())
+}
+
+fn raw_image_to_png(width: u32, height: u32, rgb: Vec<u8>) -> Option<Vec<u8>> {
+    use image::{ImageBuffer, Rgb};
+    let img: ImageBuffer<Rgb<u8>, _> = ImageBuffer::from_raw(width, height, rgb)?;
+    let mut png = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).ok()?;
+    Some(png)
+}
+
+fn gray_samples_to_png(width: u32, height: u32, bytes: &[u8]) -> Option<Vec<u8>> {
+    let expected = (width as u64 * height as u64) as usize;
+    if bytes.len() < expected {
+        return None;
+    }
+    let mut rgb = Vec::with_capacity(expected * 3);
+    for sample in &bytes[..expected] {
+        rgb.extend_from_slice(&[*sample, *sample, *sample]);
+    }
+    raw_image_to_png(width, height, rgb)
+}
+
+fn rgb_samples_to_png(width: u32, height: u32, bytes: &[u8], components: usize) -> Option<Vec<u8>> {
+    let expected = (width as u64 * height as u64 * components as u64) as usize;
+    if bytes.len() < expected {
+        return None;
+    }
+    if components == 3 {
+        return raw_image_to_png(width, height, bytes[..expected].to_vec());
+    }
+    None
+}
+
+fn cmyk_samples_to_png(width: u32, height: u32, bytes: &[u8]) -> Option<Vec<u8>> {
+    let expected = (width as u64 * height as u64 * 4) as usize;
+    if bytes.len() < expected {
+        return None;
+    }
+    let mut rgb = Vec::with_capacity((width as usize * height as usize) * 3);
+    for chunk in bytes[..expected].chunks_exact(4) {
+        rgb.extend_from_slice(&cmyk_pixel_to_rgb(chunk[0], chunk[1], chunk[2], chunk[3]));
+    }
+    raw_image_to_png(width, height, rgb)
+}
+
+fn indexed_samples_to_png(width: u32, height: u32, bytes: &[u8], palette: &[u8]) -> Option<Vec<u8>> {
+    let expected = (width as u64 * height as u64) as usize;
+    if bytes.len() < expected || palette.len() < 3 {
+        return None;
+    }
+    let max_index = (palette.len() / 3).saturating_sub(1);
+    let mut rgb = Vec::with_capacity(expected * 3);
+    for &sample in &bytes[..expected] {
+        let idx = (sample as usize).min(max_index) * 3;
+        rgb.extend_from_slice(&palette[idx..idx + 3]);
+    }
+    raw_image_to_png(width, height, rgb)
 }
 
 fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
@@ -1014,19 +1119,43 @@ fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
     if filter.is_some_and(pdf_filter_is_dctdecode) {
         return Some((bytes, "jpg"));
     }
-    let width = stream.dict.get(b"Width").ok()?.as_i64().ok()? as u32;
-    let height = stream.dict.get(b"Height").ok()?.as_i64().ok()? as u32;
+    if filter.is_some_and(|f| pdf_filter_has_name(f, b"JPXDecode")) {
+        if let Ok(img) = image::load_from_memory(&bytes) {
+            let mut png = Vec::new();
+            if img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).is_ok() {
+                return Some((png, "png"));
+            }
+        }
+    }
+
+    let width = pdf_numeric_i64(stream.dict.get(b"Width").ok()?)? as u32;
+    let height = pdf_numeric_i64(stream.dict.get(b"Height").ok()?)? as u32;
     if width == 0 || height == 0 {
         return None;
     }
-    let expected = (width as u64 * height as u64 * 3) as usize;
-    if bytes.len() < expected {
+    let bits = stream
+        .dict
+        .get(b"BitsPerComponent")
+        .ok()
+        .and_then(pdf_numeric_i64)
+        .unwrap_or(8) as u32;
+    if bits != 8 {
         return None;
     }
-    use image::{ImageBuffer, Rgb};
-    let img: ImageBuffer<Rgb<u8>, _> = ImageBuffer::from_raw(width, height, bytes)?;
-    let mut png = Vec::new();
-    img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).ok()?;
+
+    let colorspace = stream.dict.get(b"ColorSpace").ok()?;
+    let png = if pdf_colorspace_is(colorspace, b"Indexed") {
+        let palette = indexed_palette_rgb(colorspace)?;
+        indexed_samples_to_png(width, height, &bytes, &palette)?
+    } else if pdf_colorspace_is(colorspace, b"DeviceRGB") {
+        rgb_samples_to_png(width, height, &bytes, 3)?
+    } else if pdf_colorspace_is(colorspace, b"DeviceGray") {
+        gray_samples_to_png(width, height, &bytes)?
+    } else if pdf_colorspace_is(colorspace, b"DeviceCMYK") {
+        cmyk_samples_to_png(width, height, &bytes)?
+    } else {
+        rgb_samples_to_png(width, height, &bytes, 3).or_else(|| gray_samples_to_png(width, height, &bytes))?
+    };
     Some((png, "png"))
 }
 
@@ -3484,6 +3613,78 @@ mod tests {
         let missing = std::env::temp_dir().join(format!("pp_add_redact_missing_{}.pdf", std::process::id()));
         let err = add_redaction(missing.to_string_lossy().into_owned(), 0, 1.0, 1.0, 2.0, 2.0).unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn pdf_image_stream_bytes_device_gray_to_png() {
+        let stream = Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Width".to_vec(), Object::Integer(2)),
+                (b"Height".to_vec(), Object::Integer(2)),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceGray".to_vec())),
+            ]),
+            vec![0, 64, 128, 255],
+        );
+        let (png, ext) = pdf_image_stream_bytes(&stream).expect("gray image");
+        assert_eq!(ext, "png");
+        assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn pdf_image_stream_bytes_device_cmyk_to_png() {
+        let stream = Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Width".to_vec(), Object::Integer(1)),
+                (b"Height".to_vec(), Object::Integer(1)),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceCMYK".to_vec())),
+            ]),
+            vec![0, 255, 255, 0],
+        );
+        let (png, ext) = pdf_image_stream_bytes(&stream).expect("cmyk image");
+        assert_eq!(ext, "png");
+        assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn pdf_image_stream_bytes_indexed_to_png() {
+        let stream = Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Width".to_vec(), Object::Integer(2)),
+                (b"Height".to_vec(), Object::Integer(1)),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+                (
+                    b"ColorSpace".to_vec(),
+                    Object::Array(vec![
+                        Object::Name(b"Indexed".to_vec()),
+                        Object::Name(b"DeviceRGB".to_vec()),
+                        Object::Integer(1),
+                        Object::String(vec![255, 0, 0, 0, 0, 255], lopdf::StringFormat::Literal),
+                    ]),
+                ),
+            ]),
+            vec![0, 1],
+        );
+        let (png, ext) = pdf_image_stream_bytes(&stream).expect("indexed image");
+        assert_eq!(ext, "png");
+        assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn pdf_image_stream_bytes_device_rgb_to_png() {
+        let stream = Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Width".to_vec(), Object::Integer(1)),
+                (b"Height".to_vec(), Object::Integer(1)),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+            ]),
+            vec![10, 20, 30],
+        );
+        let (png, ext) = pdf_image_stream_bytes(&stream).expect("rgb image");
+        assert_eq!(ext, "png");
+        assert!(png.starts_with(&[137, 80, 78, 71]));
     }
 
     #[test]

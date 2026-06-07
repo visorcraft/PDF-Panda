@@ -38,7 +38,7 @@ Runs on **Linux**, **macOS**, and **Windows**.
 
 ### Conversion & export
 - **PDF → Markdown** with heuristic headings, tables, and TOC formatting
-- **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images to a sibling `_assets` folder
+- **Save Markdown** beside the PDF or to a custom path; exports page renders and embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX) to a sibling `_assets` folder
 - **Optimize** — strip metadata, recompress images, prune unused objects
 - **Print** via the system print dialog
 

@@ -144,7 +144,8 @@ Signing steps: `docs/SIGNING.md`.
 
 **Still open:**
 - Markdown output is heuristic layout reconstruction from PDF text geometry; no
-  OCR, tagged-PDF semantics, or exotic image filters yet.
+  OCR or tagged-PDF semantics yet. Embedded image export handles JPEG, PNG,
+  DeviceGray, DeviceCMYK, Indexed, and JPXDecode filters.
 - Markdown defaults to saving beside the open PDF as `<pdf-name>.md`; use Save
   Markdown As… in the Markdown view for a custom path.
 - Native PDF file dialogs are intentionally avoided on the current Linux/Wayland

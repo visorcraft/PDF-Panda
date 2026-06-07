@@ -122,7 +122,7 @@ and verified:
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 89 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 93 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
@@ -135,8 +135,9 @@ and verified:
 - Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), defaults
   to saving beside the open PDF as `<pdf-name>.md` (custom path via Save Markdown As…),
   and reconstructs headings/tables from text geometry heuristics. On save it also
-  exports page renders (no-text pages) and embedded JPEG/PNG XObject images to
-  `<pdf-name>_assets/`. No OCR, tagged-PDF semantics, or exotic image filters yet.
+  exports page renders (no-text pages) and embedded XObject images (JPEG, PNG,
+  DeviceGray, DeviceCMYK, Indexed, JPXDecode) to `<pdf-name>_assets/`. No OCR or
+  tagged-PDF semantics yet.
 - On bleeding-edge Linux GPU stacks, WebKitGTK's DMABUF renderer is disabled at
   startup to avoid a Wayland crash; GPU compositing is retained (see `main.rs`).
 - Undo/Redo uses whole-file snapshots (50-entry cap). Files larger than 32 MB skip
@@ -162,6 +163,7 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Text and image stamps (`add_text_stamp` / `add_image_stamp`, **T** shortcut)
 - [x] Password protection (`protect_pdf`, encrypted open with password prompt)
 - [x] Redaction (`add_redaction` / `remove_redaction`, **X** shortcut)
+- [x] Markdown exotic image filters (DeviceGray, DeviceCMYK, Indexed, JPXDecode on save)
 
 ### vNext roadmap
 
@@ -172,7 +174,7 @@ file blocks tagging or shipping `v0.2.0`.
 - **Form support:** Interactive PDF form creation and filling.
 - **AI-powered tools:** Document summarization and intelligent extraction.
 - **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
-- **Markdown depth:** OCR, tagged-PDF semantics, exotic image filters.
+- **Markdown depth:** OCR and tagged-PDF semantics.
 - **Insert edge cases:** AcroForm merging, cross-insert font dedup.
 - **Undo/Redo:** delta snapshots for very large files.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
