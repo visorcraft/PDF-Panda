@@ -73,7 +73,7 @@ DMABUF renderer for the target hardware.
 
 Run from `src-tauri/` unless noted:
 
-- `cargo test` — 106 unit tests for every lopdf-based command, working-copy flows,
+- `cargo test` — 109 unit tests for every lopdf-based command, working-copy flows,
   highlights/notes, and validation paths (no PDFium needed for the default suite).
 - Ignored end-to-end smoke test (needs PDFium + a file):
   `PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture`
@@ -100,7 +100,8 @@ and the default test suite don't need it.
   `remove_line`, `list_stamp_presets`, `add_text_stamp`, `add_image_stamp`,
   `remove_text_stamp`, `remove_image_stamp`, `add_redaction`, `remove_redaction`,
   `get_image_dimensions`, `add_page_image`, `get_pdf_form_fields`, `set_pdf_form_field`,
-  `add_text_form_field`, `get_annotations`, `file_byte_size`.
+  `add_text_form_field`, `add_checkbox_form_field`, `add_choice_form_field`,
+  `add_radio_form_field`, `get_annotations`, `file_byte_size`.
 - `src/App.tsx` — the whole UI (toolbar, scrollable viewer, thumbnail sidebar,
   split/insert modals, highlight overlays, print surface).
 - `src-tauri/capabilities/default.json` — Tauri ACL (`core:default`). Custom app
@@ -126,7 +127,7 @@ click-to-remove in shape mode), text/image stamps (T — preset badges,
 click-to-remove in stamp mode), redaction boxes (X — two-click black boxes,
 click-to-remove in redact mode), page image insertion (I — path modal then
 two-click placement into page content), interactive form fields (F — list/fill
-existing fields, create text fields with two-click placement), PDF/Markdown view toggle with sibling
+existing fields, create text/checkbox/choice/radio fields), PDF/Markdown view toggle with sibling
 `.md` auto-save (or Save Markdown As… custom path) and overwrite confirmation,
 Markdown conversion (PDFium text
 extraction — decodes CID/Type0 fonts, with heuristic headings, TOC/table, and

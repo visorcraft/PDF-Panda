@@ -26,6 +26,7 @@ const SNAPSHOT_BYTE_LIMIT = 32 * 1024 * 1024;
 
 type ShapeKind = 'square' | 'circle' | 'line';
 type StampKind = 'text' | 'image';
+type FormFieldKind = 'text' | 'checkbox' | 'choice' | 'radio';
 
 const STAMP_PRESETS = [
   { id: 'approved', label: 'APPROVED', color: '#228b22' },
@@ -206,7 +207,12 @@ function App() {
   const [formDrafts, setFormDrafts] = useState<Record<string, string>>({});
   const [formAddMode, setFormAddMode] = useState(false);
   const [showAddFormFieldModal, setShowAddFormFieldModal] = useState(false);
+  const [newFormFieldKind, setNewFormFieldKind] = useState<FormFieldKind>('text');
   const [newFormFieldName, setNewFormFieldName] = useState('');
+  const [newFormFieldOptions, setNewFormFieldOptions] = useState('Option A, Option B');
+  const [newFormRadioGroup, setNewFormRadioGroup] = useState('');
+  const [newFormRadioOption, setNewFormRadioOption] = useState('');
+  const [newFormCheckboxChecked, setNewFormCheckboxChecked] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
@@ -750,6 +756,60 @@ function App() {
     if (drawMode) return;
     if (formAddMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
+      const placeFormField = (rect: { x: number; y: number; w: number; h: number }) => {
+        void withLoading(async () => {
+          const base = {
+            path: filePath,
+            pageIndex: currentPage,
+            x: rect.x,
+            y: rect.y,
+            width: rect.w,
+            height: rect.h,
+          };
+          if (newFormFieldKind === 'checkbox') {
+            await invoke('add_checkbox_form_field', {
+              ...base,
+              name: newFormFieldName.trim(),
+              checked: newFormCheckboxChecked,
+            });
+          } else if (newFormFieldKind === 'choice') {
+            const options = newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
+            await invoke('add_choice_form_field', {
+              ...base,
+              name: newFormFieldName.trim(),
+              options,
+              combo: true,
+            });
+          } else if (newFormFieldKind === 'radio') {
+            await invoke('add_radio_form_field', {
+              ...base,
+              groupName: newFormRadioGroup.trim(),
+              optionName: newFormRadioOption.trim(),
+            });
+          } else {
+            await invoke('add_text_form_field', {
+              ...base,
+              name: newFormFieldName.trim(),
+            });
+          }
+          markPdfEdited();
+          setFormAddMode(false);
+          setShowAddFormFieldModal(false);
+          setNewFormFieldName('');
+          setNewFormRadioGroup('');
+          setNewFormRadioOption('');
+          await loadFormFields(filePath);
+          showToast('Form field added');
+        });
+      };
+
+      if (newFormFieldKind === 'checkbox' || newFormFieldKind === 'radio') {
+        const size = 18;
+        placeFormField({ x: coords.x, y: coords.y, w: size, h: size });
+        cancelDrawing();
+        return;
+      }
+
       if (!drawing) {
         setHighlightStart(coords);
         setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
@@ -766,24 +826,7 @@ function App() {
         h: Math.abs(coords.y - start.y),
       };
       if (rect.w < 20 || rect.h < 10) return;
-      const fieldName = newFormFieldName.trim();
-      void withLoading(async () => {
-        await invoke('add_text_form_field', {
-          path: filePath,
-          pageIndex: currentPage,
-          name: fieldName,
-          x: rect.x,
-          y: rect.y,
-          width: rect.w,
-          height: rect.h,
-        });
-        markPdfEdited();
-        setFormAddMode(false);
-        setShowAddFormFieldModal(false);
-        setNewFormFieldName('');
-        await loadFormFields(filePath);
-        showToast(`Form field ${fieldName} added`);
-      });
+      placeFormField(rect);
       return;
     }
     if (imageInsertMode) {
@@ -1150,15 +1193,31 @@ function App() {
 
   const openAddFormFieldModal = () => {
     if (!filePath) return;
+    setNewFormFieldKind('text');
     setNewFormFieldName('');
+    setNewFormFieldOptions('Option A, Option B');
+    setNewFormRadioGroup('');
+    setNewFormRadioOption('');
+    setNewFormCheckboxChecked(false);
     setShowAddFormFieldModal(true);
   };
 
   const confirmAddFormField = () => {
-    const name = newFormFieldName.trim();
-    if (!name) {
+    if (newFormFieldKind === 'radio') {
+      if (!newFormRadioGroup.trim() || !newFormRadioOption.trim()) {
+        showToast('Enter group and option names', 'error');
+        return;
+      }
+    } else if (!newFormFieldName.trim()) {
       showToast('Enter a field name', 'error');
       return;
+    }
+    if (newFormFieldKind === 'choice') {
+      const options = newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
+      if (options.length === 0) {
+        showToast('Enter at least one option', 'error');
+        return;
+      }
     }
     setShowAddFormFieldModal(false);
     cancelDrawing();
@@ -1169,9 +1228,11 @@ function App() {
     setStampMode(false);
     setRedactMode(false);
     setImageInsertMode(false);
-    setFormAddMode(false);
     setFormAddMode(true);
-    showToast('Click twice on the page to place the field');
+    const placementHint = newFormFieldKind === 'text' || newFormFieldKind === 'choice'
+      ? 'Click twice on the page to draw the field box'
+      : 'Click on the page to place the field';
+    showToast(placementHint);
   };
 
   const exitFormAddMode = () => {
@@ -1752,6 +1813,11 @@ function App() {
     setFormDrafts({});
     setShowAddFormFieldModal(false);
     setNewFormFieldName('');
+    setNewFormFieldKind('text');
+    setNewFormFieldOptions('Option A, Option B');
+    setNewFormRadioGroup('');
+    setNewFormRadioOption('');
+    setNewFormCheckboxChecked(false);
     setAnnotations([]);
     setShowDeleteModal(false);
     setImageSrc((prev) => {
@@ -2685,19 +2751,85 @@ function App() {
 
       {showAddFormFieldModal && (
         <Modal onClose={() => setShowAddFormFieldModal(false)}>
-          <h3>Add Text Field</h3>
-          <p className="modal-help">Name the field, then click twice on the page to draw its box.</p>
-          <label>Field name:</label>
-          <input
-            type="text"
-            value={newFormFieldName}
-            onChange={(e) => setNewFormFieldName(e.target.value)}
+          <h3>Add Form Field</h3>
+          <p className="modal-help">Choose a field type, then place it on the current page.</p>
+          <label>Field type:</label>
+          <select
             className="modal-input"
-            placeholder="Email"
-          />
+            value={newFormFieldKind}
+            onChange={(e) => setNewFormFieldKind(e.target.value as FormFieldKind)}
+          >
+            <option value="text">Text</option>
+            <option value="checkbox">Checkbox</option>
+            <option value="choice">Choice list</option>
+            <option value="radio">Radio button</option>
+          </select>
+          {newFormFieldKind === 'radio' ? (
+            <>
+              <label>Group name:</label>
+              <input
+                type="text"
+                value={newFormRadioGroup}
+                onChange={(e) => setNewFormRadioGroup(e.target.value)}
+                className="modal-input"
+                placeholder="Color"
+              />
+              <label>Option name:</label>
+              <input
+                type="text"
+                value={newFormRadioOption}
+                onChange={(e) => setNewFormRadioOption(e.target.value)}
+                className="modal-input"
+                placeholder="Red"
+              />
+            </>
+          ) : (
+            <>
+              <label>Field name:</label>
+              <input
+                type="text"
+                value={newFormFieldName}
+                onChange={(e) => setNewFormFieldName(e.target.value)}
+                className="modal-input"
+                placeholder="Email"
+              />
+              {newFormFieldKind === 'choice' && (
+                <>
+                  <label>Options (comma-separated):</label>
+                  <input
+                    type="text"
+                    value={newFormFieldOptions}
+                    onChange={(e) => setNewFormFieldOptions(e.target.value)}
+                    className="modal-input"
+                    placeholder="US, CA, MX"
+                  />
+                </>
+              )}
+              {newFormFieldKind === 'checkbox' && (
+                <label className="form-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={newFormCheckboxChecked}
+                    onChange={(e) => setNewFormCheckboxChecked(e.target.checked)}
+                  />
+                  <span>Checked by default</span>
+                </label>
+              )}
+            </>
+          )}
           <div className="modal-actions">
             <button onClick={() => setShowAddFormFieldModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={confirmAddFormField} className="btn" disabled={!newFormFieldName.trim()}>Place on page</button>
+            <button
+              onClick={confirmAddFormField}
+              className="btn"
+              disabled={
+                newFormFieldKind === 'radio'
+                  ? !newFormRadioGroup.trim() || !newFormRadioOption.trim()
+                  : !newFormFieldName.trim()
+              }
+            >
+              Place on page
+            </button>
           </div>
         </Modal>
       )}
