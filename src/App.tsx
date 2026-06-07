@@ -689,6 +689,20 @@ function App() {
     if (action) await action();
   };
 
+  const dismissModals = useCallback(() => {
+    if (showUnsavedModal) {
+      void resolveUnsaved('cancel');
+      return;
+    }
+    setShowSaveAsModal(false);
+    setShowMarkdownSaveAsModal(false);
+    setShowOpenModal(false);
+    setShowBrowserModal(false);
+    setShowDeleteModal(false);
+    setShowSplitModal(false);
+    setShowInsertModal(false);
+  }, [showUnsavedModal]);
+
   const refreshAfterWorkingChange = async () => {
     const working = filePath;
     const count = await invoke<number>('get_pdf_page_count', { path: working });
@@ -765,6 +779,12 @@ function App() {
   const openDeleteModalRef = useRef(openDeleteModal);
   openDeleteModalRef.current = openDeleteModal;
   const handleOptimizePdfRef = useRef(async () => {});
+  const dismissModalsRef = useRef(dismissModals);
+  dismissModalsRef.current = dismissModals;
+  const anyModalOpenRef = useRef(false);
+  anyModalOpenRef.current =
+    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showOpenModal
+    || showBrowserModal || showDeleteModal || showSplitModal || showInsertModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -783,12 +803,18 @@ function App() {
         return;
       }
 
-      if (!hasOpenPdfRef.current) return;
-
-      if (e.key === 'Escape' && highlightModeRef.current) {
-        exitHighlightModeRef.current();
-        return;
+      if (e.key === 'Escape') {
+        if (highlightModeRef.current && hasOpenPdfRef.current) {
+          exitHighlightModeRef.current();
+          return;
+        }
+        if (anyModalOpenRef.current) {
+          dismissModalsRef.current();
+          return;
+        }
       }
+
+      if (!hasOpenPdfRef.current) return;
 
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const count = pageCountRef.current;
