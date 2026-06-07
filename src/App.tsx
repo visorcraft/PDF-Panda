@@ -759,6 +759,8 @@ function App() {
   const openPdfRef = useRef(openPdf);
   openPdfRef.current = openPdf;
   const handlePrintRef = useRef(async () => {});
+  const handleRotatePageRef = useRef(handleRotatePage);
+  handleRotatePageRef.current = handleRotatePage;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -831,6 +833,11 @@ function App() {
       if (key === 'p') {
         e.preventDefault();
         void handlePrintRef.current();
+        return;
+      }
+      if (key === 'r') {
+        e.preventDefault();
+        void handleRotatePageRef.current();
         return;
       }
       if (key === '=' || key === '+') {
@@ -1079,7 +1086,7 @@ function App() {
                 <button onClick={openSaveAs} className="btn" title="Save As… (Ctrl+Shift+S)">Save As…</button>
                 <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
-                <button onClick={handleRotatePage} className="btn">Rotate</button>
+                <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)">Rotate</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1}>Delete</button>
                 <button onClick={() => setShowInsertModal(true)} className="btn">Insert</button>
                 <button onClick={() => setShowSplitModal(true)} className="btn">Split</button>
