@@ -3832,7 +3832,14 @@ fn main() {
         }
     }
 
-    tauri::Builder::default()
+    #[cfg(feature = "wdio")]
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_wdio::init())
+        .plugin(tauri_plugin_wdio_webdriver::init());
+    #[cfg(not(feature = "wdio"))]
+    let builder = tauri::Builder::default();
+
+    builder
         .setup(|app| {
             // In a packaged build, PDFium ships under the app's resource
             // directory; record it so the loader can find it at runtime.
@@ -4622,6 +4629,20 @@ mod tests {
         discard_working_copy(baseline).unwrap();
         discard_working_copy(edited).unwrap();
         let _ = fs::remove_file(&path);
+    }
+
+    /// Writes `e2e/fixtures/sample.pdf` for the WebdriverIO smoke suite.
+    #[test]
+    #[ignore]
+    fn export_e2e_sample_pdf() {
+        let dest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../e2e/fixtures/sample.pdf");
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        let source = save(&mut build_pdf(1), "e2e_sample");
+        fs::copy(&source, &dest).unwrap();
+        let _ = fs::remove_file(source);
+        eprintln!("wrote {}", dest.display());
     }
 
     #[test]

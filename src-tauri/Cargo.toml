@@ -7,12 +7,18 @@ edition = "2021"
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+default = []
+wdio = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]
+
 [dependencies]
 tauri = { version = "2", features = ["default"] }
 serde = { version = "1.0", features = ["derive"] }
 pdfium-render = "0.9.1"
 lopdf = "0.41.0"
 image = "0.25"
+tauri-plugin-wdio = { version = "1", optional = true }
+tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 
 # Optimized release profile for fast, compact production builds. `panic` is left
 # as the default (unwind) so Tauri can still catch and surface command panics.

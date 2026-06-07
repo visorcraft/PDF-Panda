@@ -1,7 +1,8 @@
 # Manual End-to-End Checklist
 
-Automated UI/e2e tests are not yet wired for the Tauri WebView shell. Run this
-checklist before a release tag.
+Automated WebDriver smoke tests cover launch, open-via-path, and rotate/dirty
+state (`scripts/e2e-test.sh` / `npm run test:e2e`). Run this broader checklist
+before a release tag.
 
 ## Open & save
 - [ ] Open PDF via path entry and via built-in browser

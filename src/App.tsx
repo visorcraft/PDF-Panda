@@ -2130,14 +2130,14 @@ function App() {
         {/* Fixed header: toolbar + page/zoom controls stay put while the page scrolls */}
         <div className="header">
           <div className="toolbar">
-            <button onClick={openPdf} className="btn btn-active" title="Open PDF (Ctrl+O)">Open PDF</button>
+            <button onClick={openPdf} className="btn btn-active" title="Open PDF (Ctrl+O)" data-testid="open-pdf">Open PDF</button>
             {filePath && (
               <>
-                <button onClick={handleSave} className="btn" disabled={!isDirty} title="Save (Ctrl+S)">{isDirty ? 'Save •' : 'Save'}</button>
+                <button onClick={handleSave} className="btn" disabled={!isDirty} title="Save (Ctrl+S)" data-testid="save-pdf">{isDirty ? 'Save •' : 'Save'}</button>
                 <button onClick={openSaveAs} className="btn" title="Save As… (Ctrl+Shift+S)">Save As…</button>
                 <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
                 <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
-                <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)">Rotate</button>
+                <button onClick={handleRotatePage} className="btn" title="Rotate 90° (Ctrl+R)" data-testid="rotate-page">Rotate</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
@@ -2303,7 +2303,7 @@ function App() {
                   onBlur={commitPage}
                   aria-label="Current page"
                 />
-                <span className="muted">/ {pageCount}</span>
+                <span className="muted" data-testid="page-count">/ {pageCount}</span>
               </span>
               <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
 
@@ -2683,6 +2683,7 @@ function App() {
               onKeyDown={(e) => onFieldKeyDown(e, handleOpenPdfPath)}
               className="modal-input"
               placeholder="/path/to/document.pdf"
+              data-testid="open-pdf-path"
               autoFocus
             />
             <button onClick={() => openPdfBrowser('open')} className="btn">Browse…</button>
@@ -2700,7 +2701,7 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowOpenModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleOpenPdfPath} className="btn" disabled={!openFilePath.trim()}>Open</button>
+            <button onClick={handleOpenPdfPath} className="btn" disabled={!openFilePath.trim()} data-testid="open-pdf-submit">Open</button>
           </div>
         </Modal>
       )}

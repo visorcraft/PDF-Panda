@@ -6,7 +6,7 @@ A fast, cross-platform PDF editor built with **Rust** and **Tauri**. Open a docu
 
 ## Why PDF Panda?
 
-PDF Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools.
+PDF Panda targets the everyday PDF workflow: view, reorganize, lightly annotate, and export. Edits use a **working copy**, so your original file stays untouched until you save. Keyboard shortcuts cover navigation, zoom, undo/redo, and common tools. A WebdriverIO smoke suite covers launch, open-via-path, and edit flows (`scripts/e2e-test.sh`).
 
 Runs on **Linux**, **macOS**, and **Windows**.
 

@@ -122,14 +122,15 @@ and verified:
 | Branding | PDF Panda transparent icon set, favicons, taskbar/window icon | Visual inspection, transparency audit |
 
 **Quality gates (all green):**
-- `cargo test` — 112 unit tests (+ 1 ignored `render_real_pdf_smoke`) covering
+- `cargo test` — 112 unit tests (+ 2 ignored: `render_real_pdf_smoke`, `export_e2e_sample_pdf`) covering
   every lopdf-based command, working-copy/snapshot flows, page-edit validation,
   highlight CRUD, and Markdown file-write conflict handling.
 - `cargo clippy --all-targets` with `-D warnings` — clean.
 - `cargo fmt --check` — clean.
 - `tsc --noEmit` — clean.
 - `npx tauri build --no-bundle` — optimized release binary (LTO, `codegen-units=1`, stripped).
-- CI matrix runs all of the above on Linux, macOS, and Windows.
+- CI matrix runs all of the above on Linux, macOS, and Windows; Linux also runs
+  the WebdriverIO smoke suite (`scripts/e2e-test.sh`).
 
 **Known limitations (documented, not defects):**
 - Markdown extraction uses PDFium's text layer (handles CID/Type0 fonts), defaults
@@ -170,6 +171,7 @@ file blocks tagging or shipping `v0.2.0`.
 - [x] Insert edge cases — AcroForm merge on insert, cross-insert font dedup, conflicting field rename
 - [x] Form depth — checkbox, choice list, and radio group field creation (`add_checkbox_form_field` / `add_choice_form_field` / `add_radio_form_field`)
 - [x] Large-file undo deltas — binary delta snapshots for files &gt; 32 MB (`snapshot_pdf_entry` / `restore_history_entry` / `prune_history_entry`)
+- [x] Automated UI/e2e — WebdriverIO + embedded WebDriver smoke suite (`scripts/e2e-test.sh`, `e2e/specs/smoke.spec.ts`)
 
 ### vNext roadmap
 
@@ -177,7 +179,6 @@ file blocks tagging or shipping `v0.2.0`.
 - **OCR integration:** Optical character recognition for scanned documents.
 - **Security features:** Digital signatures.
 - **AI-powered tools:** Document summarization and intelligent extraction.
-- **Automated UI/e2e:** Headless/WebDriver suite for the Tauri WebView shell.
 - **Markdown depth:** OCR and tagged-PDF semantics.
 - **File dialogs:** native open/save on Wayland/WebKitGTK when portal path is stable.
 - **Signing automation:** CI release signing (credentials required; see `docs/SIGNING.md`).
