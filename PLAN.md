@@ -152,8 +152,8 @@ and verified:
   Wayland/WebKitGTK target (in-app path + browser used); revisit when the desktop
   portal path is stable.
 - **Annotations:** rectangle highlights only — no notes, freehand, or other types.
-- **Packaging / distribution:** AppImage needs `appimagetool`; no signed/notarized
-  macOS or Windows installers yet.
+- **Packaging / distribution:** AppImage via `scripts/build-appimage.sh` (needs
+  `appimagetool`); no signed/notarized macOS or Windows installers yet.
 - **Testing:** save, undo/redo snapshot restore, and insert flows have Rust unit
   tests; no automated UI/e2e coverage yet.
 
