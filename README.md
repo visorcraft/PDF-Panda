@@ -107,6 +107,20 @@ then the system library.
 
 > **Note:** distro packages such as `libdeepin-pdfium` expose a *different* C++ API and are **not** compatible.
 
+### Tesseract OCR (optional, for scans)
+
+Markdown export can OCR scanned pages, sparse-text pages, and embedded/form images when [Tesseract](https://github.com/tesseract-ocr/tesseract) is installed.
+
+| Platform | Typical install |
+| --- | --- |
+| Linux | `tesseract` + `tesseract-data-eng` (or your distro’s language packs) |
+| macOS | `brew install tesseract` |
+| Windows | [UB Mannheim builds](https://github.com/UB-Mannheim/tesseract/wiki) |
+
+**Markdown view (Ctrl/Cmd+Shift+M)** runs the full save pipeline: page PNGs and image assets land in `<md-stem>_assets/`, with OCR blocks appended where Tesseract is available. Without Tesseract you still get PDFium text and image assets, plus install hints on scanned/sparse pages.
+
+The `convert_pdf_to_markdown` API is text/heuristics only (no assets, no OCR) — the UI does not use it.
+
 ### Run in development
 
 ```sh
@@ -174,8 +188,10 @@ macOS/Windows **package** signing via repository secrets — see
 | Variable | Purpose |
 | --- | --- |
 | `PDFIUM_LIB_PATH` | Override path to the PDFium shared library |
-| `PDF_PANDA_OCR_LANG` | Tesseract language code (default `eng`) |
-| `TESSERACT_CMD` | Path to the `tesseract` executable |
+| `PDF_PANDA_OCR_LANG` | Tesseract language(s), e.g. `eng`, `deu`, or `eng+deu` (default `eng`) |
+| `TESSERACT_CMD` | Path to the `tesseract` executable when not on `PATH` |
+| `PDF_PANDA_TESSDATA_PREFIX` / `TESSDATA_PREFIX` | Directory containing `.traineddata` files |
+| `PDF_PANDA_OCR_PSM` | Page segmentation mode 0–13 (default `1`, auto page + OSD) |
 | `PDF_PANDA_NATIVE_DIALOGS` | `1` = enable native file dialogs on Linux Wayland |
 | `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | `1` = in-app path entry only (all platforms) |
 | `WEBKIT_DISABLE_DMABUF_RENDERER` | `1` = disable WebKitGTK DMABUF (set automatically on Linux when unset) |

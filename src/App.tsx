@@ -91,6 +91,18 @@ interface MarkdownSaveResult {
   markdownPath: string;
   written: boolean;
   conflict: boolean;
+  ocrAvailable: boolean;
+  ocrLanguage: string;
+  ocrTextBlocks: number;
+  ocrMissingHints: number;
+}
+
+interface OcrStatus {
+  available: boolean;
+  binary: string | null;
+  language: string;
+  tessdataPrefix: string | null;
+  pageSegmentationMode: number;
 }
 
 interface PdfTextSearchMatch {
@@ -399,6 +411,7 @@ function App() {
   const [markdownPath, setMarkdownPath] = useState('');
   const [pdfRevision, setPdfRevision] = useState(0);
   const [markdownRevision, setMarkdownRevision] = useState<number | null>(null);
+  const [ocrStatus, setOcrStatus] = useState<OcrStatus | null>(null);
 
   // Editable page/zoom field values (kept in sync with the canonical state).
   const [pageInput, setPageInput] = useState('1');
@@ -690,6 +703,9 @@ function App() {
     void invoke<boolean>('native_file_dialogs_enabled')
       .then(setNativeDialogs)
       .catch(() => setNativeDialogs(false));
+    void invoke<OcrStatus>('ocr_status')
+      .then(setOcrStatus)
+      .catch(() => setOcrStatus(null));
   }, []);
 
   const refreshUndoRedoState = useCallback(() => {
@@ -5296,7 +5312,15 @@ function App() {
     setMarkdownPath(result.markdownPath);
     setMarkdownRevision(pdfRevision);
     if (switchToMarkdown) setViewMode('markdown');
-    showToast(result.written ? `Markdown saved to ${result.markdownPath}` : 'Markdown file is already up to date');
+    const ocrNote =
+      result.ocrMissingHints > 0
+        ? ' Install Tesseract for OCR on scanned pages.'
+        : result.ocrTextBlocks > 0
+          ? ` OCR: ${result.ocrTextBlocks} block(s).`
+          : '';
+    showToast(
+      (result.written ? `Markdown saved to ${result.markdownPath}` : 'Markdown file is already up to date') + ocrNote,
+    );
   };
 
   const handleMarkdownView = async () => {
@@ -6209,6 +6233,13 @@ function App() {
             <div className="markdown-viewer">
               <div className="markdown-header">
                 <span>Markdown</span>
+                {ocrStatus && (
+                  <span className={`markdown-ocr-badge ${ocrStatus.available ? 'ready' : 'missing'}`}>
+                    {ocrStatus.available
+                      ? `OCR: ${ocrStatus.language} (PSM ${ocrStatus.pageSegmentationMode})`
+                      : 'OCR off — install Tesseract for scans'}
+                  </span>
+                )}
                 {markdownPath && <span className="markdown-path">{markdownPath}</span>}
                 <button type="button" onClick={openMarkdownSaveAs} className="btn btn-secondary">Save As…</button>
               </div>

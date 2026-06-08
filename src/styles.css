@@ -670,6 +670,24 @@ body {
   font-weight: 600;
 }
 
+.markdown-ocr-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.markdown-ocr-badge.ready {
+  color: #1b5e20;
+  background: #e8f5e9;
+}
+
+.markdown-ocr-badge.missing {
+  color: #8a4b00;
+  background: #fff3e0;
+}
+
 .markdown-path {
   flex: 1;
   min-width: 0;

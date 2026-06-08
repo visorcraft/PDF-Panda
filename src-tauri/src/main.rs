@@ -439,6 +439,18 @@ fn ocr_language() -> String {
     std::env::var("PDF_PANDA_OCR_LANG").unwrap_or_else(|_| "eng".into())
 }
 
+fn tessdata_prefix() -> Option<String> {
+    std::env::var("PDF_PANDA_TESSDATA_PREFIX").ok().or_else(|| std::env::var("TESSDATA_PREFIX").ok())
+}
+
+fn ocr_page_segmentation_mode() -> u8 {
+    std::env::var("PDF_PANDA_OCR_PSM")
+        .ok()
+        .and_then(|value| value.parse::<u8>().ok())
+        .filter(|mode| *mode <= 13)
+        .unwrap_or(1)
+}
+
 fn resolve_tesseract() -> Option<PathBuf> {
     if let Ok(cmd) = std::env::var("TESSERACT_CMD") {
         let path = PathBuf::from(cmd);
@@ -451,8 +463,33 @@ fn resolve_tesseract() -> Option<PathBuf> {
         .and_then(|paths| std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|candidate| candidate.is_file()))
 }
 
-/// Run Tesseract on a PNG buffer. `Ok(None)` when Tesseract is not installed.
-fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OcrStatus {
+    available: bool,
+    binary: Option<String>,
+    language: String,
+    tessdata_prefix: Option<String>,
+    page_segmentation_mode: u8,
+}
+
+#[derive(Default, Debug, Clone)]
+struct OcrExportStats {
+    available: bool,
+    language: String,
+    scanned_pages: u32,
+    sparse_supplements: u32,
+    embedded_image_blocks: u32,
+    embedded_form_blocks: u32,
+    text_blocks: u32,
+    missing_install_hints: u32,
+}
+
+fn ocr_missing_hint(context: &str) -> String {
+    format!("_{context} — install Tesseract OCR (`tesseract` on PATH or `TESSERACT_CMD`) and language data (`PDF_PANDA_OCR_LANG`, default `eng`)._\n\n")
+}
+
+fn run_tesseract_on_png(png: &[u8], fail_hard: bool) -> Result<Option<String>, String> {
     let tesseract = match resolve_tesseract() {
         Some(path) => path,
         None => return Ok(None),
@@ -467,19 +504,29 @@ fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
     let image_path = tmp_dir.join("page.png");
     fs::write(&image_path, png).map_err(|e| e.to_string())?;
 
-    let output = Command::new(&tesseract)
+    let mut command = Command::new(&tesseract);
+    command
         .arg(&image_path)
         .arg("stdout")
         .arg("-l")
         .arg(ocr_language())
-        .output()
-        .map_err(|e| format!("failed to run {}: {e}", tesseract.display()))?;
+        .arg("--oem")
+        .arg("1")
+        .arg("--psm")
+        .arg(ocr_page_segmentation_mode().to_string());
+    if let Some(prefix) = tessdata_prefix() {
+        command.env("TESSDATA_PREFIX", prefix);
+    }
 
+    let output = command.output().map_err(|e| format!("failed to run {}: {e}", tesseract.display()))?;
     let _ = fs::remove_dir_all(&tmp_dir);
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("tesseract failed: {stderr}"));
+        if fail_hard {
+            return Err(format!("tesseract failed: {stderr}"));
+        }
+        return Ok(None);
     }
 
     let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -490,9 +537,31 @@ fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
     }
 }
 
+/// Run Tesseract on a PNG buffer. `Ok(None)` when Tesseract is not installed.
+/// Returns `Err` when Tesseract is installed but fails (missing language pack, etc.).
+fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
+    run_tesseract_on_png(png, true)
+}
+
+/// Lenient OCR for Markdown save: never fails the export when Tesseract errors.
+fn try_ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
+    run_tesseract_on_png(png, false)
+}
+
 #[tauri::command]
 fn ocr_available() -> bool {
     resolve_tesseract().is_some()
+}
+
+#[tauri::command]
+fn ocr_status() -> OcrStatus {
+    OcrStatus {
+        available: resolve_tesseract().is_some(),
+        binary: resolve_tesseract().map(|path| path.to_string_lossy().into_owned()),
+        language: ocr_language(),
+        tessdata_prefix: tessdata_prefix(),
+        page_segmentation_mode: ocr_page_segmentation_mode(),
+    }
 }
 
 /// OCR a single rendered PDF page (for scanned documents without a text layer).
@@ -7185,7 +7254,7 @@ fn page_needs_ocr_supplement(lines: &[MarkdownTextLine], plain_fallback: &str) -
     page_visible_char_count(lines, plain_fallback) < PAGE_OCR_MIN_CHARS
 }
 
-fn ocr_image_bytes(bytes: &[u8], ext: &str) -> Result<Option<String>, String> {
+fn try_ocr_image_bytes(bytes: &[u8], ext: &str) -> Result<Option<String>, String> {
     let png = match ext {
         "png" => bytes.to_vec(),
         "jpg" | "jpeg" => {
@@ -7196,17 +7265,27 @@ fn ocr_image_bytes(bytes: &[u8], ext: &str) -> Result<Option<String>, String> {
         }
         _ => return Ok(None),
     };
-    ocr_png_bytes(&png)
+    try_ocr_png_bytes(&png)
 }
 
-fn append_page_ocr_supplement(markdown: &mut String, path: &Path, page_index: u32) -> Result<(), String> {
+fn append_page_ocr_supplement(
+    markdown: &mut String,
+    path: &Path,
+    page_index: u32,
+    stats: &mut OcrExportStats,
+) -> Result<(), String> {
     let png = render_page_png(path, page_index, OCR_RENDER_W, OCR_RENDER_H)?;
-    if let Some(text) = ocr_png_bytes(&png)? {
+    stats.sparse_supplements += 1;
+    if let Some(text) = try_ocr_png_bytes(&png)? {
         let trimmed = text.trim();
         if !trimmed.is_empty() {
             markdown.push_str("#### OCR (page render)\n\n");
             markdown.push_str(&plain_text_to_markdown(trimmed));
+            stats.text_blocks += 1;
         }
+    } else if resolve_tesseract().is_none() {
+        markdown.push_str(&ocr_missing_hint("Sparse page"));
+        stats.missing_install_hints += 1;
     }
     Ok(())
 }
@@ -7216,9 +7295,11 @@ fn append_scanned_page_markdown(
     path: &Path,
     page_index: u32,
     image_sink: Option<&MarkdownImageSink<'_>>,
+    stats: &mut OcrExportStats,
 ) -> Result<(), String> {
     let png = render_page_png(path, page_index, OCR_RENDER_W, OCR_RENDER_H)?;
-    let ocr_text = ocr_png_bytes(&png)?;
+    let ocr_text = try_ocr_png_bytes(&png)?;
+    stats.scanned_pages += 1;
 
     if let Some(sink) = image_sink {
         fs::create_dir_all(sink.assets_dir).map_err(|e| e.to_string())?;
@@ -7229,8 +7310,10 @@ fn append_scanned_page_markdown(
 
     if let Some(text) = ocr_text {
         markdown.push_str(&plain_text_to_markdown(&text));
-    } else {
-        markdown.push_str("_(Scanned page — install Tesseract OCR for text extraction.)_\n\n");
+        stats.text_blocks += 1;
+    } else if resolve_tesseract().is_none() {
+        markdown.push_str(&ocr_missing_hint("Scanned page"));
+        stats.missing_install_hints += 1;
     }
     Ok(())
 }
@@ -7981,6 +8064,7 @@ fn append_page_embedded_images(
     page_number: u32,
     sink: &MarkdownImageSink<'_>,
     image_seq: &mut u32,
+    stats: &mut OcrExportStats,
 ) -> Result<String, String> {
     fs::create_dir_all(sink.assets_dir).map_err(|e| e.to_string())?;
     let page_id = match doc.get_pages().get(&page_number) {
@@ -8017,17 +8101,19 @@ fn append_page_embedded_images(
             {
                 *image_seq += 1;
                 let file_name = format!("page-{page_number}-form-{image_seq}.png");
-                let ocr_text = ocr_png_bytes(&png)?;
+                let ocr_text = try_ocr_png_bytes(&png)?;
                 fs::write(sink.assets_dir.join(&file_name), &png).map_err(|e| e.to_string())?;
                 block.push_str(&format!(
                     "![Page {page_number} embedded form (vector chart)]({}/{file_name})\n\n",
                     sink.rel_prefix
                 ));
+                stats.embedded_form_blocks += 1;
                 if let Some(text) = ocr_text {
                     let trimmed = text.trim();
                     if !trimmed.is_empty() {
                         block.push_str("#### OCR (embedded form)\n\n");
                         block.push_str(&plain_text_to_markdown(trimmed));
+                        stats.text_blocks += 1;
                     }
                 }
             }
@@ -8044,23 +8130,34 @@ fn append_page_embedded_images(
         };
         *image_seq += 1;
         let file_name = format!("page-{page_number}-img-{image_seq}.{ext}");
-        let ocr_text = ocr_image_bytes(&bytes, ext)?;
+        let ocr_text = try_ocr_image_bytes(&bytes, ext)?;
         fs::write(sink.assets_dir.join(&file_name), &bytes).map_err(|e| e.to_string())?;
         block.push_str(&format!("![Page {page_number} embedded image]({}/{file_name})\n\n", sink.rel_prefix));
+        stats.embedded_image_blocks += 1;
         if let Some(text) = ocr_text {
             let trimmed = text.trim();
             if !trimmed.is_empty() {
                 block.push_str("#### OCR (embedded image)\n\n");
                 block.push_str(&plain_text_to_markdown(trimmed));
+                stats.text_blocks += 1;
             }
         }
     }
     Ok(block)
 }
 
-fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> Result<String, String> {
+fn pdf_to_markdown(
+    path: &Path,
+    image_sink: Option<&MarkdownImageSink<'_>>,
+    stats: Option<&mut OcrExportStats>,
+) -> Result<String, String> {
     let lopdf_doc = Document::load(path).map_err(|e| e.to_string())?;
     let tagged_pages = tagged_markdown_by_page(&lopdf_doc);
+
+    let mut scratch_stats = OcrExportStats::default();
+    let stats = if let Some(stats) = stats { stats } else { &mut scratch_stats };
+    stats.available = resolve_tesseract().is_some();
+    stats.language = ocr_language();
 
     // Use PDFium's text layer: it decodes font encodings (including CID/Type0
     // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
@@ -8086,24 +8183,30 @@ fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> R
                 let all_text = text.all();
                 let trimmed = all_text.trim();
                 if trimmed.is_empty() {
-                    append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink)?;
+                    append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink, stats)?;
                 } else {
                     markdown.push_str(&plain_text_to_markdown(&autolink_inline_text(trimmed)));
                     if image_sink.is_some() && page_needs_ocr_supplement(&[], trimmed) {
-                        append_page_ocr_supplement(&mut markdown, path, index as u32)?;
+                        append_page_ocr_supplement(&mut markdown, path, index as u32, stats)?;
                     }
                 }
             } else {
                 markdown.push_str(&format_markdown_lines(&lines, &links));
                 if image_sink.is_some() && page_needs_ocr_supplement(&lines, "") {
-                    append_page_ocr_supplement(&mut markdown, path, index as u32)?;
+                    append_page_ocr_supplement(&mut markdown, path, index as u32, stats)?;
                 }
             }
         }
 
         if let Some(sink) = image_sink {
             let mut image_seq = 0u32;
-            markdown.push_str(&append_page_embedded_images(&lopdf_doc, (index + 1) as u32, sink, &mut image_seq)?);
+            markdown.push_str(&append_page_embedded_images(
+                &lopdf_doc,
+                (index + 1) as u32,
+                sink,
+                &mut image_seq,
+                stats,
+            )?);
         }
     }
     Ok(markdown)
@@ -8608,9 +8711,11 @@ fn native_file_dialogs_enabled() -> bool {
     )
 }
 
+/// Text/heuristic Markdown preview without assets or OCR (API/tests only).
+/// The UI Markdown view uses `save_pdf_markdown`, which runs the full export pipeline.
 #[tauri::command]
 fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
-    pdf_to_markdown(&PathBuf::from(path), None)
+    pdf_to_markdown(&PathBuf::from(path), None, None)
 }
 
 #[derive(serde::Serialize)]
@@ -8620,6 +8725,10 @@ struct MarkdownSaveResult {
     markdown_path: String,
     written: bool,
     conflict: bool,
+    ocr_available: bool,
+    ocr_language: String,
+    ocr_text_blocks: u32,
+    ocr_missing_hints: u32,
 }
 
 fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) -> Result<MarkdownSaveResult, String> {
@@ -8631,6 +8740,10 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
                 markdown_path: markdown_path.to_string_lossy().to_string(),
                 written: false,
                 conflict: false,
+                ocr_available: false,
+                ocr_language: ocr_language(),
+                ocr_text_blocks: 0,
+                ocr_missing_hints: 0,
             });
         }
         if !overwrite {
@@ -8639,6 +8752,10 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
                 markdown_path: markdown_path.to_string_lossy().to_string(),
                 written: false,
                 conflict: true,
+                ocr_available: false,
+                ocr_language: ocr_language(),
+                ocr_text_blocks: 0,
+                ocr_missing_hints: 0,
             });
         }
     }
@@ -8649,7 +8766,30 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
         markdown_path: markdown_path.to_string_lossy().to_string(),
         written: true,
         conflict: false,
+        ocr_available: false,
+        ocr_language: ocr_language(),
+        ocr_text_blocks: 0,
+        ocr_missing_hints: 0,
     })
+}
+
+fn markdown_save_result(
+    markdown: String,
+    markdown_path: &Path,
+    written: bool,
+    conflict: bool,
+    stats: &OcrExportStats,
+) -> MarkdownSaveResult {
+    MarkdownSaveResult {
+        markdown,
+        markdown_path: markdown_path.to_string_lossy().into_owned(),
+        written,
+        conflict,
+        ocr_available: stats.available,
+        ocr_language: stats.language.clone(),
+        ocr_text_blocks: stats.text_blocks,
+        ocr_missing_hints: stats.missing_install_hints,
+    }
 }
 
 #[tauri::command]
@@ -8662,8 +8802,10 @@ fn save_pdf_markdown(path: String, overwrite: bool, output_path: Option<String>)
         .map(|parent| parent.join(&assets_folder))
         .unwrap_or_else(|| PathBuf::from(&assets_folder));
     let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: &assets_folder };
-    let markdown = pdf_to_markdown(&pdf_path, Some(&sink))?;
-    write_markdown_file(&markdown_path, &markdown, overwrite)
+    let mut stats = OcrExportStats::default();
+    let markdown = pdf_to_markdown(&pdf_path, Some(&sink), Some(&mut stats))?;
+    let file_result = write_markdown_file(&markdown_path, &markdown, overwrite)?;
+    Ok(markdown_save_result(file_result.markdown, &markdown_path, file_result.written, file_result.conflict, &stats))
 }
 
 #[tauri::command]
@@ -12314,6 +12456,7 @@ fn main() {
             summarize_pdf,
             save_pdf_summary,
             ocr_available,
+            ocr_status,
             ocr_pdf_page,
             optimize_pdf,
             pdf_is_encrypted,
@@ -31400,12 +31543,38 @@ mod tests {
     }
 
     #[test]
-    fn ocr_image_bytes_without_tesseract_returns_none() {
+    fn try_ocr_image_bytes_without_tesseract_returns_none() {
         if resolve_tesseract().is_some() {
             return;
         }
-        let result = ocr_image_bytes(&[0x89, 0x50, 0x4e, 0x47], "png").unwrap();
+        let result = try_ocr_image_bytes(&[0x89, 0x50, 0x4e, 0x47], "png").unwrap();
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn ocr_status_reports_language_and_psm() {
+        let status = ocr_status();
+        assert_eq!(status.available, resolve_tesseract().is_some());
+        assert_eq!(status.language, ocr_language());
+        assert_eq!(status.page_segmentation_mode, ocr_page_segmentation_mode());
+    }
+
+    #[test]
+    fn try_ocr_png_bytes_is_lenient_when_tesseract_errors() {
+        if resolve_tesseract().is_none() {
+            return;
+        }
+        let prev_lang = std::env::var_os("PDF_PANDA_OCR_LANG");
+        std::env::set_var("PDF_PANDA_OCR_LANG", "zzzinvalid_lang_pack");
+        let strict = ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
+        let lenient = try_ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
+        if let Some(lang) = prev_lang {
+            std::env::set_var("PDF_PANDA_OCR_LANG", lang);
+        } else {
+            std::env::remove_var("PDF_PANDA_OCR_LANG");
+        }
+        assert!(strict.is_err());
+        assert_eq!(lenient.unwrap(), None);
     }
 
     #[test]
@@ -31433,7 +31602,8 @@ mod tests {
         let _ = fs::remove_dir_all(&assets_dir);
         let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: "doc_assets" };
         let mut seq = 0u32;
-        let block = append_page_embedded_images(&doc, 1, &sink, &mut seq).unwrap();
+        let mut stats = OcrExportStats::default();
+        let block = append_page_embedded_images(&doc, 1, &sink, &mut seq, &mut stats).unwrap();
 
         assert_eq!(seq, 1);
         assert!(block.contains("embedded image"));
@@ -31627,7 +31797,8 @@ mod tests {
         let _ = fs::remove_dir_all(&assets_dir);
         let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: "doc_assets" };
         let mut seq = 0u32;
-        let block = append_page_embedded_images(&doc, 1, &sink, &mut seq).unwrap();
+        let mut stats = OcrExportStats::default();
+        let block = append_page_embedded_images(&doc, 1, &sink, &mut seq, &mut stats).unwrap();
         assert_eq!(seq, 1);
         assert!(block.contains("vector chart"));
         let png_path = assets_dir.join("page-1-form-1.png");
