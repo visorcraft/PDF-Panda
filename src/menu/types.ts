@@ -179,6 +179,8 @@ export interface AppMenuContext {
   toggleFormsPanel: () => void;
   openTesseractGuide: () => void;
   openShortcutsHelp: () => void;
+  openLicenses: () => void;
+  openCredits: () => void;
   openCommandPalette: () => void;
 }
 

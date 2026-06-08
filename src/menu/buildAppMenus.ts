@@ -316,6 +316,8 @@ export function buildAppMenus(ctx: AppMenuContext): AppMenus {
         ? []
         : [act('tesseract', 'Install Tesseract (scan OCR)…', ctx.openTesseractGuide)]),
       act('shortcuts', 'Keyboard shortcuts…', ctx.openShortcutsHelp),
+      act('licenses', 'Licenses…', ctx.openLicenses),
+      act('credits', 'Credits…', ctx.openCredits),
     ],
   };
 

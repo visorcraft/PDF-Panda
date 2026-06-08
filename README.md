@@ -210,6 +210,9 @@ Contributions are welcome — issues, fixes, and features alike.
 
 - Match the existing style, and keep commits focused.
 - Run the quality gates before you push: `scripts/smoke-test.sh` (Rust unit tests, `clippy`, `fmt`, `tsc`) and, on Linux, `npm run test:e2e`.
+- **Help → Licenses** shows bundled GPL, third-party (Rust + shipped npm), acknowledgment, and runtime license texts offline — searchable with line numbers, wrap, and copy.
+- **Help → Credits** lists every Cargo crate, shipped npm package, and runtime component with filter, license badges, and project links.
+- Regenerate license supplements with `scripts/generate-credits.sh` after Rust or npm dependency changes.
 - PDF Panda is **GPL v3** — derivative works must stay open source under compatible terms.
 
 ---

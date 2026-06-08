@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CreditsModal } from '../credits/CreditsModal';
+import { LicensesModal } from '../licenses/LicensesModal';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
 import { KEYBOARD_SHORTCUTS } from './buildAppMenus';
 
@@ -8,8 +10,12 @@ type MenuChromeProps = {
   allActions: FlatMenuAction[];
   showCommandPalette: boolean;
   showShortcutsHelp: boolean;
+  showLicenses: boolean;
+  showCredits: boolean;
   onCloseCommandPalette: () => void;
   onCloseShortcutsHelp: () => void;
+  onCloseLicenses: () => void;
+  onCloseCredits: () => void;
   modeExtras?: React.ReactNode;
 };
 
@@ -257,8 +263,12 @@ export function MenuChrome({
   allActions,
   showCommandPalette,
   showShortcutsHelp,
+  showLicenses,
+  showCredits,
   onCloseCommandPalette,
   onCloseShortcutsHelp,
+  onCloseLicenses,
+  onCloseCredits,
   modeExtras,
 }: MenuChromeProps) {
   return (
@@ -274,6 +284,8 @@ export function MenuChrome({
       </div>
       {showCommandPalette && <CommandPalette actions={allActions} onClose={onCloseCommandPalette} />}
       {showShortcutsHelp && <ShortcutsModal onClose={onCloseShortcutsHelp} />}
+      {showLicenses && <LicensesModal onClose={onCloseLicenses} />}
+      {showCredits && <CreditsModal onClose={onCloseCredits} />}
     </>
   );
 }

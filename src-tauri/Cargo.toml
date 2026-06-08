@@ -3,6 +3,7 @@ name = "pdf-panda"
 version = "0.2.0"
 description = "A high-performance PDF editor"
 edition = "2021"
+license = "GPL-3.0-only"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -14,6 +15,7 @@ wdio = ["dep:tauri-plugin-wdio", "dep:tauri-plugin-wdio-webdriver"]
 [dependencies]
 tauri = { version = "2", features = ["default"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 pdfium-render = "0.9.1"
 lopdf = "0.41.0"
 image = "0.25"

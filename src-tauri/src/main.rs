@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod licenses;
+
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -12624,6 +12626,10 @@ fn main() {
             save_pdf_summary,
             ocr_available,
             tesseract_install_guide,
+            licenses::license_documents,
+            licenses::credits_catalog,
+            licenses::runtime_license_text,
+            licenses::open_external_url,
             ocr_status,
             ocr_pdf_page,
             optimize_pdf,
