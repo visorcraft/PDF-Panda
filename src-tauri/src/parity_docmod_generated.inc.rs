@@ -2574,3 +2574,3083 @@ fn export_mod4_3_pages_tga(path: String, output_dir: String) -> Result<Vec<Strin
 fn export_mod4_3_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
     parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 4, 3, "ico", render_page_ico)
 }
+
+
+/// Document-wide mod-5 remainder 0 — rotate_cw
+#[tauri::command]
+fn rotate_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 0, 90)
+}
+
+
+/// Document-wide mod-5 remainder 0 — rotate_ccw
+#[tauri::command]
+fn rotate_mod5_0_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 0, -90)
+}
+
+
+/// Document-wide mod-5 remainder 0 — rotate_180
+#[tauri::command]
+fn rotate_180_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 0, 180)
+}
+
+
+/// Document-wide mod-5 remainder 0 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — delete
+#[tauri::command]
+fn delete_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — keep
+#[tauri::command]
+fn keep_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — dup_append
+#[tauri::command]
+fn duplicate_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — flatten
+#[tauri::command]
+fn flatten_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — crop
+#[tauri::command]
+fn crop_mod5_0_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 5, 0, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 0 — expand
+#[tauri::command]
+fn expand_mod5_0_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 5, 0, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 0 — shrink
+#[tauri::command]
+fn shrink_mod5_0_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 5, 0, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 0 — reverse
+#[tauri::command]
+fn reverse_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — move_start
+#[tauri::command]
+fn move_mod5_0_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — move_end
+#[tauri::command]
+fn move_mod5_0_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — clear_crop
+#[tauri::command]
+fn clear_crop_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — dup_before
+#[tauri::command]
+fn duplicate_mod5_0_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — sort_rot
+#[tauri::command]
+fn sort_mod5_0_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 5, 0, descending)
+}
+
+
+/// Document-wide mod-5 remainder 0 — sort_size
+#[tauri::command]
+fn sort_mod5_0_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 5, 0, descending)
+}
+
+
+/// Document-wide mod-5 remainder 0 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod5_0_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 5, 0, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 0 — watermark
+#[tauri::command]
+fn add_text_watermark_mod5_0_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 5, 0, &text)
+}
+
+
+/// Document-wide mod-5 remainder 0 — header
+#[tauri::command]
+fn add_page_header_mod5_0_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 5, 0, &text)
+}
+
+
+/// Document-wide mod-5 remainder 0 — footer
+#[tauri::command]
+fn add_page_footer_mod5_0_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 5, 0, &text)
+}
+
+
+/// Document-wide mod-5 remainder 0 — border
+#[tauri::command]
+fn add_page_border_mod5_0_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 5, 0, inset)
+}
+
+
+/// Document-wide mod-5 remainder 0 — bookmark
+#[tauri::command]
+fn bookmark_mod5_0_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 5, 0, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 0 — page_size
+#[tauri::command]
+fn set_page_size_mod5_0_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 5, 0, &preset)
+}
+
+
+/// Document-wide mod-5 remainder 0 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 0, false)
+}
+
+
+/// Document-wide mod-5 remainder 0 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod5_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 0, true)
+}
+
+
+/// Document-wide mod-5 remainder 0 — dup_to_end
+#[tauri::command]
+fn duplicate_mod5_0_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — dup_to_start
+#[tauri::command]
+fn duplicate_mod5_0_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — extract
+#[tauri::command]
+fn extract_mod5_0_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_pdf
+#[tauri::command]
+fn export_mod5_0_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_png
+#[tauri::command]
+fn export_mod5_0_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "png", render_page_png)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_jpeg
+#[tauri::command]
+fn export_mod5_0_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_webp
+#[tauri::command]
+fn export_mod5_0_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_bmp
+#[tauri::command]
+fn export_mod5_0_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_tiff
+#[tauri::command]
+fn export_mod5_0_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_gif
+#[tauri::command]
+fn export_mod5_0_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_ppm
+#[tauri::command]
+fn export_mod5_0_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_tga
+#[tauri::command]
+fn export_mod5_0_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-5 remainder 0 — export_ico
+#[tauri::command]
+fn export_mod5_0_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 0, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-5 remainder 1 — rotate_cw
+#[tauri::command]
+fn rotate_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 1, 90)
+}
+
+
+/// Document-wide mod-5 remainder 1 — rotate_ccw
+#[tauri::command]
+fn rotate_mod5_1_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 1, -90)
+}
+
+
+/// Document-wide mod-5 remainder 1 — rotate_180
+#[tauri::command]
+fn rotate_180_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 1, 180)
+}
+
+
+/// Document-wide mod-5 remainder 1 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — delete
+#[tauri::command]
+fn delete_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — keep
+#[tauri::command]
+fn keep_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — dup_append
+#[tauri::command]
+fn duplicate_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — flatten
+#[tauri::command]
+fn flatten_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — crop
+#[tauri::command]
+fn crop_mod5_1_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 5, 1, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 1 — expand
+#[tauri::command]
+fn expand_mod5_1_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 5, 1, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 1 — shrink
+#[tauri::command]
+fn shrink_mod5_1_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 5, 1, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 1 — reverse
+#[tauri::command]
+fn reverse_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — move_start
+#[tauri::command]
+fn move_mod5_1_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — move_end
+#[tauri::command]
+fn move_mod5_1_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — clear_crop
+#[tauri::command]
+fn clear_crop_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — dup_before
+#[tauri::command]
+fn duplicate_mod5_1_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — sort_rot
+#[tauri::command]
+fn sort_mod5_1_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 5, 1, descending)
+}
+
+
+/// Document-wide mod-5 remainder 1 — sort_size
+#[tauri::command]
+fn sort_mod5_1_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 5, 1, descending)
+}
+
+
+/// Document-wide mod-5 remainder 1 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod5_1_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 5, 1, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 1 — watermark
+#[tauri::command]
+fn add_text_watermark_mod5_1_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 5, 1, &text)
+}
+
+
+/// Document-wide mod-5 remainder 1 — header
+#[tauri::command]
+fn add_page_header_mod5_1_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 5, 1, &text)
+}
+
+
+/// Document-wide mod-5 remainder 1 — footer
+#[tauri::command]
+fn add_page_footer_mod5_1_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 5, 1, &text)
+}
+
+
+/// Document-wide mod-5 remainder 1 — border
+#[tauri::command]
+fn add_page_border_mod5_1_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 5, 1, inset)
+}
+
+
+/// Document-wide mod-5 remainder 1 — bookmark
+#[tauri::command]
+fn bookmark_mod5_1_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 5, 1, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 1 — page_size
+#[tauri::command]
+fn set_page_size_mod5_1_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 5, 1, &preset)
+}
+
+
+/// Document-wide mod-5 remainder 1 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 1, false)
+}
+
+
+/// Document-wide mod-5 remainder 1 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod5_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 1, true)
+}
+
+
+/// Document-wide mod-5 remainder 1 — dup_to_end
+#[tauri::command]
+fn duplicate_mod5_1_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — dup_to_start
+#[tauri::command]
+fn duplicate_mod5_1_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — extract
+#[tauri::command]
+fn extract_mod5_1_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_pdf
+#[tauri::command]
+fn export_mod5_1_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_png
+#[tauri::command]
+fn export_mod5_1_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "png", render_page_png)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_jpeg
+#[tauri::command]
+fn export_mod5_1_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_webp
+#[tauri::command]
+fn export_mod5_1_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_bmp
+#[tauri::command]
+fn export_mod5_1_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_tiff
+#[tauri::command]
+fn export_mod5_1_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_gif
+#[tauri::command]
+fn export_mod5_1_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_ppm
+#[tauri::command]
+fn export_mod5_1_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_tga
+#[tauri::command]
+fn export_mod5_1_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-5 remainder 1 — export_ico
+#[tauri::command]
+fn export_mod5_1_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 1, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-5 remainder 2 — rotate_cw
+#[tauri::command]
+fn rotate_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 2, 90)
+}
+
+
+/// Document-wide mod-5 remainder 2 — rotate_ccw
+#[tauri::command]
+fn rotate_mod5_2_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 2, -90)
+}
+
+
+/// Document-wide mod-5 remainder 2 — rotate_180
+#[tauri::command]
+fn rotate_180_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 2, 180)
+}
+
+
+/// Document-wide mod-5 remainder 2 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — delete
+#[tauri::command]
+fn delete_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — keep
+#[tauri::command]
+fn keep_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — dup_append
+#[tauri::command]
+fn duplicate_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — flatten
+#[tauri::command]
+fn flatten_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — crop
+#[tauri::command]
+fn crop_mod5_2_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 5, 2, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 2 — expand
+#[tauri::command]
+fn expand_mod5_2_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 5, 2, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 2 — shrink
+#[tauri::command]
+fn shrink_mod5_2_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 5, 2, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 2 — reverse
+#[tauri::command]
+fn reverse_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — move_start
+#[tauri::command]
+fn move_mod5_2_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — move_end
+#[tauri::command]
+fn move_mod5_2_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — clear_crop
+#[tauri::command]
+fn clear_crop_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — dup_before
+#[tauri::command]
+fn duplicate_mod5_2_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — sort_rot
+#[tauri::command]
+fn sort_mod5_2_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 5, 2, descending)
+}
+
+
+/// Document-wide mod-5 remainder 2 — sort_size
+#[tauri::command]
+fn sort_mod5_2_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 5, 2, descending)
+}
+
+
+/// Document-wide mod-5 remainder 2 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod5_2_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 5, 2, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 2 — watermark
+#[tauri::command]
+fn add_text_watermark_mod5_2_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 5, 2, &text)
+}
+
+
+/// Document-wide mod-5 remainder 2 — header
+#[tauri::command]
+fn add_page_header_mod5_2_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 5, 2, &text)
+}
+
+
+/// Document-wide mod-5 remainder 2 — footer
+#[tauri::command]
+fn add_page_footer_mod5_2_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 5, 2, &text)
+}
+
+
+/// Document-wide mod-5 remainder 2 — border
+#[tauri::command]
+fn add_page_border_mod5_2_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 5, 2, inset)
+}
+
+
+/// Document-wide mod-5 remainder 2 — bookmark
+#[tauri::command]
+fn bookmark_mod5_2_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 5, 2, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 2 — page_size
+#[tauri::command]
+fn set_page_size_mod5_2_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 5, 2, &preset)
+}
+
+
+/// Document-wide mod-5 remainder 2 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 2, false)
+}
+
+
+/// Document-wide mod-5 remainder 2 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod5_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 2, true)
+}
+
+
+/// Document-wide mod-5 remainder 2 — dup_to_end
+#[tauri::command]
+fn duplicate_mod5_2_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — dup_to_start
+#[tauri::command]
+fn duplicate_mod5_2_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — extract
+#[tauri::command]
+fn extract_mod5_2_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_pdf
+#[tauri::command]
+fn export_mod5_2_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_png
+#[tauri::command]
+fn export_mod5_2_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "png", render_page_png)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_jpeg
+#[tauri::command]
+fn export_mod5_2_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_webp
+#[tauri::command]
+fn export_mod5_2_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_bmp
+#[tauri::command]
+fn export_mod5_2_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_tiff
+#[tauri::command]
+fn export_mod5_2_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_gif
+#[tauri::command]
+fn export_mod5_2_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_ppm
+#[tauri::command]
+fn export_mod5_2_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_tga
+#[tauri::command]
+fn export_mod5_2_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-5 remainder 2 — export_ico
+#[tauri::command]
+fn export_mod5_2_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 2, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-5 remainder 3 — rotate_cw
+#[tauri::command]
+fn rotate_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 3, 90)
+}
+
+
+/// Document-wide mod-5 remainder 3 — rotate_ccw
+#[tauri::command]
+fn rotate_mod5_3_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 3, -90)
+}
+
+
+/// Document-wide mod-5 remainder 3 — rotate_180
+#[tauri::command]
+fn rotate_180_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 3, 180)
+}
+
+
+/// Document-wide mod-5 remainder 3 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — delete
+#[tauri::command]
+fn delete_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — keep
+#[tauri::command]
+fn keep_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — dup_append
+#[tauri::command]
+fn duplicate_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — flatten
+#[tauri::command]
+fn flatten_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — crop
+#[tauri::command]
+fn crop_mod5_3_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 5, 3, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 3 — expand
+#[tauri::command]
+fn expand_mod5_3_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 5, 3, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 3 — shrink
+#[tauri::command]
+fn shrink_mod5_3_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 5, 3, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 3 — reverse
+#[tauri::command]
+fn reverse_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — move_start
+#[tauri::command]
+fn move_mod5_3_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — move_end
+#[tauri::command]
+fn move_mod5_3_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — clear_crop
+#[tauri::command]
+fn clear_crop_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — dup_before
+#[tauri::command]
+fn duplicate_mod5_3_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — sort_rot
+#[tauri::command]
+fn sort_mod5_3_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 5, 3, descending)
+}
+
+
+/// Document-wide mod-5 remainder 3 — sort_size
+#[tauri::command]
+fn sort_mod5_3_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 5, 3, descending)
+}
+
+
+/// Document-wide mod-5 remainder 3 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod5_3_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 5, 3, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 3 — watermark
+#[tauri::command]
+fn add_text_watermark_mod5_3_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 5, 3, &text)
+}
+
+
+/// Document-wide mod-5 remainder 3 — header
+#[tauri::command]
+fn add_page_header_mod5_3_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 5, 3, &text)
+}
+
+
+/// Document-wide mod-5 remainder 3 — footer
+#[tauri::command]
+fn add_page_footer_mod5_3_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 5, 3, &text)
+}
+
+
+/// Document-wide mod-5 remainder 3 — border
+#[tauri::command]
+fn add_page_border_mod5_3_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 5, 3, inset)
+}
+
+
+/// Document-wide mod-5 remainder 3 — bookmark
+#[tauri::command]
+fn bookmark_mod5_3_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 5, 3, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 3 — page_size
+#[tauri::command]
+fn set_page_size_mod5_3_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 5, 3, &preset)
+}
+
+
+/// Document-wide mod-5 remainder 3 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 3, false)
+}
+
+
+/// Document-wide mod-5 remainder 3 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod5_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 3, true)
+}
+
+
+/// Document-wide mod-5 remainder 3 — dup_to_end
+#[tauri::command]
+fn duplicate_mod5_3_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — dup_to_start
+#[tauri::command]
+fn duplicate_mod5_3_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — extract
+#[tauri::command]
+fn extract_mod5_3_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_pdf
+#[tauri::command]
+fn export_mod5_3_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_png
+#[tauri::command]
+fn export_mod5_3_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "png", render_page_png)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_jpeg
+#[tauri::command]
+fn export_mod5_3_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_webp
+#[tauri::command]
+fn export_mod5_3_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_bmp
+#[tauri::command]
+fn export_mod5_3_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_tiff
+#[tauri::command]
+fn export_mod5_3_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_gif
+#[tauri::command]
+fn export_mod5_3_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_ppm
+#[tauri::command]
+fn export_mod5_3_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_tga
+#[tauri::command]
+fn export_mod5_3_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-5 remainder 3 — export_ico
+#[tauri::command]
+fn export_mod5_3_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 3, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-5 remainder 4 — rotate_cw
+#[tauri::command]
+fn rotate_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 4, 90)
+}
+
+
+/// Document-wide mod-5 remainder 4 — rotate_ccw
+#[tauri::command]
+fn rotate_mod5_4_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 4, -90)
+}
+
+
+/// Document-wide mod-5 remainder 4 — rotate_180
+#[tauri::command]
+fn rotate_180_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 5, 4, 180)
+}
+
+
+/// Document-wide mod-5 remainder 4 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — delete
+#[tauri::command]
+fn delete_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — keep
+#[tauri::command]
+fn keep_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — dup_append
+#[tauri::command]
+fn duplicate_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — flatten
+#[tauri::command]
+fn flatten_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — crop
+#[tauri::command]
+fn crop_mod5_4_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 5, 4, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 4 — expand
+#[tauri::command]
+fn expand_mod5_4_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 5, 4, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 4 — shrink
+#[tauri::command]
+fn shrink_mod5_4_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 5, 4, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-5 remainder 4 — reverse
+#[tauri::command]
+fn reverse_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — move_start
+#[tauri::command]
+fn move_mod5_4_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — move_end
+#[tauri::command]
+fn move_mod5_4_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — clear_crop
+#[tauri::command]
+fn clear_crop_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — dup_before
+#[tauri::command]
+fn duplicate_mod5_4_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — sort_rot
+#[tauri::command]
+fn sort_mod5_4_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 5, 4, descending)
+}
+
+
+/// Document-wide mod-5 remainder 4 — sort_size
+#[tauri::command]
+fn sort_mod5_4_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 5, 4, descending)
+}
+
+
+/// Document-wide mod-5 remainder 4 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod5_4_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 5, 4, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 4 — watermark
+#[tauri::command]
+fn add_text_watermark_mod5_4_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 5, 4, &text)
+}
+
+
+/// Document-wide mod-5 remainder 4 — header
+#[tauri::command]
+fn add_page_header_mod5_4_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 5, 4, &text)
+}
+
+
+/// Document-wide mod-5 remainder 4 — footer
+#[tauri::command]
+fn add_page_footer_mod5_4_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 5, 4, &text)
+}
+
+
+/// Document-wide mod-5 remainder 4 — border
+#[tauri::command]
+fn add_page_border_mod5_4_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 5, 4, inset)
+}
+
+
+/// Document-wide mod-5 remainder 4 — bookmark
+#[tauri::command]
+fn bookmark_mod5_4_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 5, 4, prefix)
+}
+
+
+/// Document-wide mod-5 remainder 4 — page_size
+#[tauri::command]
+fn set_page_size_mod5_4_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 5, 4, &preset)
+}
+
+
+/// Document-wide mod-5 remainder 4 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 4, false)
+}
+
+
+/// Document-wide mod-5 remainder 4 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod5_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 5, 4, true)
+}
+
+
+/// Document-wide mod-5 remainder 4 — dup_to_end
+#[tauri::command]
+fn duplicate_mod5_4_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — dup_to_start
+#[tauri::command]
+fn duplicate_mod5_4_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — extract
+#[tauri::command]
+fn extract_mod5_4_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_pdf
+#[tauri::command]
+fn export_mod5_4_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_png
+#[tauri::command]
+fn export_mod5_4_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "png", render_page_png)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_jpeg
+#[tauri::command]
+fn export_mod5_4_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_webp
+#[tauri::command]
+fn export_mod5_4_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_bmp
+#[tauri::command]
+fn export_mod5_4_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_tiff
+#[tauri::command]
+fn export_mod5_4_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_gif
+#[tauri::command]
+fn export_mod5_4_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_ppm
+#[tauri::command]
+fn export_mod5_4_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_tga
+#[tauri::command]
+fn export_mod5_4_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-5 remainder 4 — export_ico
+#[tauri::command]
+fn export_mod5_4_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 5, 4, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-6 remainder 0 — rotate_cw
+#[tauri::command]
+fn rotate_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 0, 90)
+}
+
+
+/// Document-wide mod-6 remainder 0 — rotate_ccw
+#[tauri::command]
+fn rotate_mod6_0_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 0, -90)
+}
+
+
+/// Document-wide mod-6 remainder 0 — rotate_180
+#[tauri::command]
+fn rotate_180_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 0, 180)
+}
+
+
+/// Document-wide mod-6 remainder 0 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — delete
+#[tauri::command]
+fn delete_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — keep
+#[tauri::command]
+fn keep_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — dup_append
+#[tauri::command]
+fn duplicate_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — flatten
+#[tauri::command]
+fn flatten_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — crop
+#[tauri::command]
+fn crop_mod6_0_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 6, 0, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 0 — expand
+#[tauri::command]
+fn expand_mod6_0_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 6, 0, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 0 — shrink
+#[tauri::command]
+fn shrink_mod6_0_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 6, 0, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 0 — reverse
+#[tauri::command]
+fn reverse_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — move_start
+#[tauri::command]
+fn move_mod6_0_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — move_end
+#[tauri::command]
+fn move_mod6_0_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — clear_crop
+#[tauri::command]
+fn clear_crop_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — dup_before
+#[tauri::command]
+fn duplicate_mod6_0_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — sort_rot
+#[tauri::command]
+fn sort_mod6_0_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 6, 0, descending)
+}
+
+
+/// Document-wide mod-6 remainder 0 — sort_size
+#[tauri::command]
+fn sort_mod6_0_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 6, 0, descending)
+}
+
+
+/// Document-wide mod-6 remainder 0 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod6_0_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 6, 0, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 0 — watermark
+#[tauri::command]
+fn add_text_watermark_mod6_0_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 6, 0, &text)
+}
+
+
+/// Document-wide mod-6 remainder 0 — header
+#[tauri::command]
+fn add_page_header_mod6_0_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 6, 0, &text)
+}
+
+
+/// Document-wide mod-6 remainder 0 — footer
+#[tauri::command]
+fn add_page_footer_mod6_0_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 6, 0, &text)
+}
+
+
+/// Document-wide mod-6 remainder 0 — border
+#[tauri::command]
+fn add_page_border_mod6_0_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 6, 0, inset)
+}
+
+
+/// Document-wide mod-6 remainder 0 — bookmark
+#[tauri::command]
+fn bookmark_mod6_0_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 6, 0, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 0 — page_size
+#[tauri::command]
+fn set_page_size_mod6_0_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 6, 0, &preset)
+}
+
+
+/// Document-wide mod-6 remainder 0 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 0, false)
+}
+
+
+/// Document-wide mod-6 remainder 0 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod6_0_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 0, true)
+}
+
+
+/// Document-wide mod-6 remainder 0 — dup_to_end
+#[tauri::command]
+fn duplicate_mod6_0_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — dup_to_start
+#[tauri::command]
+fn duplicate_mod6_0_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — extract
+#[tauri::command]
+fn extract_mod6_0_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_pdf
+#[tauri::command]
+fn export_mod6_0_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_png
+#[tauri::command]
+fn export_mod6_0_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "png", render_page_png)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_jpeg
+#[tauri::command]
+fn export_mod6_0_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_webp
+#[tauri::command]
+fn export_mod6_0_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_bmp
+#[tauri::command]
+fn export_mod6_0_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_tiff
+#[tauri::command]
+fn export_mod6_0_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_gif
+#[tauri::command]
+fn export_mod6_0_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_ppm
+#[tauri::command]
+fn export_mod6_0_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_tga
+#[tauri::command]
+fn export_mod6_0_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-6 remainder 0 — export_ico
+#[tauri::command]
+fn export_mod6_0_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 0, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-6 remainder 1 — rotate_cw
+#[tauri::command]
+fn rotate_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 1, 90)
+}
+
+
+/// Document-wide mod-6 remainder 1 — rotate_ccw
+#[tauri::command]
+fn rotate_mod6_1_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 1, -90)
+}
+
+
+/// Document-wide mod-6 remainder 1 — rotate_180
+#[tauri::command]
+fn rotate_180_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 1, 180)
+}
+
+
+/// Document-wide mod-6 remainder 1 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — delete
+#[tauri::command]
+fn delete_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — keep
+#[tauri::command]
+fn keep_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — dup_append
+#[tauri::command]
+fn duplicate_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — flatten
+#[tauri::command]
+fn flatten_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — crop
+#[tauri::command]
+fn crop_mod6_1_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 6, 1, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 1 — expand
+#[tauri::command]
+fn expand_mod6_1_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 6, 1, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 1 — shrink
+#[tauri::command]
+fn shrink_mod6_1_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 6, 1, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 1 — reverse
+#[tauri::command]
+fn reverse_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — move_start
+#[tauri::command]
+fn move_mod6_1_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — move_end
+#[tauri::command]
+fn move_mod6_1_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — clear_crop
+#[tauri::command]
+fn clear_crop_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — dup_before
+#[tauri::command]
+fn duplicate_mod6_1_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — sort_rot
+#[tauri::command]
+fn sort_mod6_1_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 6, 1, descending)
+}
+
+
+/// Document-wide mod-6 remainder 1 — sort_size
+#[tauri::command]
+fn sort_mod6_1_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 6, 1, descending)
+}
+
+
+/// Document-wide mod-6 remainder 1 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod6_1_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 6, 1, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 1 — watermark
+#[tauri::command]
+fn add_text_watermark_mod6_1_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 6, 1, &text)
+}
+
+
+/// Document-wide mod-6 remainder 1 — header
+#[tauri::command]
+fn add_page_header_mod6_1_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 6, 1, &text)
+}
+
+
+/// Document-wide mod-6 remainder 1 — footer
+#[tauri::command]
+fn add_page_footer_mod6_1_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 6, 1, &text)
+}
+
+
+/// Document-wide mod-6 remainder 1 — border
+#[tauri::command]
+fn add_page_border_mod6_1_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 6, 1, inset)
+}
+
+
+/// Document-wide mod-6 remainder 1 — bookmark
+#[tauri::command]
+fn bookmark_mod6_1_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 6, 1, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 1 — page_size
+#[tauri::command]
+fn set_page_size_mod6_1_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 6, 1, &preset)
+}
+
+
+/// Document-wide mod-6 remainder 1 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 1, false)
+}
+
+
+/// Document-wide mod-6 remainder 1 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod6_1_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 1, true)
+}
+
+
+/// Document-wide mod-6 remainder 1 — dup_to_end
+#[tauri::command]
+fn duplicate_mod6_1_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — dup_to_start
+#[tauri::command]
+fn duplicate_mod6_1_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — extract
+#[tauri::command]
+fn extract_mod6_1_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_pdf
+#[tauri::command]
+fn export_mod6_1_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_png
+#[tauri::command]
+fn export_mod6_1_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "png", render_page_png)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_jpeg
+#[tauri::command]
+fn export_mod6_1_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_webp
+#[tauri::command]
+fn export_mod6_1_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_bmp
+#[tauri::command]
+fn export_mod6_1_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_tiff
+#[tauri::command]
+fn export_mod6_1_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_gif
+#[tauri::command]
+fn export_mod6_1_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_ppm
+#[tauri::command]
+fn export_mod6_1_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_tga
+#[tauri::command]
+fn export_mod6_1_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-6 remainder 1 — export_ico
+#[tauri::command]
+fn export_mod6_1_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 1, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-6 remainder 2 — rotate_cw
+#[tauri::command]
+fn rotate_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 2, 90)
+}
+
+
+/// Document-wide mod-6 remainder 2 — rotate_ccw
+#[tauri::command]
+fn rotate_mod6_2_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 2, -90)
+}
+
+
+/// Document-wide mod-6 remainder 2 — rotate_180
+#[tauri::command]
+fn rotate_180_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 2, 180)
+}
+
+
+/// Document-wide mod-6 remainder 2 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — delete
+#[tauri::command]
+fn delete_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — keep
+#[tauri::command]
+fn keep_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — dup_append
+#[tauri::command]
+fn duplicate_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — flatten
+#[tauri::command]
+fn flatten_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — crop
+#[tauri::command]
+fn crop_mod6_2_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 6, 2, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 2 — expand
+#[tauri::command]
+fn expand_mod6_2_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 6, 2, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 2 — shrink
+#[tauri::command]
+fn shrink_mod6_2_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 6, 2, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 2 — reverse
+#[tauri::command]
+fn reverse_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — move_start
+#[tauri::command]
+fn move_mod6_2_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — move_end
+#[tauri::command]
+fn move_mod6_2_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — clear_crop
+#[tauri::command]
+fn clear_crop_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — dup_before
+#[tauri::command]
+fn duplicate_mod6_2_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — sort_rot
+#[tauri::command]
+fn sort_mod6_2_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 6, 2, descending)
+}
+
+
+/// Document-wide mod-6 remainder 2 — sort_size
+#[tauri::command]
+fn sort_mod6_2_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 6, 2, descending)
+}
+
+
+/// Document-wide mod-6 remainder 2 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod6_2_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 6, 2, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 2 — watermark
+#[tauri::command]
+fn add_text_watermark_mod6_2_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 6, 2, &text)
+}
+
+
+/// Document-wide mod-6 remainder 2 — header
+#[tauri::command]
+fn add_page_header_mod6_2_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 6, 2, &text)
+}
+
+
+/// Document-wide mod-6 remainder 2 — footer
+#[tauri::command]
+fn add_page_footer_mod6_2_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 6, 2, &text)
+}
+
+
+/// Document-wide mod-6 remainder 2 — border
+#[tauri::command]
+fn add_page_border_mod6_2_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 6, 2, inset)
+}
+
+
+/// Document-wide mod-6 remainder 2 — bookmark
+#[tauri::command]
+fn bookmark_mod6_2_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 6, 2, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 2 — page_size
+#[tauri::command]
+fn set_page_size_mod6_2_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 6, 2, &preset)
+}
+
+
+/// Document-wide mod-6 remainder 2 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 2, false)
+}
+
+
+/// Document-wide mod-6 remainder 2 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod6_2_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 2, true)
+}
+
+
+/// Document-wide mod-6 remainder 2 — dup_to_end
+#[tauri::command]
+fn duplicate_mod6_2_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — dup_to_start
+#[tauri::command]
+fn duplicate_mod6_2_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — extract
+#[tauri::command]
+fn extract_mod6_2_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_pdf
+#[tauri::command]
+fn export_mod6_2_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_png
+#[tauri::command]
+fn export_mod6_2_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "png", render_page_png)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_jpeg
+#[tauri::command]
+fn export_mod6_2_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_webp
+#[tauri::command]
+fn export_mod6_2_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_bmp
+#[tauri::command]
+fn export_mod6_2_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_tiff
+#[tauri::command]
+fn export_mod6_2_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_gif
+#[tauri::command]
+fn export_mod6_2_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_ppm
+#[tauri::command]
+fn export_mod6_2_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_tga
+#[tauri::command]
+fn export_mod6_2_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-6 remainder 2 — export_ico
+#[tauri::command]
+fn export_mod6_2_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 2, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-6 remainder 3 — rotate_cw
+#[tauri::command]
+fn rotate_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 3, 90)
+}
+
+
+/// Document-wide mod-6 remainder 3 — rotate_ccw
+#[tauri::command]
+fn rotate_mod6_3_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 3, -90)
+}
+
+
+/// Document-wide mod-6 remainder 3 — rotate_180
+#[tauri::command]
+fn rotate_180_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 3, 180)
+}
+
+
+/// Document-wide mod-6 remainder 3 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — delete
+#[tauri::command]
+fn delete_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — keep
+#[tauri::command]
+fn keep_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — dup_append
+#[tauri::command]
+fn duplicate_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — flatten
+#[tauri::command]
+fn flatten_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — crop
+#[tauri::command]
+fn crop_mod6_3_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 6, 3, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 3 — expand
+#[tauri::command]
+fn expand_mod6_3_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 6, 3, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 3 — shrink
+#[tauri::command]
+fn shrink_mod6_3_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 6, 3, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 3 — reverse
+#[tauri::command]
+fn reverse_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — move_start
+#[tauri::command]
+fn move_mod6_3_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — move_end
+#[tauri::command]
+fn move_mod6_3_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — clear_crop
+#[tauri::command]
+fn clear_crop_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — dup_before
+#[tauri::command]
+fn duplicate_mod6_3_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — sort_rot
+#[tauri::command]
+fn sort_mod6_3_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 6, 3, descending)
+}
+
+
+/// Document-wide mod-6 remainder 3 — sort_size
+#[tauri::command]
+fn sort_mod6_3_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 6, 3, descending)
+}
+
+
+/// Document-wide mod-6 remainder 3 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod6_3_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 6, 3, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 3 — watermark
+#[tauri::command]
+fn add_text_watermark_mod6_3_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 6, 3, &text)
+}
+
+
+/// Document-wide mod-6 remainder 3 — header
+#[tauri::command]
+fn add_page_header_mod6_3_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 6, 3, &text)
+}
+
+
+/// Document-wide mod-6 remainder 3 — footer
+#[tauri::command]
+fn add_page_footer_mod6_3_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 6, 3, &text)
+}
+
+
+/// Document-wide mod-6 remainder 3 — border
+#[tauri::command]
+fn add_page_border_mod6_3_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 6, 3, inset)
+}
+
+
+/// Document-wide mod-6 remainder 3 — bookmark
+#[tauri::command]
+fn bookmark_mod6_3_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 6, 3, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 3 — page_size
+#[tauri::command]
+fn set_page_size_mod6_3_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 6, 3, &preset)
+}
+
+
+/// Document-wide mod-6 remainder 3 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 3, false)
+}
+
+
+/// Document-wide mod-6 remainder 3 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod6_3_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 3, true)
+}
+
+
+/// Document-wide mod-6 remainder 3 — dup_to_end
+#[tauri::command]
+fn duplicate_mod6_3_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — dup_to_start
+#[tauri::command]
+fn duplicate_mod6_3_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — extract
+#[tauri::command]
+fn extract_mod6_3_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_pdf
+#[tauri::command]
+fn export_mod6_3_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_png
+#[tauri::command]
+fn export_mod6_3_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "png", render_page_png)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_jpeg
+#[tauri::command]
+fn export_mod6_3_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_webp
+#[tauri::command]
+fn export_mod6_3_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_bmp
+#[tauri::command]
+fn export_mod6_3_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_tiff
+#[tauri::command]
+fn export_mod6_3_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_gif
+#[tauri::command]
+fn export_mod6_3_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_ppm
+#[tauri::command]
+fn export_mod6_3_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_tga
+#[tauri::command]
+fn export_mod6_3_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-6 remainder 3 — export_ico
+#[tauri::command]
+fn export_mod6_3_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 3, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-6 remainder 4 — rotate_cw
+#[tauri::command]
+fn rotate_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 4, 90)
+}
+
+
+/// Document-wide mod-6 remainder 4 — rotate_ccw
+#[tauri::command]
+fn rotate_mod6_4_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 4, -90)
+}
+
+
+/// Document-wide mod-6 remainder 4 — rotate_180
+#[tauri::command]
+fn rotate_180_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 4, 180)
+}
+
+
+/// Document-wide mod-6 remainder 4 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — delete
+#[tauri::command]
+fn delete_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — keep
+#[tauri::command]
+fn keep_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — dup_append
+#[tauri::command]
+fn duplicate_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — flatten
+#[tauri::command]
+fn flatten_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — crop
+#[tauri::command]
+fn crop_mod6_4_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 6, 4, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 4 — expand
+#[tauri::command]
+fn expand_mod6_4_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 6, 4, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 4 — shrink
+#[tauri::command]
+fn shrink_mod6_4_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 6, 4, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 4 — reverse
+#[tauri::command]
+fn reverse_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — move_start
+#[tauri::command]
+fn move_mod6_4_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — move_end
+#[tauri::command]
+fn move_mod6_4_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — clear_crop
+#[tauri::command]
+fn clear_crop_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — dup_before
+#[tauri::command]
+fn duplicate_mod6_4_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — sort_rot
+#[tauri::command]
+fn sort_mod6_4_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 6, 4, descending)
+}
+
+
+/// Document-wide mod-6 remainder 4 — sort_size
+#[tauri::command]
+fn sort_mod6_4_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 6, 4, descending)
+}
+
+
+/// Document-wide mod-6 remainder 4 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod6_4_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 6, 4, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 4 — watermark
+#[tauri::command]
+fn add_text_watermark_mod6_4_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 6, 4, &text)
+}
+
+
+/// Document-wide mod-6 remainder 4 — header
+#[tauri::command]
+fn add_page_header_mod6_4_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 6, 4, &text)
+}
+
+
+/// Document-wide mod-6 remainder 4 — footer
+#[tauri::command]
+fn add_page_footer_mod6_4_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 6, 4, &text)
+}
+
+
+/// Document-wide mod-6 remainder 4 — border
+#[tauri::command]
+fn add_page_border_mod6_4_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 6, 4, inset)
+}
+
+
+/// Document-wide mod-6 remainder 4 — bookmark
+#[tauri::command]
+fn bookmark_mod6_4_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 6, 4, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 4 — page_size
+#[tauri::command]
+fn set_page_size_mod6_4_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 6, 4, &preset)
+}
+
+
+/// Document-wide mod-6 remainder 4 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 4, false)
+}
+
+
+/// Document-wide mod-6 remainder 4 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod6_4_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 4, true)
+}
+
+
+/// Document-wide mod-6 remainder 4 — dup_to_end
+#[tauri::command]
+fn duplicate_mod6_4_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — dup_to_start
+#[tauri::command]
+fn duplicate_mod6_4_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — extract
+#[tauri::command]
+fn extract_mod6_4_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_pdf
+#[tauri::command]
+fn export_mod6_4_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_png
+#[tauri::command]
+fn export_mod6_4_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "png", render_page_png)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_jpeg
+#[tauri::command]
+fn export_mod6_4_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_webp
+#[tauri::command]
+fn export_mod6_4_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_bmp
+#[tauri::command]
+fn export_mod6_4_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_tiff
+#[tauri::command]
+fn export_mod6_4_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_gif
+#[tauri::command]
+fn export_mod6_4_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_ppm
+#[tauri::command]
+fn export_mod6_4_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_tga
+#[tauri::command]
+fn export_mod6_4_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-6 remainder 4 — export_ico
+#[tauri::command]
+fn export_mod6_4_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 4, "ico", render_page_ico)
+}
+
+
+/// Document-wide mod-6 remainder 5 — rotate_cw
+#[tauri::command]
+fn rotate_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 5, 90)
+}
+
+
+/// Document-wide mod-6 remainder 5 — rotate_ccw
+#[tauri::command]
+fn rotate_mod6_5_pages_ccw(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 5, -90)
+}
+
+
+/// Document-wide mod-6 remainder 5 — rotate_180
+#[tauri::command]
+fn rotate_180_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_rotate(&PathBuf::from(&path), 6, 5, 180)
+}
+
+
+/// Document-wide mod-6 remainder 5 — reset_rot
+#[tauri::command]
+fn reset_rotation_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reset_rotation(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — delete
+#[tauri::command]
+fn delete_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_delete(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — keep
+#[tauri::command]
+fn keep_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_keep(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — dup_append
+#[tauri::command]
+fn duplicate_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_dup_append(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — flatten
+#[tauri::command]
+fn flatten_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_flatten(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — crop
+#[tauri::command]
+fn crop_mod6_5_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_crop(&PathBuf::from(&path), 6, 5, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 5 — expand
+#[tauri::command]
+fn expand_mod6_5_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_expand(&PathBuf::from(&path), 6, 5, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 5 — shrink
+#[tauri::command]
+fn shrink_mod6_5_pages(path: String, margin_top: f64, margin_right: f64, margin_bottom: f64, margin_left: f64) -> Result<u32, String> {
+    parity_docmod_shrink(&PathBuf::from(&path), 6, 5, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+
+/// Document-wide mod-6 remainder 5 — reverse
+#[tauri::command]
+fn reverse_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_reverse(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — move_start
+#[tauri::command]
+fn move_mod6_5_pages_to_start(path: String) -> Result<(), String> {
+    parity_docmod_move_to_start(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — move_end
+#[tauri::command]
+fn move_mod6_5_pages_to_end(path: String) -> Result<(), String> {
+    parity_docmod_move_to_end(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — clear_crop
+#[tauri::command]
+fn clear_crop_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_clear_crop(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — dup_before
+#[tauri::command]
+fn duplicate_mod6_5_pages_before(path: String) -> Result<u32, String> {
+    parity_docmod_dup_before(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — sort_rot
+#[tauri::command]
+fn sort_mod6_5_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_rotation(&PathBuf::from(&path), 6, 5, descending)
+}
+
+
+/// Document-wide mod-6 remainder 5 — sort_size
+#[tauri::command]
+fn sort_mod6_5_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    parity_docmod_sort_size(&PathBuf::from(&path), 6, 5, descending)
+}
+
+
+/// Document-wide mod-6 remainder 5 — page_numbers
+#[tauri::command]
+fn add_page_numbers_mod6_5_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_page_numbers(&PathBuf::from(&path), 6, 5, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 5 — watermark
+#[tauri::command]
+fn add_text_watermark_mod6_5_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_watermark(&PathBuf::from(&path), 6, 5, &text)
+}
+
+
+/// Document-wide mod-6 remainder 5 — header
+#[tauri::command]
+fn add_page_header_mod6_5_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_header(&PathBuf::from(&path), 6, 5, &text)
+}
+
+
+/// Document-wide mod-6 remainder 5 — footer
+#[tauri::command]
+fn add_page_footer_mod6_5_pages(path: String, text: String) -> Result<u32, String> {
+    parity_docmod_footer(&PathBuf::from(&path), 6, 5, &text)
+}
+
+
+/// Document-wide mod-6 remainder 5 — border
+#[tauri::command]
+fn add_page_border_mod6_5_pages(path: String, inset: f64) -> Result<u32, String> {
+    parity_docmod_border(&PathBuf::from(&path), 6, 5, inset)
+}
+
+
+/// Document-wide mod-6 remainder 5 — bookmark
+#[tauri::command]
+fn bookmark_mod6_5_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    parity_docmod_bookmark(&PathBuf::from(&path), 6, 5, prefix)
+}
+
+
+/// Document-wide mod-6 remainder 5 — page_size
+#[tauri::command]
+fn set_page_size_mod6_5_pages(path: String, preset: String) -> Result<u32, String> {
+    parity_docmod_page_size(&PathBuf::from(&path), 6, 5, &preset)
+}
+
+
+/// Document-wide mod-6 remainder 5 — blank_before
+#[tauri::command]
+fn insert_blank_before_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 5, false)
+}
+
+
+/// Document-wide mod-6 remainder 5 — blank_after
+#[tauri::command]
+fn insert_blank_after_mod6_5_pages(path: String) -> Result<u32, String> {
+    parity_docmod_blank(&PathBuf::from(&path), 6, 5, true)
+}
+
+
+/// Document-wide mod-6 remainder 5 — dup_to_end
+#[tauri::command]
+fn duplicate_mod6_5_pages_to_end(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_end(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — dup_to_start
+#[tauri::command]
+fn duplicate_mod6_5_pages_to_start(path: String) -> Result<u32, String> {
+    parity_docmod_dup_to_start(&PathBuf::from(&path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — extract
+#[tauri::command]
+fn extract_mod6_5_pages(path: String, output_path: String) -> Result<String, String> {
+    parity_docmod_extract(&PathBuf::from(&path), &PathBuf::from(&output_path), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_pdf
+#[tauri::command]
+fn export_mod6_5_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_png
+#[tauri::command]
+fn export_mod6_5_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "png", render_page_png)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_jpeg
+#[tauri::command]
+fn export_mod6_5_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "jpeg", render_page_jpeg)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_webp
+#[tauri::command]
+fn export_mod6_5_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "webp", render_page_webp)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_bmp
+#[tauri::command]
+fn export_mod6_5_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "bmp", render_page_bmp)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_tiff
+#[tauri::command]
+fn export_mod6_5_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "tiff", render_page_tiff)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_gif
+#[tauri::command]
+fn export_mod6_5_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "gif", render_page_gif)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_ppm
+#[tauri::command]
+fn export_mod6_5_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "ppm", render_page_ppm)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_tga
+#[tauri::command]
+fn export_mod6_5_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "tga", render_page_tga)
+}
+
+
+/// Document-wide mod-6 remainder 5 — export_ico
+#[tauri::command]
+fn export_mod6_5_pages_ico(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    parity_docmod_export_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), 6, 5, "ico", render_page_ico)
+}

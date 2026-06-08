@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate document-wide mod-3/mod-4 parity commands."""
+"""Generate document-wide mod-3…mod-6 parity commands."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ INC = ROOT / "src-tauri" / "src" / "parity_docmod_generated.inc.rs"
 MAIN = ROOT / "src-tauri" / "src" / "main.rs"
 UI_JSON = ROOT / "src" / "parity_batch_commands.json"
 
-MODULI = (3, 4)
+MODULI = (3, 4, 5, 6)
 
 # (kind, command template with {m} and {r})
 DOC_OPS: list[tuple[str, str]] = [

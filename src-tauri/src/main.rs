@@ -9682,6 +9682,446 @@ fn main() {
             export_mod4_3_pages_ppm,
             export_mod4_3_pages_tga,
             export_mod4_3_pages_ico,
+            rotate_mod5_0_pages,
+            rotate_mod5_0_pages_ccw,
+            rotate_180_mod5_0_pages,
+            reset_rotation_mod5_0_pages,
+            delete_mod5_0_pages,
+            keep_mod5_0_pages,
+            duplicate_mod5_0_pages,
+            flatten_mod5_0_pages,
+            crop_mod5_0_pages,
+            expand_mod5_0_pages,
+            shrink_mod5_0_pages,
+            reverse_mod5_0_pages,
+            move_mod5_0_pages_to_start,
+            move_mod5_0_pages_to_end,
+            clear_crop_mod5_0_pages,
+            duplicate_mod5_0_pages_before,
+            sort_mod5_0_pages_by_rotation,
+            sort_mod5_0_pages_by_size,
+            add_page_numbers_mod5_0_pages,
+            add_text_watermark_mod5_0_pages,
+            add_page_header_mod5_0_pages,
+            add_page_footer_mod5_0_pages,
+            add_page_border_mod5_0_pages,
+            bookmark_mod5_0_pages,
+            set_page_size_mod5_0_pages,
+            insert_blank_before_mod5_0_pages,
+            insert_blank_after_mod5_0_pages,
+            duplicate_mod5_0_pages_to_end,
+            duplicate_mod5_0_pages_to_start,
+            extract_mod5_0_pages,
+            export_mod5_0_pages_as_pdf,
+            export_mod5_0_pages_png,
+            export_mod5_0_pages_jpeg,
+            export_mod5_0_pages_webp,
+            export_mod5_0_pages_bmp,
+            export_mod5_0_pages_tiff,
+            export_mod5_0_pages_gif,
+            export_mod5_0_pages_ppm,
+            export_mod5_0_pages_tga,
+            export_mod5_0_pages_ico,
+            rotate_mod5_1_pages,
+            rotate_mod5_1_pages_ccw,
+            rotate_180_mod5_1_pages,
+            reset_rotation_mod5_1_pages,
+            delete_mod5_1_pages,
+            keep_mod5_1_pages,
+            duplicate_mod5_1_pages,
+            flatten_mod5_1_pages,
+            crop_mod5_1_pages,
+            expand_mod5_1_pages,
+            shrink_mod5_1_pages,
+            reverse_mod5_1_pages,
+            move_mod5_1_pages_to_start,
+            move_mod5_1_pages_to_end,
+            clear_crop_mod5_1_pages,
+            duplicate_mod5_1_pages_before,
+            sort_mod5_1_pages_by_rotation,
+            sort_mod5_1_pages_by_size,
+            add_page_numbers_mod5_1_pages,
+            add_text_watermark_mod5_1_pages,
+            add_page_header_mod5_1_pages,
+            add_page_footer_mod5_1_pages,
+            add_page_border_mod5_1_pages,
+            bookmark_mod5_1_pages,
+            set_page_size_mod5_1_pages,
+            insert_blank_before_mod5_1_pages,
+            insert_blank_after_mod5_1_pages,
+            duplicate_mod5_1_pages_to_end,
+            duplicate_mod5_1_pages_to_start,
+            extract_mod5_1_pages,
+            export_mod5_1_pages_as_pdf,
+            export_mod5_1_pages_png,
+            export_mod5_1_pages_jpeg,
+            export_mod5_1_pages_webp,
+            export_mod5_1_pages_bmp,
+            export_mod5_1_pages_tiff,
+            export_mod5_1_pages_gif,
+            export_mod5_1_pages_ppm,
+            export_mod5_1_pages_tga,
+            export_mod5_1_pages_ico,
+            rotate_mod5_2_pages,
+            rotate_mod5_2_pages_ccw,
+            rotate_180_mod5_2_pages,
+            reset_rotation_mod5_2_pages,
+            delete_mod5_2_pages,
+            keep_mod5_2_pages,
+            duplicate_mod5_2_pages,
+            flatten_mod5_2_pages,
+            crop_mod5_2_pages,
+            expand_mod5_2_pages,
+            shrink_mod5_2_pages,
+            reverse_mod5_2_pages,
+            move_mod5_2_pages_to_start,
+            move_mod5_2_pages_to_end,
+            clear_crop_mod5_2_pages,
+            duplicate_mod5_2_pages_before,
+            sort_mod5_2_pages_by_rotation,
+            sort_mod5_2_pages_by_size,
+            add_page_numbers_mod5_2_pages,
+            add_text_watermark_mod5_2_pages,
+            add_page_header_mod5_2_pages,
+            add_page_footer_mod5_2_pages,
+            add_page_border_mod5_2_pages,
+            bookmark_mod5_2_pages,
+            set_page_size_mod5_2_pages,
+            insert_blank_before_mod5_2_pages,
+            insert_blank_after_mod5_2_pages,
+            duplicate_mod5_2_pages_to_end,
+            duplicate_mod5_2_pages_to_start,
+            extract_mod5_2_pages,
+            export_mod5_2_pages_as_pdf,
+            export_mod5_2_pages_png,
+            export_mod5_2_pages_jpeg,
+            export_mod5_2_pages_webp,
+            export_mod5_2_pages_bmp,
+            export_mod5_2_pages_tiff,
+            export_mod5_2_pages_gif,
+            export_mod5_2_pages_ppm,
+            export_mod5_2_pages_tga,
+            export_mod5_2_pages_ico,
+            rotate_mod5_3_pages,
+            rotate_mod5_3_pages_ccw,
+            rotate_180_mod5_3_pages,
+            reset_rotation_mod5_3_pages,
+            delete_mod5_3_pages,
+            keep_mod5_3_pages,
+            duplicate_mod5_3_pages,
+            flatten_mod5_3_pages,
+            crop_mod5_3_pages,
+            expand_mod5_3_pages,
+            shrink_mod5_3_pages,
+            reverse_mod5_3_pages,
+            move_mod5_3_pages_to_start,
+            move_mod5_3_pages_to_end,
+            clear_crop_mod5_3_pages,
+            duplicate_mod5_3_pages_before,
+            sort_mod5_3_pages_by_rotation,
+            sort_mod5_3_pages_by_size,
+            add_page_numbers_mod5_3_pages,
+            add_text_watermark_mod5_3_pages,
+            add_page_header_mod5_3_pages,
+            add_page_footer_mod5_3_pages,
+            add_page_border_mod5_3_pages,
+            bookmark_mod5_3_pages,
+            set_page_size_mod5_3_pages,
+            insert_blank_before_mod5_3_pages,
+            insert_blank_after_mod5_3_pages,
+            duplicate_mod5_3_pages_to_end,
+            duplicate_mod5_3_pages_to_start,
+            extract_mod5_3_pages,
+            export_mod5_3_pages_as_pdf,
+            export_mod5_3_pages_png,
+            export_mod5_3_pages_jpeg,
+            export_mod5_3_pages_webp,
+            export_mod5_3_pages_bmp,
+            export_mod5_3_pages_tiff,
+            export_mod5_3_pages_gif,
+            export_mod5_3_pages_ppm,
+            export_mod5_3_pages_tga,
+            export_mod5_3_pages_ico,
+            rotate_mod5_4_pages,
+            rotate_mod5_4_pages_ccw,
+            rotate_180_mod5_4_pages,
+            reset_rotation_mod5_4_pages,
+            delete_mod5_4_pages,
+            keep_mod5_4_pages,
+            duplicate_mod5_4_pages,
+            flatten_mod5_4_pages,
+            crop_mod5_4_pages,
+            expand_mod5_4_pages,
+            shrink_mod5_4_pages,
+            reverse_mod5_4_pages,
+            move_mod5_4_pages_to_start,
+            move_mod5_4_pages_to_end,
+            clear_crop_mod5_4_pages,
+            duplicate_mod5_4_pages_before,
+            sort_mod5_4_pages_by_rotation,
+            sort_mod5_4_pages_by_size,
+            add_page_numbers_mod5_4_pages,
+            add_text_watermark_mod5_4_pages,
+            add_page_header_mod5_4_pages,
+            add_page_footer_mod5_4_pages,
+            add_page_border_mod5_4_pages,
+            bookmark_mod5_4_pages,
+            set_page_size_mod5_4_pages,
+            insert_blank_before_mod5_4_pages,
+            insert_blank_after_mod5_4_pages,
+            duplicate_mod5_4_pages_to_end,
+            duplicate_mod5_4_pages_to_start,
+            extract_mod5_4_pages,
+            export_mod5_4_pages_as_pdf,
+            export_mod5_4_pages_png,
+            export_mod5_4_pages_jpeg,
+            export_mod5_4_pages_webp,
+            export_mod5_4_pages_bmp,
+            export_mod5_4_pages_tiff,
+            export_mod5_4_pages_gif,
+            export_mod5_4_pages_ppm,
+            export_mod5_4_pages_tga,
+            export_mod5_4_pages_ico,
+            rotate_mod6_0_pages,
+            rotate_mod6_0_pages_ccw,
+            rotate_180_mod6_0_pages,
+            reset_rotation_mod6_0_pages,
+            delete_mod6_0_pages,
+            keep_mod6_0_pages,
+            duplicate_mod6_0_pages,
+            flatten_mod6_0_pages,
+            crop_mod6_0_pages,
+            expand_mod6_0_pages,
+            shrink_mod6_0_pages,
+            reverse_mod6_0_pages,
+            move_mod6_0_pages_to_start,
+            move_mod6_0_pages_to_end,
+            clear_crop_mod6_0_pages,
+            duplicate_mod6_0_pages_before,
+            sort_mod6_0_pages_by_rotation,
+            sort_mod6_0_pages_by_size,
+            add_page_numbers_mod6_0_pages,
+            add_text_watermark_mod6_0_pages,
+            add_page_header_mod6_0_pages,
+            add_page_footer_mod6_0_pages,
+            add_page_border_mod6_0_pages,
+            bookmark_mod6_0_pages,
+            set_page_size_mod6_0_pages,
+            insert_blank_before_mod6_0_pages,
+            insert_blank_after_mod6_0_pages,
+            duplicate_mod6_0_pages_to_end,
+            duplicate_mod6_0_pages_to_start,
+            extract_mod6_0_pages,
+            export_mod6_0_pages_as_pdf,
+            export_mod6_0_pages_png,
+            export_mod6_0_pages_jpeg,
+            export_mod6_0_pages_webp,
+            export_mod6_0_pages_bmp,
+            export_mod6_0_pages_tiff,
+            export_mod6_0_pages_gif,
+            export_mod6_0_pages_ppm,
+            export_mod6_0_pages_tga,
+            export_mod6_0_pages_ico,
+            rotate_mod6_1_pages,
+            rotate_mod6_1_pages_ccw,
+            rotate_180_mod6_1_pages,
+            reset_rotation_mod6_1_pages,
+            delete_mod6_1_pages,
+            keep_mod6_1_pages,
+            duplicate_mod6_1_pages,
+            flatten_mod6_1_pages,
+            crop_mod6_1_pages,
+            expand_mod6_1_pages,
+            shrink_mod6_1_pages,
+            reverse_mod6_1_pages,
+            move_mod6_1_pages_to_start,
+            move_mod6_1_pages_to_end,
+            clear_crop_mod6_1_pages,
+            duplicate_mod6_1_pages_before,
+            sort_mod6_1_pages_by_rotation,
+            sort_mod6_1_pages_by_size,
+            add_page_numbers_mod6_1_pages,
+            add_text_watermark_mod6_1_pages,
+            add_page_header_mod6_1_pages,
+            add_page_footer_mod6_1_pages,
+            add_page_border_mod6_1_pages,
+            bookmark_mod6_1_pages,
+            set_page_size_mod6_1_pages,
+            insert_blank_before_mod6_1_pages,
+            insert_blank_after_mod6_1_pages,
+            duplicate_mod6_1_pages_to_end,
+            duplicate_mod6_1_pages_to_start,
+            extract_mod6_1_pages,
+            export_mod6_1_pages_as_pdf,
+            export_mod6_1_pages_png,
+            export_mod6_1_pages_jpeg,
+            export_mod6_1_pages_webp,
+            export_mod6_1_pages_bmp,
+            export_mod6_1_pages_tiff,
+            export_mod6_1_pages_gif,
+            export_mod6_1_pages_ppm,
+            export_mod6_1_pages_tga,
+            export_mod6_1_pages_ico,
+            rotate_mod6_2_pages,
+            rotate_mod6_2_pages_ccw,
+            rotate_180_mod6_2_pages,
+            reset_rotation_mod6_2_pages,
+            delete_mod6_2_pages,
+            keep_mod6_2_pages,
+            duplicate_mod6_2_pages,
+            flatten_mod6_2_pages,
+            crop_mod6_2_pages,
+            expand_mod6_2_pages,
+            shrink_mod6_2_pages,
+            reverse_mod6_2_pages,
+            move_mod6_2_pages_to_start,
+            move_mod6_2_pages_to_end,
+            clear_crop_mod6_2_pages,
+            duplicate_mod6_2_pages_before,
+            sort_mod6_2_pages_by_rotation,
+            sort_mod6_2_pages_by_size,
+            add_page_numbers_mod6_2_pages,
+            add_text_watermark_mod6_2_pages,
+            add_page_header_mod6_2_pages,
+            add_page_footer_mod6_2_pages,
+            add_page_border_mod6_2_pages,
+            bookmark_mod6_2_pages,
+            set_page_size_mod6_2_pages,
+            insert_blank_before_mod6_2_pages,
+            insert_blank_after_mod6_2_pages,
+            duplicate_mod6_2_pages_to_end,
+            duplicate_mod6_2_pages_to_start,
+            extract_mod6_2_pages,
+            export_mod6_2_pages_as_pdf,
+            export_mod6_2_pages_png,
+            export_mod6_2_pages_jpeg,
+            export_mod6_2_pages_webp,
+            export_mod6_2_pages_bmp,
+            export_mod6_2_pages_tiff,
+            export_mod6_2_pages_gif,
+            export_mod6_2_pages_ppm,
+            export_mod6_2_pages_tga,
+            export_mod6_2_pages_ico,
+            rotate_mod6_3_pages,
+            rotate_mod6_3_pages_ccw,
+            rotate_180_mod6_3_pages,
+            reset_rotation_mod6_3_pages,
+            delete_mod6_3_pages,
+            keep_mod6_3_pages,
+            duplicate_mod6_3_pages,
+            flatten_mod6_3_pages,
+            crop_mod6_3_pages,
+            expand_mod6_3_pages,
+            shrink_mod6_3_pages,
+            reverse_mod6_3_pages,
+            move_mod6_3_pages_to_start,
+            move_mod6_3_pages_to_end,
+            clear_crop_mod6_3_pages,
+            duplicate_mod6_3_pages_before,
+            sort_mod6_3_pages_by_rotation,
+            sort_mod6_3_pages_by_size,
+            add_page_numbers_mod6_3_pages,
+            add_text_watermark_mod6_3_pages,
+            add_page_header_mod6_3_pages,
+            add_page_footer_mod6_3_pages,
+            add_page_border_mod6_3_pages,
+            bookmark_mod6_3_pages,
+            set_page_size_mod6_3_pages,
+            insert_blank_before_mod6_3_pages,
+            insert_blank_after_mod6_3_pages,
+            duplicate_mod6_3_pages_to_end,
+            duplicate_mod6_3_pages_to_start,
+            extract_mod6_3_pages,
+            export_mod6_3_pages_as_pdf,
+            export_mod6_3_pages_png,
+            export_mod6_3_pages_jpeg,
+            export_mod6_3_pages_webp,
+            export_mod6_3_pages_bmp,
+            export_mod6_3_pages_tiff,
+            export_mod6_3_pages_gif,
+            export_mod6_3_pages_ppm,
+            export_mod6_3_pages_tga,
+            export_mod6_3_pages_ico,
+            rotate_mod6_4_pages,
+            rotate_mod6_4_pages_ccw,
+            rotate_180_mod6_4_pages,
+            reset_rotation_mod6_4_pages,
+            delete_mod6_4_pages,
+            keep_mod6_4_pages,
+            duplicate_mod6_4_pages,
+            flatten_mod6_4_pages,
+            crop_mod6_4_pages,
+            expand_mod6_4_pages,
+            shrink_mod6_4_pages,
+            reverse_mod6_4_pages,
+            move_mod6_4_pages_to_start,
+            move_mod6_4_pages_to_end,
+            clear_crop_mod6_4_pages,
+            duplicate_mod6_4_pages_before,
+            sort_mod6_4_pages_by_rotation,
+            sort_mod6_4_pages_by_size,
+            add_page_numbers_mod6_4_pages,
+            add_text_watermark_mod6_4_pages,
+            add_page_header_mod6_4_pages,
+            add_page_footer_mod6_4_pages,
+            add_page_border_mod6_4_pages,
+            bookmark_mod6_4_pages,
+            set_page_size_mod6_4_pages,
+            insert_blank_before_mod6_4_pages,
+            insert_blank_after_mod6_4_pages,
+            duplicate_mod6_4_pages_to_end,
+            duplicate_mod6_4_pages_to_start,
+            extract_mod6_4_pages,
+            export_mod6_4_pages_as_pdf,
+            export_mod6_4_pages_png,
+            export_mod6_4_pages_jpeg,
+            export_mod6_4_pages_webp,
+            export_mod6_4_pages_bmp,
+            export_mod6_4_pages_tiff,
+            export_mod6_4_pages_gif,
+            export_mod6_4_pages_ppm,
+            export_mod6_4_pages_tga,
+            export_mod6_4_pages_ico,
+            rotate_mod6_5_pages,
+            rotate_mod6_5_pages_ccw,
+            rotate_180_mod6_5_pages,
+            reset_rotation_mod6_5_pages,
+            delete_mod6_5_pages,
+            keep_mod6_5_pages,
+            duplicate_mod6_5_pages,
+            flatten_mod6_5_pages,
+            crop_mod6_5_pages,
+            expand_mod6_5_pages,
+            shrink_mod6_5_pages,
+            reverse_mod6_5_pages,
+            move_mod6_5_pages_to_start,
+            move_mod6_5_pages_to_end,
+            clear_crop_mod6_5_pages,
+            duplicate_mod6_5_pages_before,
+            sort_mod6_5_pages_by_rotation,
+            sort_mod6_5_pages_by_size,
+            add_page_numbers_mod6_5_pages,
+            add_text_watermark_mod6_5_pages,
+            add_page_header_mod6_5_pages,
+            add_page_footer_mod6_5_pages,
+            add_page_border_mod6_5_pages,
+            bookmark_mod6_5_pages,
+            set_page_size_mod6_5_pages,
+            insert_blank_before_mod6_5_pages,
+            insert_blank_after_mod6_5_pages,
+            duplicate_mod6_5_pages_to_end,
+            duplicate_mod6_5_pages_to_start,
+            extract_mod6_5_pages,
+            export_mod6_5_pages_as_pdf,
+            export_mod6_5_pages_png,
+            export_mod6_5_pages_jpeg,
+            export_mod6_5_pages_webp,
+            export_mod6_5_pages_bmp,
+            export_mod6_5_pages_tiff,
+            export_mod6_5_pages_gif,
+            export_mod6_5_pages_ppm,
+            export_mod6_5_pages_tga,
+            export_mod6_5_pages_ico,
             // PARITY_DOCMOD_HANDLERS_END
             duplicate_page_range_to_start,
             // PARITY_BATCH_HANDLERS_START
@@ -15042,6 +15482,3482 @@ mod tests {
         let output_dir = tmp("export_dir");
         let err =
             export_mod4_3_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_0_pages_missing");
+        let err = rotate_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_0_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_0_pages_ccw_missing");
+        let err = rotate_mod5_0_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod5_0_pages_missing");
+        let err = rotate_180_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod5_0_pages_missing");
+        let err = reset_rotation_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod5_0_pages_missing");
+        let err = delete_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod5_0_pages_missing");
+        let err = keep_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_0_pages_missing");
+        let err = duplicate_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod5_0_pages_missing");
+        let err = flatten_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod5_0_pages_missing");
+        let err = crop_mod5_0_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod5_0_pages_missing");
+        let err = expand_mod5_0_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod5_0_pages_missing");
+        let err = shrink_mod5_0_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod5_0_pages_missing");
+        let err = reverse_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_0_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod5_0_pages_to_start_missing");
+        let err = move_mod5_0_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_0_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod5_0_pages_to_end_missing");
+        let err = move_mod5_0_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod5_0_pages_missing");
+        let err = clear_crop_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_0_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_0_pages_before_missing");
+        let err = duplicate_mod5_0_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_0_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod5_0_pages_by_rotation_missing");
+        let err = sort_mod5_0_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_0_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod5_0_pages_by_size_missing");
+        let err = sort_mod5_0_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod5_0_pages_missing");
+        let err = add_page_numbers_mod5_0_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod5_0_pages_missing");
+        let err =
+            add_text_watermark_mod5_0_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod5_0_pages_missing");
+        let err = add_page_header_mod5_0_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod5_0_pages_missing");
+        let err = add_page_footer_mod5_0_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod5_0_pages_missing");
+        let err = add_page_border_mod5_0_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod5_0_pages_missing");
+        let err = bookmark_mod5_0_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod5_0_pages_missing");
+        let err = set_page_size_mod5_0_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod5_0_pages_missing");
+        let err = insert_blank_before_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod5_0_pages_missing");
+        let err = insert_blank_after_mod5_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_0_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_0_pages_to_end_missing");
+        let err = duplicate_mod5_0_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_0_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_0_pages_to_start_missing");
+        let err = duplicate_mod5_0_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod5_0_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod5_0_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod5_0_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod5_0_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_0_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod5_0_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_0_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_1_pages_missing");
+        let err = rotate_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_1_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_1_pages_ccw_missing");
+        let err = rotate_mod5_1_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod5_1_pages_missing");
+        let err = rotate_180_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod5_1_pages_missing");
+        let err = reset_rotation_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod5_1_pages_missing");
+        let err = delete_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod5_1_pages_missing");
+        let err = keep_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_1_pages_missing");
+        let err = duplicate_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod5_1_pages_missing");
+        let err = flatten_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod5_1_pages_missing");
+        let err = crop_mod5_1_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod5_1_pages_missing");
+        let err = expand_mod5_1_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod5_1_pages_missing");
+        let err = shrink_mod5_1_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod5_1_pages_missing");
+        let err = reverse_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_1_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod5_1_pages_to_start_missing");
+        let err = move_mod5_1_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_1_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod5_1_pages_to_end_missing");
+        let err = move_mod5_1_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod5_1_pages_missing");
+        let err = clear_crop_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_1_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_1_pages_before_missing");
+        let err = duplicate_mod5_1_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_1_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod5_1_pages_by_rotation_missing");
+        let err = sort_mod5_1_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_1_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod5_1_pages_by_size_missing");
+        let err = sort_mod5_1_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod5_1_pages_missing");
+        let err = add_page_numbers_mod5_1_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod5_1_pages_missing");
+        let err =
+            add_text_watermark_mod5_1_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod5_1_pages_missing");
+        let err = add_page_header_mod5_1_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod5_1_pages_missing");
+        let err = add_page_footer_mod5_1_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod5_1_pages_missing");
+        let err = add_page_border_mod5_1_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod5_1_pages_missing");
+        let err = bookmark_mod5_1_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod5_1_pages_missing");
+        let err = set_page_size_mod5_1_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod5_1_pages_missing");
+        let err = insert_blank_before_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod5_1_pages_missing");
+        let err = insert_blank_after_mod5_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_1_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_1_pages_to_end_missing");
+        let err = duplicate_mod5_1_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_1_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_1_pages_to_start_missing");
+        let err = duplicate_mod5_1_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod5_1_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod5_1_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod5_1_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod5_1_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_1_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod5_1_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_1_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_2_pages_missing");
+        let err = rotate_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_2_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_2_pages_ccw_missing");
+        let err = rotate_mod5_2_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod5_2_pages_missing");
+        let err = rotate_180_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod5_2_pages_missing");
+        let err = reset_rotation_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod5_2_pages_missing");
+        let err = delete_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod5_2_pages_missing");
+        let err = keep_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_2_pages_missing");
+        let err = duplicate_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod5_2_pages_missing");
+        let err = flatten_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod5_2_pages_missing");
+        let err = crop_mod5_2_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod5_2_pages_missing");
+        let err = expand_mod5_2_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod5_2_pages_missing");
+        let err = shrink_mod5_2_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod5_2_pages_missing");
+        let err = reverse_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_2_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod5_2_pages_to_start_missing");
+        let err = move_mod5_2_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_2_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod5_2_pages_to_end_missing");
+        let err = move_mod5_2_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod5_2_pages_missing");
+        let err = clear_crop_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_2_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_2_pages_before_missing");
+        let err = duplicate_mod5_2_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_2_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod5_2_pages_by_rotation_missing");
+        let err = sort_mod5_2_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_2_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod5_2_pages_by_size_missing");
+        let err = sort_mod5_2_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod5_2_pages_missing");
+        let err = add_page_numbers_mod5_2_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod5_2_pages_missing");
+        let err =
+            add_text_watermark_mod5_2_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod5_2_pages_missing");
+        let err = add_page_header_mod5_2_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod5_2_pages_missing");
+        let err = add_page_footer_mod5_2_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod5_2_pages_missing");
+        let err = add_page_border_mod5_2_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod5_2_pages_missing");
+        let err = bookmark_mod5_2_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod5_2_pages_missing");
+        let err = set_page_size_mod5_2_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod5_2_pages_missing");
+        let err = insert_blank_before_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod5_2_pages_missing");
+        let err = insert_blank_after_mod5_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_2_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_2_pages_to_end_missing");
+        let err = duplicate_mod5_2_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_2_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_2_pages_to_start_missing");
+        let err = duplicate_mod5_2_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod5_2_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod5_2_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod5_2_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod5_2_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_2_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod5_2_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_2_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_3_pages_missing");
+        let err = rotate_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_3_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_3_pages_ccw_missing");
+        let err = rotate_mod5_3_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod5_3_pages_missing");
+        let err = rotate_180_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod5_3_pages_missing");
+        let err = reset_rotation_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod5_3_pages_missing");
+        let err = delete_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod5_3_pages_missing");
+        let err = keep_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_3_pages_missing");
+        let err = duplicate_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod5_3_pages_missing");
+        let err = flatten_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod5_3_pages_missing");
+        let err = crop_mod5_3_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod5_3_pages_missing");
+        let err = expand_mod5_3_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod5_3_pages_missing");
+        let err = shrink_mod5_3_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod5_3_pages_missing");
+        let err = reverse_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_3_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod5_3_pages_to_start_missing");
+        let err = move_mod5_3_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_3_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod5_3_pages_to_end_missing");
+        let err = move_mod5_3_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod5_3_pages_missing");
+        let err = clear_crop_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_3_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_3_pages_before_missing");
+        let err = duplicate_mod5_3_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_3_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod5_3_pages_by_rotation_missing");
+        let err = sort_mod5_3_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_3_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod5_3_pages_by_size_missing");
+        let err = sort_mod5_3_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod5_3_pages_missing");
+        let err = add_page_numbers_mod5_3_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod5_3_pages_missing");
+        let err =
+            add_text_watermark_mod5_3_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod5_3_pages_missing");
+        let err = add_page_header_mod5_3_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod5_3_pages_missing");
+        let err = add_page_footer_mod5_3_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod5_3_pages_missing");
+        let err = add_page_border_mod5_3_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod5_3_pages_missing");
+        let err = bookmark_mod5_3_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod5_3_pages_missing");
+        let err = set_page_size_mod5_3_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod5_3_pages_missing");
+        let err = insert_blank_before_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod5_3_pages_missing");
+        let err = insert_blank_after_mod5_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_3_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_3_pages_to_end_missing");
+        let err = duplicate_mod5_3_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_3_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_3_pages_to_start_missing");
+        let err = duplicate_mod5_3_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod5_3_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod5_3_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod5_3_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod5_3_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_3_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod5_3_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_3_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_4_pages_missing");
+        let err = rotate_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod5_4_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod5_4_pages_ccw_missing");
+        let err = rotate_mod5_4_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod5_4_pages_missing");
+        let err = rotate_180_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod5_4_pages_missing");
+        let err = reset_rotation_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod5_4_pages_missing");
+        let err = delete_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod5_4_pages_missing");
+        let err = keep_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_4_pages_missing");
+        let err = duplicate_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod5_4_pages_missing");
+        let err = flatten_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod5_4_pages_missing");
+        let err = crop_mod5_4_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod5_4_pages_missing");
+        let err = expand_mod5_4_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod5_4_pages_missing");
+        let err = shrink_mod5_4_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod5_4_pages_missing");
+        let err = reverse_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_4_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod5_4_pages_to_start_missing");
+        let err = move_mod5_4_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod5_4_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod5_4_pages_to_end_missing");
+        let err = move_mod5_4_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod5_4_pages_missing");
+        let err = clear_crop_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_4_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_4_pages_before_missing");
+        let err = duplicate_mod5_4_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_4_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod5_4_pages_by_rotation_missing");
+        let err = sort_mod5_4_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod5_4_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod5_4_pages_by_size_missing");
+        let err = sort_mod5_4_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod5_4_pages_missing");
+        let err = add_page_numbers_mod5_4_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod5_4_pages_missing");
+        let err =
+            add_text_watermark_mod5_4_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod5_4_pages_missing");
+        let err = add_page_header_mod5_4_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod5_4_pages_missing");
+        let err = add_page_footer_mod5_4_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod5_4_pages_missing");
+        let err = add_page_border_mod5_4_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod5_4_pages_missing");
+        let err = bookmark_mod5_4_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod5_4_pages_missing");
+        let err = set_page_size_mod5_4_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod5_4_pages_missing");
+        let err = insert_blank_before_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod5_4_pages_missing");
+        let err = insert_blank_after_mod5_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_4_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_4_pages_to_end_missing");
+        let err = duplicate_mod5_4_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod5_4_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod5_4_pages_to_start_missing");
+        let err = duplicate_mod5_4_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod5_4_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod5_4_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod5_4_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod5_4_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod5_4_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod5_4_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod5_4_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_0_pages_missing");
+        let err = rotate_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_0_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_0_pages_ccw_missing");
+        let err = rotate_mod6_0_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod6_0_pages_missing");
+        let err = rotate_180_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod6_0_pages_missing");
+        let err = reset_rotation_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod6_0_pages_missing");
+        let err = delete_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod6_0_pages_missing");
+        let err = keep_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_0_pages_missing");
+        let err = duplicate_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod6_0_pages_missing");
+        let err = flatten_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod6_0_pages_missing");
+        let err = crop_mod6_0_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod6_0_pages_missing");
+        let err = expand_mod6_0_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod6_0_pages_missing");
+        let err = shrink_mod6_0_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod6_0_pages_missing");
+        let err = reverse_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_0_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod6_0_pages_to_start_missing");
+        let err = move_mod6_0_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_0_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod6_0_pages_to_end_missing");
+        let err = move_mod6_0_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod6_0_pages_missing");
+        let err = clear_crop_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_0_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_0_pages_before_missing");
+        let err = duplicate_mod6_0_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_0_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod6_0_pages_by_rotation_missing");
+        let err = sort_mod6_0_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_0_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod6_0_pages_by_size_missing");
+        let err = sort_mod6_0_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod6_0_pages_missing");
+        let err = add_page_numbers_mod6_0_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod6_0_pages_missing");
+        let err =
+            add_text_watermark_mod6_0_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod6_0_pages_missing");
+        let err = add_page_header_mod6_0_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod6_0_pages_missing");
+        let err = add_page_footer_mod6_0_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod6_0_pages_missing");
+        let err = add_page_border_mod6_0_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod6_0_pages_missing");
+        let err = bookmark_mod6_0_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod6_0_pages_missing");
+        let err = set_page_size_mod6_0_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod6_0_pages_missing");
+        let err = insert_blank_before_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod6_0_pages_missing");
+        let err = insert_blank_after_mod6_0_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_0_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_0_pages_to_end_missing");
+        let err = duplicate_mod6_0_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_0_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_0_pages_to_start_missing");
+        let err = duplicate_mod6_0_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod6_0_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod6_0_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod6_0_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod6_0_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_0_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod6_0_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_0_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_1_pages_missing");
+        let err = rotate_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_1_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_1_pages_ccw_missing");
+        let err = rotate_mod6_1_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod6_1_pages_missing");
+        let err = rotate_180_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod6_1_pages_missing");
+        let err = reset_rotation_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod6_1_pages_missing");
+        let err = delete_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod6_1_pages_missing");
+        let err = keep_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_1_pages_missing");
+        let err = duplicate_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod6_1_pages_missing");
+        let err = flatten_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod6_1_pages_missing");
+        let err = crop_mod6_1_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod6_1_pages_missing");
+        let err = expand_mod6_1_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod6_1_pages_missing");
+        let err = shrink_mod6_1_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod6_1_pages_missing");
+        let err = reverse_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_1_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod6_1_pages_to_start_missing");
+        let err = move_mod6_1_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_1_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod6_1_pages_to_end_missing");
+        let err = move_mod6_1_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod6_1_pages_missing");
+        let err = clear_crop_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_1_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_1_pages_before_missing");
+        let err = duplicate_mod6_1_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_1_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod6_1_pages_by_rotation_missing");
+        let err = sort_mod6_1_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_1_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod6_1_pages_by_size_missing");
+        let err = sort_mod6_1_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod6_1_pages_missing");
+        let err = add_page_numbers_mod6_1_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod6_1_pages_missing");
+        let err =
+            add_text_watermark_mod6_1_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod6_1_pages_missing");
+        let err = add_page_header_mod6_1_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod6_1_pages_missing");
+        let err = add_page_footer_mod6_1_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod6_1_pages_missing");
+        let err = add_page_border_mod6_1_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod6_1_pages_missing");
+        let err = bookmark_mod6_1_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod6_1_pages_missing");
+        let err = set_page_size_mod6_1_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod6_1_pages_missing");
+        let err = insert_blank_before_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod6_1_pages_missing");
+        let err = insert_blank_after_mod6_1_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_1_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_1_pages_to_end_missing");
+        let err = duplicate_mod6_1_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_1_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_1_pages_to_start_missing");
+        let err = duplicate_mod6_1_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod6_1_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod6_1_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod6_1_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod6_1_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_1_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod6_1_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_1_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_2_pages_missing");
+        let err = rotate_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_2_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_2_pages_ccw_missing");
+        let err = rotate_mod6_2_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod6_2_pages_missing");
+        let err = rotate_180_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod6_2_pages_missing");
+        let err = reset_rotation_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod6_2_pages_missing");
+        let err = delete_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod6_2_pages_missing");
+        let err = keep_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_2_pages_missing");
+        let err = duplicate_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod6_2_pages_missing");
+        let err = flatten_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod6_2_pages_missing");
+        let err = crop_mod6_2_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod6_2_pages_missing");
+        let err = expand_mod6_2_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod6_2_pages_missing");
+        let err = shrink_mod6_2_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod6_2_pages_missing");
+        let err = reverse_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_2_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod6_2_pages_to_start_missing");
+        let err = move_mod6_2_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_2_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod6_2_pages_to_end_missing");
+        let err = move_mod6_2_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod6_2_pages_missing");
+        let err = clear_crop_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_2_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_2_pages_before_missing");
+        let err = duplicate_mod6_2_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_2_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod6_2_pages_by_rotation_missing");
+        let err = sort_mod6_2_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_2_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod6_2_pages_by_size_missing");
+        let err = sort_mod6_2_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod6_2_pages_missing");
+        let err = add_page_numbers_mod6_2_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod6_2_pages_missing");
+        let err =
+            add_text_watermark_mod6_2_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod6_2_pages_missing");
+        let err = add_page_header_mod6_2_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod6_2_pages_missing");
+        let err = add_page_footer_mod6_2_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod6_2_pages_missing");
+        let err = add_page_border_mod6_2_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod6_2_pages_missing");
+        let err = bookmark_mod6_2_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod6_2_pages_missing");
+        let err = set_page_size_mod6_2_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod6_2_pages_missing");
+        let err = insert_blank_before_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod6_2_pages_missing");
+        let err = insert_blank_after_mod6_2_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_2_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_2_pages_to_end_missing");
+        let err = duplicate_mod6_2_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_2_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_2_pages_to_start_missing");
+        let err = duplicate_mod6_2_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod6_2_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod6_2_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod6_2_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod6_2_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_2_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod6_2_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_2_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_3_pages_missing");
+        let err = rotate_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_3_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_3_pages_ccw_missing");
+        let err = rotate_mod6_3_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod6_3_pages_missing");
+        let err = rotate_180_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod6_3_pages_missing");
+        let err = reset_rotation_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod6_3_pages_missing");
+        let err = delete_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod6_3_pages_missing");
+        let err = keep_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_3_pages_missing");
+        let err = duplicate_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod6_3_pages_missing");
+        let err = flatten_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod6_3_pages_missing");
+        let err = crop_mod6_3_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod6_3_pages_missing");
+        let err = expand_mod6_3_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod6_3_pages_missing");
+        let err = shrink_mod6_3_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod6_3_pages_missing");
+        let err = reverse_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_3_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod6_3_pages_to_start_missing");
+        let err = move_mod6_3_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_3_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod6_3_pages_to_end_missing");
+        let err = move_mod6_3_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod6_3_pages_missing");
+        let err = clear_crop_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_3_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_3_pages_before_missing");
+        let err = duplicate_mod6_3_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_3_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod6_3_pages_by_rotation_missing");
+        let err = sort_mod6_3_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_3_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod6_3_pages_by_size_missing");
+        let err = sort_mod6_3_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod6_3_pages_missing");
+        let err = add_page_numbers_mod6_3_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod6_3_pages_missing");
+        let err =
+            add_text_watermark_mod6_3_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod6_3_pages_missing");
+        let err = add_page_header_mod6_3_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod6_3_pages_missing");
+        let err = add_page_footer_mod6_3_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod6_3_pages_missing");
+        let err = add_page_border_mod6_3_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod6_3_pages_missing");
+        let err = bookmark_mod6_3_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod6_3_pages_missing");
+        let err = set_page_size_mod6_3_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod6_3_pages_missing");
+        let err = insert_blank_before_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod6_3_pages_missing");
+        let err = insert_blank_after_mod6_3_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_3_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_3_pages_to_end_missing");
+        let err = duplicate_mod6_3_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_3_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_3_pages_to_start_missing");
+        let err = duplicate_mod6_3_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod6_3_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod6_3_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod6_3_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod6_3_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_3_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod6_3_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_3_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_4_pages_missing");
+        let err = rotate_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_4_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_4_pages_ccw_missing");
+        let err = rotate_mod6_4_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod6_4_pages_missing");
+        let err = rotate_180_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod6_4_pages_missing");
+        let err = reset_rotation_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod6_4_pages_missing");
+        let err = delete_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod6_4_pages_missing");
+        let err = keep_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_4_pages_missing");
+        let err = duplicate_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod6_4_pages_missing");
+        let err = flatten_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod6_4_pages_missing");
+        let err = crop_mod6_4_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod6_4_pages_missing");
+        let err = expand_mod6_4_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod6_4_pages_missing");
+        let err = shrink_mod6_4_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod6_4_pages_missing");
+        let err = reverse_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_4_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod6_4_pages_to_start_missing");
+        let err = move_mod6_4_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_4_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod6_4_pages_to_end_missing");
+        let err = move_mod6_4_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod6_4_pages_missing");
+        let err = clear_crop_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_4_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_4_pages_before_missing");
+        let err = duplicate_mod6_4_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_4_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod6_4_pages_by_rotation_missing");
+        let err = sort_mod6_4_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_4_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod6_4_pages_by_size_missing");
+        let err = sort_mod6_4_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod6_4_pages_missing");
+        let err = add_page_numbers_mod6_4_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod6_4_pages_missing");
+        let err =
+            add_text_watermark_mod6_4_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod6_4_pages_missing");
+        let err = add_page_header_mod6_4_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod6_4_pages_missing");
+        let err = add_page_footer_mod6_4_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod6_4_pages_missing");
+        let err = add_page_border_mod6_4_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod6_4_pages_missing");
+        let err = bookmark_mod6_4_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod6_4_pages_missing");
+        let err = set_page_size_mod6_4_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod6_4_pages_missing");
+        let err = insert_blank_before_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod6_4_pages_missing");
+        let err = insert_blank_after_mod6_4_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_4_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_4_pages_to_end_missing");
+        let err = duplicate_mod6_4_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_4_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_4_pages_to_start_missing");
+        let err = duplicate_mod6_4_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod6_4_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod6_4_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod6_4_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod6_4_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_4_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod6_4_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_4_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_5_pages_missing");
+        let err = rotate_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_mod6_5_pages_ccw_rejects_missing_file() {
+        let missing = tmp("rotate_mod6_5_pages_ccw_missing");
+        let err = rotate_mod6_5_pages_ccw(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn rotate_180_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("rotate_180_mod6_5_pages_missing");
+        let err = rotate_180_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reset_rotation_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("reset_rotation_mod6_5_pages_missing");
+        let err = reset_rotation_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn delete_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("delete_mod6_5_pages_missing");
+        let err = delete_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn keep_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("keep_mod6_5_pages_missing");
+        let err = keep_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_5_pages_missing");
+        let err = duplicate_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn flatten_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("flatten_mod6_5_pages_missing");
+        let err = flatten_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn crop_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("crop_mod6_5_pages_missing");
+        let err = crop_mod6_5_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn expand_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("expand_mod6_5_pages_missing");
+        let err = expand_mod6_5_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn shrink_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("shrink_mod6_5_pages_missing");
+        let err = shrink_mod6_5_pages(missing.to_string_lossy().into_owned(), 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn reverse_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("reverse_mod6_5_pages_missing");
+        let err = reverse_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_5_pages_to_start_rejects_missing_file() {
+        let missing = tmp("move_mod6_5_pages_to_start_missing");
+        let err = move_mod6_5_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn move_mod6_5_pages_to_end_rejects_missing_file() {
+        let missing = tmp("move_mod6_5_pages_to_end_missing");
+        let err = move_mod6_5_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn clear_crop_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("clear_crop_mod6_5_pages_missing");
+        let err = clear_crop_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_5_pages_before_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_5_pages_before_missing");
+        let err = duplicate_mod6_5_pages_before(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_5_pages_by_rotation_rejects_missing_file() {
+        let missing = tmp("sort_mod6_5_pages_by_rotation_missing");
+        let err = sort_mod6_5_pages_by_rotation(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn sort_mod6_5_pages_by_size_rejects_missing_file() {
+        let missing = tmp("sort_mod6_5_pages_by_size_missing");
+        let err = sort_mod6_5_pages_by_size(missing.to_string_lossy().into_owned(), false).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_numbers_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("add_page_numbers_mod6_5_pages_missing");
+        let err = add_page_numbers_mod6_5_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_text_watermark_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("add_text_watermark_mod6_5_pages_missing");
+        let err =
+            add_text_watermark_mod6_5_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_header_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("add_page_header_mod6_5_pages_missing");
+        let err = add_page_header_mod6_5_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_footer_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("add_page_footer_mod6_5_pages_missing");
+        let err = add_page_footer_mod6_5_pages(missing.to_string_lossy().into_owned(), "wm".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn add_page_border_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("add_page_border_mod6_5_pages_missing");
+        let err = add_page_border_mod6_5_pages(missing.to_string_lossy().into_owned(), 1.0).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn bookmark_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("bookmark_mod6_5_pages_missing");
+        let err = bookmark_mod6_5_pages(missing.to_string_lossy().into_owned(), None).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn set_page_size_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("set_page_size_mod6_5_pages_missing");
+        let err = set_page_size_mod6_5_pages(missing.to_string_lossy().into_owned(), "letter".to_string()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_before_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_before_mod6_5_pages_missing");
+        let err = insert_blank_before_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn insert_blank_after_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("insert_blank_after_mod6_5_pages_missing");
+        let err = insert_blank_after_mod6_5_pages(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_5_pages_to_end_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_5_pages_to_end_missing");
+        let err = duplicate_mod6_5_pages_to_end(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn duplicate_mod6_5_pages_to_start_rejects_missing_file() {
+        let missing = tmp("duplicate_mod6_5_pages_to_start_missing");
+        let err = duplicate_mod6_5_pages_to_start(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn extract_mod6_5_pages_rejects_missing_file() {
+        let missing = tmp("extract_mod6_5_pages_missing");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_mod6_5_pages(missing.to_string_lossy().into_owned(), output_path.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_as_pdf_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_as_pdf_missing");
+        let output_dir = tmp("export_dir");
+        let err = export_mod6_5_pages_as_pdf(
+            missing.to_string_lossy().into_owned(),
+            output_dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_png_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_png_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_jpeg_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_jpeg_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_jpeg(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_webp_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_webp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_webp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_bmp_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_tiff_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_gif_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_ppm_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_tga_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn export_mod6_5_pages_ico_rejects_missing_file() {
+        let missing = tmp("export_mod6_5_pages_ico_missing");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod6_5_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
                 .unwrap_err();
         assert!(!err.is_empty());
     }

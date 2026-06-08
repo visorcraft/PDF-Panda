@@ -1858,8 +1858,13 @@ function App() {
     return null;
   };
 
-  const isParityDocModCommand = (command: string) =>
-    /_mod[34]_[0-3]_/.test(command) && !command.includes('_in_range');
+  const isParityDocModCommand = (command: string) => {
+    if (command.includes('_in_range')) return false;
+    return /_mod3_[0-2]_/.test(command)
+      || /_mod4_[0-3]_/.test(command)
+      || /_mod5_[0-4]_/.test(command)
+      || /_mod6_[0-5]_/.test(command);
+  };
 
   const parityBatchNeedsRange = (command: string) =>
     !isParityDocModCommand(command)
