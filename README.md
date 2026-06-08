@@ -77,7 +77,7 @@ Three things we care about:
 - **PDF → Markdown** with tagged-PDF structure (headings, lists, tables), heuristic layout, and a **Tesseract OCR** fallback for scanned pages
 - **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
-- **Export PNG/JPEG/WebP/BMP/TIFF** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
+- **Export PNG/JPEG/WebP/BMP/TIFF/GIF** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
 - **Print** via the system print dialog
 
 ---
