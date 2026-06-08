@@ -194,7 +194,7 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
 type PngExportScope = 'current' | 'range' | 'all';
-type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif' | 'ppm';
+type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif' | 'ppm' | 'tga';
 type PageRangeScope = 'current' | 'range' | 'all';
 type PageSizePreset = 'letter' | 'a4' | 'legal';
 
@@ -585,6 +585,20 @@ function App() {
   const [expandMarginRight, setExpandMarginRight] = useState(20);
   const [expandMarginBottom, setExpandMarginBottom] = useState(20);
   const [expandMarginLeft, setExpandMarginLeft] = useState(20);
+  const [showShrinkMarginsModal, setShowShrinkMarginsModal] = useState(false);
+  const [shrinkMarginsScope, setShrinkMarginsScope] = useState<PageRangeScope>('all');
+  const [shrinkMarginsStartPage, setShrinkMarginsStartPage] = useState(0);
+  const [shrinkMarginsEndPage, setShrinkMarginsEndPage] = useState(0);
+  const [shrinkMarginTop, setShrinkMarginTop] = useState(20);
+  const [shrinkMarginRight, setShrinkMarginRight] = useState(20);
+  const [shrinkMarginBottom, setShrinkMarginBottom] = useState(20);
+  const [shrinkMarginLeft, setShrinkMarginLeft] = useState(20);
+  const [showDeleteNthModal, setShowDeleteNthModal] = useState(false);
+  const [deleteNthValue, setDeleteNthValue] = useState(2);
+  const [showExtractOddModal, setShowExtractOddModal] = useState(false);
+  const [extractOddOutputPath, setExtractOddOutputPath] = useState('');
+  const [showExtractEvenModal, setShowExtractEvenModal] = useState(false);
+  const [extractEvenOutputPath, setExtractEvenOutputPath] = useState('');
   const [showReverseRangeModal, setShowReverseRangeModal] = useState(false);
   const [reverseRangeStartPage, setReverseRangeStartPage] = useState(0);
   const [reverseRangeEndPage, setReverseRangeEndPage] = useState(0);
@@ -1064,6 +1078,7 @@ function App() {
     if (format === 'tiff') return 'tiff';
     if (format === 'gif') return 'gif';
     if (format === 'ppm') return 'ppm';
+    if (format === 'tga') return 'tga';
     return 'png';
   };
 
@@ -1082,6 +1097,7 @@ function App() {
       if (format === 'tiff') return 'export_pdf_pages_tiff';
       if (format === 'gif') return 'export_pdf_pages_gif';
       if (format === 'ppm') return 'export_pdf_pages_ppm';
+      if (format === 'tga') return 'export_pdf_pages_tga';
       return 'export_pdf_pages_png';
     }
     if (format === 'jpeg') return 'export_pdf_page_jpeg';
@@ -1090,6 +1106,7 @@ function App() {
     if (format === 'tiff') return 'export_pdf_page_tiff';
     if (format === 'gif') return 'export_pdf_page_gif';
     if (format === 'ppm') return 'export_pdf_page_ppm';
+    if (format === 'tga') return 'export_pdf_page_tga';
     return 'export_pdf_page_png';
   };
 
@@ -1268,6 +1285,25 @@ function App() {
       await reloadOpenPdf(pageCount + count - 1);
       setShowDuplicateRangeModal(false);
       showToast(`Appended ${count} page${count === 1 ? '' : 's'} to end`);
+    });
+  };
+
+  const handleDuplicatePageRangeBefore = async () => {
+    if (!filePath) return;
+    if (duplicateRangeStartPage > duplicateRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const count = await invoke<number>('duplicate_page_range_before', {
+        path: filePath,
+        startPage: duplicateRangeStartPage,
+        endPage: duplicateRangeEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(duplicateRangeStartPage);
+      setShowDuplicateRangeModal(false);
+      showToast(`Inserted ${count} page${count === 1 ? '' : 's'} before range`);
     });
   };
 
@@ -1921,6 +1957,127 @@ function App() {
     });
   };
 
+  const handleMovePageRangeToStart = async () => {
+    if (!filePath) return;
+    if (moveRangeStartPage > moveRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      await invoke('move_page_range_to_start', {
+        path: filePath,
+        startPage: moveRangeStartPage,
+        endPage: moveRangeEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      setShowMoveRangeModal(false);
+      showToast(`Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to start`);
+    });
+  };
+
+  const handleMovePageRangeToEnd = async () => {
+    if (!filePath || pageCount === null) return;
+    if (moveRangeStartPage > moveRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      await invoke('move_page_range_to_end', {
+        path: filePath,
+        startPage: moveRangeStartPage,
+        endPage: moveRangeEndPage,
+      });
+      markPdfEdited();
+      const rangeLen = moveRangeEndPage - moveRangeStartPage + 1;
+      await reloadOpenPdf(pageCount - rangeLen);
+      setShowMoveRangeModal(false);
+      showToast(`Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to end`);
+    });
+  };
+
+  const handleRotateOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${rotated} odd page${rotated === 1 ? '' : 's'} 90° CW`);
+    });
+  };
+
+  const handleRotateEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${rotated} even page${rotated === 1 ? '' : 's'} 90° CW`);
+    });
+  };
+
+  const openDeleteNthModal = () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    setDeleteNthValue(2);
+    setShowDeleteNthModal(true);
+  };
+
+  const handleDeleteEveryNthPage = async () => {
+    if (!filePath || deleteNthValue < 2) return;
+    await withLoading(async () => {
+      const deleted = await invoke<number>('delete_every_nth_page', {
+        path: filePath,
+        nth: deleteNthValue,
+      });
+      if (deleted === 0) {
+        showToast(`No pages are every ${deleteNthValue}th page`, 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(Math.min(currentPage, (pageCount ?? 1) - deleted - 1));
+      setShowDeleteNthModal(false);
+      showToast(`Deleted ${deleted} page${deleted === 1 ? '' : 's'} (every ${deleteNthValue}th)`);
+    });
+  };
+
+  const openExtractOddModal = () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
+    setExtractOddOutputPath(`${base}_odd_extract.pdf`);
+    setShowExtractOddModal(true);
+  };
+
+  const handleExtractOddPages = async () => {
+    if (!filePath || !extractOddOutputPath.trim()) return;
+    await withLoading(async () => {
+      const written = await invoke<string>('extract_odd_pages', {
+        path: filePath,
+        outputPath: extractOddOutputPath.trim(),
+      });
+      setShowExtractOddModal(false);
+      showToast(`Extracted odd pages to ${written}`);
+    });
+  };
+
+  const openExtractEvenModal = () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
+    setExtractEvenOutputPath(`${base}_even_extract.pdf`);
+    setShowExtractEvenModal(true);
+  };
+
+  const handleExtractEvenPages = async () => {
+    if (!filePath || !extractEvenOutputPath.trim()) return;
+    await withLoading(async () => {
+      const written = await invoke<string>('extract_even_pages', {
+        path: filePath,
+        outputPath: extractEvenOutputPath.trim(),
+      });
+      setShowExtractEvenModal(false);
+      showToast(`Extracted even pages to ${written}`);
+    });
+  };
+
   const openPrependModal = () => {
     if (!filePath) return;
     setPrependFilePath('');
@@ -2059,6 +2216,42 @@ function App() {
     setExpandMarginBottom(20);
     setExpandMarginLeft(20);
     setShowExpandMarginsModal(true);
+  };
+
+  const openShrinkMarginsModal = () => {
+    if (!filePath || pageCount === null) return;
+    setShrinkMarginsScope('all');
+    setShrinkMarginsStartPage(0);
+    setShrinkMarginsEndPage((pageCount ?? 1) - 1);
+    setShrinkMarginTop(20);
+    setShrinkMarginRight(20);
+    setShrinkMarginBottom(20);
+    setShrinkMarginLeft(20);
+    setShowShrinkMarginsModal(true);
+  };
+
+  const handleShrinkPageMargins = async () => {
+    if (!filePath) return;
+    const { start, end } = resolvePageRange(shrinkMarginsScope, shrinkMarginsStartPage, shrinkMarginsEndPage);
+    if (start > end) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const shrunk = await invoke<number>('shrink_page_margins', {
+        path: filePath,
+        startPage: start,
+        endPage: end,
+        marginTop: shrinkMarginTop,
+        marginRight: shrinkMarginRight,
+        marginBottom: shrinkMarginBottom,
+        marginLeft: shrinkMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowShrinkMarginsModal(false);
+      showToast(`Shrunk margins on ${shrunk} page${shrunk === 1 ? '' : 's'}`);
+    });
   };
 
   const handleExpandPageMargins = async () => {
@@ -3759,7 +3952,8 @@ function App() {
     || showRenameBookmarkModal || showDuplicateRangeModal || showPageHeaderModal || showPageFooterModal
     || showSwapPagesModal || showReplacePageModal || showInterleaveModal || showPageSizeModal || showDecryptModal
     || showRotateRangeModal || showKeepRangeModal || showMoveRangeModal || showPrependModal || showSplitEveryModal
-    || showPageBorderModal || showBookmarkAllModal || showExpandMarginsModal
+    || showPageBorderModal || showBookmarkAllModal || showExpandMarginsModal || showShrinkMarginsModal
+    || showDeleteNthModal || showExtractOddModal || showExtractEvenModal
     || showReverseRangeModal || showInsertBlankPagesModal || showCropRangeModal
     || showExportPagesPdfModal
     || showInsertImagePageModal || showExportPagePdfModal
@@ -4663,6 +4857,8 @@ function App() {
                 <button onClick={() => void handleRotatePage180()} className="btn" title="Rotate current page 180°">Rotate 180°</button>
                 <button onClick={() => void handleRotateAllPages()} className="btn" title="Rotate all pages 90° CW">Rotate All</button>
                 <button onClick={() => void handleRotateAllPagesCcw()} className="btn" title="Rotate all pages 90° CCW">Rotate All CCW</button>
+                <button onClick={() => void handleRotateOddPages()} className="btn" title="Rotate odd pages (1, 3, 5…) 90° CW">Rot. Odd</button>
+                <button onClick={() => void handleRotateEvenPages()} className="btn" title="Rotate even pages (2, 4, 6…) 90° CW">Rot. Even</button>
                 <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
                 <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
                 <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
@@ -4684,6 +4880,7 @@ function App() {
                 <button onClick={() => void handleDuplicatePageToEnd()} className="btn" title="Duplicate current page to end">Dup. to End</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
+                <button onClick={openDeleteNthModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Delete every Nth page">Delete Nth</button>
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
                 <button onClick={openMergeModal} className="btn" title="Merge PDF — append pages (Ctrl+Shift+G)">Merge</button>
                 <button onClick={openInterleaveModal} className="btn" title="Interleave pages from another PDF">Interleave</button>
@@ -4692,6 +4889,8 @@ function App() {
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
                 <button onClick={openSplitEveryModal} className="btn" title="Split every N pages">Split N</button>
                 <button onClick={openExtractModal} className="btn" title="Extract pages to new PDF (Ctrl+Shift+J)" data-testid="extract-pdf">Extract</button>
+                <button onClick={openExtractOddModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Extract odd pages (1, 3, 5…) to new PDF">Extract Odd</button>
+                <button onClick={openExtractEvenModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Extract even pages (2, 4, 6…) to new PDF">Extract Even</button>
                 <button onClick={openSearchModal} className="btn" title="Find text (Ctrl+F)" data-testid="search-pdf">Find</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
                   <button
@@ -4725,6 +4924,7 @@ function App() {
                 <button onClick={openCropModal} className="btn" title="Crop current page margins">Crop</button>
                 <button onClick={openCropRangeModal} className="btn" title="Crop a page range">Crop Range</button>
                 <button onClick={openExpandMarginsModal} className="btn" title="Expand page margins (grow MediaBox)">Expand</button>
+                <button onClick={openShrinkMarginsModal} className="btn" title="Shrink page margins (reduce MediaBox)">Shrink</button>
                 <button onClick={openPageBorderModal} className="btn" title="Draw page border">Border</button>
                 <button onClick={openFlattenModal} className="btn" title="Flatten annotations (remove markup)">Flatten</button>
                 <button onClick={() => void handleFlattenAllAnnotations()} className="btn" title="Flatten annotations on all pages">Flatten All</button>
@@ -5441,7 +5641,7 @@ function App() {
       {showExportPngModal && (
         <Modal onClose={() => setShowExportPngModal(false)}>
           <h3>Export Image</h3>
-          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, TIFF, GIF, or PPM images (1600×2264). The open PDF is not modified.</p>
+          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, TIFF, GIF, PPM, or TGA images (1600×2264). The open PDF is not modified.</p>
           <label>Format:</label>
           <select
             className="modal-input"
@@ -5461,6 +5661,7 @@ function App() {
             <option value="tiff">TIFF</option>
             <option value="gif">GIF</option>
             <option value="ppm">PPM</option>
+            <option value="tga">TGA</option>
           </select>
           <label>Pages to export:</label>
           <select
@@ -5666,6 +5867,7 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowDuplicateRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleDuplicatePageRange()} className="btn">Duplicate</button>
+            <button onClick={() => void handleDuplicatePageRangeBefore()} className="btn">Before</button>
             <button onClick={() => void handleDuplicatePageRangeToEnd()} className="btn">To End</button>
           </div>
         </Modal>
@@ -5916,6 +6118,8 @@ function App() {
           <label>Target index (1-{((pageCount ?? 0) + 1)}): <input type="number" value={moveRangeToIndex + 1} onChange={(e) => setMoveRangeToIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" /></label>
           <div className="modal-actions">
             <button onClick={() => setShowMoveRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleMovePageRangeToStart()} className="btn">To Start</button>
+            <button onClick={() => void handleMovePageRangeToEnd()} className="btn">To End</button>
             <button onClick={() => void handleMovePageRange()} className="btn">Move</button>
           </div>
         </Modal>
@@ -5993,6 +6197,76 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowBookmarkAllModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleBookmarkAllPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Add all</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Shrink Margins Modal */}
+      {showShrinkMarginsModal && (
+        <Modal onClose={() => setShowShrinkMarginsModal(false)}>
+          <h3>Shrink Margins</h3>
+          <p className="modal-help">Shrink MediaBox inward (clips page edges; does not scale content).</p>
+          <label>Apply to:</label>
+          <select className="modal-input" value={shrinkMarginsScope} onChange={(e) => setShrinkMarginsScope(e.target.value as PageRangeScope)}>
+            <option value="current">Current page only</option>
+            <option value="range">Page range</option>
+            <option value="all">All pages</option>
+          </select>
+          {shrinkMarginsScope === 'range' && (
+            <>
+              <label>From page: <input type="number" value={shrinkMarginsStartPage + 1} onChange={(e) => setShrinkMarginsStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+              <label>To page: <input type="number" value={shrinkMarginsEndPage + 1} onChange={(e) => setShrinkMarginsEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+            </>
+          )}
+          <label>Top: <input type="number" value={shrinkMarginTop} onChange={(e) => setShrinkMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Right: <input type="number" value={shrinkMarginRight} onChange={(e) => setShrinkMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Bottom: <input type="number" value={shrinkMarginBottom} onChange={(e) => setShrinkMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Left: <input type="number" value={shrinkMarginLeft} onChange={(e) => setShrinkMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <div className="modal-actions">
+            <button onClick={() => setShowShrinkMarginsModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleShrinkPageMargins()} className="btn">Shrink</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Every Nth Page Modal */}
+      {showDeleteNthModal && (
+        <Modal onClose={() => setShowDeleteNthModal(false)}>
+          <h3>Delete Every Nth Page</h3>
+          <p className="modal-help">Delete pages n, 2n, 3n, … (1-based). At least one page is always kept.</p>
+          <label>N (≥ 2):</label>
+          <input type="number" value={deleteNthValue} onChange={(e) => setDeleteNthValue(Math.max(2, parseInt(e.target.value, 10) || 2))} min="2" className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowDeleteNthModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleDeleteEveryNthPage()} className="btn btn-danger">Delete</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Extract Odd Pages Modal */}
+      {showExtractOddModal && (
+        <Modal onClose={() => setShowExtractOddModal(false)}>
+          <h3>Extract Odd Pages</h3>
+          <p className="modal-help">Save pages 1, 3, 5, … to a new PDF. The open document is not modified.</p>
+          <label>Output path:</label>
+          <input type="text" value={extractOddOutputPath} onChange={(e) => setExtractOddOutputPath(e.target.value)} className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowExtractOddModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExtractOddPages()} className="btn" disabled={!extractOddOutputPath.trim()}>Extract</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Extract Even Pages Modal */}
+      {showExtractEvenModal && (
+        <Modal onClose={() => setShowExtractEvenModal(false)}>
+          <h3>Extract Even Pages</h3>
+          <p className="modal-help">Save pages 2, 4, 6, … to a new PDF. The open document is not modified.</p>
+          <label>Output path:</label>
+          <input type="text" value={extractEvenOutputPath} onChange={(e) => setExtractEvenOutputPath(e.target.value)} className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowExtractEvenModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExtractEvenPages()} className="btn" disabled={!extractEvenOutputPath.trim()}>Extract</button>
           </div>
         </Modal>
       )}
