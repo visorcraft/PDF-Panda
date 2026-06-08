@@ -24447,6 +24447,25 @@ mod tests {
     }
 
     #[test]
+    fn convert_pdf_to_markdown_rejects_missing_file() {
+        let missing = tmp("convert_md_missing");
+        let err = convert_pdf_to_markdown(missing.to_string_lossy().into_owned()).unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn save_pdf_markdown_rejects_missing_file() {
+        let missing = tmp("save_md_missing");
+        let custom = tmp("save_md_custom_out.md");
+        assert!(save_pdf_markdown(
+            missing.to_string_lossy().into_owned(),
+            false,
+            Some(custom.to_string_lossy().into_owned()),
+        )
+        .is_err());
+    }
+
+    #[test]
     fn write_markdown_file_creates_sibling_md() {
         let pdf_path = tmp("markdown_write");
         let md_path = pdf_path.with_extension("md");

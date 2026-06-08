@@ -34,7 +34,7 @@ before a release tag.
 - [ ] In-PDF page text (E) and vector rectangles (G); Edits modal
 
 ## Export
-- [ ] Markdown toggle; save with overwrite conflict
+- [ ] Markdown toggle (Ctrl/Cmd+Shift+M); sibling `.md` auto-save; Save As… custom path; overwrite conflict prompt
 - [ ] Summarize (Ctrl/Cmd+Shift+E); sibling `.summary.md`
 - [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
 - [ ] Export image (Ctrl/Cmd+Shift+B) — PNG or JPEG, current page, range, or all pages

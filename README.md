@@ -75,7 +75,7 @@ Three things we care about:
 - **Password protect** — export an encrypted copy; **decrypt** to `_decrypted.pdf`; open encrypted PDFs with a prompt
 
 **Convert & export**
-- **PDF → Markdown** with tagged-PDF structure (headings, lists, tables), heuristic layout, and a **Tesseract OCR** fallback for scanned pages
+- **PDF → Markdown** — tagged-PDF structure when available, PDFium heuristic layout otherwise, Tesseract OCR for scanned pages; auto-save sibling `.md` or **Save As…** for a custom path
 - **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
 - **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
