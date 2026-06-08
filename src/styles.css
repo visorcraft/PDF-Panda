@@ -12,7 +12,23 @@ body {
 
 .app {
   display: flex;
+  flex-direction: column;
   height: 100vh;
+  overflow: hidden;
+}
+
+.app-chrome {
+  flex-shrink: 0;
+  background: #fff;
+  border-bottom: 1px solid #e3e3e3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  z-index: 10;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -24,6 +40,7 @@ body {
   overflow-y: auto;
   padding: 12px;
   flex-shrink: 0;
+  height: 100%;
 }
 
 .sidebar h3 {
@@ -72,16 +89,244 @@ body {
   overflow: hidden;
 }
 
-/* Fixed header (toolbar + page/zoom controls) — stays put while the page scrolls */
-.header {
-  flex-shrink: 0;
-  background: #fff;
-  border-bottom: 1px solid #e3e3e3;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  z-index: 10;
+/* Menu chrome */
+.menu-chrome {
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
 }
 
-/* Toolbar */
+.menu-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 12px;
+  min-height: 36px;
+}
+
+.menu-bar-entry {
+  position: relative;
+}
+
+.menu-bar-trigger {
+  height: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+}
+
+.menu-bar-trigger:hover:not(:disabled),
+.menu-bar-trigger.open {
+  background: #fff;
+  color: #1a5fb4;
+}
+
+.menu-bar-trigger:disabled {
+  color: #aaa;
+  cursor: default;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 120;
+  min-width: 240px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 6px 0;
+  background: #fff;
+  border: 1px solid #d8d8d8;
+  border-radius: 0 6px 6px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.menu-dropdown-nested {
+  top: -6px;
+  left: 100%;
+  border-radius: 6px;
+  margin-left: 2px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: #333;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover:not(:disabled),
+.menu-item.active {
+  background: #eef4fc;
+}
+
+.menu-item:disabled {
+  color: #aaa;
+  cursor: default;
+}
+
+.menu-item.danger {
+  color: #c62828;
+}
+
+.menu-item.danger:hover:not(:disabled) {
+  background: #ffebee;
+}
+
+.menu-item-submenu {
+  position: relative;
+  cursor: default;
+}
+
+.menu-item-submenu:hover {
+  background: #eef4fc;
+}
+
+.menu-item-label {
+  flex: 1;
+}
+
+.menu-item-shortcut {
+  color: #888;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.menu-item-chevron {
+  color: #888;
+  font-size: 12px;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 6px 0;
+  background: #ececec;
+}
+
+.quick-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.quick-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.command-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.command-palette {
+  width: min(560px, 92vw);
+  max-height: 60vh;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.command-palette-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid #e8e8e8;
+  font-size: 15px;
+  outline: none;
+}
+
+.command-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: calc(60vh - 52px);
+  overflow-y: auto;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.command-palette-item.highlighted {
+  background: #eef4fc;
+}
+
+.command-palette-path {
+  color: #333;
+}
+
+.command-palette-shortcut {
+  color: #888;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.command-palette-empty {
+  padding: 16px;
+  color: #888;
+  font-size: 13px;
+}
+
+.shortcuts-modal {
+  max-width: 520px;
+}
+
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.shortcuts-table th,
+.shortcuts-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: top;
+}
+
+.shortcuts-table th {
+  width: 38%;
+  color: #555;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Legacy toolbar class kept for any stragglers */
 .toolbar {
   display: flex;
   gap: 8px;

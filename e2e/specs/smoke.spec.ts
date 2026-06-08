@@ -3,15 +3,25 @@ import { fileURLToPath } from 'node:url';
 
 const fixturePdf = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'sample.pdf');
 
+async function openFileMenu() {
+  await $('[data-testid="menu-file"]').click();
+}
+
+async function chooseOpenPdfFromMenu() {
+  await openFileMenu();
+  await $('[data-testid="open-pdf"]').click();
+}
+
 describe('PDF Panda shell', () => {
-  it('shows the Open PDF toolbar on launch', async () => {
-    const openBtn = await $('[data-testid="open-pdf"]');
-    await expect(openBtn).toBeDisplayed();
-    await expect(openBtn).toHaveText(expect.stringContaining('Open PDF'));
+  it('shows Open PDF under the File menu on launch', async () => {
+    await openFileMenu();
+    const openItem = await $('[data-testid="open-pdf"]');
+    await expect(openItem).toBeDisplayed();
+    await expect(openItem).toHaveText(expect.stringContaining('Open PDF'));
   });
 
   it('opens a PDF via the path modal and shows page controls', async () => {
-    await $('[data-testid="open-pdf"]').click();
+    await chooseOpenPdfFromMenu();
     await $('[data-testid="open-pdf-path"]').setValue(fixturePdf);
     await $('[data-testid="open-pdf-submit"]').click();
 

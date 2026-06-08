@@ -21,9 +21,10 @@
 
 ## Screenshots
 
-> _Placeholder — drop a real capture here._ The app shows a fixed toolbar, a
-> scrollable page viewer with 25–400% zoom, a thumbnail + bookmarks sidebar, and
-> tool overlays for highlights, notes, shapes, stamps, and forms.
+> _Placeholder — drop a real capture here._ The app shows a top menu bar (File,
+> Edit, Pages, …), a quick-access row, page/zoom controls, a thumbnail sidebar
+> beside a scrollable viewer (25–400% zoom), and tool overlays for highlights,
+> notes, shapes, stamps, and forms.
 
 ---
 
@@ -43,10 +44,11 @@ Three things we care about:
 ### What it covers today
 
 **View & navigate**
-- Smooth viewer with **25%–400%** zoom and a thumbnail sidebar
-- Page navigation via toolbar, thumbnails, keyboard, mouse wheel at scroll edges, and a clickable **Bookmarks** outline
+- **Menu bar** (File, Edit, Pages, Document, Annotate, Security, View, Help) plus a slim quick-access row — all page tools live in menus; **Ctrl/Cmd+Shift+P** opens a searchable command palette
+- Smooth viewer with **25%–400%** zoom; thumbnail sidebar matches viewer height
+- Page navigation via menus, quick bar, thumbnails, keyboard, mouse wheel at scroll edges, and a clickable **Bookmarks** outline
 - **Find text** across the document with match highlighting (Ctrl/Cmd+F)
-- Open via in-app path entry, a **Recently Opened** list, a built-in PDF browser, or **native open/save dialogs**
+- Open via **File → Open PDF** (Ctrl/Cmd+O), in-app path entry, **Recently Opened**, built-in PDF browser, or **native open/save dialogs**
 
 **Organize pages**
 - **Delete**, **duplicate**, **rotate** (90° steps), and **drag-and-drop reorder**
@@ -117,7 +119,7 @@ Markdown export can OCR scanned pages, sparse-text pages, and embedded/form imag
 | macOS | `brew install tesseract` |
 | Windows | [UB Mannheim builds](https://github.com/UB-Mannheim/tesseract/wiki) |
 
-**Markdown view (Ctrl/Cmd+Shift+M)** runs the full save pipeline: page PNGs and image assets land in `<md-stem>_assets/`, with OCR blocks appended where Tesseract is available. Without Tesseract you still get PDFium text and image assets, plus install hints on scanned/sparse pages.
+**Markdown view (Ctrl/Cmd+Shift+M)** runs the full save pipeline: page PNGs and image assets land in `<md-stem>_assets/`, with OCR blocks appended where Tesseract is available. Without Tesseract you still get PDFium text and image assets; scanned pages show a plain-language notice in the header/toast. On first launch (and when opening Markdown without Tesseract), the app offers an optional install guide with a **Do not remind me again** checkbox; **Help → Install Tesseract** appears only while OCR is not detected.
 
 The `convert_pdf_to_markdown` API is text/heuristics only (no assets, no OCR) — the UI does not use it.
 
@@ -161,7 +163,8 @@ macOS/Windows **package** signing via repository secrets — see
 
 | Shortcut | Action |
 | --- | --- |
-| Ctrl/Cmd+O | Open PDF |
+| Ctrl/Cmd+O | Open PDF (File menu) |
+| Ctrl/Cmd+Shift+P | Command palette (search all actions) |
 | Ctrl/Cmd+S / Ctrl/Cmd+Shift+S | Save / Save As |
 | Ctrl/Cmd+W | Close PDF |
 | Ctrl/Cmd+Z / Ctrl/Cmd+Y | Undo / Redo |

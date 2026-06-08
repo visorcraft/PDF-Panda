@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openNativeDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog';
 import parityBatchCommands from './parity_batch_commands.json';
+import { buildAppMenus } from './menu/buildAppMenus';
+import { MenuChrome } from './menu/MenuChrome';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -464,6 +466,8 @@ function App() {
   const [markdownRevision, setMarkdownRevision] = useState<number | null>(null);
   const [markdownOcrNotice, setMarkdownOcrNotice] = useState<MarkdownOcrNotice | null>(null);
   const [ocrAvailable, setOcrAvailable] = useState<boolean | null>(null);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showTesseractModal, setShowTesseractModal] = useState(false);
   const [tesseractInstallGuide, setTesseractInstallGuide] = useState<TesseractInstallGuide>(DEFAULT_TESSERACT_GUIDE);
   const [tesseractDoNotRemind, setTesseractDoNotRemind] = useState(false);
@@ -4852,6 +4856,9 @@ function App() {
     setShowSummaryModal(false);
     setShowPageTextModal(false);
     setShowPageEditsModal(false);
+    setShowCommandPalette(false);
+    setShowShortcutsHelp(false);
+    setShowTesseractModal(false);
   }, [showUnsavedModal]);
 
   const refreshAfterWorkingChange = async () => {
@@ -5044,7 +5051,8 @@ function App() {
     || showInsertImagePageModal || showExportPagePdfModal
     || showInsertModal || showMergeModal || showSearchModal
     || showNoteModal || showImageInsertModal
-    || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal;
+    || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal
+    || showCommandPalette || showShortcutsHelp || showTesseractModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -5060,6 +5068,12 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         openPdfRef.current();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setShowCommandPalette(true);
         return;
       }
 
@@ -5744,6 +5758,233 @@ function App() {
     }
   };
 
+  const appMenus = buildAppMenus({
+    hasPdf: !!filePath,
+    isDirty,
+    canUndo,
+    canRedo,
+    pageCount,
+    currentPage,
+    viewMode,
+    highlightMode,
+    noteMode,
+    drawMode,
+    shapeMode,
+    stampMode,
+    redactMode,
+    imageInsertMode,
+    textEditMode,
+    vectorEditMode,
+    showFormsPanel,
+    showBookmarksPanel,
+    showSignaturesPanel,
+    tesseractInstalled: ocrAvailable === true,
+    openPdf,
+    handleSave,
+    openSaveAs,
+    requestClosePdf: () => guardUnsaved(closePdf),
+    undo,
+    redo,
+    handlePrint,
+    openSearchModal,
+    handleRotatePage,
+    handleRotatePageCcw: () => void handleRotatePageCcw(),
+    handleResetPageRotation: () => void handleResetPageRotation(),
+    handleRotatePage180: () => void handleRotatePage180(),
+    handleRotateAllPages: () => void handleRotateAllPages(),
+    handleRotateAllPagesCcw: () => void handleRotateAllPagesCcw(),
+    handleRotateAllPages180: () => void handleRotateAllPages180(),
+    handleRotateOddPages: () => void handleRotateOddPages(),
+    handleRotateEvenPages: () => void handleRotateEvenPages(),
+    handleRotateOddPagesCcw: () => void handleRotateOddPagesCcw(),
+    handleRotateEvenPagesCcw: () => void handleRotateEvenPagesCcw(),
+    handleRotate180OddPages: () => void handleRotate180OddPages(),
+    handleRotate180EvenPages: () => void handleRotate180EvenPages(),
+    handleResetRotationOddPages: () => void handleResetRotationOddPages(),
+    handleResetRotationEvenPages: () => void handleResetRotationEvenPages(),
+    handleResetAllRotations: () => void handleResetAllRotations(),
+    openRotateRangeModal,
+    handleDuplicatePage,
+    handleDuplicatePageBefore: () => void handleDuplicatePageBefore(),
+    openDuplicateRangeModal,
+    openParityRangeModal,
+    openMoveRangeModal,
+    openKeepRangeModal,
+    handleKeepOddPages: () => void handleKeepOddPages(),
+    handleKeepEvenPages: () => void handleKeepEvenPages(),
+    handleDeleteOddPages: () => void handleDeleteOddPages(),
+    handleDeleteEvenPages: () => void handleDeleteEvenPages(),
+    handleAddBlankPage: () => void handleAddBlankPage(),
+    handleAddBlankPageBefore: () => void handleAddBlankPageBefore(),
+    openInsertBlankPagesModal,
+    handleInsertBlankBetweenPages: () => void handleInsertBlankBetweenPages(),
+    handleInsertBlankBeforeOddPages: () => void handleInsertBlankBeforeOddPages(),
+    handleInsertBlankBeforeEvenPages: () => void handleInsertBlankBeforeEvenPages(),
+    handleInsertBlankAfterOddPages: () => void handleInsertBlankAfterOddPages(),
+    handleInsertBlankAfterEvenPages: () => void handleInsertBlankAfterEvenPages(),
+    handleMovePageToFirst: () => void handleMovePageToFirst(),
+    handleMovePageToLast: () => void handleMovePageToLast(),
+    handleMovePageUp: () => void handleMovePageUp(),
+    handleMovePageDown: () => void handleMovePageDown(),
+    openSwapPagesModal,
+    handleReversePages: () => void handleReversePages(),
+    openReverseRangeModal,
+    handleReverseOddPages: () => void handleReverseOddPages(),
+    handleReverseEvenPages: () => void handleReverseEvenPages(),
+    handleMoveOddPagesToStart: () => void handleMoveOddPagesToStart(),
+    handleMoveEvenPagesToStart: () => void handleMoveEvenPagesToStart(),
+    handleMoveOddPagesToEnd: () => void handleMoveOddPagesToEnd(),
+    handleMoveEvenPagesToEnd: () => void handleMoveEvenPagesToEnd(),
+    handleSplitOddEven: () => void handleSplitOddEven(),
+    handleDuplicateAllPages: () => void handleDuplicateAllPages(),
+    handleDuplicatePageToEnd: () => void handleDuplicatePageToEnd(),
+    handleDuplicateOddPages: () => void handleDuplicateOddPages(),
+    handleDuplicateEvenPages: () => void handleDuplicateEvenPages(),
+    handleDuplicateOddPagesBefore: () => void handleDuplicateOddPagesBefore(),
+    handleDuplicateEvenPagesBefore: () => void handleDuplicateEvenPagesBefore(),
+    handleDuplicateOddPagesToEnd: () => void handleDuplicateOddPagesToEnd(),
+    handleDuplicateEvenPagesToEnd: () => void handleDuplicateEvenPagesToEnd(),
+    handleDuplicateOddPagesToStart: () => void handleDuplicateOddPagesToStart(),
+    handleDuplicateEvenPagesToStart: () => void handleDuplicateEvenPagesToStart(),
+    openDeleteModal,
+    openDeleteRangeModal,
+    openDeleteNthModal,
+    openInsertModal,
+    openMergeModal,
+    openInterleaveModal,
+    openPrependModal,
+    openReplacePageModal,
+    openSplitModal,
+    openSplitAtModal,
+    openSplitEveryModal,
+    openExtractModal,
+    openExtractOddModal,
+    openExtractEvenModal,
+    setViewModePdf: () => setViewMode('pdf'),
+    toggleMarkdownView,
+    handleOptimizePdf,
+    openExportPngModal,
+    openExportPagePdfModal,
+    openExportPagesPdfModal,
+    openInsertImagePageModal,
+    openPageNumbersModal,
+    openPageHeaderModal,
+    openPageFooterModal,
+    openPageSizeModal,
+    openWatermarkModal,
+    openCropModal,
+    openCropRangeModal,
+    handleCropOddPages: () => void handleCropOddPages(),
+    handleCropEvenPages: () => void handleCropEvenPages(),
+    openExpandMarginsModal,
+    openShrinkMarginsModal,
+    openPageBorderModal,
+    openFlattenModal,
+    handleFlattenAllAnnotations: () => void handleFlattenAllAnnotations(),
+    handleFlattenOddPages: () => void handleFlattenOddPages(),
+    handleFlattenEvenPages: () => void handleFlattenEvenPages(),
+    handleSortPagesBySize: (desc) => void handleSortPagesBySize(desc),
+    handleSortOddPagesBySize: (desc) => void handleSortOddPagesBySize(desc),
+    handleSortEvenPagesBySize: (desc) => void handleSortEvenPagesBySize(desc),
+    handleSortPagesByRotation: (desc) => void handleSortPagesByRotation(desc),
+    handleSortOddPagesByRotation: (desc) => void handleSortOddPagesByRotation(desc),
+    handleSortEvenPagesByRotation: (desc) => void handleSortEvenPagesByRotation(desc),
+    openMetadataModal: () => void openMetadataModal(),
+    handleSummarizePdf,
+    openProtectModal,
+    openDecryptModal,
+    openSignModal,
+    toggleSignaturesPanel,
+    toggleBookmarksPanel: () => setShowBookmarksPanel((prev) => !prev),
+    toggleRedactMode,
+    toggleHighlightMode,
+    toggleNoteMode,
+    toggleDrawMode,
+    toggleShapeMode,
+    toggleStampMode,
+    toggleImageInsertMode,
+    toggleTextEditMode,
+    toggleVectorEditMode,
+    openPageEditsModal: () => setShowPageEditsModal(true),
+    toggleFormsPanel,
+    openTesseractGuide: () => {
+      setTesseractReminderSource('launch');
+      setShowTesseractModal(true);
+    },
+    openShortcutsHelp: () => setShowShortcutsHelp(true),
+    openCommandPalette: () => setShowCommandPalette(true),
+  });
+
+  const modeToolbarExtras = filePath ? (
+    <>
+      {imageInsertMode && imageSourcePath && (
+        <button
+          type="button"
+          onClick={openImageInsertModal}
+          className="btn"
+          title="Change source image"
+        >
+          {fileNameFromPath(imageSourcePath)}
+        </button>
+      )}
+      {stampMode && (
+        <div className="stamp-toolbar" role="group" aria-label="Stamp options">
+          <div className="shape-kind-toggle" role="group" aria-label="Stamp kind">
+            <button
+              type="button"
+              className={stampKind === 'text' ? 'active' : ''}
+              onClick={() => setStampKind('text')}
+            >
+              Text
+            </button>
+            <button
+              type="button"
+              className={stampKind === 'image' ? 'active' : ''}
+              onClick={() => setStampKind('image')}
+            >
+              Image
+            </button>
+          </div>
+          <select
+            className="stamp-preset-select"
+            value={stampPreset}
+            onChange={(e) => setStampPreset(e.target.value)}
+            aria-label="Stamp preset"
+          >
+            {STAMP_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>{preset.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {shapeMode && (
+        <div className="shape-kind-toggle" role="group" aria-label="Shape kind">
+          <button
+            type="button"
+            className={shapeKind === 'square' ? 'active' : ''}
+            onClick={() => setShapeKind('square')}
+          >
+            Rect
+          </button>
+          <button
+            type="button"
+            className={shapeKind === 'circle' ? 'active' : ''}
+            onClick={() => setShapeKind('circle')}
+          >
+            Ellipse
+          </button>
+          <button
+            type="button"
+            className={shapeKind === 'line' ? 'active' : ''}
+            onClick={() => setShapeKind('line')}
+          >
+            Line
+          </button>
+        </div>
+      )}
+    </>
+  ) : null;
+
   return (
     <div className="app">
       <Toast notification={toast} />
@@ -5754,6 +5995,65 @@ function App() {
         </div>
       )}
 
+      <div className="app-chrome">
+        <MenuChrome
+          menus={appMenus.menus}
+          quickAccess={appMenus.quickAccess}
+          allActions={appMenus.allActions}
+          showCommandPalette={showCommandPalette}
+          showShortcutsHelp={showShortcutsHelp}
+          onCloseCommandPalette={() => setShowCommandPalette(false)}
+          onCloseShortcutsHelp={() => setShowShortcutsHelp(false)}
+          modeExtras={modeToolbarExtras}
+        />
+
+        {pageCount !== null && viewMode === 'pdf' && (
+          <div className="page-controls">
+            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 0} className="btn">Prev</button>
+            <span className="field-group">
+              <input
+                className="num-input"
+                type="text"
+                inputMode="numeric"
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onKeyDown={(e) => onFieldKeyDown(e, commitPage)}
+                onBlur={commitPage}
+                aria-label="Current page"
+              />
+              <span className="muted" data-testid="page-count">/ {pageCount}</span>
+              {pageSizes[currentPage] && (
+                <span className="muted" title="Page size in PDF points">
+                  {' '}· {Math.round(pageSizes[currentPage].width)}×{Math.round(pageSizes[currentPage].height)}pt
+                  {pageSizes[currentPage].rotation !== 0 ? ` · ${pageSizes[currentPage].rotation}°` : ''}
+                </span>
+              )}
+            </span>
+            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
+
+            <span className="zoom-divider" />
+
+            <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM} className="btn">−</button>
+            <span className="field-group">
+              <input
+                className="num-input"
+                type="text"
+                inputMode="numeric"
+                value={zoomInput}
+                onChange={(e) => setZoomInput(e.target.value)}
+                onKeyDown={(e) => onFieldKeyDown(e, commitZoom)}
+                onBlur={commitZoom}
+                aria-label="Zoom percent"
+              />
+              <span className="muted">%</span>
+            </span>
+            <button onClick={zoomIn} disabled={zoom >= MAX_ZOOM} className="btn">+</button>
+            <button onClick={resetZoom} className="btn btn-secondary">Reset</button>
+          </div>
+        )}
+      </div>
+
+      <div className="app-body">
       {/* Sidebar */}
       <aside className="sidebar">
         <h3>Thumbnails</h3>
@@ -5934,380 +6234,6 @@ function App() {
 
       {/* Main Content */}
       <main className="main">
-        {/* Fixed header: toolbar + page/zoom controls stay put while the page scrolls */}
-        <div className="header">
-          <div className="toolbar">
-            <button onClick={openPdf} className="btn btn-active" title="Open PDF (Ctrl+O)" data-testid="open-pdf">Open PDF</button>
-            {filePath && (
-              <>
-                <button onClick={handleSave} className="btn" disabled={!isDirty} title="Save (Ctrl+S)" data-testid="save-pdf">{isDirty ? 'Save •' : 'Save'}</button>
-                <button onClick={openSaveAs} className="btn" title="Save As… (Ctrl+Shift+S)">Save As…</button>
-                <button onClick={undo} className="btn" disabled={!canUndo} title="Undo (Ctrl+Z)">Undo</button>
-                <button onClick={redo} className="btn" disabled={!canRedo} title="Redo (Ctrl+Y)">Redo</button>
-                <button onClick={handleRotatePage} className="btn" title="Rotate 90° CW (Ctrl+R)" data-testid="rotate-page">Rotate</button>
-                <button onClick={() => void handleRotatePageCcw()} className="btn" title="Rotate 90° CCW">Rotate CCW</button>
-                <button onClick={() => void handleResetPageRotation()} className="btn" title="Reset current page rotation">Reset Rot.</button>
-                <button onClick={() => void handleRotatePage180()} className="btn" title="Rotate current page 180°">Rotate 180°</button>
-                <button onClick={() => void handleRotateAllPages()} className="btn" title="Rotate all pages 90° CW">Rotate All</button>
-                <button onClick={() => void handleRotateAllPagesCcw()} className="btn" title="Rotate all pages 90° CCW">Rotate All CCW</button>
-                <button onClick={() => void handleRotateAllPages180()} className="btn" title="Rotate all pages 180°">Rotate All 180°</button>
-                <button onClick={() => void handleRotateOddPages()} className="btn" title="Rotate odd pages (1, 3, 5…) 90° CW">Rot. Odd</button>
-                <button onClick={() => void handleRotateEvenPages()} className="btn" title="Rotate even pages (2, 4, 6…) 90° CW">Rot. Even</button>
-                <button onClick={() => void handleRotateOddPagesCcw()} className="btn" title="Rotate odd pages 90° CCW">Odd CCW</button>
-                <button onClick={() => void handleRotateEvenPagesCcw()} className="btn" title="Rotate even pages 90° CCW">Even CCW</button>
-                <button onClick={() => void handleRotate180OddPages()} className="btn" title="Rotate odd pages 180°">Odd 180°</button>
-                <button onClick={() => void handleRotate180EvenPages()} className="btn" title="Rotate even pages 180°">Even 180°</button>
-                <button onClick={() => void handleResetRotationOddPages()} className="btn" title="Reset rotation on odd pages">Reset Odd</button>
-                <button onClick={() => void handleResetRotationEvenPages()} className="btn" title="Reset rotation on even pages">Reset Even</button>
-                <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
-                <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
-                <button onClick={() => void handleDuplicatePageBefore()} className="btn" title="Duplicate current page before itself">Dup. Before</button>
-                <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
-                <button onClick={openRotateRangeModal} className="btn" title="Rotate a page range">Rot. Range</button>
-                <button onClick={openParityRangeModal} className="btn" title="Apply odd/even or local-parity tools within a page range">Parity Range</button>
-                <button onClick={openMoveRangeModal} className="btn" title="Move a page range">Move Range</button>
-                <button onClick={openKeepRangeModal} className="btn" title="Keep only a page range">Keep Range</button>
-                <button onClick={() => void handleKeepOddPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep odd pages only (1, 3, 5…)">Keep Odd</button>
-                <button onClick={() => void handleKeepEvenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep even pages only (2, 4, 6…)">Keep Even</button>
-                <button onClick={() => void handleDeleteOddPages()} className="btn btn-danger" disabled={pageCount !== null && pageCount < 2} title="Delete odd pages (1, 3, 5…)">Del Odd</button>
-                <button onClick={() => void handleDeleteEvenPages()} className="btn btn-danger" disabled={pageCount !== null && pageCount < 2} title="Delete even pages (2, 4, 6…)">Del Even</button>
-                <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank After</button>
-                <button onClick={() => void handleAddBlankPageBefore()} className="btn" title="Insert blank page before current">Blank Before</button>
-                <button onClick={openInsertBlankPagesModal} className="btn" title="Insert multiple blank pages">Blank Pages</button>
-                <button onClick={() => void handleInsertBlankBetweenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Insert a blank page between each pair">Blank Between</button>
-                <button onClick={() => void handleInsertBlankBeforeOddPages()} className="btn" title="Insert blank before each odd page">Blank Before Odd</button>
-                <button onClick={() => void handleInsertBlankBeforeEvenPages()} className="btn" title="Insert blank before each even page">Blank Before Even</button>
-                <button onClick={() => void handleInsertBlankAfterOddPages()} className="btn" title="Insert blank after each odd page">Blank After Odd</button>
-                <button onClick={() => void handleInsertBlankAfterEvenPages()} className="btn" title="Insert blank after each even page">Blank After Even</button>
-                <button onClick={() => void handleMovePageToFirst()} className="btn" disabled={currentPage === 0} title="Move current page to first">To First</button>
-                <button onClick={() => void handleMovePageToLast()} className="btn" disabled={pageCount !== null && currentPage >= pageCount - 1} title="Move current page to last">To Last</button>
-                <button onClick={() => void handleMovePageUp()} className="btn" disabled={currentPage === 0} title="Move current page up one position">Move Up</button>
-                <button onClick={() => void handleMovePageDown()} className="btn" disabled={pageCount !== null && currentPage >= pageCount - 1} title="Move current page down one position">Move Down</button>
-                <button onClick={openSwapPagesModal} className="btn" title="Swap two pages by number">Swap</button>
-                <button onClick={() => void handleReversePages()} className="btn" title="Reverse page order (Ctrl+Shift+Y)">Reverse</button>
-                <button onClick={openReverseRangeModal} className="btn" title="Reverse order within a page range">Rev. Range</button>
-                <button onClick={() => void handleReverseOddPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Reverse order among odd pages">Rev. Odd</button>
-                <button onClick={() => void handleReverseEvenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Reverse order among even pages">Rev. Even</button>
-                <button onClick={() => void handleMoveOddPagesToStart()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move odd pages to document start">Odd→Start</button>
-                <button onClick={() => void handleMoveEvenPagesToStart()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move even pages to document start">Even→Start</button>
-                <button onClick={() => void handleMoveOddPagesToEnd()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move odd pages to document end">Odd→End</button>
-                <button onClick={() => void handleMoveEvenPagesToEnd()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move even pages to document end">Even→End</button>
-                <button onClick={() => void handleSplitOddEven()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into odd- and even-indexed PDFs">Odd/Even</button>
-                <button onClick={() => void handleDuplicateAllPages()} className="btn" title="Duplicate every page and append copies">Dup. All</button>
-                <button onClick={() => void handleDuplicatePageToEnd()} className="btn" title="Duplicate current page to end">Dup. to End</button>
-                <button onClick={() => void handleDuplicateOddPages()} className="btn" title="Append copies of odd pages (1, 3, 5…)">Dup. Odd</button>
-                <button onClick={() => void handleDuplicateEvenPages()} className="btn" title="Append copies of even pages (2, 4, 6…)">Dup. Even</button>
-                <button onClick={() => void handleDuplicateOddPagesBefore()} className="btn" title="Insert a copy before each odd page">Dup. Odd Before</button>
-                <button onClick={() => void handleDuplicateEvenPagesBefore()} className="btn" title="Insert a copy before each even page">Dup. Even Before</button>
-                <button onClick={() => void handleDuplicateOddPagesToEnd()} className="btn" title="Copy each odd page to document end">Dup. Odd To End</button>
-                <button onClick={() => void handleDuplicateEvenPagesToEnd()} className="btn" title="Copy each even page to document end">Dup. Even To End</button>
-                <button onClick={() => void handleDuplicateOddPagesToStart()} className="btn" title="Copy each odd page to document start">Dup. Odd To Start</button>
-                <button onClick={() => void handleDuplicateEvenPagesToStart()} className="btn" title="Copy each even page to document start">Dup. Even To Start</button>
-                <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
-                <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
-                <button onClick={openDeleteNthModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Delete every Nth page">Delete Nth</button>
-                <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
-                <button onClick={openMergeModal} className="btn" title="Merge PDF — append pages (Ctrl+Shift+G)">Merge</button>
-                <button onClick={openInterleaveModal} className="btn" title="Interleave pages from another PDF">Interleave</button>
-                <button onClick={openPrependModal} className="btn" title="Prepend pages from another PDF">Prepend</button>
-                <button onClick={openReplacePageModal} className="btn" title="Replace current page from another PDF">Replace</button>
-                <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
-                <button onClick={openSplitAtModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into two PDFs at a page boundary">Split At</button>
-                <button onClick={openSplitEveryModal} className="btn" title="Split every N pages">Split N</button>
-                <button onClick={openExtractModal} className="btn" title="Extract pages to new PDF (Ctrl+Shift+J)" data-testid="extract-pdf">Extract</button>
-                <button onClick={openExtractOddModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Extract odd pages (1, 3, 5…) to new PDF">Extract Odd</button>
-                <button onClick={openExtractEvenModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Extract even pages (2, 4, 6…) to new PDF">Extract Even</button>
-                <button onClick={openSearchModal} className="btn" title="Find text (Ctrl+F)" data-testid="search-pdf">Find</button>
-                <div className="view-toggle" role="group" aria-label="Document view">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('pdf')}
-                    className={viewMode === 'pdf' ? 'active' : ''}
-                    aria-pressed={viewMode === 'pdf'}
-                  >
-                    PDF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void toggleMarkdownView()}
-                    className={viewMode === 'markdown' ? 'active' : ''}
-                    aria-pressed={viewMode === 'markdown'}
-                    title="Toggle Markdown view (Ctrl+Shift+M)"
-                  >
-                    Markdown
-                  </button>
-                </div>
-                <button onClick={handleOptimizePdf} className="btn" title="Optimize PDF (Ctrl+Shift+O)">Optimize</button>
-                <button onClick={openExportPngModal} className="btn" title="Export pages as PNG/JPEG/WebP/BMP (Ctrl+Shift+B)" data-testid="export-png">Export Image</button>
-                <button onClick={openExportPagePdfModal} className="btn" title="Export current page as PDF">Export Page</button>
-                <button onClick={openExportPagesPdfModal} className="btn" title="Export each page as a separate PDF">Export Pages</button>
-                <button onClick={openInsertImagePageModal} className="btn" title="Insert image as new page">Image Page</button>
-                <button onClick={openPageNumbersModal} className="btn" title="Add page numbers">Page Numbers</button>
-                <button onClick={openPageHeaderModal} className="btn" title="Add page header text">Page Header</button>
-                <button onClick={openPageFooterModal} className="btn" title="Add page footer text">Page Footer</button>
-                <button onClick={openPageSizeModal} className="btn" title="Set page size (Letter, A4, Legal)">Page Size</button>
-                <button onClick={openWatermarkModal} className="btn" title="Add text watermark">Watermark</button>
-                <button onClick={openCropModal} className="btn" title="Crop current page margins">Crop</button>
-                <button onClick={openCropRangeModal} className="btn" title="Crop a page range">Crop Range</button>
-                <button onClick={() => void handleCropOddPages()} className="btn" title="Crop odd pages (uses Crop margin values)">Crop Odd</button>
-                <button onClick={() => void handleCropEvenPages()} className="btn" title="Crop even pages (uses Crop margin values)">Crop Even</button>
-                <button onClick={openExpandMarginsModal} className="btn" title="Expand page margins (grow MediaBox)">Expand</button>
-                <button onClick={openShrinkMarginsModal} className="btn" title="Shrink page margins (reduce MediaBox)">Shrink</button>
-                <button onClick={openPageBorderModal} className="btn" title="Draw page border">Border</button>
-                <button onClick={openFlattenModal} className="btn" title="Flatten annotations (remove markup)">Flatten</button>
-                <button onClick={() => void handleFlattenAllAnnotations()} className="btn" title="Flatten annotations on all pages">Flatten All</button>
-                <button onClick={() => void handleFlattenOddPages()} className="btn" title="Flatten annotations on odd pages only">Flatten Odd</button>
-                <button onClick={() => void handleFlattenEvenPages()} className="btn" title="Flatten annotations on even pages only">Flatten Even</button>
-                <button onClick={() => void handleSortPagesBySize(false)} className="btn" title="Sort pages smallest to largest">Sort ↑</button>
-                <button onClick={() => void handleSortPagesBySize(true)} className="btn" title="Sort pages largest to smallest">Sort ↓</button>
-                <button onClick={() => void handleSortOddPagesBySize(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by size (smallest first)">Odd Sort ↑</button>
-                <button onClick={() => void handleSortOddPagesBySize(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by size (largest first)">Odd Sort ↓</button>
-                <button onClick={() => void handleSortEvenPagesBySize(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by size (smallest first)">Even Sort ↑</button>
-                <button onClick={() => void handleSortEvenPagesBySize(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by size (largest first)">Even Sort ↓</button>
-                <button onClick={() => void handleSortPagesByRotation(false)} className="btn" title="Sort pages by rotation (0° first)">Rot Sort ↑</button>
-                <button onClick={() => void handleSortPagesByRotation(true)} className="btn" title="Sort pages by rotation (270° first)">Rot Sort ↓</button>
-                <button onClick={() => void handleSortOddPagesByRotation(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by rotation (0° first)">Odd Rot ↑</button>
-                <button onClick={() => void handleSortOddPagesByRotation(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by rotation (270° first)">Odd Rot ↓</button>
-                <button onClick={() => void handleSortEvenPagesByRotation(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by rotation (0° first)">Even Rot ↑</button>
-                <button onClick={() => void handleSortEvenPagesByRotation(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by rotation (270° first)">Even Rot ↓</button>
-                <button
-                  onClick={() => void openMetadataModal()}
-                  className="btn"
-                  title="Edit document metadata (title, author, subject…)"
-                  data-testid="metadata-pdf"
-                >
-                  Metadata
-                </button>
-                <button
-                  onClick={() => void handleSummarizePdf()}
-                  className="btn"
-                  title="Summarize & extract (Ctrl+Shift+E)"
-                  data-testid="summarize-pdf"
-                >
-                  Summarize
-                </button>
-                <button onClick={openProtectModal} className="btn" title="Export password-protected PDF">Protect</button>
-                <button onClick={openDecryptModal} className="btn" title="Save decrypted copy of encrypted PDF">Decrypt</button>
-                <button
-                  onClick={openSignModal}
-                  className="btn"
-                  title="Digitally sign with PKCS#12 certificate (Ctrl+Shift+U)"
-                  data-testid="sign-pdf"
-                >
-                  Sign
-                </button>
-                <button
-                  onClick={toggleSignaturesPanel}
-                  className={`btn ${showSignaturesPanel ? 'btn-active' : ''}`}
-                  title="View and verify digital signatures"
-                  data-testid="signatures-panel"
-                >
-                  {showSignaturesPanel ? 'Signatures: ON' : 'Signatures'}
-                </button>
-                <button
-                  onClick={() => setShowBookmarksPanel((prev) => !prev)}
-                  className={`btn ${showBookmarksPanel ? 'btn-active' : ''}`}
-                  title="PDF outline bookmarks"
-                  data-testid="bookmarks-panel"
-                >
-                  {showBookmarksPanel ? 'Bookmarks: ON' : 'Bookmarks'}
-                </button>
-                <button
-                  onClick={toggleRedactMode}
-                  className={`btn ${redactMode ? 'btn-active' : ''}`}
-                  title="Toggle redaction mode (X)"
-                >
-                  {redactMode ? 'Redact: ON' : 'Redact'}
-                </button>
-                <button onClick={handlePrint} className="btn" title="Print (Ctrl+P)">Print</button>
-                <button
-                  onClick={toggleHighlightMode}
-                  className={`btn ${highlightMode ? 'btn-active' : ''}`}
-                  title="Toggle highlight mode (H)"
-                >
-                  {highlightMode ? 'Highlight: ON' : 'Highlight'}
-                </button>
-                <button
-                  onClick={toggleNoteMode}
-                  className={`btn ${noteMode ? 'btn-active' : ''}`}
-                  title="Toggle sticky note mode (N)"
-                >
-                  {noteMode ? 'Note: ON' : 'Note'}
-                </button>
-                <button
-                  onClick={toggleDrawMode}
-                  className={`btn ${drawMode ? 'btn-active' : ''}`}
-                  title="Toggle freehand draw mode (D)"
-                >
-                  {drawMode ? 'Draw: ON' : 'Draw'}
-                </button>
-                <button
-                  onClick={toggleShapeMode}
-                  className={`btn ${shapeMode ? 'btn-active' : ''}`}
-                  title="Toggle shape mode — rectangle, ellipse, line (S)"
-                >
-                  {shapeMode ? 'Shape: ON' : 'Shape'}
-                </button>
-                <button
-                  onClick={toggleStampMode}
-                  className={`btn ${stampMode ? 'btn-active' : ''}`}
-                  title="Toggle stamp mode — text and image stamps (T)"
-                >
-                  {stampMode ? 'Stamp: ON' : 'Stamp'}
-                </button>
-                <button
-                  onClick={toggleImageInsertMode}
-                  className={`btn ${imageInsertMode ? 'btn-active' : ''}`}
-                  title="Insert image on page — PNG/JPEG (I)"
-                >
-                  {imageInsertMode ? 'Image: ON' : 'Insert Image'}
-                </button>
-                <button
-                  onClick={toggleTextEditMode}
-                  className={`btn ${textEditMode ? 'btn-active' : ''}`}
-                  title="Place editable text in page content (E)"
-                  data-testid="text-edit-mode"
-                >
-                  {textEditMode ? 'Text: ON' : 'Page Text'}
-                </button>
-                <button
-                  onClick={toggleVectorEditMode}
-                  className={`btn ${vectorEditMode ? 'btn-active' : ''}`}
-                  title="Draw vector rectangles in page content (G)"
-                  data-testid="vector-edit-mode"
-                >
-                  {vectorEditMode ? 'Vector: ON' : 'Vector'}
-                </button>
-                <button
-                  onClick={() => setShowPageEditsModal(true)}
-                  className="btn"
-                  title="Manage page text and vector edits on this page"
-                >
-                  Edits
-                </button>
-                <button
-                  onClick={toggleFormsPanel}
-                  className={`btn ${showFormsPanel ? 'btn-active' : ''}`}
-                  title="Form fields — fill and create text fields (F)"
-                >
-                  {showFormsPanel ? 'Forms: ON' : 'Forms'}
-                </button>
-                {imageInsertMode && imageSourcePath && (
-                  <button
-                    type="button"
-                    onClick={openImageInsertModal}
-                    className="btn"
-                    title="Change source image"
-                  >
-                    {fileNameFromPath(imageSourcePath)}
-                  </button>
-                )}
-                {stampMode && (
-                  <div className="stamp-toolbar" role="group" aria-label="Stamp options">
-                    <div className="shape-kind-toggle" role="group" aria-label="Stamp kind">
-                      <button
-                        type="button"
-                        className={stampKind === 'text' ? 'active' : ''}
-                        onClick={() => setStampKind('text')}
-                      >
-                        Text
-                      </button>
-                      <button
-                        type="button"
-                        className={stampKind === 'image' ? 'active' : ''}
-                        onClick={() => setStampKind('image')}
-                      >
-                        Image
-                      </button>
-                    </div>
-                    <select
-                      className="stamp-preset-select"
-                      value={stampPreset}
-                      onChange={(e) => setStampPreset(e.target.value)}
-                      aria-label="Stamp preset"
-                    >
-                      {STAMP_PRESETS.map((preset) => (
-                        <option key={preset.id} value={preset.id}>{preset.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {shapeMode && (
-                  <div className="shape-kind-toggle" role="group" aria-label="Shape kind">
-                    <button
-                      type="button"
-                      className={shapeKind === 'square' ? 'active' : ''}
-                      onClick={() => setShapeKind('square')}
-                    >
-                      Rect
-                    </button>
-                    <button
-                      type="button"
-                      className={shapeKind === 'circle' ? 'active' : ''}
-                      onClick={() => setShapeKind('circle')}
-                    >
-                      Ellipse
-                    </button>
-                    <button
-                      type="button"
-                      className={shapeKind === 'line' ? 'active' : ''}
-                      onClick={() => setShapeKind('line')}
-                    >
-                      Line
-                    </button>
-                  </div>
-                )}
-                <button onClick={() => guardUnsaved(closePdf)} className="btn" title="Close (Ctrl+W)">Close</button>
-              </>
-            )}
-          </div>
-
-          {pageCount !== null && viewMode === 'pdf' && (
-            <div className="page-controls">
-              <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 0} className="btn">Prev</button>
-              <span className="field-group">
-                <input
-                  className="num-input"
-                  type="text"
-                  inputMode="numeric"
-                  value={pageInput}
-                  onChange={(e) => setPageInput(e.target.value)}
-                  onKeyDown={(e) => onFieldKeyDown(e, commitPage)}
-                  onBlur={commitPage}
-                  aria-label="Current page"
-                />
-                <span className="muted" data-testid="page-count">/ {pageCount}</span>
-                {pageSizes[currentPage] && (
-                  <span className="muted" title="Page size in PDF points">
-                    {' '}· {Math.round(pageSizes[currentPage].width)}×{Math.round(pageSizes[currentPage].height)}pt
-                    {pageSizes[currentPage].rotation !== 0 ? ` · ${pageSizes[currentPage].rotation}°` : ''}
-                  </span>
-                )}
-              </span>
-              <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
-
-              <span className="zoom-divider" />
-
-              <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM} className="btn">−</button>
-              <span className="field-group">
-                <input
-                  className="num-input"
-                  type="text"
-                  inputMode="numeric"
-                  value={zoomInput}
-                  onChange={(e) => setZoomInput(e.target.value)}
-                  onKeyDown={(e) => onFieldKeyDown(e, commitZoom)}
-                  onBlur={commitZoom}
-                  aria-label="Zoom percent"
-                />
-                <span className="muted">%</span>
-              </span>
-              <button onClick={zoomIn} disabled={zoom >= MAX_ZOOM} className="btn">+</button>
-              <button onClick={resetZoom} className="btn btn-secondary">Reset</button>
-            </div>
-          )}
-        </div>
-
         {/* Scrollable page area */}
         <div className={`page-scroll ${viewMode === 'markdown' ? 'markdown-scroll' : ''}`} ref={scrollRef} onWheel={handleWheel}>
           {viewMode === 'markdown' ? (
@@ -6692,12 +6618,13 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <p className="muted">No page rendered — click “Open PDF” to begin.</p>
+                <p className="muted">No page rendered — use File → Open PDF to begin.</p>
               )}
             </div>
           )}
         </div>
       </main>
+      </div>
 
       {/* Open Modal */}
       {showOpenModal && (
