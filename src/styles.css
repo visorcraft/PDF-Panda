@@ -779,6 +779,38 @@ body {
   line-height: 1.45;
 }
 
+.modal-steps {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modal-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #444;
+  cursor: pointer;
+}
+
+.modal-checkbox-row input {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.modal-actions-split {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-actions-split .modal-checkbox-row {
+  margin-top: 0;
+}
+
 .summary-panel {
   max-height: 50vh;
   overflow-y: auto;

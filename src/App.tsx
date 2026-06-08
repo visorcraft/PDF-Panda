@@ -20,6 +20,7 @@ const WHEEL_NAV_COOLDOWN = 350;
 
 const RECENT_PDFS_KEY = 'pdf-panda:recent-pdfs';
 const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
+const TESSERACT_REMIND_DISMISSED_KEY = 'pdf-panda:tesseract-remind-dismissed';
 const RECENT_PDF_LIMIT = 8;
 // Cap undo snapshots so very large PDFs don't accumulate unbounded working copies.
 const MAX_UNDO_HISTORY = 50;
@@ -93,17 +94,40 @@ interface MarkdownSaveResult {
   conflict: boolean;
   ocrAvailable: boolean;
   ocrLanguage: string;
+  pagesNeedingOcr: number;
   ocrTextBlocks: number;
   ocrMissingHints: number;
 }
 
-interface OcrStatus {
-  available: boolean;
-  binary: string | null;
-  language: string;
-  tessdataPrefix: string | null;
-  pageSegmentationMode: number;
+interface MarkdownOcrNotice {
+  tone: 'success' | 'warning';
+  message: string;
 }
+
+const markdownOcrNoticeFromResult = (result: MarkdownSaveResult): MarkdownOcrNotice | null => {
+  if (result.pagesNeedingOcr === 0) return null;
+  if (result.ocrMissingHints > 0 || result.ocrTextBlocks === 0) {
+    return {
+      tone: 'warning',
+      message: 'Scanned pages — pictures saved, text not read',
+    };
+  }
+  return {
+    tone: 'success',
+    message: 'Text read from scanned pages',
+  };
+};
+
+const markdownSaveToastMessage = (result: MarkdownSaveResult): string => {
+  const base = result.written
+    ? `Markdown saved to ${result.markdownPath}`
+    : 'Markdown file is already up to date';
+  if (result.pagesNeedingOcr === 0) return base;
+  if (result.ocrMissingHints > 0 || result.ocrTextBlocks === 0) {
+    return `${base}. Some pages are scans — pictures were saved, but their text couldn't be read.`;
+  }
+  return `${base}. Text was read from scanned pages.`;
+};
 
 interface PdfTextSearchMatch {
   page_index: number;
@@ -290,6 +314,32 @@ const writeStoredStringArray = (key: string, value: string[]) => {
   }
 };
 
+const isTesseractReminderDismissed = () => readStoredString(TESSERACT_REMIND_DISMISSED_KEY) === '1';
+
+const dismissTesseractReminder = () => writeStoredString(TESSERACT_REMIND_DISMISSED_KEY, '1');
+
+interface TesseractInstallGuide {
+  platform: string;
+  summary: string;
+  steps: string[];
+  installCommand: string | null;
+  downloadUrl: string | null;
+  licenseNote: string;
+}
+
+const DEFAULT_TESSERACT_GUIDE: TesseractInstallGuide = {
+  platform: 'unknown',
+  summary:
+    'Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.',
+  steps: [
+    'Install Tesseract with English language support for your operating system.',
+    'Restart PDF Panda.',
+  ],
+  installCommand: null,
+  downloadUrl: 'https://github.com/tesseract-ocr/tesseract',
+  licenseNote: 'Tesseract is free, open-source software. You do not need to pay for it.',
+};
+
 const directoryFromPath = (path: string): string => {
   const trimmed = path.trim();
   const slash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
@@ -398,6 +448,7 @@ function App() {
   const histIdxRef = useRef(0);
   const savedIdxRef = useRef(0); // history index matching the last saved/opened state
   const filePathRef = useRef('');
+  const handleMarkdownViewRef = useRef(async () => {});
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [imageSrc, setImageSrc] = useState<string>('');
@@ -411,7 +462,12 @@ function App() {
   const [markdownPath, setMarkdownPath] = useState('');
   const [pdfRevision, setPdfRevision] = useState(0);
   const [markdownRevision, setMarkdownRevision] = useState<number | null>(null);
-  const [ocrStatus, setOcrStatus] = useState<OcrStatus | null>(null);
+  const [markdownOcrNotice, setMarkdownOcrNotice] = useState<MarkdownOcrNotice | null>(null);
+  const [ocrAvailable, setOcrAvailable] = useState<boolean | null>(null);
+  const [showTesseractModal, setShowTesseractModal] = useState(false);
+  const [tesseractInstallGuide, setTesseractInstallGuide] = useState<TesseractInstallGuide>(DEFAULT_TESSERACT_GUIDE);
+  const [tesseractDoNotRemind, setTesseractDoNotRemind] = useState(false);
+  const [tesseractReminderSource, setTesseractReminderSource] = useState<'launch' | 'markdown' | null>(null);
 
   // Editable page/zoom field values (kept in sync with the canonical state).
   const [pageInput, setPageInput] = useState('1');
@@ -699,13 +755,37 @@ function App() {
 
   useEffect(() => { filePathRef.current = filePath; }, [filePath]);
 
+  const shouldShowTesseractReminder = useCallback(
+    () => ocrAvailable === false && !isTesseractReminderDismissed(),
+    [ocrAvailable],
+  );
+
+  const closeTesseractReminderModal = useCallback(() => {
+    const source = tesseractReminderSource;
+    if (tesseractDoNotRemind) dismissTesseractReminder();
+    setShowTesseractModal(false);
+    setTesseractDoNotRemind(false);
+    setTesseractReminderSource(null);
+    if (source === 'markdown') {
+      void handleMarkdownViewRef.current();
+    }
+  }, [tesseractDoNotRemind, tesseractReminderSource]);
+
   useEffect(() => {
-    void invoke<boolean>('native_file_dialogs_enabled')
-      .then(setNativeDialogs)
-      .catch(() => setNativeDialogs(false));
-    void invoke<OcrStatus>('ocr_status')
-      .then(setOcrStatus)
-      .catch(() => setOcrStatus(null));
+    void (async () => {
+      const [dialogs, available, guide] = await Promise.all([
+        invoke<boolean>('native_file_dialogs_enabled').catch(() => false),
+        invoke<boolean>('ocr_available').catch(() => true),
+        invoke<TesseractInstallGuide>('tesseract_install_guide').catch(() => null),
+      ]);
+      setNativeDialogs(dialogs);
+      setOcrAvailable(available);
+      setTesseractInstallGuide(guide ?? DEFAULT_TESSERACT_GUIDE);
+      if (!available && !isTesseractReminderDismissed()) {
+        setTesseractReminderSource('launch');
+        setShowTesseractModal(true);
+      }
+    })();
   }, []);
 
   const refreshUndoRedoState = useCallback(() => {
@@ -850,6 +930,7 @@ function App() {
       setViewMode('pdf');
       setMarkdownText('');
       setMarkdownPath('');
+      setMarkdownOcrNotice(null);
       setPdfRevision(0);
       setMarkdownRevision(null);
       cancelDrawing();
@@ -5249,6 +5330,7 @@ function App() {
     setViewMode('pdf');
     setMarkdownText('');
     setMarkdownPath('');
+    setMarkdownOcrNotice(null);
     setPdfRevision(0);
     setMarkdownRevision(null);
     setHighlightMode(false);
@@ -5311,16 +5393,9 @@ function App() {
     setMarkdownText(result.markdown);
     setMarkdownPath(result.markdownPath);
     setMarkdownRevision(pdfRevision);
+    setMarkdownOcrNotice(markdownOcrNoticeFromResult(result));
     if (switchToMarkdown) setViewMode('markdown');
-    const ocrNote =
-      result.ocrMissingHints > 0
-        ? ' Install Tesseract for OCR on scanned pages.'
-        : result.ocrTextBlocks > 0
-          ? ` OCR: ${result.ocrTextBlocks} block(s).`
-          : '';
-    showToast(
-      (result.written ? `Markdown saved to ${result.markdownPath}` : 'Markdown file is already up to date') + ocrNote,
-    );
+    showToast(markdownSaveToastMessage(result));
   };
 
   const handleMarkdownView = async () => {
@@ -5340,9 +5415,15 @@ function App() {
       setViewMode('pdf');
       return;
     }
+    if (shouldShowTesseractReminder()) {
+      setTesseractReminderSource('markdown');
+      setShowTesseractModal(true);
+      return;
+    }
     await handleMarkdownView();
   };
   toggleMarkdownViewRef.current = toggleMarkdownView;
+  handleMarkdownViewRef.current = handleMarkdownView;
 
   const handleMarkdownSaveAs = async () => {
     const target = markdownSaveAsPath.trim();
@@ -6233,11 +6314,9 @@ function App() {
             <div className="markdown-viewer">
               <div className="markdown-header">
                 <span>Markdown</span>
-                {ocrStatus && (
-                  <span className={`markdown-ocr-badge ${ocrStatus.available ? 'ready' : 'missing'}`}>
-                    {ocrStatus.available
-                      ? `OCR: ${ocrStatus.language} (PSM ${ocrStatus.pageSegmentationMode})`
-                      : 'OCR off — install Tesseract for scans'}
+                {markdownOcrNotice && (
+                  <span className={`markdown-ocr-badge ${markdownOcrNotice.tone === 'success' ? 'ready' : 'missing'}`}>
+                    {markdownOcrNotice.message}
                   </span>
                 )}
                 {markdownPath && <span className="markdown-path">{markdownPath}</span>}
@@ -8017,6 +8096,65 @@ function App() {
             <button onClick={() => setShowSummaryModal(false)} className="btn btn-secondary">Close</button>
             <button onClick={() => void handleCopySummary()} className="btn">Copy</button>
             <button onClick={() => void handleSaveSummary()} className="btn btn-active">Save summary</button>
+          </div>
+        </Modal>
+      )}
+
+      {showTesseractModal && (
+        <Modal onClose={closeTesseractReminderModal}>
+          <h3>Read text from scanned PDFs (optional)</h3>
+          <p className="modal-help">{tesseractInstallGuide.summary}</p>
+          <p className="modal-help">{tesseractInstallGuide.licenseNote}</p>
+          <ol className="modal-steps">
+            {tesseractInstallGuide.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          {tesseractInstallGuide.installCommand && (
+            <>
+              <label htmlFor="tesseract-install-command">Install command</label>
+              <div className="modal-path-row">
+                <input
+                  id="tesseract-install-command"
+                  type="text"
+                  readOnly
+                  value={tesseractInstallGuide.installCommand}
+                  className="modal-input"
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(tesseractInstallGuide.installCommand ?? '');
+                    showToast('Install command copied');
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+            </>
+          )}
+          {tesseractInstallGuide.downloadUrl && (
+            <p className="modal-help">
+              <a href={tesseractInstallGuide.downloadUrl} target="_blank" rel="noreferrer">
+                {tesseractInstallGuide.platform === 'windows'
+                  ? 'Download Tesseract for Windows'
+                  : 'Tesseract project page'}
+              </a>
+            </p>
+          )}
+          <div className="modal-actions modal-actions-split">
+            <label className="modal-checkbox-row">
+              <input
+                type="checkbox"
+                checked={tesseractDoNotRemind}
+                onChange={(e) => setTesseractDoNotRemind(e.target.checked)}
+              />
+              <span>Do not remind me again</span>
+            </label>
+            <button type="button" onClick={closeTesseractReminderModal} className="btn btn-active">
+              Close
+            </button>
           </div>
         </Modal>
       )}

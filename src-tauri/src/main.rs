@@ -473,6 +473,129 @@ struct OcrStatus {
     page_segmentation_mode: u8,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TesseractInstallGuide {
+    platform: String,
+    summary: String,
+    steps: Vec<String>,
+    install_command: Option<String>,
+    download_url: Option<String>,
+    license_note: String,
+}
+
+fn os_release_value(contents: &str, key: &str) -> Option<String> {
+    for line in contents.lines() {
+        let (k, v) = line.split_once('=')?;
+        if k.trim() == key {
+            return Some(v.trim().trim_matches('"').to_lowercase());
+        }
+    }
+    None
+}
+
+fn linux_tesseract_install() -> (Vec<String>, Option<String>) {
+    let os_release = fs::read_to_string("/etc/os-release").unwrap_or_default();
+    let id = os_release_value(&os_release, "ID");
+    let id_like = os_release_value(&os_release, "ID_LIKE").unwrap_or_default();
+    let ids: Vec<&str> = id.iter().map(String::as_str).chain(id_like.split_whitespace()).collect();
+
+    if ids.iter().any(|&id| matches!(id, "arch" | "cachyos" | "manjaro" | "endeavouros")) {
+        return (
+            vec![
+                "Open a terminal.".into(),
+                "Run the command below (includes English).".into(),
+                "Restart PDF Panda.".into(),
+            ],
+            Some("sudo pacman -S tesseract tesseract-data-eng".into()),
+        );
+    }
+    if ids.iter().any(|&id| matches!(id, "ubuntu" | "debian" | "pop" | "linuxmint" | "elementary")) {
+        return (
+            vec![
+                "Open a terminal.".into(),
+                "Run the command below (includes English).".into(),
+                "Restart PDF Panda.".into(),
+            ],
+            Some("sudo apt install tesseract-ocr tesseract-ocr-eng".into()),
+        );
+    }
+    if ids.iter().any(|&id| matches!(id, "fedora" | "rhel" | "centos" | "rocky" | "almalinux")) {
+        return (
+            vec![
+                "Open a terminal.".into(),
+                "Run the command below (includes English).".into(),
+                "Restart PDF Panda.".into(),
+            ],
+            Some("sudo dnf install tesseract tesseract-langpack-eng".into()),
+        );
+    }
+    if ids.iter().any(|&id| matches!(id, "opensuse-leap" | "opensuse-tumbleweed" | "suse")) {
+        return (
+            vec![
+                "Open a terminal.".into(),
+                "Run the command below (includes English).".into(),
+                "Restart PDF Panda.".into(),
+            ],
+            Some("sudo zypper install tesseract tesseract-traineddata-english".into()),
+        );
+    }
+
+    (
+        vec![
+            "Open a terminal.".into(),
+            "Install Tesseract plus English using your package manager:".into(),
+            "Arch / CachyOS: sudo pacman -S tesseract tesseract-data-eng".into(),
+            "Ubuntu / Debian: sudo apt install tesseract-ocr tesseract-ocr-eng".into(),
+            "Fedora: sudo dnf install tesseract tesseract-langpack-eng".into(),
+            "Restart PDF Panda.".into(),
+        ],
+        None,
+    )
+}
+
+fn build_tesseract_install_guide() -> TesseractInstallGuide {
+    let license_note = "Tesseract is free, open-source software (Apache 2.0). You do not need to pay for it.".into();
+    if cfg!(target_os = "macos") {
+        return TesseractInstallGuide {
+            platform: "macos".into(),
+            summary: "Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.".into(),
+            steps: vec![
+                "Open Terminal.".into(),
+                "Run the command below (Homebrew installs English by default).".into(),
+                "Restart PDF Panda.".into(),
+            ],
+            install_command: Some("brew install tesseract".into()),
+            download_url: None,
+            license_note,
+        };
+    }
+    if cfg!(target_os = "windows") {
+        return TesseractInstallGuide {
+            platform: "windows".into(),
+            summary: "Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.".into(),
+            steps: vec![
+                "Download the Windows installer (link below).".into(),
+                "Run the installer and keep the default English language pack.".into(),
+                "Restart PDF Panda.".into(),
+            ],
+            install_command: None,
+            download_url: Some("https://github.com/UB-Mannheim/tesseract/wiki".into()),
+            license_note,
+        };
+    }
+
+    let (steps, install_command) = linux_tesseract_install();
+    TesseractInstallGuide {
+        platform: "linux".into(),
+        summary: "Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.".into(),
+        steps,
+        install_command,
+        download_url: None,
+        license_note,
+    }
+}
+
 #[derive(Default, Debug, Clone)]
 struct OcrExportStats {
     available: bool,
@@ -551,6 +674,11 @@ fn try_ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
 #[tauri::command]
 fn ocr_available() -> bool {
     resolve_tesseract().is_some()
+}
+
+#[tauri::command]
+fn tesseract_install_guide() -> TesseractInstallGuide {
+    build_tesseract_install_guide()
 }
 
 #[tauri::command]
@@ -8760,6 +8888,8 @@ struct MarkdownSaveResult {
     conflict: bool,
     ocr_available: bool,
     ocr_language: String,
+    /// Scanned or sparse-text pages where OCR was attempted during export.
+    pages_needing_ocr: u32,
     ocr_text_blocks: u32,
     ocr_missing_hints: u32,
 }
@@ -8775,6 +8905,7 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
                 conflict: false,
                 ocr_available: false,
                 ocr_language: ocr_language(),
+                pages_needing_ocr: 0,
                 ocr_text_blocks: 0,
                 ocr_missing_hints: 0,
             });
@@ -8787,6 +8918,7 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
                 conflict: true,
                 ocr_available: false,
                 ocr_language: ocr_language(),
+                pages_needing_ocr: 0,
                 ocr_text_blocks: 0,
                 ocr_missing_hints: 0,
             });
@@ -8801,6 +8933,7 @@ fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) ->
         conflict: false,
         ocr_available: false,
         ocr_language: ocr_language(),
+        pages_needing_ocr: 0,
         ocr_text_blocks: 0,
         ocr_missing_hints: 0,
     })
@@ -8820,6 +8953,7 @@ fn markdown_save_result(
         conflict,
         ocr_available: stats.available,
         ocr_language: stats.language.clone(),
+        pages_needing_ocr: stats.scanned_pages + stats.sparse_supplements,
         ocr_text_blocks: stats.text_blocks,
         ocr_missing_hints: stats.missing_install_hints,
     }
@@ -12489,6 +12623,7 @@ fn main() {
             summarize_pdf,
             save_pdf_summary,
             ocr_available,
+            tesseract_install_guide,
             ocr_status,
             ocr_pdf_page,
             optimize_pdf,
@@ -31590,6 +31725,22 @@ mod tests {
         assert_eq!(status.available, resolve_tesseract().is_some());
         assert_eq!(status.language, ocr_language());
         assert_eq!(status.page_segmentation_mode, ocr_page_segmentation_mode());
+    }
+
+    #[test]
+    fn tesseract_install_guide_returns_plain_language_steps() {
+        let guide = build_tesseract_install_guide();
+        assert!(!guide.summary.is_empty());
+        assert!(!guide.steps.is_empty());
+        assert!(guide.license_note.to_lowercase().contains("free"));
+        assert!(guide.steps.iter().any(|step| step.to_lowercase().contains("restart")));
+    }
+
+    #[test]
+    fn os_release_value_parses_quoted_id() {
+        let sample = "ID=\"cachyos\"\nID_LIKE=arch\n";
+        assert_eq!(os_release_value(sample, "ID").as_deref(), Some("cachyos"));
+        assert_eq!(os_release_value(sample, "ID_LIKE").as_deref(), Some("arch"));
     }
 
     #[test]
