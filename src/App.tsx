@@ -2331,6 +2331,124 @@ function App() {
     });
   };
 
+  const handleMoveOddPagesToEnd = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      await invoke('move_odd_pages_to_end', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast('Moved odd pages to end');
+    });
+  };
+
+  const handleMoveEvenPagesToEnd = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      await invoke('move_even_pages_to_end', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast('Moved even pages to end');
+    });
+  };
+
+  const handleClearCropOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const cleared = await invoke<number>('clear_crop_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowCropModal(false);
+      showToast(`Cleared crop on ${cleared} odd page${cleared === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleClearCropEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const cleared = await invoke<number>('clear_crop_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowCropModal(false);
+      showToast(`Cleared crop on ${cleared} even page${cleared === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleDuplicateOddPagesBefore = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_odd_pages_before', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Inserted ${copied} odd page cop${copied === 1 ? 'y' : 'ies'} before originals`);
+    });
+  };
+
+  const handleDuplicateEvenPagesBefore = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_even_pages_before', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Inserted ${copied} even page cop${copied === 1 ? 'y' : 'ies'} before originals`);
+    });
+  };
+
+  const handleSortOddPagesByRotation = async (descending: boolean) => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const sorted = await invoke<number>('sort_odd_pages_by_rotation', { path: filePath, descending });
+      if (sorted < 2) {
+        showToast('Need at least two odd pages to sort by rotation', 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Sorted ${sorted} odd page${sorted === 1 ? '' : 's'} by rotation (${descending ? 'largest first' : 'smallest first'})`);
+    });
+  };
+
+  const handleSortEvenPagesByRotation = async (descending: boolean) => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const sorted = await invoke<number>('sort_even_pages_by_rotation', { path: filePath, descending });
+      if (sorted < 2) {
+        showToast('Need at least two even pages to sort by rotation', 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Sorted ${sorted} even page${sorted === 1 ? '' : 's'} by rotation (${descending ? 'largest first' : 'smallest first'})`);
+    });
+  };
+
+  const handleSortOddPagesBySize = async (descending: boolean) => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const sorted = await invoke<number>('sort_odd_pages_by_size', { path: filePath, descending });
+      if (sorted < 2) {
+        showToast('Need at least two odd pages to sort by size', 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Sorted ${sorted} odd page${sorted === 1 ? '' : 's'} by size (${descending ? 'largest first' : 'smallest first'})`);
+    });
+  };
+
+  const handleSortEvenPagesBySize = async (descending: boolean) => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const sorted = await invoke<number>('sort_even_pages_by_size', { path: filePath, descending });
+      if (sorted < 2) {
+        showToast('Need at least two even pages to sort by size', 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Sorted ${sorted} even page${sorted === 1 ? '' : 's'} by size (${descending ? 'largest first' : 'smallest first'})`);
+    });
+  };
+
   const handleSortPagesByRotation = async (descending: boolean) => {
     if (!filePath) return;
     await withLoading(async () => {
@@ -5253,11 +5371,15 @@ function App() {
                 <button onClick={() => void handleReverseEvenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Reverse order among even pages">Rev. Even</button>
                 <button onClick={() => void handleMoveOddPagesToStart()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move odd pages to document start">Odd→Start</button>
                 <button onClick={() => void handleMoveEvenPagesToStart()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move even pages to document start">Even→Start</button>
+                <button onClick={() => void handleMoveOddPagesToEnd()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move odd pages to document end">Odd→End</button>
+                <button onClick={() => void handleMoveEvenPagesToEnd()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move even pages to document end">Even→End</button>
                 <button onClick={() => void handleSplitOddEven()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into odd- and even-indexed PDFs">Odd/Even</button>
                 <button onClick={() => void handleDuplicateAllPages()} className="btn" title="Duplicate every page and append copies">Dup. All</button>
                 <button onClick={() => void handleDuplicatePageToEnd()} className="btn" title="Duplicate current page to end">Dup. to End</button>
                 <button onClick={() => void handleDuplicateOddPages()} className="btn" title="Append copies of odd pages (1, 3, 5…)">Dup. Odd</button>
                 <button onClick={() => void handleDuplicateEvenPages()} className="btn" title="Append copies of even pages (2, 4, 6…)">Dup. Even</button>
+                <button onClick={() => void handleDuplicateOddPagesBefore()} className="btn" title="Insert a copy before each odd page">Dup. Odd Before</button>
+                <button onClick={() => void handleDuplicateEvenPagesBefore()} className="btn" title="Insert a copy before each even page">Dup. Even Before</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
                 <button onClick={openDeleteNthModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Delete every Nth page">Delete Nth</button>
@@ -5315,8 +5437,16 @@ function App() {
                 <button onClick={() => void handleFlattenEvenPages()} className="btn" title="Flatten annotations on even pages only">Flatten Even</button>
                 <button onClick={() => void handleSortPagesBySize(false)} className="btn" title="Sort pages smallest to largest">Sort ↑</button>
                 <button onClick={() => void handleSortPagesBySize(true)} className="btn" title="Sort pages largest to smallest">Sort ↓</button>
+                <button onClick={() => void handleSortOddPagesBySize(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by size (smallest first)">Odd Sort ↑</button>
+                <button onClick={() => void handleSortOddPagesBySize(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by size (largest first)">Odd Sort ↓</button>
+                <button onClick={() => void handleSortEvenPagesBySize(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by size (smallest first)">Even Sort ↑</button>
+                <button onClick={() => void handleSortEvenPagesBySize(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by size (largest first)">Even Sort ↓</button>
                 <button onClick={() => void handleSortPagesByRotation(false)} className="btn" title="Sort pages by rotation (0° first)">Rot Sort ↑</button>
                 <button onClick={() => void handleSortPagesByRotation(true)} className="btn" title="Sort pages by rotation (270° first)">Rot Sort ↓</button>
+                <button onClick={() => void handleSortOddPagesByRotation(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by rotation (0° first)">Odd Rot ↑</button>
+                <button onClick={() => void handleSortOddPagesByRotation(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort odd pages by rotation (270° first)">Odd Rot ↓</button>
+                <button onClick={() => void handleSortEvenPagesByRotation(false)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by rotation (0° first)">Even Rot ↑</button>
+                <button onClick={() => void handleSortEvenPagesByRotation(true)} className="btn" disabled={pageCount !== null && pageCount < 2} title="Sort even pages by rotation (270° first)">Even Rot ↓</button>
                 <button
                   onClick={() => void openMetadataModal()}
                   className="btn"
@@ -6234,6 +6364,8 @@ function App() {
               <button onClick={() => void handleClearPageCrop()} className="btn btn-secondary">Clear crop</button>
             )}
             <button onClick={() => void handleClearAllCrops()} className="btn btn-secondary">Clear all crops</button>
+            <button onClick={() => void handleClearCropOddPages()} className="btn btn-secondary">Clear odd crops</button>
+            <button onClick={() => void handleClearCropEvenPages()} className="btn btn-secondary">Clear even crops</button>
             <button onClick={() => void handleCropPage()} className="btn">Crop</button>
           </div>
         </Modal>

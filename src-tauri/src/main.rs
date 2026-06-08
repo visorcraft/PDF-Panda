@@ -3490,6 +3490,189 @@ fn move_even_pages_to_start(path: String) -> Result<(), String> {
     move_pages_by_parity_to_start(&PathBuf::from(&path), false)
 }
 
+fn move_pages_by_parity_to_end(path: &Path, odd_last: bool) -> Result<(), String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (kids, _) = get_pages_kids(&doc)?;
+    let mut odd = Vec::new();
+    let mut even = Vec::new();
+    for (i, kid) in kids.into_iter().enumerate() {
+        if i % 2 == 0 {
+            odd.push(kid);
+        } else {
+            even.push(kid);
+        }
+    }
+    let new_kids = if odd_last { even.into_iter().chain(odd).collect() } else { odd.into_iter().chain(even).collect() };
+    set_pages_kids(&mut doc, pages_ref, new_kids)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Move odd-indexed pages to the end (even pages stay at the start).
+#[tauri::command]
+fn move_odd_pages_to_end(path: String) -> Result<(), String> {
+    move_pages_by_parity_to_end(&PathBuf::from(&path), true)
+}
+
+/// Move even-indexed pages to the end (odd pages stay at the start).
+#[tauri::command]
+fn move_even_pages_to_end(path: String) -> Result<(), String> {
+    move_pages_by_parity_to_end(&PathBuf::from(&path), false)
+}
+
+fn clear_crop_pages_by_parity(path: &Path, odd: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut cleared = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        if doc.get_dictionary(page_id).ok().and_then(|d| d.get(b"CropBox").ok()).is_some() {
+            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
+            cleared += 1;
+        }
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(cleared)
+}
+
+/// Remove `/CropBox` from odd-indexed pages only.
+#[tauri::command]
+fn clear_crop_odd_pages(path: String) -> Result<u32, String> {
+    clear_crop_pages_by_parity(&PathBuf::from(&path), true)
+}
+
+/// Remove `/CropBox` from even-indexed pages only.
+#[tauri::command]
+fn clear_crop_even_pages(path: String) -> Result<u32, String> {
+    clear_crop_pages_by_parity(&PathBuf::from(&path), false)
+}
+
+fn duplicate_pages_by_parity_before(path: &Path, odd: bool) -> Result<u32, String> {
+    let path_buf = PathBuf::from(path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let indices: Vec<u32> = (0..total).filter(|i| (i % 2 == 0) == odd).collect();
+    if indices.is_empty() {
+        return Ok(0);
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    let copied = indices.len() as u32;
+    for &idx in indices.iter().rev() {
+        insert_pdf(path_str.clone(), path_str.clone(), idx, idx, idx)?;
+    }
+    Ok(copied)
+}
+
+/// Deep-copy odd-indexed pages and insert each copy immediately before the original.
+#[tauri::command]
+fn duplicate_odd_pages_before(path: String) -> Result<u32, String> {
+    duplicate_pages_by_parity_before(&PathBuf::from(&path), true)
+}
+
+/// Deep-copy even-indexed pages and insert each copy immediately before the original.
+#[tauri::command]
+fn duplicate_even_pages_before(path: String) -> Result<u32, String> {
+    duplicate_pages_by_parity_before(&PathBuf::from(&path), false)
+}
+
+fn sort_pages_by_parity_rotation(path: &Path, odd: bool, descending: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let parity_indices: Vec<usize> = (0..kids.len()).filter(|i| (i % 2 == 0) == odd).collect();
+    if parity_indices.len() < 2 {
+        return Ok(parity_indices.len() as u32);
+    }
+    let mut indexed: Vec<(usize, i64, Object)> = parity_indices
+        .iter()
+        .map(|i| {
+            let kid = kids[*i].clone();
+            let rot = kid.as_reference().ok().map(|id| page_rotation(&doc, id).rem_euclid(360)).unwrap_or(0);
+            (*i, rot, kid)
+        })
+        .collect();
+    indexed.sort_by(|a, b| {
+        let ord = a.1.cmp(&b.1);
+        if descending {
+            ord.reverse()
+        } else {
+            ord
+        }
+    });
+    let sorted_kids: Vec<Object> = indexed.into_iter().map(|(_, _, kid)| kid).collect();
+    for (pos, idx) in parity_indices.iter().enumerate() {
+        kids[*idx] = sorted_kids[pos].clone();
+    }
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(parity_indices.len() as u32)
+}
+
+/// Sort odd-indexed pages by `/Rotate` while leaving even pages in place.
+#[tauri::command]
+fn sort_odd_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    sort_pages_by_parity_rotation(&PathBuf::from(&path), true, descending)
+}
+
+/// Sort even-indexed pages by `/Rotate` while leaving odd pages in place.
+#[tauri::command]
+fn sort_even_pages_by_rotation(path: String, descending: bool) -> Result<u32, String> {
+    sort_pages_by_parity_rotation(&PathBuf::from(&path), false, descending)
+}
+
+fn sort_pages_by_parity_size(path: &Path, odd: bool, descending: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let parity_indices: Vec<usize> = (0..kids.len()).filter(|i| (i % 2 == 0) == odd).collect();
+    if parity_indices.len() < 2 {
+        return Ok(parity_indices.len() as u32);
+    }
+    let mut indexed: Vec<(usize, f64, Object)> = parity_indices
+        .iter()
+        .map(|i| {
+            let kid = kids[*i].clone();
+            let area = kid
+                .as_reference()
+                .ok()
+                .and_then(|id| page_media_box(&doc, id).ok())
+                .map(|m| (m[2] - m[0]) * (m[3] - m[1]))
+                .unwrap_or(0.0);
+            (*i, area, kid)
+        })
+        .collect();
+    indexed.sort_by(|a, b| {
+        let ord = a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal);
+        if descending {
+            ord.reverse()
+        } else {
+            ord
+        }
+    });
+    let sorted_kids: Vec<Object> = indexed.into_iter().map(|(_, _, kid)| kid).collect();
+    for (pos, idx) in parity_indices.iter().enumerate() {
+        kids[*idx] = sorted_kids[pos].clone();
+    }
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(parity_indices.len() as u32)
+}
+
+/// Sort odd-indexed pages by MediaBox area while leaving even pages in place.
+#[tauri::command]
+fn sort_odd_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    sort_pages_by_parity_size(&PathBuf::from(&path), true, descending)
+}
+
+/// Sort even-indexed pages by MediaBox area while leaving odd pages in place.
+#[tauri::command]
+fn sort_even_pages_by_size(path: String, descending: bool) -> Result<u32, String> {
+    sort_pages_by_parity_size(&PathBuf::from(&path), false, descending)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -8521,6 +8704,16 @@ fn main() {
             reverse_even_pages,
             move_odd_pages_to_start,
             move_even_pages_to_start,
+            move_odd_pages_to_end,
+            move_even_pages_to_end,
+            clear_crop_odd_pages,
+            clear_crop_even_pages,
+            duplicate_odd_pages_before,
+            duplicate_even_pages_before,
+            sort_odd_pages_by_rotation,
+            sort_even_pages_by_rotation,
+            sort_odd_pages_by_size,
+            sort_even_pages_by_size,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -10125,6 +10318,112 @@ mod tests {
         let path = save(&mut build_pdf(4), "move_even_start");
         move_even_pages_to_start(path.clone()).unwrap();
         assert_eq!(page_order(&path), vec![1, 3, 0, 2]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_odd_pages_to_end_groups_odd_last() {
+        let path = save(&mut build_pdf(4), "move_odd_end");
+        move_odd_pages_to_end(path.clone()).unwrap();
+        assert_eq!(page_order(&path), vec![1, 3, 0, 2]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_even_pages_to_end_groups_even_last() {
+        let path = save(&mut build_pdf(4), "move_even_end");
+        move_even_pages_to_end(path.clone()).unwrap();
+        assert_eq!(page_order(&path), vec![0, 2, 1, 3]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_odd_pages_removes_odd_crop_boxes() {
+        let path = save(&mut build_pdf(2), "clear_crop_odd");
+        crop_all_pages(path.clone(), 30.0, 30.0, 30.0, 30.0).unwrap();
+        let cleared = clear_crop_odd_pages(path.clone()).unwrap();
+        assert_eq!(cleared, 1);
+        let doc = Document::load(&path).unwrap();
+        let page0 = *doc.get_pages().get(&1).unwrap();
+        let page1 = *doc.get_pages().get(&2).unwrap();
+        assert!(doc.get_dictionary(page0).unwrap().get(b"CropBox").is_err());
+        assert!(doc.get_dictionary(page1).unwrap().get(b"CropBox").is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_even_pages_removes_even_crop_boxes() {
+        let path = save(&mut build_pdf(2), "clear_crop_even");
+        crop_all_pages(path.clone(), 30.0, 30.0, 30.0, 30.0).unwrap();
+        let cleared = clear_crop_even_pages(path.clone()).unwrap();
+        assert_eq!(cleared, 1);
+        let doc = Document::load(&path).unwrap();
+        let page0 = *doc.get_pages().get(&1).unwrap();
+        let page1 = *doc.get_pages().get(&2).unwrap();
+        assert!(doc.get_dictionary(page0).unwrap().get(b"CropBox").is_ok());
+        assert!(doc.get_dictionary(page1).unwrap().get(b"CropBox").is_err());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_odd_pages_before_inserts_copies() {
+        let path = save(&mut build_pdf(3), "dup_odd_before");
+        let copied = duplicate_odd_pages_before(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 5);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_even_pages_before_inserts_copies() {
+        let path = save(&mut build_pdf(4), "dup_even_before");
+        let copied = duplicate_even_pages_before(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_odd_pages_by_rotation_reorders_odd_indices() {
+        let path = save(&mut build_pdf(4), "sort_odd_rot");
+        rotate_page(path.clone(), 0).unwrap();
+        rotate_page(path.clone(), 0).unwrap();
+        rotate_page(path.clone(), 0).unwrap();
+        rotate_page(path.clone(), 2).unwrap();
+        sort_odd_pages_by_rotation(path.clone(), false).unwrap();
+        assert_eq!(page_order(&path), vec![2, 1, 0, 3]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_even_pages_by_rotation_reorders_even_indices() {
+        let path = save(&mut build_pdf(4), "sort_even_rot");
+        rotate_page(path.clone(), 1).unwrap();
+        rotate_page(path.clone(), 1).unwrap();
+        rotate_page(path.clone(), 1).unwrap();
+        rotate_page(path.clone(), 3).unwrap();
+        sort_even_pages_by_rotation(path.clone(), false).unwrap();
+        assert_eq!(page_order(&path), vec![0, 3, 2, 1]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_odd_pages_by_size_reorders_odd_indices() {
+        let path = save(&mut build_pdf(4), "sort_odd_size");
+        set_page_size(path.clone(), 0, 0, "A4".to_string()).unwrap();
+        set_page_size(path.clone(), 2, 2, "Legal".to_string()).unwrap();
+        sort_odd_pages_by_size(path.clone(), false).unwrap();
+        assert_eq!(page_count(&path), 4);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_even_pages_by_size_reorders_even_indices() {
+        let path = save(&mut build_pdf(4), "sort_even_size");
+        set_page_size(path.clone(), 1, 1, "Legal".to_string()).unwrap();
+        set_page_size(path.clone(), 3, 3, "A4".to_string()).unwrap();
+        sort_even_pages_by_size(path.clone(), false).unwrap();
+        assert_eq!(page_count(&path), 4);
         let _ = std::fs::remove_file(&path);
     }
 
