@@ -194,7 +194,7 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
 type PngExportScope = 'current' | 'range' | 'all';
-type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif' | 'ppm' | 'tga';
+type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif' | 'ppm' | 'tga' | 'ico';
 type PageRangeScope = 'current' | 'range' | 'all';
 type PageSizePreset = 'letter' | 'a4' | 'legal';
 
@@ -599,6 +599,8 @@ function App() {
   const [extractOddOutputPath, setExtractOddOutputPath] = useState('');
   const [showExtractEvenModal, setShowExtractEvenModal] = useState(false);
   const [extractEvenOutputPath, setExtractEvenOutputPath] = useState('');
+  const [showSplitAtModal, setShowSplitAtModal] = useState(false);
+  const [splitAtPage, setSplitAtPage] = useState(1);
   const [showReverseRangeModal, setShowReverseRangeModal] = useState(false);
   const [reverseRangeStartPage, setReverseRangeStartPage] = useState(0);
   const [reverseRangeEndPage, setReverseRangeEndPage] = useState(0);
@@ -1079,6 +1081,7 @@ function App() {
     if (format === 'gif') return 'gif';
     if (format === 'ppm') return 'ppm';
     if (format === 'tga') return 'tga';
+    if (format === 'ico') return 'ico';
     return 'png';
   };
 
@@ -1098,6 +1101,7 @@ function App() {
       if (format === 'gif') return 'export_pdf_pages_gif';
       if (format === 'ppm') return 'export_pdf_pages_ppm';
       if (format === 'tga') return 'export_pdf_pages_tga';
+      if (format === 'ico') return 'export_pdf_pages_ico';
       return 'export_pdf_pages_png';
     }
     if (format === 'jpeg') return 'export_pdf_page_jpeg';
@@ -1107,6 +1111,7 @@ function App() {
     if (format === 'gif') return 'export_pdf_page_gif';
     if (format === 'ppm') return 'export_pdf_page_ppm';
     if (format === 'tga') return 'export_pdf_page_tga';
+    if (format === 'ico') return 'export_pdf_page_ico';
     return 'export_pdf_page_png';
   };
 
@@ -2016,6 +2021,99 @@ function App() {
     });
   };
 
+  const handleRotateOddPagesCcw = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_odd_pages_ccw', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${rotated} odd page${rotated === 1 ? '' : 's'} 90° CCW`);
+    });
+  };
+
+  const handleRotateEvenPagesCcw = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_even_pages_ccw', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${rotated} even page${rotated === 1 ? '' : 's'} 90° CCW`);
+    });
+  };
+
+  const handleResetRotationOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const reset = await invoke<number>('reset_rotation_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Reset rotation on ${reset} odd page${reset === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleResetRotationEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const reset = await invoke<number>('reset_rotation_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Reset rotation on ${reset} even page${reset === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleKeepOddPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const deleted = await invoke<number>('keep_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Kept odd pages; removed ${deleted}`);
+    });
+  };
+
+  const handleKeepEvenPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const deleted = await invoke<number>('keep_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Kept even pages; removed ${deleted}`);
+    });
+  };
+
+  const handleSortPagesByRotation = async (descending: boolean) => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      await invoke('sort_pages_by_rotation', { path: filePath, descending });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Sorted pages by rotation (${descending ? 'largest first' : 'smallest first'})`);
+    });
+  };
+
+  const openSplitAtModal = () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    setSplitAtPage(Math.min(currentPage + 1, pageCount - 1) + 1);
+    setShowSplitAtModal(true);
+  };
+
+  const handleSplitPdfAtPage = async () => {
+    if (!filePath || pageCount === null) return;
+    const atIndex = splitAtPage - 1;
+    if (atIndex < 1 || atIndex >= pageCount) {
+      showToast(`Split page must be between 2 and ${pageCount}`, 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const written = await invoke<string[]>('split_pdf_at_page', {
+        path: filePath,
+        atPage: atIndex,
+      });
+      setShowSplitAtModal(false);
+      showToast(`Split into ${written.length} files at page ${splitAtPage}`);
+    });
+  };
+
   const openDeleteNthModal = () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
     setDeleteNthValue(2);
@@ -2643,6 +2741,19 @@ function App() {
       await renderPage(filePath, currentPage);
       await loadThumbnails(filePath);
       showToast('Page rotated 90°');
+    });
+  };
+
+  const handleDuplicatePageBefore = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const newIndex = await invoke<number>('duplicate_page_before', {
+        path: filePath,
+        pageIndex: currentPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(newIndex);
+      showToast(`Duplicated page ${currentPage + 1} before itself`);
     });
   };
 
@@ -3953,7 +4064,7 @@ function App() {
     || showSwapPagesModal || showReplacePageModal || showInterleaveModal || showPageSizeModal || showDecryptModal
     || showRotateRangeModal || showKeepRangeModal || showMoveRangeModal || showPrependModal || showSplitEveryModal
     || showPageBorderModal || showBookmarkAllModal || showExpandMarginsModal || showShrinkMarginsModal
-    || showDeleteNthModal || showExtractOddModal || showExtractEvenModal
+    || showDeleteNthModal || showExtractOddModal || showExtractEvenModal || showSplitAtModal
     || showReverseRangeModal || showInsertBlankPagesModal || showCropRangeModal
     || showExportPagesPdfModal
     || showInsertImagePageModal || showExportPagePdfModal
@@ -4859,12 +4970,19 @@ function App() {
                 <button onClick={() => void handleRotateAllPagesCcw()} className="btn" title="Rotate all pages 90° CCW">Rotate All CCW</button>
                 <button onClick={() => void handleRotateOddPages()} className="btn" title="Rotate odd pages (1, 3, 5…) 90° CW">Rot. Odd</button>
                 <button onClick={() => void handleRotateEvenPages()} className="btn" title="Rotate even pages (2, 4, 6…) 90° CW">Rot. Even</button>
+                <button onClick={() => void handleRotateOddPagesCcw()} className="btn" title="Rotate odd pages 90° CCW">Odd CCW</button>
+                <button onClick={() => void handleRotateEvenPagesCcw()} className="btn" title="Rotate even pages 90° CCW">Even CCW</button>
+                <button onClick={() => void handleResetRotationOddPages()} className="btn" title="Reset rotation on odd pages">Reset Odd</button>
+                <button onClick={() => void handleResetRotationEvenPages()} className="btn" title="Reset rotation on even pages">Reset Even</button>
                 <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
                 <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
+                <button onClick={() => void handleDuplicatePageBefore()} className="btn" title="Duplicate current page before itself">Dup. Before</button>
                 <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
                 <button onClick={openRotateRangeModal} className="btn" title="Rotate a page range">Rot. Range</button>
                 <button onClick={openMoveRangeModal} className="btn" title="Move a page range">Move Range</button>
                 <button onClick={openKeepRangeModal} className="btn" title="Keep only a page range">Keep Range</button>
+                <button onClick={() => void handleKeepOddPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep odd pages only (1, 3, 5…)">Keep Odd</button>
+                <button onClick={() => void handleKeepEvenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep even pages only (2, 4, 6…)">Keep Even</button>
                 <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank After</button>
                 <button onClick={() => void handleAddBlankPageBefore()} className="btn" title="Insert blank page before current">Blank Before</button>
                 <button onClick={openInsertBlankPagesModal} className="btn" title="Insert multiple blank pages">Blank Pages</button>
@@ -4887,6 +5005,7 @@ function App() {
                 <button onClick={openPrependModal} className="btn" title="Prepend pages from another PDF">Prepend</button>
                 <button onClick={openReplacePageModal} className="btn" title="Replace current page from another PDF">Replace</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
+                <button onClick={openSplitAtModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into two PDFs at a page boundary">Split At</button>
                 <button onClick={openSplitEveryModal} className="btn" title="Split every N pages">Split N</button>
                 <button onClick={openExtractModal} className="btn" title="Extract pages to new PDF (Ctrl+Shift+J)" data-testid="extract-pdf">Extract</button>
                 <button onClick={openExtractOddModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Extract odd pages (1, 3, 5…) to new PDF">Extract Odd</button>
@@ -4930,6 +5049,8 @@ function App() {
                 <button onClick={() => void handleFlattenAllAnnotations()} className="btn" title="Flatten annotations on all pages">Flatten All</button>
                 <button onClick={() => void handleSortPagesBySize(false)} className="btn" title="Sort pages smallest to largest">Sort ↑</button>
                 <button onClick={() => void handleSortPagesBySize(true)} className="btn" title="Sort pages largest to smallest">Sort ↓</button>
+                <button onClick={() => void handleSortPagesByRotation(false)} className="btn" title="Sort pages by rotation (0° first)">Rot Sort ↑</button>
+                <button onClick={() => void handleSortPagesByRotation(true)} className="btn" title="Sort pages by rotation (270° first)">Rot Sort ↓</button>
                 <button
                   onClick={() => void openMetadataModal()}
                   className="btn"
@@ -5641,7 +5762,7 @@ function App() {
       {showExportPngModal && (
         <Modal onClose={() => setShowExportPngModal(false)}>
           <h3>Export Image</h3>
-          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, TIFF, GIF, PPM, or TGA images (1600×2264). The open PDF is not modified.</p>
+          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, TIFF, GIF, PPM, TGA, or ICO images (1600×2264). The open PDF is not modified.</p>
           <label>Format:</label>
           <select
             className="modal-input"
@@ -5662,6 +5783,7 @@ function App() {
             <option value="gif">GIF</option>
             <option value="ppm">PPM</option>
             <option value="tga">TGA</option>
+            <option value="ico">ICO</option>
           </select>
           <label>Pages to export:</label>
           <select
@@ -6225,6 +6347,20 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowShrinkMarginsModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleShrinkPageMargins()} className="btn">Shrink</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Split At Page Modal */}
+      {showSplitAtModal && (
+        <Modal onClose={() => setShowSplitAtModal(false)}>
+          <h3>Split At Page</h3>
+          <p className="modal-help">Write `_part1.pdf` (pages before the split) and `_part2.pdf` (from the split page onward). The open document is not modified.</p>
+          <label>Start of second file (page 2–{pageCount ?? 0}):</label>
+          <input type="number" value={splitAtPage} onChange={(e) => setSplitAtPage(Math.max(2, parseInt(e.target.value, 10) || 2))} min="2" max={pageCount ?? undefined} className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowSplitAtModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleSplitPdfAtPage()} className="btn">Split</button>
           </div>
         </Modal>
       )}

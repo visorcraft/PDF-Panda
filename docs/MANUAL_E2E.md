@@ -14,8 +14,8 @@ before a release tag.
 - [ ] Page navigation (toolbar, thumbnails, keyboard, wheel at scroll edges, bookmarks panel)
 - [ ] Find text (Ctrl/Cmd+F) — search, next/previous, highlight on page
 - [ ] Zoom 25%–400% with aligned highlights/notes/drawings
-- [ ] Delete / duplicate / dup. range (before+to end) / dup. all / dup. to end / rotate / rot. range (CW/CCW/180/reset) / rot. odd+even / 180° / CCW / reset rot. / rotate all / all CCW / reverse / rev. range / blank before+after / blank pages / move up+down / move range (to start+end) / keep range / swap / replace / interleave / prepend / odd-even split / split N / sort ↑↓ / delete range / delete nth / reorder / insert / image page / merge / extract / extract odd+even / export page PDF / export pages PDF / split
-- [ ] Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA, page dimensions, page numbers, page header+footer, page size presets, border, expand+shrink margins, crop range, watermark, crop (single/all/clear all), flatten annotations, flatten all
+- [ ] Delete / duplicate / dup. before / dup. range (before+to end) / dup. all / dup. to end / rotate / rot. range (CW/CCW/180/reset) / rot. odd+even (CW/CCW/reset) / 180° / CCW / reset rot. / rotate all / all CCW / reverse / rev. range / blank before+after / blank pages / move up+down / move range (to start+end) / keep range / keep odd+even / swap / replace / interleave / prepend / odd-even split / split at / split N / sort ↑↓ / rot sort ↑↓ / delete range / delete nth / reorder / insert / image page / merge / extract / extract odd+even / export page PDF / export pages PDF / split
+- [ ] Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO, page dimensions, page numbers, page header+footer, page size presets, border, expand+shrink margins, crop range, watermark, crop (single/all/clear all), flatten annotations, flatten all
 - [ ] Bookmark all pages; add / rename / remove / clear all bookmarks
 - [ ] Metadata modal — edit, Clear all, Apply marks dirty; Save persists
 

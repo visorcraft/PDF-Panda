@@ -2903,6 +2903,194 @@ fn extract_even_pages(path: String, output_path: String) -> Result<String, Strin
     extract_pages_by_parity(&PathBuf::from(&path), &PathBuf::from(&output_path), false)
 }
 
+/// Deep-copy `page_index` and insert the copy immediately before it.
+#[tauri::command]
+fn duplicate_page_before(path: String, page_index: u32) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let page_count = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len();
+    let idx = page_index as usize;
+    if idx >= page_count {
+        return Err("Page index out of bounds".to_string());
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    insert_pdf(path_str.clone(), path_str, page_index, page_index, page_index)?;
+    Ok(page_index)
+}
+
+/// Split into `_part1.pdf` (pages before `at_page`) and `_part2.pdf` (from `at_page` onward).
+#[tauri::command]
+fn split_pdf_at_page(path: String, at_page: u32) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(&path);
+    let doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let (all_kids, pages_ref) = get_pages_kids(&doc)?;
+    let total = all_kids.len() as u32;
+    if total < 2 {
+        return Err("Need at least 2 pages to split".to_string());
+    }
+    if at_page == 0 || at_page >= total {
+        return Err(format!("Split page must be between 2 and {total} (1-based start of the second file)"));
+    }
+    let part1_kids: Vec<Object> = all_kids[..at_page as usize].to_vec();
+    let part2_kids: Vec<Object> = all_kids[at_page as usize..].to_vec();
+    let stem = path.file_stem().unwrap().to_string_lossy();
+    let mut output_paths = Vec::new();
+    for (suffix, kids) in [("_part1", part1_kids), ("_part2", part2_kids)] {
+        let mut part = Document::load(&path).map_err(|e| e.to_string())?;
+        set_pages_kids(&mut part, pages_ref, kids)?;
+        part.prune_objects();
+        let output_path = path.with_file_name(format!("{stem}{suffix}.pdf"));
+        part.save(&output_path).map_err(|e| e.to_string())?;
+        output_paths.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(output_paths)
+}
+
+/// Rotate pages 1, 3, 5, … by 90° counter-clockwise.
+#[tauri::command]
+fn rotate_odd_pages_ccw(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut rotated = 0u32;
+    for page_index in 0..total {
+        if page_index % 2 != 0 {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current - 90)?;
+        rotated += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(rotated)
+}
+
+/// Rotate pages 2, 4, 6, … by 90° counter-clockwise.
+#[tauri::command]
+fn rotate_even_pages_ccw(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut rotated = 0u32;
+    for page_index in 0..total {
+        if page_index % 2 != 1 {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current - 90)?;
+        rotated += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(rotated)
+}
+
+/// Clear `/Rotate` on pages 1, 3, 5, ….
+#[tauri::command]
+fn reset_rotation_odd_pages(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut reset = 0u32;
+    for page_index in 0..total {
+        if page_index % 2 != 0 {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        set_page_rotation(&mut doc, page_id, 0)?;
+        reset += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(reset)
+}
+
+/// Clear `/Rotate` on pages 2, 4, 6, ….
+#[tauri::command]
+fn reset_rotation_even_pages(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut reset = 0u32;
+    for page_index in 0..total {
+        if page_index % 2 != 1 {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        set_page_rotation(&mut doc, page_id, 0)?;
+        reset += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(reset)
+}
+
+fn keep_pages_by_parity(path: &Path, keep_odd: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (kids, _) = get_pages_kids(&doc)?;
+    let kept: Vec<Object> = kids
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| if keep_odd { i % 2 == 0 } else { i % 2 == 1 })
+        .map(|(_, kid)| kid.clone())
+        .collect();
+    if kept.is_empty() {
+        return Err(if keep_odd {
+            "Document has no odd-indexed pages".to_string()
+        } else {
+            "Document has no even-indexed pages".to_string()
+        });
+    }
+    if kept.len() == kids.len() {
+        return Err("Nothing to delete — all pages match the keep filter".to_string());
+    }
+    let deleted = kids.len() - kept.len();
+    set_pages_kids(&mut doc, pages_ref, kept)?;
+    doc.prune_objects();
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(deleted as u32)
+}
+
+/// Delete even-indexed pages; keep pages 1, 3, 5, … only.
+#[tauri::command]
+fn keep_odd_pages(path: String) -> Result<u32, String> {
+    keep_pages_by_parity(&PathBuf::from(&path), true)
+}
+
+/// Delete odd-indexed pages; keep pages 2, 4, 6, … only.
+#[tauri::command]
+fn keep_even_pages(path: String) -> Result<u32, String> {
+    keep_pages_by_parity(&PathBuf::from(&path), false)
+}
+
+/// Reorder pages by `/Rotate` value (0° first unless `descending` is true).
+#[tauri::command]
+fn sort_pages_by_rotation(path: String, descending: bool) -> Result<(), String> {
+    let path_buf = PathBuf::from(&path);
+    let mut doc = Document::load(&path_buf).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (kids, _) = get_pages_kids(&doc)?;
+    let mut indexed: Vec<(usize, i64, Object)> = kids
+        .into_iter()
+        .enumerate()
+        .map(|(i, kid)| {
+            let rot = kid.as_reference().ok().map(|id| page_rotation(&doc, id).rem_euclid(360)).unwrap_or(0);
+            (i, rot, kid)
+        })
+        .collect();
+    indexed.sort_by(|a, b| {
+        let ord = a.1.cmp(&b.1);
+        if descending {
+            ord.reverse()
+        } else {
+            ord
+        }
+    });
+    let sorted: Vec<Object> = indexed.into_iter().map(|(_, _, kid)| kid).collect();
+    set_pages_kids(&mut doc, pages_ref, sorted)?;
+    doc.save(&path_buf).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -3219,6 +3407,57 @@ fn export_pdf_pages_tga(
         let file_name = format!("page-{:03}.tga", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &tga)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
+fn render_page_ico(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
+    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
+    let image = bitmap.as_image().map_err(|e| e.to_string())?;
+    let mut buffer = Vec::new();
+    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Ico).map_err(|e| e.to_string())?;
+    Ok(buffer)
+}
+
+/// Render one PDF page to an ICO file (2× viewer resolution by default).
+#[tauri::command]
+fn export_pdf_page_ico(path: String, page_index: u32, output_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, page_index, page_index)?;
+    let ico = render_page_ico(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let output_path = PathBuf::from(&output_path);
+    write_png_output(&output_path, &ico)?;
+    Ok(output_path.to_string_lossy().into_owned())
+}
+
+/// Render a page range to `output_dir/page-NNN.ico` files.
+#[tauri::command]
+fn export_pdf_pages_ico(
+    path: String,
+    start_page: u32,
+    end_page: u32,
+    output_dir: String,
+) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, start_page, end_page)?;
+    let output_dir = PathBuf::from(&output_dir);
+    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in start_page..=end_page {
+        let ico = render_page_ico(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.ico", page_index + 1);
+        let output_path = output_dir.join(&file_name);
+        write_png_output(&output_path, &ico)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
@@ -7852,6 +8091,17 @@ fn main() {
             extract_even_pages,
             export_pdf_page_tga,
             export_pdf_pages_tga,
+            duplicate_page_before,
+            split_pdf_at_page,
+            rotate_odd_pages_ccw,
+            rotate_even_pages_ccw,
+            reset_rotation_odd_pages,
+            reset_rotation_even_pages,
+            keep_odd_pages,
+            keep_even_pages,
+            sort_pages_by_rotation,
+            export_pdf_page_ico,
+            export_pdf_pages_ico,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -9155,6 +9405,122 @@ mod tests {
         let path = save(&mut build_pdf(1), "export_tga_write");
         let output = tmp("export_tga_write_out.tga");
         let written = export_pdf_page_tga(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written, output.to_string_lossy());
+        assert!(output.is_file());
+        assert!(std::fs::metadata(&output).unwrap().len() > 50);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn duplicate_page_before_inserts_copy() {
+        let path = save(&mut build_pdf(2), "dup_before");
+        let new_index = duplicate_page_before(path.clone(), 1).unwrap();
+        assert_eq!(new_index, 1);
+        assert_eq!(page_count(&path), 3);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn split_pdf_at_page_writes_two_files() {
+        let path = save(&mut build_pdf(4), "split_at");
+        let written = split_pdf_at_page(path.clone(), 2).unwrap();
+        assert_eq!(written.len(), 2);
+        assert_eq!(Document::load(&written[0]).unwrap().get_pages().len(), 2);
+        assert_eq!(Document::load(&written[1]).unwrap().get_pages().len(), 2);
+        assert_eq!(Document::load(&path).unwrap().get_pages().len(), 4);
+        for output in written {
+            let _ = std::fs::remove_file(&output);
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_odd_pages_ccw_rotates_odd_indices() {
+        let path = save(&mut build_pdf(4), "rot_odd_ccw");
+        let rotated = rotate_odd_pages_ccw(path.clone()).unwrap();
+        assert_eq!(rotated, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 270);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_even_pages_ccw_rotates_even_indices() {
+        let path = save(&mut build_pdf(4), "rot_even_ccw");
+        let rotated = rotate_even_pages_ccw(path.clone()).unwrap();
+        assert_eq!(rotated, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&2).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 270);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_odd_pages_clears_odd_indices() {
+        let path = save(&mut build_pdf(3), "reset_rot_odd");
+        rotate_odd_pages(path.clone()).unwrap();
+        let reset = reset_rotation_odd_pages(path.clone()).unwrap();
+        assert_eq!(reset, 2);
+        assert_eq!(rotation(&path), 0);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_even_pages_clears_even_indices() {
+        let path = save(&mut build_pdf(3), "reset_rot_even");
+        rotate_even_pages(path.clone()).unwrap();
+        let reset = reset_rotation_even_pages(path.clone()).unwrap();
+        assert_eq!(reset, 1);
+        assert_eq!(rotation(&path), 0);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_odd_pages_deletes_even_indices() {
+        let path = save(&mut build_pdf(4), "keep_odd");
+        let deleted = keep_odd_pages(path.clone()).unwrap();
+        assert_eq!(deleted, 2);
+        assert_eq!(page_count(&path), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_even_pages_deletes_odd_indices() {
+        let path = save(&mut build_pdf(4), "keep_even");
+        let deleted = keep_even_pages(path.clone()).unwrap();
+        assert_eq!(deleted, 2);
+        assert_eq!(page_count(&path), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_pages_by_rotation_reorders_pages() {
+        let path = save(&mut build_pdf(3), "sort_by_rot");
+        rotate_page(path.clone(), 0).unwrap();
+        rotate_page(path.clone(), 2).unwrap();
+        rotate_page(path.clone(), 2).unwrap();
+        sort_pages_by_rotation(path.clone(), false).unwrap();
+        assert_eq!(page_count(&path), 3);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_pdf_page_ico_rejects_invalid_page() {
+        let path = save(&mut build_pdf(1), "export_ico_invalid");
+        let output = tmp("export_ico_invalid_out.ico");
+        let err = export_pdf_page_ico(path.clone(), 3, output.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    #[ignore = "requires PDFium shared library"]
+    fn export_pdf_page_ico_writes_file() {
+        let path = save(&mut build_pdf(1), "export_ico_write");
+        let output = tmp("export_ico_write_out.ico");
+        let written = export_pdf_page_ico(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
         assert_eq!(written, output.to_string_lossy());
         assert!(output.is_file());
         assert!(std::fs::metadata(&output).unwrap().len() > 50);

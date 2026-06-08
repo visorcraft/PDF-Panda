@@ -55,11 +55,11 @@ Three things we care about:
 - **Split** into multiple files by page range
 - **Extract** a page range into a new PDF without changing the open document
 - **Reverse** page order, **rotate all** pages, insert a **blank page**, or **delete a page range**
-- **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA** or **export current page / each page as PDF**
+- **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** or **export current page / each page as PDF**
 - **Rotate 180°**, **rotate all CCW**, **move page to first/last/up/down**, **swap pages**, **blank before/after**
 - **Insert image as new page**, **page header/footer** text, **duplicate page range** or **duplicate all**
 - **Replace** current page, **interleave** or **prepend** another PDF, **split odd/even** or **split every N**, **set page size** (Letter/A4/Legal)
-- **Rotate/move/keep/reverse page range**, **reset rotation range**, **crop range**, **insert blank pages**, **duplicate range to end/before**, **rotate odd/even**, **delete every Nth**, **move range to start/end**, **extract odd/even**, **shrink margins**
+- **Rotate/move/keep/reverse page range**, **reset rotation range**, **crop range**, **insert blank pages**, **duplicate range to end/before**, **duplicate page before**, **rotate odd/even** (CW/CCW/reset), **keep odd/even**, **sort by rotation**, **delete every Nth**, **move range to start/end**, **extract odd/even**, **split at page**, **shrink margins**
 - **Page border**, **expand margins**, **bookmark all pages**, **flatten all**, **sort by page size**, **clear metadata**
 - **Add/rename/remove/clear bookmarks**, **page dimensions**, **page numbers**, **watermarks**, **crop** (single/all/clear), **flatten** annotations
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
@@ -78,7 +78,7 @@ Three things we care about:
 - **PDF → Markdown** with tagged-PDF structure (headings, lists, tables), heuristic layout, and a **Tesseract OCR** fallback for scanned pages
 - **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
-- **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
+- **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
 - **Print** via the system print dialog
 
 ---
