@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openNativeDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog';
+import parityBatchCommands from './parity_batch_commands.json';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -608,6 +609,11 @@ function App() {
   const [insertBlankCount, setInsertBlankCount] = useState(1);
   const [insertBlankAtIndex, setInsertBlankAtIndex] = useState(0);
   const [showCropRangeModal, setShowCropRangeModal] = useState(false);
+  const [showParityRangeModal, setShowParityRangeModal] = useState(false);
+  const [parityRangeStartPage, setParityRangeStartPage] = useState(0);
+  const [parityRangeEndPage, setParityRangeEndPage] = useState(0);
+  const [parityRangeCommand, setParityRangeCommand] = useState('rotate_odd_pages_in_range');
+  const [parityRangeOutputPath, setParityRangeOutputPath] = useState('');
   const [cropRangeStartPage, setCropRangeStartPage] = useState(0);
   const [cropRangeEndPage, setCropRangeEndPage] = useState(0);
   const [showInsertModal, setShowInsertModal] = useState(false);
@@ -1848,7 +1854,101 @@ function App() {
     if (format === 'gif') return `export_${side}_pages_gif`;
     if (format === 'ppm') return `export_${side}_pages_ppm`;
     if (format === 'tga') return `export_${side}_pages_tga`;
+    if (format === 'ico') return `export_${side}_pages_ico`;
     return null;
+  };
+
+  const parityBatchNeedsRange = (command: string) => command !== 'export_odd_pages_ico' && command !== 'export_even_pages_ico';
+
+  const parityBatchMutatesPdf = (command: string) => !command.startsWith('export_') && !command.startsWith('extract_');
+
+  const buildParityBatchPayload = (command: string): Record<string, unknown> => {
+    if (command === 'export_odd_pages_ico' || command === 'export_even_pages_ico') {
+      return { path: filePath, outputDir: parityRangeOutputPath.trim() };
+    }
+    const base = {
+      path: filePath,
+      startPage: parityRangeStartPage,
+      endPage: parityRangeEndPage,
+    };
+    if (command.startsWith('extract_')) {
+      return { ...base, outputPath: parityRangeOutputPath.trim() };
+    }
+    if (command.startsWith('export_')) {
+      return { ...base, outputDir: parityRangeOutputPath.trim() };
+    }
+    if (command.includes('crop_') || command.includes('expand_') || command.includes('shrink_')) {
+      return {
+        ...base,
+        marginTop: cropMarginTop,
+        marginRight: cropMarginRight,
+        marginBottom: cropMarginBottom,
+        marginLeft: cropMarginLeft,
+      };
+    }
+    if (command.includes('watermark')) {
+      return { ...base, text: watermarkText.trim() };
+    }
+    if (command.includes('header')) {
+      return { ...base, text: pageHeaderText.trim() };
+    }
+    if (command.includes('footer')) {
+      return { ...base, text: pageFooterText.trim() };
+    }
+    if (command.includes('border')) {
+      return { ...base, inset: pageBorderInset };
+    }
+    if (command.includes('page_size')) {
+      return { ...base, preset: pageSizePreset };
+    }
+    if (command.includes('bookmark') || command.includes('page_numbers')) {
+      return { ...base, prefix: pageNumbersPrefix.trim() || null };
+    }
+    return base;
+  };
+
+  const openParityRangeModal = () => {
+    if (!filePath || pageCount === null) return;
+    setParityRangeStartPage(currentPage);
+    setParityRangeEndPage(currentPage);
+    setParityRangeCommand('rotate_odd_pages_in_range');
+    setShowParityRangeModal(true);
+  };
+
+  const handleParityRangeAction = async () => {
+    if (!filePath) return;
+    if (parityRangeStartPage > parityRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    const command = parityRangeCommand;
+    if ((command.startsWith('export_') || command.startsWith('extract_')) && !parityRangeOutputPath.trim()) {
+      showToast('Output path or directory is required', 'error');
+      return;
+    }
+    if ((command.includes('watermark') || command.includes('header') || command.includes('footer'))
+      && !buildParityBatchPayload(command).text) {
+      showToast('Text is required for this action', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const payload = buildParityBatchPayload(command);
+      const result = await invoke<number | string | string[] | void>(command, payload);
+      if (parityBatchMutatesPdf(command)) {
+        markPdfEdited();
+        await reloadOpenPdf(currentPage);
+      }
+      setShowParityRangeModal(false);
+      if (typeof result === 'number') {
+        showToast(`Done — affected ${result} item${result === 1 ? '' : 's'}`);
+      } else if (Array.isArray(result)) {
+        showToast(`Wrote ${result.length} file${result.length === 1 ? '' : 's'}`);
+      } else if (typeof result === 'string') {
+        showToast(`Wrote ${result}`);
+      } else {
+        showToast('Done');
+      }
+    });
   };
 
   const handleExportOddPagesImage = async () => {
@@ -1856,7 +1956,7 @@ function App() {
     if (!filePath || !outputDir) return;
     const command = parityImageExportCommand(imageExportFormat, true);
     if (!command) {
-      showToast('Odd/even image export does not support ICO', 'error');
+      showToast('Unsupported image format', 'error');
       return;
     }
     await withLoading(async () => {
@@ -1871,7 +1971,7 @@ function App() {
     if (!filePath || !outputDir) return;
     const command = parityImageExportCommand(imageExportFormat, false);
     if (!command) {
-      showToast('Odd/even image export does not support ICO', 'error');
+      showToast('Unsupported image format', 'error');
       return;
     }
     await withLoading(async () => {
@@ -4791,7 +4891,7 @@ function App() {
     || showRotateRangeModal || showKeepRangeModal || showMoveRangeModal || showPrependModal || showSplitEveryModal
     || showPageBorderModal || showBookmarkAllModal || showExpandMarginsModal || showShrinkMarginsModal
     || showDeleteNthModal || showExtractOddModal || showExtractEvenModal || showSplitAtModal
-    || showReverseRangeModal || showInsertBlankPagesModal || showCropRangeModal
+    || showReverseRangeModal || showInsertBlankPagesModal || showCropRangeModal || showParityRangeModal
     || showExportPagesPdfModal
     || showInsertImagePageModal || showExportPagePdfModal
     || showInsertModal || showMergeModal || showSearchModal
@@ -5708,6 +5808,7 @@ function App() {
                 <button onClick={() => void handleDuplicatePageBefore()} className="btn" title="Duplicate current page before itself">Dup. Before</button>
                 <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
                 <button onClick={openRotateRangeModal} className="btn" title="Rotate a page range">Rot. Range</button>
+                <button onClick={openParityRangeModal} className="btn" title="Apply odd/even or local-parity tools within a page range">Parity Range</button>
                 <button onClick={openMoveRangeModal} className="btn" title="Move a page range">Move Range</button>
                 <button onClick={openKeepRangeModal} className="btn" title="Keep only a page range">Keep Range</button>
                 <button onClick={() => void handleKeepOddPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep odd pages only (1, 3, 5…)">Keep Odd</button>
@@ -7252,6 +7353,36 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowInsertBlankPagesModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleInsertBlankPages()} className="btn">Insert</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Parity Range Modal */}
+      {showParityRangeModal && (
+        <Modal onClose={() => setShowParityRangeModal(false)}>
+          <h3>Parity Range Tools</h3>
+          <p className="modal-help">Run any global odd/even or local-parity action within a page range. Export/extract use the output path below; margin/text stamps use values from their respective modals.</p>
+          {parityBatchNeedsRange(parityRangeCommand) && (
+            <>
+              <label>From page: <input type="number" value={parityRangeStartPage + 1} onChange={(e) => setParityRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+              <label>To page: <input type="number" value={parityRangeEndPage + 1} onChange={(e) => setParityRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+            </>
+          )}
+          <label>Action:</label>
+          <select className="modal-input" value={parityRangeCommand} onChange={(e) => setParityRangeCommand(e.target.value)}>
+            {(parityBatchCommands as string[]).map((cmd) => (
+              <option key={cmd} value={cmd}>{cmd.replaceAll('_', ' ')}</option>
+            ))}
+          </select>
+          {(parityRangeCommand.startsWith('export_') || parityRangeCommand.startsWith('extract_')) && (
+            <>
+              <label>{parityRangeCommand.startsWith('extract_') ? 'Output PDF path:' : 'Output directory:'}</label>
+              <input type="text" value={parityRangeOutputPath} onChange={(e) => setParityRangeOutputPath(e.target.value)} className="modal-input" placeholder={parityRangeCommand.startsWith('extract_') ? '/path/to/output.pdf' : '/path/to/output_dir'} />
+            </>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowParityRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleParityRangeAction()} className="btn">Run</button>
           </div>
         </Modal>
       )}
