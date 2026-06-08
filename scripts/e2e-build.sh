@@ -10,6 +10,11 @@ export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/src-tauri/target}"
 export VITE_WDIO=1
 export TAURI_WEBDRIVER_PORT=4445
 
+if [ ! -d node_modules ]; then
+  npm ci
+fi
+npm ci --prefix e2e
+
 "$root/scripts/fetch-pdfium.sh"
 cp "$root/e2e/capabilities/e2e.json" "$root/src-tauri/capabilities/e2e.json"
 npm run build

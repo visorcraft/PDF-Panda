@@ -7,6 +7,11 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/src-tauri/target}"
 
+if [ ! -d node_modules ]; then
+  npm ci
+fi
+npm ci --prefix e2e
+
 if [ ! -f e2e/fixtures/sample.pdf ]; then
   echo "Generating e2e/fixtures/sample.pdf..."
   cargo test --manifest-path src-tauri/Cargo.toml export_e2e_sample_pdf -- --ignored --nocapture
@@ -19,10 +24,10 @@ trap cleanup EXIT INT TERM
 
 if [ "$(uname -s)" = Linux ] && [ -z "${DISPLAY:-}" ]; then
   if command -v xvfb-run >/dev/null 2>&1; then
-    exec xvfb-run -a npx wdio run e2e/wdio.conf.ts
+    exec xvfb-run -a npm run test --prefix e2e
   fi
   echo "DISPLAY is unset and xvfb-run is unavailable; install xvfb-run for headless Linux e2e." >&2
   exit 1
 fi
 
-exec npx wdio run e2e/wdio.conf.ts
+exec npm run test --prefix e2e

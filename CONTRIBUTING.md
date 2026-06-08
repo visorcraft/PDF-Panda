@@ -43,6 +43,9 @@ On Linux, also run:
 npm run test:e2e
 ```
 
+That script installs WebdriverIO deps under `e2e/` automatically; a normal
+`npm install` at the repo root does not pull them in.
+
 From `src-tauri/` the smoke script covers Rust unit tests, `clippy`, `fmt`, and
 `npx tsc --noEmit`. Optional integration coverage with PDFium:
 
