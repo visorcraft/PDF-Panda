@@ -6670,6 +6670,47 @@ struct MarkdownImageSink<'a> {
     rel_prefix: &'a str,
 }
 
+/// Pages with little extractable text may still be scanned or image-heavy layouts.
+const PAGE_OCR_MIN_CHARS: usize = 120;
+
+fn page_visible_char_count(lines: &[MarkdownTextLine], plain_fallback: &str) -> usize {
+    if lines.is_empty() {
+        plain_fallback.chars().filter(|c| !c.is_whitespace()).count()
+    } else {
+        lines.iter().map(|l| l.text.chars().filter(|c| !c.is_whitespace()).count()).sum()
+    }
+}
+
+fn page_needs_ocr_supplement(lines: &[MarkdownTextLine], plain_fallback: &str) -> bool {
+    page_visible_char_count(lines, plain_fallback) < PAGE_OCR_MIN_CHARS
+}
+
+fn ocr_image_bytes(bytes: &[u8], ext: &str) -> Result<Option<String>, String> {
+    let png = match ext {
+        "png" => bytes.to_vec(),
+        "jpg" | "jpeg" => {
+            let img = image::load_from_memory(bytes).map_err(|e| e.to_string())?;
+            let mut buf = Vec::new();
+            img.write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png).map_err(|e| e.to_string())?;
+            buf
+        }
+        _ => return Ok(None),
+    };
+    ocr_png_bytes(&png)
+}
+
+fn append_page_ocr_supplement(markdown: &mut String, path: &Path, page_index: u32) -> Result<(), String> {
+    let png = render_page_png(path, page_index, OCR_RENDER_W, OCR_RENDER_H)?;
+    if let Some(text) = ocr_png_bytes(&png)? {
+        let trimmed = text.trim();
+        if !trimmed.is_empty() {
+            markdown.push_str("#### OCR (page render)\n\n");
+            markdown.push_str(&plain_text_to_markdown(trimmed));
+        }
+    }
+    Ok(())
+}
+
 fn append_scanned_page_markdown(
     markdown: &mut String,
     path: &Path,
@@ -6688,7 +6729,7 @@ fn append_scanned_page_markdown(
 
     if let Some(text) = ocr_text {
         markdown.push_str(&plain_text_to_markdown(&text));
-    } else if image_sink.is_none() {
+    } else {
         markdown.push_str("_(Scanned page — install Tesseract OCR for text extraction.)_\n\n");
     }
     Ok(())
@@ -6854,6 +6895,7 @@ fn append_page_embedded_images(
     sink: &MarkdownImageSink<'_>,
     image_seq: &mut u32,
 ) -> Result<String, String> {
+    fs::create_dir_all(sink.assets_dir).map_err(|e| e.to_string())?;
     let page_id = match doc.get_pages().get(&page_number) {
         Some(id) => *id,
         None => return Ok(String::new()),
@@ -6890,8 +6932,16 @@ fn append_page_embedded_images(
         };
         *image_seq += 1;
         let file_name = format!("page-{page_number}-img-{image_seq}.{ext}");
-        fs::write(sink.assets_dir.join(&file_name), bytes).map_err(|e| e.to_string())?;
+        let ocr_text = ocr_image_bytes(&bytes, ext)?;
+        fs::write(sink.assets_dir.join(&file_name), &bytes).map_err(|e| e.to_string())?;
         block.push_str(&format!("![Page {page_number} embedded image]({}/{file_name})\n\n", sink.rel_prefix));
+        if let Some(text) = ocr_text {
+            let trimmed = text.trim();
+            if !trimmed.is_empty() {
+                block.push_str("#### OCR (embedded image)\n\n");
+                block.push_str(&plain_text_to_markdown(trimmed));
+            }
+        }
     }
     Ok(block)
 }
@@ -6926,9 +6976,15 @@ fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> R
                     append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink)?;
                 } else {
                     markdown.push_str(&plain_text_to_markdown(trimmed));
+                    if image_sink.is_some() && page_needs_ocr_supplement(&[], trimmed) {
+                        append_page_ocr_supplement(&mut markdown, path, index as u32)?;
+                    }
                 }
             } else {
                 markdown.push_str(&format_markdown_lines(&lines));
+                if image_sink.is_some() && page_needs_ocr_supplement(&lines, "") {
+                    append_page_ocr_supplement(&mut markdown, path, index as u32)?;
+                }
             }
         }
 
@@ -25914,6 +25970,57 @@ mod tests {
         let (png, ext) = pdf_image_stream_bytes(&stream).expect("rgb image");
         assert_eq!(ext, "png");
         assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn page_needs_ocr_supplement_detects_sparse_text() {
+        assert!(page_needs_ocr_supplement(&[], "short"));
+        assert!(!page_needs_ocr_supplement(&[], "x".repeat(PAGE_OCR_MIN_CHARS + 1).as_str(),));
+        let sparse = md_line("Hi", 100.0, 90.0, vec![]);
+        assert!(page_needs_ocr_supplement(&[sparse], ""));
+    }
+
+    #[test]
+    fn ocr_image_bytes_without_tesseract_returns_none() {
+        if resolve_tesseract().is_some() {
+            return;
+        }
+        let result = ocr_image_bytes(&[0x89, 0x50, 0x4e, 0x47], "png").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn append_page_embedded_images_writes_assets() {
+        let mut doc = build_pdf(1);
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let image_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
+                (b"Width".to_vec(), Object::Integer(1)),
+                (b"Height".to_vec(), Object::Integer(1)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+            ]),
+            vec![255, 0, 0],
+        )));
+        let mut xobjects = Dictionary::new();
+        xobjects.set(b"Im1", Object::Reference(image_id));
+        let mut resources = Dictionary::new();
+        resources.set(b"XObject", Object::Dictionary(xobjects));
+        doc.get_dictionary_mut(page_id).unwrap().set(b"Resources", Object::Dictionary(resources));
+
+        let assets_dir = std::env::temp_dir().join(format!("pp_md_assets_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&assets_dir);
+        let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: "doc_assets" };
+        let mut seq = 0u32;
+        let block = append_page_embedded_images(&doc, 1, &sink, &mut seq).unwrap();
+
+        assert_eq!(seq, 1);
+        assert!(block.contains("embedded image"));
+        assert!(assets_dir.join("page-1-img-1.png").is_file());
+
+        let _ = fs::remove_dir_all(&assets_dir);
     }
 
     #[test]

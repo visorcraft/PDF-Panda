@@ -36,7 +36,7 @@ before a release tag.
 ## Export
 - [ ] Markdown toggle (Ctrl/Cmd+Shift+M); sibling `.md` auto-save; Save As… custom path; overwrite conflict prompt
 - [ ] Summarize (Ctrl/Cmd+Shift+E); sibling `.summary.md`
-- [ ] Scanned/no-text page saves PNG in `<name>_assets/` beside `.md`
+- [ ] Scanned/no-text page saves PNG + OCR text in `<name>_assets/`; sparse/complex pages get page-render OCR supplement; embedded images extracted + OCR'd on save (needs Tesseract)
 - [ ] Export image (Ctrl/Cmd+Shift+B) — PNG or JPEG, current page, range, or all pages
 - [ ] Optimize, password-protect export, decrypt to `_decrypted.pdf`, and print
 - [ ] Open an encrypted `_protected.pdf` with password prompt
