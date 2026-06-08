@@ -75,7 +75,7 @@ Three things we care about:
 - **Password protect** — export an encrypted copy; **decrypt** to `_decrypted.pdf`; open encrypted PDFs with a prompt
 
 **Convert & export**
-- **PDF → Markdown** — tagged-PDF structure when available (headings, lists, tables with THead/TBody, links, TOC, captions, code, notes, inline emphasis); otherwise PDFium heuristic layout with column reading order, paragraph merge, header/footer stripping, and link/URL autodetection; on save, scanned/sparse pages, embedded images, and painted Form XObjects (vector charts rasterized via PDFium) land in `<md-stem>_assets/` with optional Tesseract OCR; auto-save sibling `.md` or **Save As…** for a custom path
+- **PDF → Markdown** — tagged-PDF structure when available (headings, lists, tables with THead/TBody, links, TOC, captions, code, notes, inline emphasis); otherwise PDFium heuristic layout with column reading order, paragraph merge, header/footer stripping, and link/URL autodetection; on save, scanned/sparse pages, embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX, CCITT Fax scans, RunLength 1-bit), and painted Form XObjects (vector charts rasterized via PDFium, including nested form content) land in `<md-stem>_assets/` with optional Tesseract OCR; auto-save sibling `.md` or **Save As…** for a custom path
 - **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
 - **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** — save rendered pages as image files (Ctrl/Cmd+Shift+B)

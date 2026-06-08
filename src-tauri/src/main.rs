@@ -7348,9 +7348,158 @@ fn indexed_samples_to_png(width: u32, height: u32, bytes: &[u8], palette: &[u8])
     raw_image_to_png(width, height, rgb)
 }
 
+fn pdf_decode_parms_dict(stream: &Stream) -> Option<&Dictionary> {
+    match stream.dict.get(b"DecodeParms").ok()? {
+        Object::Dictionary(dict) => Some(dict),
+        Object::Array(items) => items.first().and_then(|item| item.as_dict().ok()),
+        _ => None,
+    }
+}
+
+fn pdf_bool_object(obj: &Object) -> Option<bool> {
+    match obj {
+        Object::Boolean(value) => Some(*value),
+        Object::Integer(value) => Some(*value != 0),
+        _ => None,
+    }
+}
+
+fn pdf_ccitt_parms(stream: &Stream) -> Option<(u16, Option<u16>, i64, bool)> {
+    let image_width = pdf_numeric_i64(stream.dict.get(b"Width").ok()?)? as u16;
+    let image_height = stream.dict.get(b"Height").ok().and_then(pdf_numeric_i64).map(|v| v as u16);
+    let decode_parms = pdf_decode_parms_dict(stream);
+    let columns = decode_parms
+        .and_then(|dict| dict.get(b"Columns").ok().and_then(pdf_numeric_i64))
+        .map(|v| v as u16)
+        .unwrap_or(image_width);
+    let rows = decode_parms
+        .and_then(|dict| dict.get(b"Rows").ok().and_then(pdf_numeric_i64))
+        .map(|v| v as u16)
+        .or(image_height);
+    let k = decode_parms.and_then(|dict| dict.get(b"K").ok().and_then(pdf_numeric_i64)).unwrap_or(0);
+    let black_is_1 =
+        decode_parms.and_then(|dict| dict.get(b"BlackIs1").ok().and_then(pdf_bool_object)).unwrap_or(false);
+    Some((columns.max(1), rows, k, black_is_1))
+}
+
+fn ccitt_pixel_value(color: fax::Color, black_is_1: bool) -> u8 {
+    match (color, black_is_1) {
+        (fax::Color::Black, false) | (fax::Color::White, true) => 0,
+        (fax::Color::White, false) | (fax::Color::Black, true) => 255,
+    }
+}
+
+fn ccitt_samples_to_png(columns: u16, rows: Option<u16>, k: i64, black_is_1: bool, bytes: &[u8]) -> Option<Vec<u8>> {
+    use fax::decoder::{self, pels};
+
+    let width = columns;
+    let mut gray_rows: Vec<Vec<u8>> = Vec::new();
+    if k < 0 {
+        let height_limit = rows;
+        decoder::decode_g4(bytes.iter().copied(), width, height_limit, |transitions| {
+            let row = pels(transitions, width).map(|color| ccitt_pixel_value(color, black_is_1)).collect::<Vec<_>>();
+            gray_rows.push(row);
+        })?;
+        if let Some(expected_rows) = rows {
+            gray_rows.truncate(expected_rows as usize);
+        }
+        if gray_rows.is_empty() {
+            return None;
+        }
+    } else if k == 0 {
+        decoder::decode_g3(bytes.iter().copied(), |transitions| {
+            let row = pels(transitions, width).map(|color| ccitt_pixel_value(color, black_is_1)).collect::<Vec<_>>();
+            gray_rows.push(row);
+        })?;
+        if let Some(expected_rows) = rows {
+            gray_rows.truncate(expected_rows as usize);
+        }
+        if gray_rows.is_empty() {
+            return None;
+        }
+    } else {
+        return None;
+    }
+    let height = gray_rows.len() as u32;
+    let flat: Vec<u8> = gray_rows.into_iter().flatten().collect();
+    gray_samples_to_png(width as u32, height, &flat)
+}
+
+fn run_length_decode(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        let length = bytes[index] as i8;
+        index += 1;
+        if length == -128 {
+            continue;
+        }
+        if length >= 0 {
+            let count = length as usize + 1;
+            if index >= bytes.len() {
+                break;
+            }
+            let value = bytes[index];
+            index += 1;
+            out.extend(std::iter::repeat_n(value, count));
+        } else {
+            let count = (-length) as usize + 1;
+            if index + count > bytes.len() {
+                break;
+            }
+            out.extend_from_slice(&bytes[index..index + count]);
+            index += count;
+        }
+    }
+    out
+}
+
+fn unpack_1bit_samples(bytes: &[u8], width: u32, height: u32, black_is_1: bool) -> Option<Vec<u8>> {
+    let pixel_count = (width as u64).checked_mul(height as u64)? as usize;
+    let mut gray = Vec::with_capacity(pixel_count);
+    for bit_idx in 0..pixel_count {
+        let byte = bytes.get(bit_idx / 8)?;
+        let bit = (byte >> (7 - (bit_idx % 8))) & 1;
+        let value = if (bit == 1) == black_is_1 { 0 } else { 255 };
+        gray.push(value);
+    }
+    gray_samples_to_png(width, height, &gray)
+}
+
+fn pdf_filter_chain(filter: &Object) -> Vec<Vec<u8>> {
+    match filter {
+        Object::Name(name) => vec![name.to_vec()],
+        Object::Array(items) => items.iter().filter_map(|item| item.as_name().ok().map(|name| name.to_vec())).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Raw or decompressed stream bytes for image extraction. lopdf does not decode
+/// CCITTFaxDecode or RunLengthDecode, so those filters use `stream.content`
+/// (after any leading Flate/LZW/ASCII85 steps we can peel off).
+fn pdf_image_encoded_bytes(stream: &Stream) -> Option<Vec<u8>> {
+    let filters = stream.dict.get(b"Filter").ok().map(pdf_filter_chain).unwrap_or_default();
+    if filters.is_empty() {
+        return Some(stream.content.clone());
+    }
+    if filters.last().is_some_and(|name| name.as_slice() == b"CCITTFaxDecode" || name.as_slice() == b"RunLengthDecode")
+    {
+        if filters.len() == 1 {
+            return Some(stream.content.clone());
+        }
+        let mut wrapper = stream.clone();
+        wrapper.dict.set(
+            b"Filter",
+            Object::Array(filters[..filters.len() - 1].iter().map(|name| Object::Name(name.clone())).collect()),
+        );
+        return wrapper.decompressed_content().ok().or_else(|| Some(stream.content.clone()));
+    }
+    stream.decompressed_content().ok()
+}
+
 fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
     let filter = stream.dict.get(b"Filter").ok();
-    let bytes = stream.decompressed_content().ok()?;
+    let bytes = pdf_image_encoded_bytes(stream)?;
     if filter.is_some_and(pdf_filter_is_dctdecode) {
         return Some((bytes, "jpg"));
     }
@@ -7362,6 +7511,13 @@ fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
             }
         }
     }
+    if filter.is_some_and(|f| pdf_filter_has_name(f, b"CCITTFaxDecode")) {
+        let (columns, rows, k, black_is_1) = pdf_ccitt_parms(stream)?;
+        if let Some(png) = ccitt_samples_to_png(columns, rows, k, black_is_1, &bytes) {
+            return Some((png, "png"));
+        }
+        return None;
+    }
 
     let width = pdf_numeric_i64(stream.dict.get(b"Width").ok()?)? as u32;
     let height = pdf_numeric_i64(stream.dict.get(b"Height").ok()?)? as u32;
@@ -7369,11 +7525,29 @@ fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
         return None;
     }
     let bits = stream.dict.get(b"BitsPerComponent").ok().and_then(pdf_numeric_i64).unwrap_or(8) as u32;
+    let colorspace = stream.dict.get(b"ColorSpace").ok()?;
+    let decode = stream.dict.get(b"Decode").ok();
+    let black_is_1 = decode
+        .and_then(|obj| obj.as_array().ok())
+        .and_then(|items| items.first())
+        .and_then(pdf_numeric_f32)
+        .is_some_and(|value| value > 0.5);
+
+    if bits == 1 {
+        let samples = if filter.is_some_and(|f| pdf_filter_has_name(f, b"RunLengthDecode")) {
+            run_length_decode(&bytes)
+        } else {
+            bytes
+        };
+        if let Some(png) = unpack_1bit_samples(&samples, width, height, black_is_1) {
+            return Some((png, "png"));
+        }
+        return None;
+    }
     if bits != 8 {
         return None;
     }
 
-    let colorspace = stream.dict.get(b"ColorSpace").ok()?;
     let png = if pdf_colorspace_is(colorspace, b"Indexed") {
         let palette = indexed_palette_rgb(colorspace)?;
         indexed_samples_to_png(width, height, &bytes, &palette)?
@@ -7464,6 +7638,44 @@ fn resolve_page_resources(doc: &Document, page_id: ObjectId) -> Option<Dictionar
     inherited_page_attr(doc, page_id, b"Resources").and_then(|obj| obj.as_dict().ok().cloned())
 }
 
+fn collect_xobject_do_names_recursive(
+    doc: &Document,
+    resources: &Dictionary,
+    content_bytes: &[u8],
+    visited: &mut BTreeSet<ObjectId>,
+) -> BTreeSet<Vec<u8>> {
+    let mut used = parse_xobject_do_names(content_bytes);
+    let Some(xobjects) = resources.get(b"XObject").ok().and_then(|obj| obj.as_dict().ok()) else {
+        return used;
+    };
+
+    let nested_names: Vec<Vec<u8>> = used.iter().cloned().collect();
+    for name in nested_names {
+        let Some(form_id) = xobjects.get(&name).ok().and_then(|obj| obj.as_reference().ok()) else {
+            continue;
+        };
+        if !visited.insert(form_id) {
+            continue;
+        }
+        let Ok(Object::Stream(stream)) = doc.get_object(form_id) else {
+            continue;
+        };
+        if stream.dict.get(b"Subtype").ok().and_then(|obj| obj.as_name().ok()) != Some(b"Form") {
+            continue;
+        }
+        let form_resources = stream
+            .dict
+            .get(b"Resources")
+            .ok()
+            .and_then(|obj| obj.as_dict().ok())
+            .map(|dict| merge_pdf_resource_dicts(resources.clone(), dict))
+            .unwrap_or_else(|| resources.clone());
+        let form_bytes = stream.decompressed_content().unwrap_or_default();
+        used.extend(collect_xobject_do_names_recursive(doc, &form_resources, &form_bytes, visited));
+    }
+    used
+}
+
 fn xobject_names_used_on_page(doc: &Document, page_id: ObjectId) -> BTreeSet<Vec<u8>> {
     let page = match doc.get_dictionary(page_id) {
         Ok(page) => page,
@@ -7473,9 +7685,17 @@ fn xobject_names_used_on_page(doc: &Document, page_id: ObjectId) -> BTreeSet<Vec
         Ok(contents) => contents,
         Err(_) => return BTreeSet::new(),
     };
+    let Some(resources) = resolve_page_resources(doc, page_id) else {
+        let mut used = BTreeSet::new();
+        for bytes in pdf_content_stream_bytes(doc, contents) {
+            used.extend(parse_xobject_do_names(&bytes));
+        }
+        return used;
+    };
+    let mut visited = BTreeSet::new();
     let mut used = BTreeSet::new();
     for bytes in pdf_content_stream_bytes(doc, contents) {
-        used.extend(parse_xobject_do_names(&bytes));
+        used.extend(collect_xobject_do_names_recursive(doc, &resources, &bytes, &mut visited));
     }
     used
 }
@@ -7555,6 +7775,54 @@ fn form_render_pixel_size(width_pt: f32, height_pt: f32) -> (i32, i32) {
     (w, h)
 }
 
+fn pdf_image_dimensions(stream: &Stream) -> Option<(f32, f32)> {
+    let width = pdf_numeric_f32(stream.dict.get(b"Width").ok()?)?;
+    let height = pdf_numeric_f32(stream.dict.get(b"Height").ok()?)?;
+    if width <= 0.0 || height <= 0.0 {
+        return None;
+    }
+    Some((width, height))
+}
+
+fn finish_single_page_render_pdf(
+    dst: &mut Document,
+    pages_id: ObjectId,
+    page_resources_dst: Dictionary,
+    media_width: f32,
+    media_height: f32,
+    content: String,
+) -> Result<(), String> {
+    let content_id = dst.add_object(Stream::new(Dictionary::new(), content.into_bytes()));
+    let mut page = Dictionary::new();
+    page.set("Type", Object::Name(b"Page".to_vec()));
+    page.set("Parent", Object::Reference(pages_id));
+    page.set("Resources", Object::Dictionary(page_resources_dst));
+    page.set(
+        "MediaBox",
+        Object::Array(vec![
+            Object::Real(0.0),
+            Object::Real(0.0),
+            Object::Real(media_width),
+            Object::Real(media_height),
+        ]),
+    );
+    page.set("Contents", Object::Reference(content_id));
+    let page_obj_id = dst.add_object(Object::Dictionary(page));
+
+    let mut pages = Dictionary::new();
+    pages.set("Type", Object::Name(b"Pages".to_vec()));
+    pages.set("Count", Object::Integer(1));
+    pages.set("Kids", Object::Array(vec![Object::Reference(page_obj_id)]));
+    dst.objects.insert(pages_id, Object::Dictionary(pages));
+
+    let mut catalog = Dictionary::new();
+    catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+    catalog.set("Pages", Object::Reference(pages_id));
+    let catalog_id = dst.add_object(Object::Dictionary(catalog));
+    dst.trailer.set("Root", Object::Reference(catalog_id));
+    Ok(())
+}
+
 /// Build a one-page PDF that draws a single Form XObject at its natural BBox so
 /// PDFium can rasterize vector charts and other non-image XObjects.
 fn build_form_render_pdf(
@@ -7610,32 +7878,68 @@ fn build_form_render_pdf(
         })
         .unwrap_or_default();
     let content = format!("q {matrix_cm}1 0 0 1 {} {} cm /{pdf_name} Do Q\n", -llx, -lly);
-    let content_id = dst.add_object(Stream::new(Dictionary::new(), content.into_bytes()));
-
-    let mut page = Dictionary::new();
-    page.set("Type", Object::Name(b"Page".to_vec()));
-    page.set("Parent", Object::Reference(pages_id));
-    page.set("Resources", Object::Dictionary(page_resources_dst));
-    page.set(
-        "MediaBox",
-        Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(width), Object::Real(height)]),
-    );
-    page.set("Contents", Object::Reference(content_id));
-    let page_obj_id = dst.add_object(Object::Dictionary(page));
-
-    let mut pages = Dictionary::new();
-    pages.set("Type", Object::Name(b"Pages".to_vec()));
-    pages.set("Count", Object::Integer(1));
-    pages.set("Kids", Object::Array(vec![Object::Reference(page_obj_id)]));
-    dst.objects.insert(pages_id, Object::Dictionary(pages));
-
-    let mut catalog = Dictionary::new();
-    catalog.set("Type", Object::Name(b"Catalog".to_vec()));
-    catalog.set("Pages", Object::Reference(pages_id));
-    let catalog_id = dst.add_object(Object::Dictionary(catalog));
-    dst.trailer.set("Root", Object::Reference(catalog_id));
-
+    finish_single_page_render_pdf(&mut dst, pages_id, page_resources_dst, width, height, content)?;
     Ok(dst)
+}
+
+fn build_image_render_pdf(
+    src: &Document,
+    page_id: ObjectId,
+    image_src_id: ObjectId,
+    xobject_name: &[u8],
+) -> Result<Document, String> {
+    let (width, height) = src
+        .get_object(image_src_id)
+        .ok()
+        .and_then(|o| o.as_stream().ok())
+        .and_then(pdf_image_dimensions)
+        .unwrap_or((612.0, 792.0));
+
+    let mut dst = Document::with_version("1.5");
+    let pages_id = dst.new_object_id();
+    let mut remap = BTreeMap::new();
+    let image_dst_id = import_object(&mut dst, src, image_src_id, pages_id, &mut remap);
+
+    let mut page_resources_dst = resolve_page_resources(src, page_id)
+        .map(|dict| import_dict(&mut dst, src, &dict, pages_id, &mut remap))
+        .unwrap_or_default();
+    let mut xobjects = page_resources_dst
+        .get(b"XObject")
+        .ok()
+        .and_then(|obj| obj.as_dict().ok())
+        .cloned()
+        .unwrap_or_else(Dictionary::new);
+    xobjects.set(xobject_name.to_vec(), Object::Reference(image_dst_id));
+    page_resources_dst.set(b"XObject", Object::Dictionary(xobjects));
+
+    let pdf_name = pdf_name_for_content_stream(xobject_name);
+    let content = format!("q {width} 0 0 {height} 0 0 cm /{pdf_name} Do Q\n");
+    finish_single_page_render_pdf(&mut dst, pages_id, page_resources_dst, width, height, content)?;
+    Ok(dst)
+}
+
+fn render_xobject_wrapper_png(
+    wrapper: &mut Document,
+    object_id: ObjectId,
+    width_pt: f32,
+    height_pt: f32,
+    temp_prefix: &str,
+) -> Result<Option<Vec<u8>>, String> {
+    let (render_w, render_h) = form_render_pixel_size(width_pt, height_pt);
+    let temp_path = std::env::temp_dir().join(format!(
+        "pp_{temp_prefix}_{}_{}_{}.pdf",
+        std::process::id(),
+        object_id.0,
+        object_id.1
+    ));
+    wrapper.save(&temp_path).map_err(|e| e.to_string())?;
+    let png = match render_page_png(&temp_path, 0, render_w, render_h) {
+        Ok(bytes) if !bytes.is_empty() => Some(bytes),
+        Ok(_) => None,
+        Err(_) => None,
+    };
+    let _ = fs::remove_file(&temp_path);
+    Ok(png)
 }
 
 fn render_imported_form_xobject_png(
@@ -7652,19 +7956,24 @@ fn render_imported_form_xobject_png(
         .unwrap_or([0.0, 0.0, 612.0, 792.0]);
     let width_pt = (bbox[2] - bbox[0]).max(1.0);
     let height_pt = (bbox[3] - bbox[1]).max(1.0);
-    let (render_w, render_h) = form_render_pixel_size(width_pt, height_pt);
-
     let mut wrapper = build_form_render_pdf(src, page_id, form_src_id, xobject_name)?;
-    let temp_path =
-        std::env::temp_dir().join(format!("pp_form_{}_{}_{}.pdf", std::process::id(), form_src_id.0, form_src_id.1));
-    wrapper.save(&temp_path).map_err(|e| e.to_string())?;
-    let png = match render_page_png(&temp_path, 0, render_w, render_h) {
-        Ok(bytes) if !bytes.is_empty() => Some(bytes),
-        Ok(_) => None,
-        Err(_) => None,
-    };
-    let _ = fs::remove_file(&temp_path);
-    Ok(png)
+    render_xobject_wrapper_png(&mut wrapper, form_src_id, width_pt, height_pt, "form")
+}
+
+fn render_imported_image_xobject_png(
+    src: &Document,
+    page_id: ObjectId,
+    image_src_id: ObjectId,
+    xobject_name: &[u8],
+) -> Result<Option<Vec<u8>>, String> {
+    let (width_pt, height_pt) = src
+        .get_object(image_src_id)
+        .ok()
+        .and_then(|o| o.as_stream().ok())
+        .and_then(pdf_image_dimensions)
+        .unwrap_or((612.0, 792.0));
+    let mut wrapper = build_image_render_pdf(src, page_id, image_src_id, xobject_name)?;
+    render_xobject_wrapper_png(&mut wrapper, image_src_id, width_pt, height_pt, "image")
 }
 
 fn append_page_embedded_images(
@@ -7727,7 +8036,10 @@ fn append_page_embedded_images(
         if subtype != Some(b"Image") {
             continue;
         }
-        let Some((bytes, ext)) = pdf_image_stream_bytes(stream) else {
+        let image_bytes = pdf_image_stream_bytes(stream).or_else(|| {
+            render_imported_image_xobject_png(doc, page_id, *id, name).ok().flatten().map(|png| (png, "png"))
+        });
+        let Some((bytes, ext)) = image_bytes else {
             continue;
         };
         *image_seq += 1;
@@ -30938,6 +31250,145 @@ mod tests {
         let (png, ext) = pdf_image_stream_bytes(&stream).expect("rgb image");
         assert_eq!(ext, "png");
         assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn pdf_image_stream_bytes_ccitt_g4_to_png() {
+        use fax::encoder::Encoder;
+        use fax::{Color, VecWriter};
+        use std::iter::repeat_n;
+
+        let width = 8u16;
+        let height = 2u16;
+        let writer = VecWriter::new();
+        let mut encoder = Encoder::new(writer);
+        encoder.encode_line(repeat_n(Color::White, width as usize), width).unwrap();
+        encoder.encode_line(repeat_n(Color::White, 4).chain(repeat_n(Color::Black, 4)), width).unwrap();
+        let encoded = encoder.finish().unwrap().finish();
+
+        let stream = Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Width".to_vec(), Object::Integer(width as i64)),
+                (b"Height".to_vec(), Object::Integer(height as i64)),
+                (b"BitsPerComponent".to_vec(), Object::Integer(1)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceGray".to_vec())),
+                (b"Filter".to_vec(), Object::Name(b"CCITTFaxDecode".to_vec())),
+                (
+                    b"DecodeParms".to_vec(),
+                    Object::Dictionary(Dictionary::from_iter(vec![
+                        (b"Columns".to_vec(), Object::Integer(width as i64)),
+                        (b"Rows".to_vec(), Object::Integer(height as i64)),
+                        (b"K".to_vec(), Object::Integer(-1)),
+                    ])),
+                ),
+            ]),
+            encoded,
+        );
+        let (png, ext) = pdf_image_stream_bytes(&stream).expect("ccitt g4 image");
+        assert_eq!(ext, "png");
+        assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn pdf_image_stream_bytes_run_length_1bit_to_png() {
+        let stream = Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Width".to_vec(), Object::Integer(4)),
+                (b"Height".to_vec(), Object::Integer(2)),
+                (b"BitsPerComponent".to_vec(), Object::Integer(1)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceGray".to_vec())),
+                (b"Filter".to_vec(), Object::Name(b"RunLengthDecode".to_vec())),
+            ]),
+            vec![
+                3, 0xFF, // 4 white pixels
+                3, 0x00, // 4 black pixels
+                0x80, // EOD
+            ],
+        );
+        let (png, ext) = pdf_image_stream_bytes(&stream).expect("run-length 1-bit image");
+        assert_eq!(ext, "png");
+        assert!(png.starts_with(&[137, 80, 78, 71]));
+    }
+
+    #[test]
+    fn collect_xobject_do_names_recursive_finds_nested_image() {
+        let mut doc = build_pdf_with_vector_form();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let image_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
+                (b"Width".to_vec(), Object::Integer(2)),
+                (b"Height".to_vec(), Object::Integer(2)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+            ]),
+            vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0],
+        )));
+        let form_id = doc
+            .get_dictionary(page_id)
+            .unwrap()
+            .get(b"Resources")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"XObject")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"Chart1")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        if let Ok(Object::Stream(stream)) = doc.get_object_mut(form_id) {
+            stream.content = b"q /ScanImg Do Q".to_vec();
+            let mut form_resources = Dictionary::new();
+            let mut xobjects = Dictionary::new();
+            xobjects.set(b"ScanImg", Object::Reference(image_id));
+            form_resources.set(b"XObject", Object::Dictionary(xobjects));
+            stream.dict.set(b"Resources", Object::Dictionary(form_resources));
+        }
+
+        let resources = resolve_page_resources(&doc, page_id).unwrap();
+        let mut visited = BTreeSet::new();
+        let used = collect_xobject_do_names_recursive(&doc, &resources, b"q /Chart1 Do Q", &mut visited);
+        assert!(used.contains(b"Chart1".as_slice()));
+        assert!(used.contains(b"ScanImg".as_slice()));
+    }
+
+    #[test]
+    fn build_image_render_pdf_produces_single_page() {
+        let mut doc = build_pdf(1);
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let image_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
+                (b"Width".to_vec(), Object::Integer(120)),
+                (b"Height".to_vec(), Object::Integer(80)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+            ]),
+            vec![0; 120 * 80 * 3],
+        )));
+        let mut xobjects = Dictionary::new();
+        xobjects.set(b"ScanImg", Object::Reference(image_id));
+        let mut resources = Dictionary::new();
+        resources.set(b"XObject", Object::Dictionary(xobjects));
+        doc.get_dictionary_mut(page_id).unwrap().set(b"Resources", Object::Dictionary(resources));
+
+        let wrapper = build_image_render_pdf(&doc, page_id, image_id, b"ScanImg").unwrap();
+        assert_eq!(wrapper.get_pages().len(), 1);
+        let wrapper_page_id = *wrapper.get_pages().get(&1).unwrap();
+        let contents =
+            wrapper.get_dictionary(wrapper_page_id).unwrap().get(b"Contents").unwrap().as_reference().unwrap();
+        let Object::Stream(stream) = wrapper.get_object(contents).unwrap() else {
+            panic!("contents stream missing");
+        };
+        let content_bytes = stream.decompressed_content().unwrap();
+        let text = String::from_utf8_lossy(&content_bytes);
+        assert!(text.contains("120 0 0 80 0 0 cm"));
+        assert!(text.contains("/ScanImg Do"));
     }
 
     #[test]
