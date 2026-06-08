@@ -1717,6 +1717,34 @@ function App() {
     });
   };
 
+  const handleSetPageSizeOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const resized = await invoke<number>('set_page_size_odd_pages', {
+        path: filePath,
+        preset: pageSizePreset,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageSizeModal(false);
+      showToast(`Resized ${resized} odd page${resized === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`);
+    });
+  };
+
+  const handleSetPageSizeEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const resized = await invoke<number>('set_page_size_even_pages', {
+        path: filePath,
+        preset: pageSizePreset,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageSizeModal(false);
+      showToast(`Resized ${resized} even page${resized === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`);
+    });
+  };
+
   const openDecryptModal = () => {
     setDecryptPassword('');
     setShowDecryptModal(true);
@@ -2740,6 +2768,94 @@ function App() {
       await loadPdfBookmarks(filePath);
       setShowBookmarkAllModal(false);
       showToast(`Added ${count} bookmark${count === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleBookmarkOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const count = await invoke<number>('bookmark_odd_pages', {
+        path: filePath,
+        prefix: bookmarkAllPrefix.trim() || 'Page ',
+      });
+      markPdfEdited();
+      await loadPdfBookmarks(filePath);
+      setShowBookmarkAllModal(false);
+      showToast(`Added ${count} odd bookmark${count === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleBookmarkEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const count = await invoke<number>('bookmark_even_pages', {
+        path: filePath,
+        prefix: bookmarkAllPrefix.trim() || 'Page ',
+      });
+      markPdfEdited();
+      await loadPdfBookmarks(filePath);
+      setShowBookmarkAllModal(false);
+      showToast(`Added ${count} even bookmark${count === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleInsertBlankBeforeOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const inserted = await invoke<number>('insert_blank_before_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} before odd pages`);
+    });
+  };
+
+  const handleInsertBlankBeforeEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const inserted = await invoke<number>('insert_blank_before_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} before even pages`);
+    });
+  };
+
+  const handleInsertBlankAfterOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const inserted = await invoke<number>('insert_blank_after_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} after odd pages`);
+    });
+  };
+
+  const handleInsertBlankAfterEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const inserted = await invoke<number>('insert_blank_after_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} after even pages`);
+    });
+  };
+
+  const handleDuplicateOddPagesToEnd = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_odd_pages_to_end', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Moved ${copied} odd page cop${copied === 1 ? 'y' : 'ies'} to end`);
+    });
+  };
+
+  const handleDuplicateEvenPagesToEnd = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_even_pages_to_end', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Moved ${copied} even page cop${copied === 1 ? 'y' : 'ies'} to end`);
     });
   };
 
@@ -5500,6 +5616,10 @@ function App() {
                 <button onClick={() => void handleAddBlankPageBefore()} className="btn" title="Insert blank page before current">Blank Before</button>
                 <button onClick={openInsertBlankPagesModal} className="btn" title="Insert multiple blank pages">Blank Pages</button>
                 <button onClick={() => void handleInsertBlankBetweenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Insert a blank page between each pair">Blank Between</button>
+                <button onClick={() => void handleInsertBlankBeforeOddPages()} className="btn" title="Insert blank before each odd page">Blank Before Odd</button>
+                <button onClick={() => void handleInsertBlankBeforeEvenPages()} className="btn" title="Insert blank before each even page">Blank Before Even</button>
+                <button onClick={() => void handleInsertBlankAfterOddPages()} className="btn" title="Insert blank after each odd page">Blank After Odd</button>
+                <button onClick={() => void handleInsertBlankAfterEvenPages()} className="btn" title="Insert blank after each even page">Blank After Even</button>
                 <button onClick={() => void handleMovePageToFirst()} className="btn" disabled={currentPage === 0} title="Move current page to first">To First</button>
                 <button onClick={() => void handleMovePageToLast()} className="btn" disabled={pageCount !== null && currentPage >= pageCount - 1} title="Move current page to last">To Last</button>
                 <button onClick={() => void handleMovePageUp()} className="btn" disabled={currentPage === 0} title="Move current page up one position">Move Up</button>
@@ -5520,6 +5640,8 @@ function App() {
                 <button onClick={() => void handleDuplicateEvenPages()} className="btn" title="Append copies of even pages (2, 4, 6…)">Dup. Even</button>
                 <button onClick={() => void handleDuplicateOddPagesBefore()} className="btn" title="Insert a copy before each odd page">Dup. Odd Before</button>
                 <button onClick={() => void handleDuplicateEvenPagesBefore()} className="btn" title="Insert a copy before each even page">Dup. Even Before</button>
+                <button onClick={() => void handleDuplicateOddPagesToEnd()} className="btn" title="Copy each odd page to document end">Dup. Odd To End</button>
+                <button onClick={() => void handleDuplicateEvenPagesToEnd()} className="btn" title="Copy each even page to document end">Dup. Even To End</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
                 <button onClick={openDeleteNthModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Delete every Nth page">Delete Nth</button>
@@ -6713,6 +6835,8 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowPageSizeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleSetPageSizeOddPages()} className="btn">Apply Odd</button>
+            <button onClick={() => void handleSetPageSizeEvenPages()} className="btn">Apply Even</button>
             <button onClick={() => void handleSetPageSize()} className="btn">Apply</button>
           </div>
         </Modal>
@@ -6866,6 +6990,8 @@ function App() {
           <input type="text" value={bookmarkAllPrefix} onChange={(e) => setBookmarkAllPrefix(e.target.value)} className="modal-input" placeholder="Page " />
           <div className="modal-actions">
             <button onClick={() => setShowBookmarkAllModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleBookmarkOddPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Bookmark Odd</button>
+            <button onClick={() => void handleBookmarkEvenPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Bookmark Even</button>
             <button onClick={() => void handleBookmarkAllPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Add all</button>
           </div>
         </Modal>

@@ -3843,6 +3843,139 @@ fn add_page_border_even_pages(path: String, inset: f64) -> Result<u32, String> {
     add_page_border_by_parity(&PathBuf::from(&path), false, inset)
 }
 
+fn bookmark_pages_by_parity(path: &Path, odd: bool, prefix: Option<String>) -> Result<u32, String> {
+    let prefix = prefix.unwrap_or_else(|| "Page ".to_string());
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let mut count = 0u32;
+    for (page_num, page_id) in doc.get_pages() {
+        let page_index = page_num - 1;
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let title = format!("{prefix}{page_num}");
+        append_outline_item(&mut doc, &title, page_id)?;
+        count += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(count)
+}
+
+/// Append outline entries for odd-indexed pages only (1, 3, 5…).
+#[tauri::command]
+fn bookmark_odd_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    bookmark_pages_by_parity(&PathBuf::from(&path), true, prefix)
+}
+
+/// Append outline entries for even-indexed pages only (2, 4, 6…).
+#[tauri::command]
+fn bookmark_even_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    bookmark_pages_by_parity(&PathBuf::from(&path), false, prefix)
+}
+
+fn set_page_size_by_parity(path: &Path, odd: bool, preset: &str) -> Result<u32, String> {
+    let (w, h) = page_size_preset_dims(preset)?;
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut resized = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let page = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
+        page.set(
+            "MediaBox",
+            Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(w as f32), Object::Real(h as f32)]),
+        );
+        page.remove(b"CropBox");
+        resized += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(resized)
+}
+
+/// Set MediaBox preset on odd-indexed pages only.
+#[tauri::command]
+fn set_page_size_odd_pages(path: String, preset: String) -> Result<u32, String> {
+    set_page_size_by_parity(&PathBuf::from(&path), true, &preset)
+}
+
+/// Set MediaBox preset on even-indexed pages only.
+#[tauri::command]
+fn set_page_size_even_pages(path: String, preset: String) -> Result<u32, String> {
+    set_page_size_by_parity(&PathBuf::from(&path), false, &preset)
+}
+
+fn insert_blank_by_parity(path: &Path, odd: bool, after: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let indices: Vec<usize> = (0..kids.len()).filter(|i| (*i % 2 == 0) == odd).collect();
+    if indices.is_empty() {
+        return Ok(0);
+    }
+    for &idx in indices.iter().rev() {
+        let page_id = create_blank_page(&mut doc, pages_ref);
+        let at = if after { idx + 1 } else { idx };
+        kids.insert(at, Object::Reference(page_id));
+    }
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(indices.len() as u32)
+}
+
+/// Insert a blank page before each odd-indexed page.
+#[tauri::command]
+fn insert_blank_before_odd_pages(path: String) -> Result<u32, String> {
+    insert_blank_by_parity(&PathBuf::from(&path), true, false)
+}
+
+/// Insert a blank page before each even-indexed page.
+#[tauri::command]
+fn insert_blank_before_even_pages(path: String) -> Result<u32, String> {
+    insert_blank_by_parity(&PathBuf::from(&path), false, false)
+}
+
+/// Insert a blank page after each odd-indexed page.
+#[tauri::command]
+fn insert_blank_after_odd_pages(path: String) -> Result<u32, String> {
+    insert_blank_by_parity(&PathBuf::from(&path), true, true)
+}
+
+/// Insert a blank page after each even-indexed page.
+#[tauri::command]
+fn insert_blank_after_even_pages(path: String) -> Result<u32, String> {
+    insert_blank_by_parity(&PathBuf::from(&path), false, true)
+}
+
+fn duplicate_pages_by_parity_to_end(path: &Path, odd: bool) -> Result<u32, String> {
+    let path_buf = PathBuf::from(path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let indices: Vec<u32> = (0..total).filter(|i| (i % 2 == 0) == odd).collect();
+    if indices.is_empty() {
+        return Ok(0);
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    let copied = indices.len() as u32;
+    for &idx in indices.iter().rev() {
+        let new_idx = duplicate_page(path_str.clone(), idx)?;
+        move_page_to_last(path_str.clone(), new_idx)?;
+    }
+    Ok(copied)
+}
+
+/// Deep-copy each odd-indexed page and move the copy to the document end.
+#[tauri::command]
+fn duplicate_odd_pages_to_end(path: String) -> Result<u32, String> {
+    duplicate_pages_by_parity_to_end(&PathBuf::from(&path), true)
+}
+
+/// Deep-copy each even-indexed page and move the copy to the document end.
+#[tauri::command]
+fn duplicate_even_pages_to_end(path: String) -> Result<u32, String> {
+    duplicate_pages_by_parity_to_end(&PathBuf::from(&path), false)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -8894,6 +9027,16 @@ fn main() {
             add_page_footer_even_pages,
             add_page_border_odd_pages,
             add_page_border_even_pages,
+            bookmark_odd_pages,
+            bookmark_even_pages,
+            set_page_size_odd_pages,
+            set_page_size_even_pages,
+            insert_blank_before_odd_pages,
+            insert_blank_before_even_pages,
+            insert_blank_after_odd_pages,
+            insert_blank_after_even_pages,
+            duplicate_odd_pages_to_end,
+            duplicate_even_pages_to_end,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -10684,6 +10827,96 @@ mod tests {
         let path = save(&mut build_pdf(4), "border_even");
         let bordered = add_page_border_even_pages(path.clone(), 20.0).unwrap();
         assert_eq!(bordered, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_odd_pages_creates_odd_outline_entries() {
+        let path = save(&mut build_pdf(3), "bookmark_odd");
+        let count = bookmark_odd_pages(path.clone(), Some("Odd ".to_string())).unwrap();
+        assert_eq!(count, 2);
+        let bookmarks = get_pdf_bookmarks(path.clone()).unwrap();
+        assert_eq!(bookmarks.len(), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_even_pages_creates_even_outline_entries() {
+        let path = save(&mut build_pdf(4), "bookmark_even");
+        let count = bookmark_even_pages(path.clone(), Some("Even ".to_string())).unwrap();
+        assert_eq!(count, 2);
+        let bookmarks = get_pdf_bookmarks(path.clone()).unwrap();
+        assert_eq!(bookmarks.len(), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_odd_pages_resizes_odd_only() {
+        let path = save(&mut build_pdf(3), "size_odd");
+        let resized = set_page_size_odd_pages(path.clone(), "a4".to_string()).unwrap();
+        assert_eq!(resized, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_even_pages_resizes_even_only() {
+        let path = save(&mut build_pdf(4), "size_even");
+        let resized = set_page_size_even_pages(path.clone(), "legal".to_string()).unwrap();
+        assert_eq!(resized, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_odd_pages_inserts_blanks() {
+        let path = save(&mut build_pdf(3), "blank_before_odd");
+        let inserted = insert_blank_before_odd_pages(path.clone()).unwrap();
+        assert_eq!(inserted, 2);
+        assert_eq!(page_count(&path), 5);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_even_pages_inserts_blanks() {
+        let path = save(&mut build_pdf(4), "blank_before_even");
+        let inserted = insert_blank_before_even_pages(path.clone()).unwrap();
+        assert_eq!(inserted, 2);
+        assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_odd_pages_inserts_blanks() {
+        let path = save(&mut build_pdf(3), "blank_after_odd");
+        let inserted = insert_blank_after_odd_pages(path.clone()).unwrap();
+        assert_eq!(inserted, 2);
+        assert_eq!(page_count(&path), 5);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_even_pages_inserts_blanks() {
+        let path = save(&mut build_pdf(4), "blank_after_even");
+        let inserted = insert_blank_after_even_pages(path.clone()).unwrap();
+        assert_eq!(inserted, 2);
+        assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_odd_pages_to_end_appends_copies() {
+        let path = save(&mut build_pdf(3), "dup_odd_end");
+        let copied = duplicate_odd_pages_to_end(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 5);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_even_pages_to_end_appends_copies() {
+        let path = save(&mut build_pdf(4), "dup_even_end");
+        let copied = duplicate_even_pages_to_end(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 6);
         let _ = std::fs::remove_file(&path);
     }
 
