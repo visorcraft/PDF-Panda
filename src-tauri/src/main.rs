@@ -3976,6 +3976,178 @@ fn duplicate_even_pages_to_end(path: String) -> Result<u32, String> {
     duplicate_pages_by_parity_to_end(&PathBuf::from(&path), false)
 }
 
+fn duplicate_pages_by_parity_to_start(path: &Path, odd: bool) -> Result<u32, String> {
+    let path_buf = PathBuf::from(path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let indices: Vec<u32> = (0..total).filter(|i| (i % 2 == 0) == odd).collect();
+    if indices.is_empty() {
+        return Ok(0);
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    let copied = indices.len() as u32;
+    for (offset, &idx) in indices.iter().rev().enumerate() {
+        let offset = offset as u32;
+        let source = idx + offset;
+        insert_pdf(path_str.clone(), path_str.clone(), offset, source, source)?;
+    }
+    Ok(copied)
+}
+
+/// Deep-copy each odd-indexed page and insert the copies at the document start.
+#[tauri::command]
+fn duplicate_odd_pages_to_start(path: String) -> Result<u32, String> {
+    duplicate_pages_by_parity_to_start(&PathBuf::from(&path), true)
+}
+
+/// Deep-copy each even-indexed page and insert the copies at the document start.
+#[tauri::command]
+fn duplicate_even_pages_to_start(path: String) -> Result<u32, String> {
+    duplicate_pages_by_parity_to_start(&PathBuf::from(&path), false)
+}
+
+fn export_pages_by_parity_as_pdf(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+    let path_str = path.to_string_lossy().into_owned();
+    let mut written = Vec::new();
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let file_name = format!("page-{:03}.pdf", page_index + 1);
+        let output_path = output_dir.join(file_name);
+        let out =
+            extract_pdf_pages(path_str.clone(), output_path.to_string_lossy().into_owned(), page_index, page_index)?;
+        written.push(out);
+    }
+    Ok(written)
+}
+
+/// Export each odd-indexed page as a separate single-page PDF in `output_dir`.
+#[tauri::command]
+fn export_odd_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_as_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
+}
+
+/// Export each even-indexed page as a separate single-page PDF in `output_dir`.
+#[tauri::command]
+fn export_even_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_as_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
+}
+
+fn export_pages_by_parity_png(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let png = render_page_png(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.png", page_index + 1);
+        let output_path = output_dir.join(file_name);
+        write_png_output(&output_path, &png)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.png` files.
+#[tauri::command]
+fn export_odd_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_png(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.png` files.
+#[tauri::command]
+fn export_even_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_png(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
+}
+
+fn export_pages_by_parity_jpeg(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let jpeg = render_page_jpeg(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.jpg", page_index + 1);
+        let output_path = output_dir.join(file_name);
+        write_png_output(&output_path, &jpeg)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.jpg` files.
+#[tauri::command]
+fn export_odd_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_jpeg(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.jpg` files.
+#[tauri::command]
+fn export_even_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_jpeg(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
+}
+
+fn export_pages_by_parity_webp(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let webp = render_page_webp(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.webp", page_index + 1);
+        let output_path = output_dir.join(file_name);
+        write_png_output(&output_path, &webp)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.webp` files.
+#[tauri::command]
+fn export_odd_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_webp(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.webp` files.
+#[tauri::command]
+fn export_even_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_webp(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
+}
+
+/// Deep-copy `start_page`..=`end_page` and insert the copies at the document start.
+#[tauri::command]
+fn duplicate_page_range_to_start(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let count = end_page - start_page + 1;
+    let path_str = path_buf.to_string_lossy().into_owned();
+    insert_pdf(path_str.clone(), path_str, 0, start_page, end_page)?;
+    Ok(count)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -9037,6 +9209,17 @@ fn main() {
             insert_blank_after_even_pages,
             duplicate_odd_pages_to_end,
             duplicate_even_pages_to_end,
+            duplicate_odd_pages_to_start,
+            duplicate_even_pages_to_start,
+            export_odd_pages_as_pdf,
+            export_even_pages_as_pdf,
+            export_odd_pages_png,
+            export_even_pages_png,
+            export_odd_pages_jpeg,
+            export_even_pages_jpeg,
+            export_odd_pages_webp,
+            export_even_pages_webp,
+            duplicate_page_range_to_start,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -10917,6 +11100,117 @@ mod tests {
         let copied = duplicate_even_pages_to_end(path.clone()).unwrap();
         assert_eq!(copied, 2);
         assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_odd_pages_to_start_inserts_copies() {
+        let path = save(&mut build_pdf(3), "dup_odd_start");
+        let copied = duplicate_odd_pages_to_start(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 5);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_even_pages_to_start_inserts_copies() {
+        let path = save(&mut build_pdf(4), "dup_even_start");
+        let copied = duplicate_even_pages_to_start(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_odd_pages_as_pdf_writes_separate_files() {
+        let path = save(&mut build_pdf(4), "export_odd_pdf");
+        let output_dir = tmp("export_odd_pdf_dir");
+        let written = export_odd_pages_as_pdf(path.clone(), output_dir.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written.len(), 2);
+        for file in &written {
+            assert_eq!(page_count(file), 1);
+        }
+        let _ = std::fs::remove_file(&path);
+        for file in written {
+            let _ = std::fs::remove_file(&file);
+        }
+        let _ = std::fs::remove_dir(output_dir);
+    }
+
+    #[test]
+    fn export_even_pages_as_pdf_writes_separate_files() {
+        let path = save(&mut build_pdf(4), "export_even_pdf");
+        let output_dir = tmp("export_even_pdf_dir");
+        let written = export_even_pages_as_pdf(path.clone(), output_dir.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written.len(), 2);
+        for file in &written {
+            assert_eq!(page_count(file), 1);
+        }
+        let _ = std::fs::remove_file(&path);
+        for file in written {
+            let _ = std::fs::remove_file(&file);
+        }
+        let _ = std::fs::remove_dir(output_dir);
+    }
+
+    #[test]
+    fn export_odd_pages_png_rejects_missing_file() {
+        let missing = tmp("export_odd_png_missing_src");
+        let output_dir = tmp("export_odd_png_missing_dir");
+        let err =
+            export_odd_pages_png(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    #[ignore = "requires PDFium shared library"]
+    fn export_odd_pages_png_writes_files() {
+        let path = save(&mut build_pdf(3), "export_odd_png");
+        let output_dir = tmp("export_odd_png_dir");
+        let written = export_odd_pages_png(path.clone(), output_dir.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written.len(), 2);
+        let _ = std::fs::remove_file(&path);
+        for file in written {
+            let _ = std::fs::remove_file(&file);
+        }
+        let _ = std::fs::remove_dir(output_dir);
+    }
+
+    #[test]
+    #[ignore = "requires PDFium shared library"]
+    fn export_even_pages_jpeg_writes_files() {
+        let path = save(&mut build_pdf(4), "export_even_jpeg");
+        let output_dir = tmp("export_even_jpeg_dir");
+        let written = export_even_pages_jpeg(path.clone(), output_dir.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written.len(), 2);
+        let _ = std::fs::remove_file(&path);
+        for file in written {
+            let _ = std::fs::remove_file(&file);
+        }
+        let _ = std::fs::remove_dir(output_dir);
+    }
+
+    #[test]
+    #[ignore = "requires PDFium shared library"]
+    fn export_odd_pages_webp_writes_files() {
+        let path = save(&mut build_pdf(3), "export_odd_webp");
+        let output_dir = tmp("export_odd_webp_dir");
+        let written = export_odd_pages_webp(path.clone(), output_dir.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written.len(), 2);
+        let _ = std::fs::remove_file(&path);
+        for file in written {
+            let _ = std::fs::remove_file(&file);
+        }
+        let _ = std::fs::remove_dir(output_dir);
+    }
+
+    #[test]
+    fn duplicate_page_range_to_start_inserts_copies() {
+        let path = save(&mut build_pdf(3), "dup_range_start");
+        let copied = duplicate_page_range_to_start(path.clone(), 1, 2).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 5);
         let _ = std::fs::remove_file(&path);
     }
 

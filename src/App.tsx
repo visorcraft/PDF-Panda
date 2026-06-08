@@ -1293,6 +1293,25 @@ function App() {
     });
   };
 
+  const handleDuplicatePageRangeToStart = async () => {
+    if (!filePath) return;
+    if (duplicateRangeStartPage > duplicateRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const count = await invoke<number>('duplicate_page_range_to_start', {
+        path: filePath,
+        startPage: duplicateRangeStartPage,
+        endPage: duplicateRangeEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      setShowDuplicateRangeModal(false);
+      showToast(`Inserted ${count} page${count === 1 ? '' : 's'} at start`);
+    });
+  };
+
   const handleDuplicatePageRangeBefore = async () => {
     if (!filePath) return;
     if (duplicateRangeStartPage > duplicateRangeEndPage) {
@@ -1796,6 +1815,64 @@ function App() {
       });
       setShowExportPagesPdfModal(false);
       showToast(`Exported ${written.length} PDF file${written.length === 1 ? '' : 's'} to ${outputDir}`);
+    });
+  };
+
+  const handleExportOddPagesAsPdf = async () => {
+    const outputDir = exportPagesPdfOutputDir.trim();
+    if (!filePath || !outputDir) return;
+    await withLoading(async () => {
+      const written = await invoke<string[]>('export_odd_pages_as_pdf', { path: filePath, outputDir });
+      setShowExportPagesPdfModal(false);
+      showToast(`Exported ${written.length} odd page PDF${written.length === 1 ? '' : 's'} to ${outputDir}`);
+    });
+  };
+
+  const handleExportEvenPagesAsPdf = async () => {
+    const outputDir = exportPagesPdfOutputDir.trim();
+    if (!filePath || !outputDir) return;
+    await withLoading(async () => {
+      const written = await invoke<string[]>('export_even_pages_as_pdf', { path: filePath, outputDir });
+      setShowExportPagesPdfModal(false);
+      showToast(`Exported ${written.length} even page PDF${written.length === 1 ? '' : 's'} to ${outputDir}`);
+    });
+  };
+
+  const parityImageExportCommand = (format: ImageExportFormat, odd: boolean): string | null => {
+    const side = odd ? 'odd' : 'even';
+    if (format === 'png') return `export_${side}_pages_png`;
+    if (format === 'jpeg') return `export_${side}_pages_jpeg`;
+    if (format === 'webp') return `export_${side}_pages_webp`;
+    return null;
+  };
+
+  const handleExportOddPagesImage = async () => {
+    const outputDir = pngExportOutputPath.trim();
+    if (!filePath || !outputDir) return;
+    const command = parityImageExportCommand(imageExportFormat, true);
+    if (!command) {
+      showToast('Odd/even image export supports PNG, JPEG, and WebP only', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const written = await invoke<string[]>(command, { path: filePath, outputDir });
+      setShowExportPngModal(false);
+      showToast(`Exported ${written.length} odd page image${written.length === 1 ? '' : 's'} to ${outputDir}`);
+    });
+  };
+
+  const handleExportEvenPagesImage = async () => {
+    const outputDir = pngExportOutputPath.trim();
+    if (!filePath || !outputDir) return;
+    const command = parityImageExportCommand(imageExportFormat, false);
+    if (!command) {
+      showToast('Odd/even image export supports PNG, JPEG, and WebP only', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const written = await invoke<string[]>(command, { path: filePath, outputDir });
+      setShowExportPngModal(false);
+      showToast(`Exported ${written.length} even page image${written.length === 1 ? '' : 's'} to ${outputDir}`);
     });
   };
 
@@ -2856,6 +2933,26 @@ function App() {
       markPdfEdited();
       await reloadOpenPdf(currentPage);
       showToast(`Moved ${copied} even page cop${copied === 1 ? 'y' : 'ies'} to end`);
+    });
+  };
+
+  const handleDuplicateOddPagesToStart = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_odd_pages_to_start', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Inserted ${copied} odd page cop${copied === 1 ? 'y' : 'ies'} at start`);
+    });
+  };
+
+  const handleDuplicateEvenPagesToStart = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_even_pages_to_start', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Inserted ${copied} even page cop${copied === 1 ? 'y' : 'ies'} at start`);
     });
   };
 
@@ -5642,6 +5739,8 @@ function App() {
                 <button onClick={() => void handleDuplicateEvenPagesBefore()} className="btn" title="Insert a copy before each even page">Dup. Even Before</button>
                 <button onClick={() => void handleDuplicateOddPagesToEnd()} className="btn" title="Copy each odd page to document end">Dup. Odd To End</button>
                 <button onClick={() => void handleDuplicateEvenPagesToEnd()} className="btn" title="Copy each even page to document end">Dup. Even To End</button>
+                <button onClick={() => void handleDuplicateOddPagesToStart()} className="btn" title="Copy each odd page to document start">Dup. Odd To Start</button>
+                <button onClick={() => void handleDuplicateEvenPagesToStart()} className="btn" title="Copy each even page to document start">Dup. Even To Start</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
                 <button onClick={openDeleteNthModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Delete every Nth page">Delete Nth</button>
@@ -6513,6 +6612,12 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowExportPngModal(false)} className="btn btn-secondary">Cancel</button>
+            {pngExportScope !== 'current' && (
+              <>
+                <button onClick={() => void handleExportOddPagesImage()} className="btn" disabled={!pngExportOutputPath.trim()}>Export Odd</button>
+                <button onClick={() => void handleExportEvenPagesImage()} className="btn" disabled={!pngExportOutputPath.trim()}>Export Even</button>
+              </>
+            )}
             <button onClick={() => void handleExportPng()} className="btn" disabled={!pngExportOutputPath.trim()}>Export</button>
           </div>
         </Modal>
@@ -6654,6 +6759,7 @@ function App() {
             <button onClick={() => setShowDuplicateRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleDuplicatePageRange()} className="btn">Duplicate</button>
             <button onClick={() => void handleDuplicatePageRangeBefore()} className="btn">Before</button>
+            <button onClick={() => void handleDuplicatePageRangeToStart()} className="btn">To Start</button>
             <button onClick={() => void handleDuplicatePageRangeToEnd()} className="btn">To End</button>
           </div>
         </Modal>
@@ -6864,6 +6970,8 @@ function App() {
           <p className="modal-help">Files are written as page-001.pdf, page-002.pdf, … inside the directory.</p>
           <div className="modal-actions">
             <button onClick={() => setShowExportPagesPdfModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExportOddPagesAsPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export Odd</button>
+            <button onClick={() => void handleExportEvenPagesAsPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export Even</button>
             <button onClick={() => void handleExportPagesPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export</button>
           </div>
         </Modal>
