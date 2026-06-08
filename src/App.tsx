@@ -1858,13 +1858,59 @@ function App() {
     return null;
   };
 
-  const parityBatchNeedsRange = (command: string) => command !== 'export_odd_pages_ico' && command !== 'export_even_pages_ico';
+  const isParityDocModCommand = (command: string) =>
+    /_mod[34]_[0-3]_/.test(command) && !command.includes('_in_range');
+
+  const parityBatchNeedsRange = (command: string) =>
+    !isParityDocModCommand(command)
+    && command !== 'export_odd_pages_ico'
+    && command !== 'export_even_pages_ico';
 
   const parityBatchMutatesPdf = (command: string) => !command.startsWith('export_') && !command.startsWith('extract_');
 
   const buildParityBatchPayload = (command: string): Record<string, unknown> => {
-    if (command === 'export_odd_pages_ico' || command === 'export_even_pages_ico') {
-      return { path: filePath, outputDir: parityRangeOutputPath.trim() };
+    const docWide = isParityDocModCommand(command)
+      || command === 'export_odd_pages_ico'
+      || command === 'export_even_pages_ico';
+    if (docWide) {
+      const pathOnly = { path: filePath };
+      if (command.startsWith('extract_')) {
+        return { ...pathOnly, outputPath: parityRangeOutputPath.trim() };
+      }
+      if (command.startsWith('export_')) {
+        return { ...pathOnly, outputDir: parityRangeOutputPath.trim() };
+      }
+      if (command.includes('crop_') || command.includes('expand_') || command.includes('shrink_')) {
+        return {
+          ...pathOnly,
+          marginTop: cropMarginTop,
+          marginRight: cropMarginRight,
+          marginBottom: cropMarginBottom,
+          marginLeft: cropMarginLeft,
+        };
+      }
+      if (command.includes('watermark')) {
+        return { ...pathOnly, text: watermarkText.trim() };
+      }
+      if (command.includes('header')) {
+        return { ...pathOnly, text: pageHeaderText.trim() };
+      }
+      if (command.includes('footer')) {
+        return { ...pathOnly, text: pageFooterText.trim() };
+      }
+      if (command.includes('border')) {
+        return { ...pathOnly, inset: pageBorderInset };
+      }
+      if (command.includes('page_size')) {
+        return { ...pathOnly, preset: pageSizePreset };
+      }
+      if (command.includes('bookmark') || command.includes('page_numbers')) {
+        return { ...pathOnly, prefix: pageNumbersPrefix.trim() || null };
+      }
+      if (command.includes('_by_rotation') || command.includes('_by_size')) {
+        return { ...pathOnly, descending: false };
+      }
+      return pathOnly;
     }
     const base = {
       path: filePath,
@@ -1917,11 +1963,11 @@ function App() {
 
   const handleParityRangeAction = async () => {
     if (!filePath) return;
-    if (parityRangeStartPage > parityRangeEndPage) {
+    const command = parityRangeCommand;
+    if (parityBatchNeedsRange(command) && parityRangeStartPage > parityRangeEndPage) {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    const command = parityRangeCommand;
     if ((command.startsWith('export_') || command.startsWith('extract_')) && !parityRangeOutputPath.trim()) {
       showToast('Output path or directory is required', 'error');
       return;
@@ -7361,7 +7407,7 @@ function App() {
       {showParityRangeModal && (
         <Modal onClose={() => setShowParityRangeModal(false)}>
           <h3>Parity Range Tools</h3>
-          <p className="modal-help">Run any global odd/even or local-parity action within a page range. Export/extract use the output path below; margin/text stamps use values from their respective modals.</p>
+          <p className="modal-help">Run parity actions within a page range, or document-wide mod-3/mod-4 filters (no range). Export/extract use the output path below; margin/text stamps use values from their respective modals.</p>
           {parityBatchNeedsRange(parityRangeCommand) && (
             <>
               <label>From page: <input type="number" value={parityRangeStartPage + 1} onChange={(e) => setParityRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
