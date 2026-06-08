@@ -181,6 +181,7 @@ export interface AppMenuContext {
   openShortcutsHelp: () => void;
   openLicenses: () => void;
   openCredits: () => void;
+  openAbout: () => void;
   openCommandPalette: () => void;
 }
 

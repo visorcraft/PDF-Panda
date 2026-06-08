@@ -318,6 +318,7 @@ export function buildAppMenus(ctx: AppMenuContext): AppMenus {
       act('shortcuts', 'Keyboard shortcuts…', ctx.openShortcutsHelp),
       act('licenses', 'Licenses…', ctx.openLicenses),
       act('credits', 'Credits…', ctx.openCredits),
+      act('about', 'About PDF Panda…', ctx.openAbout),
     ],
   };
 

@@ -470,6 +470,7 @@ function App() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showLicenses, setShowLicenses] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [showTesseractModal, setShowTesseractModal] = useState(false);
   const [tesseractInstallGuide, setTesseractInstallGuide] = useState<TesseractInstallGuide>(DEFAULT_TESSERACT_GUIDE);
   const [tesseractDoNotRemind, setTesseractDoNotRemind] = useState(false);
@@ -4862,6 +4863,7 @@ function App() {
     setShowShortcutsHelp(false);
     setShowLicenses(false);
     setShowCredits(false);
+    setShowAbout(false);
     setShowTesseractModal(false);
   }, [showUnsavedModal]);
 
@@ -5056,7 +5058,7 @@ function App() {
     || showInsertModal || showMergeModal || showSearchModal
     || showNoteModal || showImageInsertModal
     || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal
-    || showCommandPalette || showShortcutsHelp || showLicenses || showCredits || showTesseractModal;
+    || showCommandPalette || showShortcutsHelp || showLicenses || showCredits || showAbout || showTesseractModal;
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null): boolean => {
@@ -5918,6 +5920,7 @@ function App() {
     openShortcutsHelp: () => setShowShortcutsHelp(true),
     openLicenses: () => setShowLicenses(true),
     openCredits: () => setShowCredits(true),
+    openAbout: () => setShowAbout(true),
     openCommandPalette: () => setShowCommandPalette(true),
   });
 
@@ -6010,10 +6013,12 @@ function App() {
           showShortcutsHelp={showShortcutsHelp}
           showLicenses={showLicenses}
           showCredits={showCredits}
+          showAbout={showAbout}
           onCloseCommandPalette={() => setShowCommandPalette(false)}
           onCloseShortcutsHelp={() => setShowShortcutsHelp(false)}
           onCloseLicenses={() => setShowLicenses(false)}
           onCloseCredits={() => setShowCredits(false)}
+          onCloseAbout={() => setShowAbout(false)}
           modeExtras={modeToolbarExtras}
         />
 

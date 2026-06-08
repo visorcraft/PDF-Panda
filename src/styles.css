@@ -1825,3 +1825,32 @@ body {
   display: flex;
   justify-content: center;
 }
+
+.about-modal {
+  max-width: 420px;
+}
+
+.about-version {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.about-repo {
+  margin: 12px 0 4px;
+}
+
+.about-repo-link {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #2b6cb0;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.about-repo-link:hover {
+  color: #1a4f8f;
+}

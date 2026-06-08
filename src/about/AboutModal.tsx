@@ -1,0 +1,57 @@
+import { useEffect, useState } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
+import { invoke } from '@tauri-apps/api/core';
+import { useEscapeClose } from '../legal/useEscapeClose';
+
+const REPO_URL = 'https://github.com/visorcraft/PDF-Panda';
+
+export function AboutModal({ onClose }: { onClose: () => void }) {
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEscapeClose(onClose);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getVersion()
+      .then((value) => {
+        if (!cancelled) setVersion(value);
+      })
+      .catch(() => {
+        if (!cancelled) setVersion(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const openRepo = () => {
+    void invoke('open_external_url', { url: REPO_URL }).catch(() => {
+      window.open(REPO_URL, '_blank', 'noopener,noreferrer');
+    });
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal about-modal" onClick={(e) => e.stopPropagation()} data-testid="about-modal">
+        <h3>About PDF Panda</h3>
+        <p className="about-version">
+          Version{' '}
+          <span data-testid="about-version">{version ?? '…'}</span>
+        </p>
+        <p className="modal-help">
+          A cross-platform desktop PDF editor. GPL-3.0-only — source and releases on GitHub.
+        </p>
+        <p className="about-repo">
+          <button type="button" className="about-repo-link" onClick={openRepo} data-testid="about-repo-link">
+            github.com/visorcraft/PDF-Panda
+          </button>
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-active" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

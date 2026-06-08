@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AboutModal } from '../about/AboutModal';
 import { CreditsModal } from '../credits/CreditsModal';
 import { LicensesModal } from '../licenses/LicensesModal';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
@@ -12,10 +13,12 @@ type MenuChromeProps = {
   showShortcutsHelp: boolean;
   showLicenses: boolean;
   showCredits: boolean;
+  showAbout: boolean;
   onCloseCommandPalette: () => void;
   onCloseShortcutsHelp: () => void;
   onCloseLicenses: () => void;
   onCloseCredits: () => void;
+  onCloseAbout: () => void;
   modeExtras?: React.ReactNode;
 };
 
@@ -265,10 +268,12 @@ export function MenuChrome({
   showShortcutsHelp,
   showLicenses,
   showCredits,
+  showAbout,
   onCloseCommandPalette,
   onCloseShortcutsHelp,
   onCloseLicenses,
   onCloseCredits,
+  onCloseAbout,
   modeExtras,
 }: MenuChromeProps) {
   return (
@@ -286,6 +291,7 @@ export function MenuChrome({
       {showShortcutsHelp && <ShortcutsModal onClose={onCloseShortcutsHelp} />}
       {showLicenses && <LicensesModal onClose={onCloseLicenses} />}
       {showCredits && <CreditsModal onClose={onCloseCredits} />}
+      {showAbout && <AboutModal onClose={onCloseAbout} />}
     </>
   );
 }
