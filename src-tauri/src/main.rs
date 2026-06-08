@@ -4134,6 +4134,94 @@ fn export_even_pages_webp(path: String, output_dir: String) -> Result<Vec<String
     export_pages_by_parity_webp(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
 }
 
+type ParityPageRenderFn = fn(&Path, u32, i32, i32) -> Result<Vec<u8>, String>;
+
+fn export_pages_by_parity_rendered(
+    path: &Path,
+    output_dir: &Path,
+    odd: bool,
+    ext: &str,
+    render: ParityPageRenderFn,
+) -> Result<Vec<String>, String> {
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let bytes = render(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.{ext}", page_index + 1);
+        let output_path = output_dir.join(file_name);
+        write_png_output(&output_path, &bytes)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.bmp` files.
+#[tauri::command]
+fn export_odd_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "bmp", render_page_bmp)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.bmp` files.
+#[tauri::command]
+fn export_even_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "bmp", render_page_bmp)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.tiff` files.
+#[tauri::command]
+fn export_odd_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "tiff", render_page_tiff)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.tiff` files.
+#[tauri::command]
+fn export_even_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "tiff", render_page_tiff)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.gif` files.
+#[tauri::command]
+fn export_odd_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "gif", render_page_gif)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.gif` files.
+#[tauri::command]
+fn export_even_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "gif", render_page_gif)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.ppm` files.
+#[tauri::command]
+fn export_odd_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "ppm", render_page_ppm)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.ppm` files.
+#[tauri::command]
+fn export_even_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "ppm", render_page_ppm)
+}
+
+/// Render odd-indexed pages to `output_dir/page-NNN.tga` files.
+#[tauri::command]
+fn export_odd_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "tga", render_page_tga)
+}
+
+/// Render even-indexed pages to `output_dir/page-NNN.tga` files.
+#[tauri::command]
+fn export_even_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
+    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "tga", render_page_tga)
+}
+
 /// Deep-copy `start_page`..=`end_page` and insert the copies at the document start.
 #[tauri::command]
 fn duplicate_page_range_to_start(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
@@ -9219,6 +9307,16 @@ fn main() {
             export_even_pages_jpeg,
             export_odd_pages_webp,
             export_even_pages_webp,
+            export_odd_pages_bmp,
+            export_even_pages_bmp,
+            export_odd_pages_tiff,
+            export_even_pages_tiff,
+            export_odd_pages_gif,
+            export_even_pages_gif,
+            export_odd_pages_ppm,
+            export_even_pages_ppm,
+            export_odd_pages_tga,
+            export_even_pages_tga,
             duplicate_page_range_to_start,
             add_text_watermark,
             flatten_annotations,
@@ -11203,6 +11301,106 @@ mod tests {
             let _ = std::fs::remove_file(&file);
         }
         let _ = std::fs::remove_dir(output_dir);
+    }
+
+    #[test]
+    fn export_odd_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_odd_bmp_missing_src");
+        let output_dir = tmp("export_odd_bmp_missing_dir");
+        let err =
+            export_odd_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_even_pages_bmp_rejects_missing_file() {
+        let missing = tmp("export_even_bmp_missing_src");
+        let output_dir = tmp("export_even_bmp_missing_dir");
+        let err =
+            export_even_pages_bmp(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_odd_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_odd_tiff_missing_src");
+        let output_dir = tmp("export_odd_tiff_missing_dir");
+        let err =
+            export_odd_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_even_pages_tiff_rejects_missing_file() {
+        let missing = tmp("export_even_tiff_missing_src");
+        let output_dir = tmp("export_even_tiff_missing_dir");
+        let err =
+            export_even_pages_tiff(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_odd_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_odd_gif_missing_src");
+        let output_dir = tmp("export_odd_gif_missing_dir");
+        let err =
+            export_odd_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_even_pages_gif_rejects_missing_file() {
+        let missing = tmp("export_even_gif_missing_src");
+        let output_dir = tmp("export_even_gif_missing_dir");
+        let err =
+            export_even_pages_gif(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_odd_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_odd_ppm_missing_src");
+        let output_dir = tmp("export_odd_ppm_missing_dir");
+        let err =
+            export_odd_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_even_pages_ppm_rejects_missing_file() {
+        let missing = tmp("export_even_ppm_missing_src");
+        let output_dir = tmp("export_even_ppm_missing_dir");
+        let err =
+            export_even_pages_ppm(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_odd_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_odd_tga_missing_src");
+        let output_dir = tmp("export_odd_tga_missing_dir");
+        let err =
+            export_odd_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
+    }
+
+    #[test]
+    fn export_even_pages_tga_rejects_missing_file() {
+        let missing = tmp("export_even_tga_missing_src");
+        let output_dir = tmp("export_even_tga_missing_dir");
+        let err =
+            export_even_pages_tga(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("File not found"));
     }
 
     #[test]

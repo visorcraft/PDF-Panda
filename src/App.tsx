@@ -1843,6 +1843,11 @@ function App() {
     if (format === 'png') return `export_${side}_pages_png`;
     if (format === 'jpeg') return `export_${side}_pages_jpeg`;
     if (format === 'webp') return `export_${side}_pages_webp`;
+    if (format === 'bmp') return `export_${side}_pages_bmp`;
+    if (format === 'tiff') return `export_${side}_pages_tiff`;
+    if (format === 'gif') return `export_${side}_pages_gif`;
+    if (format === 'ppm') return `export_${side}_pages_ppm`;
+    if (format === 'tga') return `export_${side}_pages_tga`;
     return null;
   };
 
@@ -1851,7 +1856,7 @@ function App() {
     if (!filePath || !outputDir) return;
     const command = parityImageExportCommand(imageExportFormat, true);
     if (!command) {
-      showToast('Odd/even image export supports PNG, JPEG, and WebP only', 'error');
+      showToast('Odd/even image export does not support ICO', 'error');
       return;
     }
     await withLoading(async () => {
@@ -1866,7 +1871,7 @@ function App() {
     if (!filePath || !outputDir) return;
     const command = parityImageExportCommand(imageExportFormat, false);
     if (!command) {
-      showToast('Odd/even image export supports PNG, JPEG, and WebP only', 'error');
+      showToast('Odd/even image export does not support ICO', 'error');
       return;
     }
     await withLoading(async () => {
