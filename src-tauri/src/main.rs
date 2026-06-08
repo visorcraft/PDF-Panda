@@ -3091,6 +3091,193 @@ fn sort_pages_by_rotation(path: String, descending: bool) -> Result<(), String> 
     Ok(())
 }
 
+fn delete_pages_by_parity(path: &Path, delete_odd: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let total = kids.len();
+    let mut to_delete: Vec<usize> = (0..total).filter(|i| if delete_odd { i % 2 == 0 } else { i % 2 == 1 }).collect();
+    if to_delete.is_empty() {
+        return Ok(0);
+    }
+    if to_delete.len() >= total {
+        return Err("Cannot delete every page in the document".to_string());
+    }
+    to_delete.sort_by(|a, b| b.cmp(a));
+    let deleted = to_delete.len() as u32;
+    for idx in to_delete {
+        kids.remove(idx);
+    }
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.prune_objects();
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(deleted)
+}
+
+/// Delete pages 1, 3, 5, … (odd-indexed in 1-based terms).
+#[tauri::command]
+fn delete_odd_pages(path: String) -> Result<u32, String> {
+    delete_pages_by_parity(&PathBuf::from(&path), true)
+}
+
+/// Delete pages 2, 4, 6, … (even-indexed in 1-based terms).
+#[tauri::command]
+fn delete_even_pages(path: String) -> Result<u32, String> {
+    delete_pages_by_parity(&PathBuf::from(&path), false)
+}
+
+/// Rotate pages 1, 3, 5, … by 180°.
+#[tauri::command]
+fn rotate_180_odd_pages(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut rotated = 0u32;
+    for page_index in 0..total {
+        if page_index % 2 != 0 {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current + 180)?;
+        rotated += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(rotated)
+}
+
+/// Rotate pages 2, 4, 6, … by 180°.
+#[tauri::command]
+fn rotate_180_even_pages(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut rotated = 0u32;
+    for page_index in 0..total {
+        if page_index % 2 != 1 {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current + 180)?;
+        rotated += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(rotated)
+}
+
+/// Deep-copy odd-indexed pages and append the copies at the end.
+#[tauri::command]
+fn duplicate_odd_pages(path: String) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let indices: Vec<u32> = (0..total).filter(|i| i % 2 == 0).collect();
+    if indices.is_empty() {
+        return Ok(0);
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    let copied = indices.len() as u32;
+    for &idx in &indices {
+        let at = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+        insert_pdf(path_str.clone(), path_str.clone(), at, idx, idx)?;
+    }
+    Ok(copied)
+}
+
+/// Deep-copy even-indexed pages and append the copies at the end.
+#[tauri::command]
+fn duplicate_even_pages(path: String) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let indices: Vec<u32> = (0..total).filter(|i| i % 2 == 1).collect();
+    if indices.is_empty() {
+        return Ok(0);
+    }
+    let path_str = path_buf.to_string_lossy().into_owned();
+    let copied = indices.len() as u32;
+    for &idx in &indices {
+        let at = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+        insert_pdf(path_str.clone(), path_str.clone(), at, idx, idx)?;
+    }
+    Ok(copied)
+}
+
+/// Insert one blank page between each consecutive pair of pages.
+#[tauri::command]
+fn insert_blank_between_pages(path: String) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let mut doc = Document::load(&path_buf).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (kids, _) = get_pages_kids(&doc)?;
+    let n = kids.len();
+    if n < 2 {
+        return Err("Need at least 2 pages to insert blanks between".to_string());
+    }
+    let mut new_kids = Vec::with_capacity(n + n - 1);
+    for (i, kid) in kids.into_iter().enumerate() {
+        new_kids.push(kid);
+        if i + 1 < n {
+            let page_id = create_blank_page(&mut doc, pages_ref);
+            new_kids.push(Object::Reference(page_id));
+        }
+    }
+    set_pages_kids(&mut doc, pages_ref, new_kids)?;
+    doc.save(&path_buf).map_err(|e| e.to_string())?;
+    Ok((n - 1) as u32)
+}
+
+fn flatten_annotations_by_parity(path: &Path, odd: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut removed = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let count = doc
+            .get_dictionary(page_id)
+            .ok()
+            .and_then(|d| d.get(b"Annots").ok())
+            .and_then(|o| o.as_array().ok())
+            .map(|a| a.len() as u32)
+            .unwrap_or(0);
+        if count > 0 {
+            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"Annots");
+            removed += count;
+        }
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(removed)
+}
+
+/// Remove annotations from odd-indexed pages only.
+#[tauri::command]
+fn flatten_odd_pages(path: String) -> Result<u32, String> {
+    flatten_annotations_by_parity(&PathBuf::from(&path), true)
+}
+
+/// Remove annotations from even-indexed pages only.
+#[tauri::command]
+fn flatten_even_pages(path: String) -> Result<u32, String> {
+    flatten_annotations_by_parity(&PathBuf::from(&path), false)
+}
+
+/// Rotate every page by 180°.
+#[tauri::command]
+fn rotate_all_pages_180(path: String) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    for page_index in 0..total {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current + 180)?;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(total)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -8102,6 +8289,16 @@ fn main() {
             sort_pages_by_rotation,
             export_pdf_page_ico,
             export_pdf_pages_ico,
+            delete_odd_pages,
+            delete_even_pages,
+            rotate_180_odd_pages,
+            rotate_180_even_pages,
+            duplicate_odd_pages,
+            duplicate_even_pages,
+            insert_blank_between_pages,
+            flatten_odd_pages,
+            flatten_even_pages,
+            rotate_all_pages_180,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -9526,6 +9723,104 @@ mod tests {
         assert!(std::fs::metadata(&output).unwrap().len() > 50);
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn delete_odd_pages_removes_odd_indices() {
+        let path = save(&mut build_pdf(4), "del_odd");
+        let deleted = delete_odd_pages(path.clone()).unwrap();
+        assert_eq!(deleted, 2);
+        assert_eq!(page_count(&path), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_even_pages_removes_even_indices() {
+        let path = save(&mut build_pdf(4), "del_even");
+        let deleted = delete_even_pages(path.clone()).unwrap();
+        assert_eq!(deleted, 2);
+        assert_eq!(page_count(&path), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_odd_pages_flips_odd_indices() {
+        let path = save(&mut build_pdf(4), "rot_180_odd");
+        let rotated = rotate_180_odd_pages(path.clone()).unwrap();
+        assert_eq!(rotated, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 180);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_even_pages_flips_even_indices() {
+        let path = save(&mut build_pdf(4), "rot_180_even");
+        let rotated = rotate_180_even_pages(path.clone()).unwrap();
+        assert_eq!(rotated, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&2).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 180);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_odd_pages_appends_copies() {
+        let path = save(&mut build_pdf(4), "dup_odd");
+        let copied = duplicate_odd_pages(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_even_pages_appends_copies() {
+        let path = save(&mut build_pdf(4), "dup_even");
+        let copied = duplicate_even_pages(path.clone()).unwrap();
+        assert_eq!(copied, 2);
+        assert_eq!(page_count(&path), 6);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_between_pages_inserts_gaps() {
+        let path = save(&mut build_pdf(3), "blank_between");
+        let inserted = insert_blank_between_pages(path.clone()).unwrap();
+        assert_eq!(inserted, 2);
+        assert_eq!(page_count(&path), 5);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_odd_pages_removes_odd_page_annots() {
+        let path = save(&mut build_pdf(2), "flatten_odd");
+        add_highlight(path.clone(), 0, 10.0, 10.0, 50.0, 50.0).unwrap();
+        add_highlight(path.clone(), 1, 20.0, 20.0, 60.0, 60.0).unwrap();
+        let removed = flatten_odd_pages(path.clone()).unwrap();
+        assert_eq!(removed, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_even_pages_removes_even_page_annots() {
+        let path = save(&mut build_pdf(2), "flatten_even");
+        add_highlight(path.clone(), 0, 10.0, 10.0, 50.0, 50.0).unwrap();
+        add_highlight(path.clone(), 1, 20.0, 20.0, 60.0, 60.0).unwrap();
+        let removed = flatten_even_pages(path.clone()).unwrap();
+        assert_eq!(removed, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_all_pages_180_rotates_every_page() {
+        let path = save(&mut build_pdf(2), "rot_all_180");
+        let rotated = rotate_all_pages_180(path.clone()).unwrap();
+        assert_eq!(rotated, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 180);
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

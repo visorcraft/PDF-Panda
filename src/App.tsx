@@ -2081,6 +2081,106 @@ function App() {
     });
   };
 
+  const handleDeleteOddPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const deleted = await invoke<number>('delete_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Deleted ${deleted} odd page${deleted === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleDeleteEvenPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const deleted = await invoke<number>('delete_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Deleted ${deleted} even page${deleted === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleRotate180OddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_180_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${rotated} odd page${rotated === 1 ? '' : 's'} 180°`);
+    });
+  };
+
+  const handleRotate180EvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_180_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated ${rotated} even page${rotated === 1 ? '' : 's'} 180°`);
+    });
+  };
+
+  const handleDuplicateOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf((pageCount ?? 1) - 1);
+      showToast(`Appended ${copied} odd page cop${copied === 1 ? 'y' : 'ies'}`);
+    });
+  };
+
+  const handleDuplicateEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const copied = await invoke<number>('duplicate_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf((pageCount ?? 1) - 1);
+      showToast(`Appended ${copied} even page cop${copied === 1 ? 'y' : 'ies'}`);
+    });
+  };
+
+  const handleInsertBlankBetweenPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const inserted = await invoke<number>('insert_blank_between_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage * 2);
+      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} between pages`);
+    });
+  };
+
+  const handleFlattenOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const removed = await invoke<number>('flatten_odd_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Flattened ${removed} annotation${removed === 1 ? '' : 's'} on odd pages`);
+    });
+  };
+
+  const handleFlattenEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const removed = await invoke<number>('flatten_even_pages', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Flattened ${removed} annotation${removed === 1 ? '' : 's'} on even pages`);
+    });
+  };
+
+  const handleRotateAllPages180 = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const rotated = await invoke<number>('rotate_all_pages_180', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      showToast(`Rotated all ${rotated} page${rotated === 1 ? '' : 's'} 180°`);
+    });
+  };
+
   const handleSortPagesByRotation = async (descending: boolean) => {
     if (!filePath) return;
     await withLoading(async () => {
@@ -4968,10 +5068,13 @@ function App() {
                 <button onClick={() => void handleRotatePage180()} className="btn" title="Rotate current page 180°">Rotate 180°</button>
                 <button onClick={() => void handleRotateAllPages()} className="btn" title="Rotate all pages 90° CW">Rotate All</button>
                 <button onClick={() => void handleRotateAllPagesCcw()} className="btn" title="Rotate all pages 90° CCW">Rotate All CCW</button>
+                <button onClick={() => void handleRotateAllPages180()} className="btn" title="Rotate all pages 180°">Rotate All 180°</button>
                 <button onClick={() => void handleRotateOddPages()} className="btn" title="Rotate odd pages (1, 3, 5…) 90° CW">Rot. Odd</button>
                 <button onClick={() => void handleRotateEvenPages()} className="btn" title="Rotate even pages (2, 4, 6…) 90° CW">Rot. Even</button>
                 <button onClick={() => void handleRotateOddPagesCcw()} className="btn" title="Rotate odd pages 90° CCW">Odd CCW</button>
                 <button onClick={() => void handleRotateEvenPagesCcw()} className="btn" title="Rotate even pages 90° CCW">Even CCW</button>
+                <button onClick={() => void handleRotate180OddPages()} className="btn" title="Rotate odd pages 180°">Odd 180°</button>
+                <button onClick={() => void handleRotate180EvenPages()} className="btn" title="Rotate even pages 180°">Even 180°</button>
                 <button onClick={() => void handleResetRotationOddPages()} className="btn" title="Reset rotation on odd pages">Reset Odd</button>
                 <button onClick={() => void handleResetRotationEvenPages()} className="btn" title="Reset rotation on even pages">Reset Even</button>
                 <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
@@ -4983,9 +5086,12 @@ function App() {
                 <button onClick={openKeepRangeModal} className="btn" title="Keep only a page range">Keep Range</button>
                 <button onClick={() => void handleKeepOddPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep odd pages only (1, 3, 5…)">Keep Odd</button>
                 <button onClick={() => void handleKeepEvenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Keep even pages only (2, 4, 6…)">Keep Even</button>
+                <button onClick={() => void handleDeleteOddPages()} className="btn btn-danger" disabled={pageCount !== null && pageCount < 2} title="Delete odd pages (1, 3, 5…)">Del Odd</button>
+                <button onClick={() => void handleDeleteEvenPages()} className="btn btn-danger" disabled={pageCount !== null && pageCount < 2} title="Delete even pages (2, 4, 6…)">Del Even</button>
                 <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank After</button>
                 <button onClick={() => void handleAddBlankPageBefore()} className="btn" title="Insert blank page before current">Blank Before</button>
                 <button onClick={openInsertBlankPagesModal} className="btn" title="Insert multiple blank pages">Blank Pages</button>
+                <button onClick={() => void handleInsertBlankBetweenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Insert a blank page between each pair">Blank Between</button>
                 <button onClick={() => void handleMovePageToFirst()} className="btn" disabled={currentPage === 0} title="Move current page to first">To First</button>
                 <button onClick={() => void handleMovePageToLast()} className="btn" disabled={pageCount !== null && currentPage >= pageCount - 1} title="Move current page to last">To Last</button>
                 <button onClick={() => void handleMovePageUp()} className="btn" disabled={currentPage === 0} title="Move current page up one position">Move Up</button>
@@ -4996,6 +5102,8 @@ function App() {
                 <button onClick={() => void handleSplitOddEven()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into odd- and even-indexed PDFs">Odd/Even</button>
                 <button onClick={() => void handleDuplicateAllPages()} className="btn" title="Duplicate every page and append copies">Dup. All</button>
                 <button onClick={() => void handleDuplicatePageToEnd()} className="btn" title="Duplicate current page to end">Dup. to End</button>
+                <button onClick={() => void handleDuplicateOddPages()} className="btn" title="Append copies of odd pages (1, 3, 5…)">Dup. Odd</button>
+                <button onClick={() => void handleDuplicateEvenPages()} className="btn" title="Append copies of even pages (2, 4, 6…)">Dup. Even</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
                 <button onClick={openDeleteNthModal} className="btn" disabled={pageCount !== null && pageCount < 2} title="Delete every Nth page">Delete Nth</button>
@@ -5047,6 +5155,8 @@ function App() {
                 <button onClick={openPageBorderModal} className="btn" title="Draw page border">Border</button>
                 <button onClick={openFlattenModal} className="btn" title="Flatten annotations (remove markup)">Flatten</button>
                 <button onClick={() => void handleFlattenAllAnnotations()} className="btn" title="Flatten annotations on all pages">Flatten All</button>
+                <button onClick={() => void handleFlattenOddPages()} className="btn" title="Flatten annotations on odd pages only">Flatten Odd</button>
+                <button onClick={() => void handleFlattenEvenPages()} className="btn" title="Flatten annotations on even pages only">Flatten Even</button>
                 <button onClick={() => void handleSortPagesBySize(false)} className="btn" title="Sort pages smallest to largest">Sort ↑</button>
                 <button onClick={() => void handleSortPagesBySize(true)} className="btn" title="Sort pages largest to smallest">Sort ↓</button>
                 <button onClick={() => void handleSortPagesByRotation(false)} className="btn" title="Sort pages by rotation (0° first)">Rot Sort ↑</button>

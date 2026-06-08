@@ -59,7 +59,7 @@ Three things we care about:
 - **Rotate 180°**, **rotate all CCW**, **move page to first/last/up/down**, **swap pages**, **blank before/after**
 - **Insert image as new page**, **page header/footer** text, **duplicate page range** or **duplicate all**
 - **Replace** current page, **interleave** or **prepend** another PDF, **split odd/even** or **split every N**, **set page size** (Letter/A4/Legal)
-- **Rotate/move/keep/reverse page range**, **reset rotation range**, **crop range**, **insert blank pages**, **duplicate range to end/before**, **duplicate page before**, **rotate odd/even** (CW/CCW/reset), **keep odd/even**, **sort by rotation**, **delete every Nth**, **move range to start/end**, **extract odd/even**, **split at page**, **shrink margins**
+- **Rotate/move/keep/reverse page range**, **reset rotation range**, **crop range**, **insert blank pages**, **blank between pages**, **duplicate range to end/before**, **duplicate page/odd/even**, **rotate odd/even** (CW/CCW/180/reset), **rotate all 180°**, **keep/delete odd/even**, **flatten odd/even**, **sort by rotation**, **delete every Nth**, **move range to start/end**, **extract odd/even**, **split at page**, **shrink margins**
 - **Page border**, **expand margins**, **bookmark all pages**, **flatten all**, **sort by page size**, **clear metadata**
 - **Add/rename/remove/clear bookmarks**, **page dimensions**, **page numbers**, **watermarks**, **crop** (single/all/clear), **flatten** annotations
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
