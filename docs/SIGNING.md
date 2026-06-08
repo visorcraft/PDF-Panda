@@ -65,7 +65,8 @@ scripts/sign-windows.sh /path/to/certificate.pfx
 
 ## Linux
 
-Debian/RPM/AppImage builds are unsigned. Distribute checksums (SHA-256) alongside
+Debian/RPM/AppImage builds are unsigned (AppImage via `scripts/build-appimage.sh` /
+release workflow). Distribute checksums (SHA-256) alongside
 release artifacts:
 
 ```sh

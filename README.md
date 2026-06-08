@@ -128,15 +128,16 @@ page, or build your own with the helpers under [`scripts/`](scripts/):
 | Target | Command |
 | --- | --- |
 | Linux — `.deb` / `.rpm` | `scripts/build-linux-packages.sh` |
-| Linux — AppImage | `scripts/build-appimage.sh` (needs `appimagetool`) |
+| Linux — AppImage | `scripts/build-appimage.sh` (prefetches linuxdeploy; `NO_STRIP=1` default on glibc 2.38+) |
 | macOS — `.app` / `.dmg` | `scripts/build-macos.sh` |
 | Windows — `.msi` / `.exe` | `scripts/build-windows.sh` |
 | Any — standalone binary | `npx tauri build --no-bundle` → `src-tauri/target/release/pdf-panda` |
 
 Run the GitHub Actions [release workflow](.github/workflows/release.yml) manually
-(**Actions → Release → Run workflow**) to build and publish the artifacts above
-(unsigned by default; optional macOS/Windows **package** signing via repository
-secrets — see [`docs/SIGNING.md`](docs/SIGNING.md)).
+(**Actions → Release → Run workflow**) to build and publish `.deb`, `.rpm`,
+AppImage, macOS, and Windows artifacts (unsigned by default; optional
+macOS/Windows **package** signing via repository secrets — see
+[`docs/SIGNING.md`](docs/SIGNING.md)).
 
 ---
 

@@ -42,8 +42,13 @@ jobs:
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
 
-      - name: Build deb and rpm packages
-        run: npx tauri build --bundles deb,rpm
+      - name: Prefetch AppImage tooling
+        run: scripts/fetch-appimage-tools.sh
+
+      - name: Build deb, rpm, and AppImage packages
+        env:
+          NO_STRIP: 1
+        run: npx tauri build --bundles deb,rpm,appimage
 
       - name: Upload Linux bundles
         uses: actions/upload-artifact@v4
@@ -52,6 +57,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/deb/**
             src-tauri/target/release/bundle/rpm/**
+            src-tauri/target/release/bundle/appimage/**
 
   build-macos:
     if: github.event_name == 'workflow_dispatch'
