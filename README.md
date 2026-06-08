@@ -55,10 +55,11 @@ Three things we care about:
 - **Split** into multiple files by page range
 - **Extract** a page range into a new PDF without changing the open document
 - **Reverse** page order, **rotate all** pages, insert a **blank page**, or **delete a page range**
-- **Export PNG/JPEG/WebP/BMP/TIFF** or **export current page / each page as PDF**
+- **Export PNG/JPEG/WebP/BMP/TIFF/GIF** or **export current page / each page as PDF**
 - **Rotate 180°**, **rotate all CCW**, **move page to first/last/up/down**, **swap pages**, **blank before/after**
 - **Insert image as new page**, **page header/footer** text, **duplicate page range** or **duplicate all**
-- **Replace** current page, **interleave** with another PDF, **split odd/even**, **set page size** (Letter/A4/Legal)
+- **Replace** current page, **interleave** or **prepend** another PDF, **split odd/even** or **split every N**, **set page size** (Letter/A4/Legal)
+- **Rotate/move/keep page range**, **page border**, **expand margins**, **bookmark all pages**, **duplicate to end**
 - **Add/rename/remove/clear bookmarks**, **page dimensions**, **page numbers**, **watermarks**, **crop** (single/all/clear), **flatten** annotations
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 

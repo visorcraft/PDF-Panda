@@ -2237,6 +2237,264 @@ fn export_pdf_pages_as_pdf(
     Ok(written)
 }
 
+/// Rotate every page in `start_page`..=`end_page` 90° clockwise.
+#[tauri::command]
+fn rotate_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut rotated = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current + 90)?;
+        rotated += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(rotated)
+}
+
+/// Rotate every page in `start_page`..=`end_page` 90° counter-clockwise.
+#[tauri::command]
+fn rotate_page_range_ccw(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut rotated = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let current = page_rotation(&doc, page_id);
+        set_page_rotation(&mut doc, page_id, current - 90)?;
+        rotated += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(rotated)
+}
+
+/// Delete every page outside `start_page`..=`end_page` (at least one page must remain).
+#[tauri::command]
+fn keep_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (kids, _) = get_pages_kids(&doc)?;
+    let total = kids.len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let kept: Vec<Object> = kids[start_page as usize..=end_page as usize].to_vec();
+    if kept.is_empty() {
+        return Err("Cannot delete every page in the document".to_string());
+    }
+    let deleted = total - kept.len() as u32;
+    set_pages_kids(&mut doc, pages_ref, kept)?;
+    doc.prune_objects();
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(deleted)
+}
+
+/// Move `start_page`..=`end_page` so the first page lands at `to_index`.
+#[tauri::command]
+fn move_page_range(path: String, start_page: u32, end_page: u32, to_index: u32) -> Result<(), String> {
+    let path_buf = PathBuf::from(&path);
+    let mut doc = Document::load(&path_buf).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let start = start_page as usize;
+    let end = end_page as usize;
+    if start > end || end >= kids.len() {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let to = to_index as usize;
+    if to > kids.len() {
+        return Err("Target index out of bounds".to_string());
+    }
+    let segment: Vec<Object> = kids.drain(start..=end).collect();
+    let insert_at = to.min(kids.len());
+    for (offset, kid) in segment.into_iter().enumerate() {
+        kids.insert(insert_at + offset, kid);
+    }
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.save(&path_buf).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Insert pages from `source_path` at the beginning of `path`.
+#[tauri::command]
+fn prepend_pdf(path: String, source_path: String, source_start: u32, source_end: u32) -> Result<u32, String> {
+    let path_buf = PathBuf::from(&path);
+    let source_path_buf = PathBuf::from(&source_path);
+    if path_buf == source_path_buf {
+        return Err("Cannot prepend a PDF into itself".to_string());
+    }
+    let source_count = Document::load(&source_path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if source_count == 0 {
+        return Err("Source PDF has no pages".to_string());
+    }
+    if source_start > source_end || source_end >= source_count {
+        return Err("Invalid source page range".to_string());
+    }
+    insert_pdf(path, source_path, 0, source_start, source_end)?;
+    Ok(source_end - source_start + 1)
+}
+
+/// Split the document into consecutive files with at most `pages_per_file` pages each.
+#[tauri::command]
+fn split_every_n_pages(path: String, pages_per_file: u32) -> Result<Vec<String>, String> {
+    if pages_per_file == 0 {
+        return Err("Pages per file must be at least 1".to_string());
+    }
+    let path_buf = PathBuf::from(&path);
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if total == 0 {
+        return Err("Document has no pages".to_string());
+    }
+    let mut ranges = Vec::new();
+    let mut start = 0u32;
+    while start < total {
+        let end = (start + pages_per_file - 1).min(total - 1);
+        ranges.push((start, end));
+        start = end + 1;
+    }
+    split_pdf(path, ranges)
+}
+
+fn build_page_border_ops(doc: &Document, page_id: ObjectId, inset: f64) -> Result<String, String> {
+    let media = page_media_box(doc, page_id)?;
+    let mw = media[2] - media[0];
+    let mh = media[3] - media[1];
+    if mw <= 0.0 || mh <= 0.0 {
+        return Err("Invalid page size".to_string());
+    }
+    let pad_x = inset * mw / VIEWER_PAGE_W;
+    let pad_y = inset * mh / VIEWER_PAGE_H;
+    let x = media[0] + pad_x;
+    let y = media[1] + pad_y;
+    let w = mw - 2.0 * pad_x;
+    let h = mh - 2.0 * pad_y;
+    if w <= 0.0 || h <= 0.0 {
+        return Err("Border inset is too large".to_string());
+    }
+    Ok(format!("\nq 1 w 0 0 0 RG {x} {y} {w} {h} re S Q\n", x = x, y = y, w = w, h = h))
+}
+
+/// Draw a rectangular border inset on each page in the range (viewer pixels).
+#[tauri::command]
+fn add_page_border(path: String, start_page: u32, end_page: u32, inset: f64) -> Result<u32, String> {
+    if inset < 0.0 {
+        return Err("Inset must be non-negative".to_string());
+    }
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut bordered = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let ops = build_page_border_ops(&doc, page_id, inset)?;
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        bordered += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(bordered)
+}
+
+/// Append a bookmark for every page using `prefix` + page number.
+#[tauri::command]
+fn bookmark_all_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    let prefix = prefix.unwrap_or_else(|| "Page ".to_string());
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
+    for (index, page_id) in page_ids.iter().enumerate() {
+        let title = format!("{prefix}{}", index + 1);
+        append_outline_item(&mut doc, &title, *page_id)?;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(page_ids.len() as u32)
+}
+
+/// Deep-copy `page_index` and move the copy to the last position.
+#[tauri::command]
+fn duplicate_page_to_end(path: String, page_index: u32) -> Result<u32, String> {
+    let new_index = duplicate_page(path.clone(), page_index)?;
+    move_page_to_last(path.clone(), new_index)?;
+    let path_buf = PathBuf::from(&path);
+    Ok(Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32 - 1)
+}
+
+fn apply_expand_margins(
+    doc: &mut Document,
+    page_id: ObjectId,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<(), String> {
+    let media = page_media_box(doc, page_id)?;
+    let mw = media[2] - media[0];
+    let mh = media[3] - media[1];
+    if mw <= 0.0 || mh <= 0.0 {
+        return Err("Invalid page size".to_string());
+    }
+    let left = media[0] - margin_left * mw / VIEWER_PAGE_W;
+    let bottom = media[1] - margin_bottom * mh / VIEWER_PAGE_H;
+    let right = media[2] + margin_right * mw / VIEWER_PAGE_W;
+    let top = media[3] + margin_top * mh / VIEWER_PAGE_H;
+    if right <= left || top <= bottom {
+        return Err("Expand margins are too large".to_string());
+    }
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(
+        b"MediaBox",
+        Object::Array(vec![
+            Object::Real(left as f32),
+            Object::Real(bottom as f32),
+            Object::Real(right as f32),
+            Object::Real(top as f32),
+        ]),
+    );
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
+    Ok(())
+}
+
+/// Expand `/MediaBox` outward by viewer-pixel margins on each page in the range.
+#[tauri::command]
+fn expand_page_margins(
+    path: String,
+    start_page: u32,
+    end_page: u32,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
+        return Err("Margins must be non-negative".to_string());
+    }
+    let path = PathBuf::from(&path);
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut expanded = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        apply_expand_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
+        expanded += 1;
+    }
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(expanded)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -2400,6 +2658,57 @@ fn export_pdf_pages_tiff(
         let file_name = format!("page-{:03}.tiff", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &tiff)?;
+        written.push(output_path.to_string_lossy().into_owned());
+    }
+    Ok(written)
+}
+
+fn render_page_gif(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
+    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
+    let image = bitmap.as_image().map_err(|e| e.to_string())?;
+    let mut buffer = Vec::new();
+    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Gif).map_err(|e| e.to_string())?;
+    Ok(buffer)
+}
+
+/// Render one PDF page to a GIF file (2× viewer resolution by default).
+#[tauri::command]
+fn export_pdf_page_gif(path: String, page_index: u32, output_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, page_index, page_index)?;
+    let gif = render_page_gif(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let output_path = PathBuf::from(&output_path);
+    write_png_output(&output_path, &gif)?;
+    Ok(output_path.to_string_lossy().into_owned())
+}
+
+/// Render a page range to `output_dir/page-NNN.gif` files.
+#[tauri::command]
+fn export_pdf_pages_gif(
+    path: String,
+    start_page: u32,
+    end_page: u32,
+    output_dir: String,
+) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(&path);
+    if !path.is_file() {
+        return Err("File not found".to_string());
+    }
+    validate_page_range(&path, start_page, end_page)?;
+    let output_dir = PathBuf::from(&output_dir);
+    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+    let mut written = Vec::new();
+    for page_index in start_page..=end_page {
+        let gif = render_page_gif(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let file_name = format!("page-{:03}.gif", page_index + 1);
+        let output_path = output_dir.join(&file_name);
+        write_png_output(&output_path, &gif)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
@@ -6962,6 +7271,8 @@ fn main() {
             export_pdf_pages_bmp,
             export_pdf_page_tiff,
             export_pdf_pages_tiff,
+            export_pdf_page_gif,
+            export_pdf_pages_gif,
             get_pdf_thumbnails,
             get_pdf_page_sizes,
             delete_page,
@@ -6999,6 +7310,16 @@ fn main() {
             set_page_size,
             remove_pdf_password,
             export_pdf_pages_as_pdf,
+            rotate_page_range,
+            rotate_page_range_ccw,
+            keep_page_range,
+            move_page_range,
+            prepend_pdf,
+            split_every_n_pages,
+            add_page_border,
+            bookmark_all_pages,
+            duplicate_page_to_end,
+            expand_page_margins,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -7975,6 +8296,130 @@ mod tests {
         let path = save(&mut build_pdf(1), "export_tiff_write");
         let output = tmp("export_tiff_write_out.tiff");
         let written = export_pdf_page_tiff(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(written, output.to_string_lossy());
+        assert!(output.is_file());
+        assert!(std::fs::metadata(&output).unwrap().len() > 50);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&output);
+    }
+
+    #[test]
+    fn rotate_page_range_rotates_selected_pages() {
+        let path = save(&mut build_pdf(3), "rotate_range");
+        let rotated = rotate_page_range(path.clone(), 1, 2).unwrap();
+        assert_eq!(rotated, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 0);
+        let page_id = *doc.get_pages().get(&2).unwrap();
+        assert_eq!(page_rotation(&doc, page_id), 90);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_page_range_deletes_outside_pages() {
+        let path = save(&mut build_pdf(4), "keep_range");
+        let deleted = keep_page_range(path.clone(), 1, 2).unwrap();
+        assert_eq!(deleted, 2);
+        assert_eq!(page_count(&path), 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_page_range_reorders_block() {
+        let path = save(&mut build_pdf(5), "move_range");
+        move_page_range(path.clone(), 1, 2, 4).unwrap();
+        assert_eq!(page_order(&path), vec![0, 3, 4, 1, 2]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn prepend_pdf_inserts_at_start() {
+        let dest = save(&mut build_pdf(2), "prepend_dest");
+        let source = save(&mut build_pdf(2), "prepend_source");
+        let added = prepend_pdf(dest.clone(), source.clone(), 0, 1).unwrap();
+        assert_eq!(added, 2);
+        assert_eq!(page_count(&dest), 4);
+        let _ = std::fs::remove_file(&dest);
+        let _ = std::fs::remove_file(&source);
+    }
+
+    #[test]
+    fn split_every_n_pages_writes_chunks() {
+        let path = save(&mut build_pdf(5), "split_every_n");
+        let outputs = split_every_n_pages(path.clone(), 2).unwrap();
+        assert_eq!(outputs.len(), 3);
+        assert_eq!(page_count(&outputs[0]), 2);
+        assert_eq!(page_count(&outputs[1]), 2);
+        assert_eq!(page_count(&outputs[2]), 1);
+        let _ = std::fs::remove_file(&path);
+        for output in outputs {
+            let _ = std::fs::remove_file(&output);
+        }
+    }
+
+    #[test]
+    fn add_page_border_draws_stroke_ops() {
+        let path = save(&mut build_pdf(1), "page_border");
+        let bordered = add_page_border(path.clone(), 0, 0, 20.0).unwrap();
+        assert_eq!(bordered, 1);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let bytes = read_page_content(&doc, page_id).unwrap();
+        let content = String::from_utf8_lossy(&bytes);
+        assert!(content.contains(" re S"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_all_pages_creates_outline_entries() {
+        let path = save(&mut build_pdf(3), "bookmark_all");
+        let count = bookmark_all_pages(path.clone(), Some("Section ".to_string())).unwrap();
+        assert_eq!(count, 3);
+        let bookmarks = get_pdf_bookmarks(path.clone()).unwrap();
+        assert_eq!(bookmarks.len(), 3);
+        assert_eq!(bookmarks[0].title, "Section 1");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_page_to_end_moves_copy_last() {
+        let path = save(&mut build_pdf(3), "dup_to_end");
+        let last = duplicate_page_to_end(path.clone(), 0).unwrap();
+        assert_eq!(last, 3);
+        assert_eq!(page_count(&path), 4);
+        assert_eq!(page_order(&path), vec![0, 1, 2, 0]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_page_margins_grows_media_box() {
+        let path = save(&mut build_pdf(1), "expand_margins");
+        let expanded = expand_page_margins(path.clone(), 0, 0, 20.0, 20.0, 20.0, 20.0).unwrap();
+        assert_eq!(expanded, 1);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let media = doc.get_dictionary(page_id).unwrap().get(b"MediaBox").unwrap().as_array().unwrap();
+        let left = media[0].as_f32().unwrap();
+        assert!(left < 0.0);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_pdf_page_gif_rejects_invalid_page() {
+        let path = save(&mut build_pdf(1), "export_gif_invalid");
+        let output = tmp("export_gif_invalid_out.gif");
+        let err = export_pdf_page_gif(path.clone(), 3, output.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    #[ignore = "requires PDFium shared library"]
+    fn export_pdf_page_gif_writes_file() {
+        let path = save(&mut build_pdf(1), "export_gif_write");
+        let output = tmp("export_gif_write_out.gif");
+        let written = export_pdf_page_gif(path.clone(), 0, output.to_string_lossy().into_owned()).unwrap();
         assert_eq!(written, output.to_string_lossy());
         assert!(output.is_file());
         assert!(std::fs::metadata(&output).unwrap().len() > 50);

@@ -192,9 +192,9 @@ interface PdfDocumentMetadata {
   mod_date: string | null;
 }
 
-type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave';
+type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
 type PngExportScope = 'current' | 'range' | 'all';
-type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff';
+type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif';
 type PageRangeScope = 'current' | 'range' | 'all';
 type PageSizePreset = 'letter' | 'a4' | 'legal';
 
@@ -294,6 +294,7 @@ const JPEG_DIALOG_FILTER = [{ name: 'JPEG', extensions: ['jpg', 'jpeg'] }];
 const WEBP_DIALOG_FILTER = [{ name: 'WebP', extensions: ['webp'] }];
 const BMP_DIALOG_FILTER = [{ name: 'BMP', extensions: ['bmp'] }];
 const TIFF_DIALOG_FILTER = [{ name: 'TIFF', extensions: ['tiff', 'tif'] }];
+const GIF_DIALOG_FILTER = [{ name: 'GIF', extensions: ['gif'] }];
 const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 const CERT_DIALOG_FILTER = [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }];
 
@@ -551,6 +552,38 @@ function App() {
   const [pageSizeEndPage, setPageSizeEndPage] = useState(0);
   const [showDecryptModal, setShowDecryptModal] = useState(false);
   const [decryptPassword, setDecryptPassword] = useState('');
+  const [showRotateRangeModal, setShowRotateRangeModal] = useState(false);
+  const [rotateRangeStartPage, setRotateRangeStartPage] = useState(0);
+  const [rotateRangeEndPage, setRotateRangeEndPage] = useState(0);
+  const [showKeepRangeModal, setShowKeepRangeModal] = useState(false);
+  const [keepRangeStartPage, setKeepRangeStartPage] = useState(0);
+  const [keepRangeEndPage, setKeepRangeEndPage] = useState(0);
+  const [showMoveRangeModal, setShowMoveRangeModal] = useState(false);
+  const [moveRangeStartPage, setMoveRangeStartPage] = useState(0);
+  const [moveRangeEndPage, setMoveRangeEndPage] = useState(0);
+  const [moveRangeToIndex, setMoveRangeToIndex] = useState(0);
+  const [showPrependModal, setShowPrependModal] = useState(false);
+  const [prependFilePath, setPrependFilePath] = useState('');
+  const [prependStartPage, setPrependStartPage] = useState(0);
+  const [prependEndPage, setPrependEndPage] = useState(0);
+  const [prependSourcePageCount, setPrependSourcePageCount] = useState<number | null>(null);
+  const [showSplitEveryModal, setShowSplitEveryModal] = useState(false);
+  const [splitEveryN, setSplitEveryN] = useState(2);
+  const [showPageBorderModal, setShowPageBorderModal] = useState(false);
+  const [pageBorderScope, setPageBorderScope] = useState<PageRangeScope>('all');
+  const [pageBorderStartPage, setPageBorderStartPage] = useState(0);
+  const [pageBorderEndPage, setPageBorderEndPage] = useState(0);
+  const [pageBorderInset, setPageBorderInset] = useState(20);
+  const [showBookmarkAllModal, setShowBookmarkAllModal] = useState(false);
+  const [bookmarkAllPrefix, setBookmarkAllPrefix] = useState('Page ');
+  const [showExpandMarginsModal, setShowExpandMarginsModal] = useState(false);
+  const [expandMarginsScope, setExpandMarginsScope] = useState<PageRangeScope>('all');
+  const [expandMarginsStartPage, setExpandMarginsStartPage] = useState(0);
+  const [expandMarginsEndPage, setExpandMarginsEndPage] = useState(0);
+  const [expandMarginTop, setExpandMarginTop] = useState(20);
+  const [expandMarginRight, setExpandMarginRight] = useState(20);
+  const [expandMarginBottom, setExpandMarginBottom] = useState(20);
+  const [expandMarginLeft, setExpandMarginLeft] = useState(20);
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [insertFilePath, setInsertFilePath] = useState<string>('');
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
@@ -841,7 +874,9 @@ function App() {
         ? replaceSourcePath
         : target === 'interleave'
           ? interleaveFilePath
-          : mergeFilePath;
+          : target === 'prepend'
+            ? prependFilePath
+            : mergeFilePath;
     const startPath = target === 'open'
       ? lastBrowserDir || directoryFromPath(openFilePath) || directoryFromPath(originalPath)
       : directoryFromPath(sourcePath) || lastBrowserDir || directoryFromPath(originalPath);
@@ -880,6 +915,14 @@ function App() {
         setInterleaveSourcePageCount(count);
         setInterleaveStartPage(0);
         setInterleaveEndPage(Math.max(0, count - 1));
+      });
+    } else if (browserTarget === 'prepend') {
+      setPrependFilePath(entry.path);
+      rememberBrowserDirectory(entry.path);
+      void invoke<number>('get_pdf_page_count', { path: entry.path }).then((count) => {
+        setPrependSourcePageCount(count);
+        setPrependStartPage(0);
+        setPrependEndPage(Math.max(0, count - 1));
       });
     } else {
       setMergeFilePath(entry.path);
@@ -1009,6 +1052,7 @@ function App() {
     if (format === 'webp') return 'webp';
     if (format === 'bmp') return 'bmp';
     if (format === 'tiff') return 'tiff';
+    if (format === 'gif') return 'gif';
     return 'png';
   };
 
@@ -1025,12 +1069,14 @@ function App() {
       if (format === 'webp') return 'export_pdf_pages_webp';
       if (format === 'bmp') return 'export_pdf_pages_bmp';
       if (format === 'tiff') return 'export_pdf_pages_tiff';
+      if (format === 'gif') return 'export_pdf_pages_gif';
       return 'export_pdf_pages_png';
     }
     if (format === 'jpeg') return 'export_pdf_page_jpeg';
     if (format === 'webp') return 'export_pdf_page_webp';
     if (format === 'bmp') return 'export_pdf_page_bmp';
     if (format === 'tiff') return 'export_pdf_page_tiff';
+    if (format === 'gif') return 'export_pdf_page_gif';
     return 'export_pdf_page_png';
   };
 
@@ -1053,7 +1099,7 @@ function App() {
       return;
     }
     const ext = imageExportExtension(imageExportFormat);
-    const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat === 'bmp' ? 'BMP' : imageExportFormat === 'tiff' ? 'TIFF' : imageExportFormat.toUpperCase();
+    const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat === 'bmp' ? 'BMP' : imageExportFormat === 'tiff' ? 'TIFF' : imageExportFormat === 'gif' ? 'GIF' : imageExportFormat.toUpperCase();
     await withLoading(async () => {
       if (pngExportScope === 'current') {
         const written = await invoke<string>(imageExportCommand(imageExportFormat, false), {
@@ -1085,7 +1131,9 @@ function App() {
           ? BMP_DIALOG_FILTER
           : imageExportFormat === 'tiff'
             ? TIFF_DIALOG_FILTER
-            : PNG_DIALOG_FILTER;
+            : imageExportFormat === 'gif'
+              ? GIF_DIALOG_FILTER
+              : PNG_DIALOG_FILTER;
     if (pngExportScope === 'current') {
       const picked = await pickSaveWithNativeDialog(
         ensureExtension(
@@ -1589,6 +1637,260 @@ function App() {
       });
       setShowExportPagesPdfModal(false);
       showToast(`Exported ${written.length} PDF file${written.length === 1 ? '' : 's'} to ${outputDir}`);
+    });
+  };
+
+  const openRotateRangeModal = () => {
+    if (!filePath || pageCount === null) return;
+    setRotateRangeStartPage(currentPage);
+    setRotateRangeEndPage(currentPage);
+    setShowRotateRangeModal(true);
+  };
+
+  const handleRotatePageRange = async (ccw: boolean) => {
+    if (!filePath) return;
+    if (rotateRangeStartPage > rotateRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const cmd = ccw ? 'rotate_page_range_ccw' : 'rotate_page_range';
+      const rotated = await invoke<number>(cmd, {
+        path: filePath,
+        startPage: rotateRangeStartPage,
+        endPage: rotateRangeEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowRotateRangeModal(false);
+      showToast(`Rotated ${rotated} page${rotated === 1 ? '' : 's'} ${ccw ? 'CCW' : 'CW'}`);
+    });
+  };
+
+  const openKeepRangeModal = () => {
+    if (!filePath || pageCount === null) return;
+    setKeepRangeStartPage(currentPage);
+    setKeepRangeEndPage(currentPage);
+    setShowKeepRangeModal(true);
+  };
+
+  const handleKeepPageRange = async () => {
+    if (!filePath || pageCount === null) return;
+    if (keepRangeStartPage > keepRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    const keepCount = keepRangeEndPage - keepRangeStartPage + 1;
+    if (keepCount >= pageCount) {
+      showToast('Range already includes every page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const deleted = await invoke<number>('keep_page_range', {
+        path: filePath,
+        startPage: keepRangeStartPage,
+        endPage: keepRangeEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(Math.min(keepRangeStartPage, keepCount - 1));
+      setShowKeepRangeModal(false);
+      showToast(`Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`);
+    });
+  };
+
+  const openMoveRangeModal = () => {
+    if (!filePath || pageCount === null) return;
+    setMoveRangeStartPage(currentPage);
+    setMoveRangeEndPage(currentPage);
+    setMoveRangeToIndex(currentPage);
+    setShowMoveRangeModal(true);
+  };
+
+  const handleMovePageRange = async () => {
+    if (!filePath || pageCount === null) return;
+    if (moveRangeStartPage > moveRangeEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    if (moveRangeToIndex > pageCount) {
+      showToast('Target index out of bounds', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      await invoke('move_page_range', {
+        path: filePath,
+        startPage: moveRangeStartPage,
+        endPage: moveRangeEndPage,
+        toIndex: moveRangeToIndex,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(moveRangeToIndex);
+      setShowMoveRangeModal(false);
+      showToast(`Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to index ${moveRangeToIndex + 1}`);
+    });
+  };
+
+  const openPrependModal = () => {
+    if (!filePath) return;
+    setPrependFilePath('');
+    setPrependStartPage(0);
+    setPrependEndPage(0);
+    setPrependSourcePageCount(null);
+    setShowPrependModal(true);
+  };
+
+  const handlePrependSourcePathChange = async (value: string) => {
+    setPrependFilePath(value);
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setPrependSourcePageCount(null);
+      return;
+    }
+    try {
+      const count = await invoke<number>('get_pdf_page_count', { path: trimmed });
+      setPrependSourcePageCount(count);
+      setPrependStartPage(0);
+      setPrependEndPage(Math.max(0, count - 1));
+    } catch {
+      setPrependSourcePageCount(null);
+    }
+  };
+
+  const handlePrependPdf = async () => {
+    const source = prependFilePath.trim();
+    if (!filePath || !source) return;
+    if (prependStartPage > prependEndPage) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const added = await invoke<number>('prepend_pdf', {
+        path: filePath,
+        sourcePath: source,
+        sourceStart: prependStartPage,
+        sourceEnd: prependEndPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage + added);
+      setShowPrependModal(false);
+      showToast(`Prepended ${added} page${added === 1 ? '' : 's'}`);
+    });
+  };
+
+  const openSplitEveryModal = () => {
+    if (!filePath) return;
+    setSplitEveryN(2);
+    setShowSplitEveryModal(true);
+  };
+
+  const handleSplitEveryN = async () => {
+    if (!filePath || splitEveryN < 1) return;
+    await withLoading(async () => {
+      const outputs = await invoke<string[]>('split_every_n_pages', {
+        path: filePath,
+        pagesPerFile: splitEveryN,
+      });
+      setShowSplitEveryModal(false);
+      showToast(`Split into ${outputs.length} file${outputs.length === 1 ? '' : 's'}`);
+    });
+  };
+
+  const openPageBorderModal = () => {
+    if (!filePath || pageCount === null) return;
+    setPageBorderScope('all');
+    setPageBorderStartPage(0);
+    setPageBorderEndPage((pageCount ?? 1) - 1);
+    setPageBorderInset(20);
+    setShowPageBorderModal(true);
+  };
+
+  const handleAddPageBorder = async () => {
+    if (!filePath) return;
+    const { start, end } = resolvePageRange(pageBorderScope, pageBorderStartPage, pageBorderEndPage);
+    if (start > end) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const bordered = await invoke<number>('add_page_border', {
+        path: filePath,
+        startPage: start,
+        endPage: end,
+        inset: pageBorderInset,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageBorderModal(false);
+      showToast(`Added border to ${bordered} page${bordered === 1 ? '' : 's'}`);
+    });
+  };
+
+  const openBookmarkAllModal = () => {
+    if (!filePath) return;
+    setBookmarkAllPrefix('Page ');
+    setShowBookmarkAllModal(true);
+  };
+
+  const handleBookmarkAllPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const count = await invoke<number>('bookmark_all_pages', {
+        path: filePath,
+        prefix: bookmarkAllPrefix.trim() || 'Page ',
+      });
+      markPdfEdited();
+      await loadPdfBookmarks(filePath);
+      setShowBookmarkAllModal(false);
+      showToast(`Added ${count} bookmark${count === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleDuplicatePageToEnd = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const last = await invoke<number>('duplicate_page_to_end', {
+        path: filePath,
+        pageIndex: currentPage,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(last);
+      showToast(`Duplicated page ${currentPage + 1} to end`);
+    });
+  };
+
+  const openExpandMarginsModal = () => {
+    if (!filePath || pageCount === null) return;
+    setExpandMarginsScope('all');
+    setExpandMarginsStartPage(0);
+    setExpandMarginsEndPage((pageCount ?? 1) - 1);
+    setExpandMarginTop(20);
+    setExpandMarginRight(20);
+    setExpandMarginBottom(20);
+    setExpandMarginLeft(20);
+    setShowExpandMarginsModal(true);
+  };
+
+  const handleExpandPageMargins = async () => {
+    if (!filePath) return;
+    const { start, end } = resolvePageRange(expandMarginsScope, expandMarginsStartPage, expandMarginsEndPage);
+    if (start > end) {
+      showToast('From page must be ≤ To page', 'error');
+      return;
+    }
+    await withLoading(async () => {
+      const expanded = await invoke<number>('expand_page_margins', {
+        path: filePath,
+        startPage: start,
+        endPage: end,
+        marginTop: expandMarginTop,
+        marginRight: expandMarginRight,
+        marginBottom: expandMarginBottom,
+        marginLeft: expandMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowExpandMarginsModal(false);
+      showToast(`Expanded margins on ${expanded} page${expanded === 1 ? '' : 's'}`);
     });
   };
 
@@ -3058,6 +3360,14 @@ function App() {
     setShowInterleaveModal(false);
     setShowPageSizeModal(false);
     setShowDecryptModal(false);
+    setShowRotateRangeModal(false);
+    setShowKeepRangeModal(false);
+    setShowMoveRangeModal(false);
+    setShowPrependModal(false);
+    setShowSplitEveryModal(false);
+    setShowPageBorderModal(false);
+    setShowBookmarkAllModal(false);
+    setShowExpandMarginsModal(false);
     setShowExportPagesPdfModal(false);
     setShowInsertImagePageModal(false);
     setShowExportPagePdfModal(false);
@@ -3254,6 +3564,8 @@ function App() {
     || showPageNumbersModal || showWatermarkModal || showCropModal || showFlattenModal || showAddBookmarkModal
     || showRenameBookmarkModal || showDuplicateRangeModal || showPageHeaderModal || showPageFooterModal
     || showSwapPagesModal || showReplacePageModal || showInterleaveModal || showPageSizeModal || showDecryptModal
+    || showRotateRangeModal || showKeepRangeModal || showMoveRangeModal || showPrependModal || showSplitEveryModal
+    || showPageBorderModal || showBookmarkAllModal || showExpandMarginsModal
     || showExportPagesPdfModal
     || showInsertImagePageModal || showExportPagePdfModal
     || showInsertModal || showMergeModal || showSearchModal
@@ -3989,6 +4301,9 @@ function App() {
               <button type="button" onClick={openAddBookmarkModal} className="btn" title="Add bookmark at current page">
                 Add
               </button>
+              <button type="button" onClick={openBookmarkAllModal} className="btn" title="Bookmark every page">
+                All
+              </button>
               <button type="button" onClick={() => void handleClearAllBookmarks()} className="btn" title="Remove all bookmarks">
                 Clear
               </button>
@@ -4156,6 +4471,9 @@ function App() {
                 <button onClick={() => void handleResetAllRotations()} className="btn" title="Reset rotation on all pages">Reset All Rot.</button>
                 <button onClick={handleDuplicatePage} className="btn" title="Duplicate current page (Ctrl+Shift+D)" data-testid="duplicate-page">Duplicate</button>
                 <button onClick={openDuplicateRangeModal} className="btn" title="Duplicate a page range">Dup. Range</button>
+                <button onClick={openRotateRangeModal} className="btn" title="Rotate a page range">Rot. Range</button>
+                <button onClick={openMoveRangeModal} className="btn" title="Move a page range">Move Range</button>
+                <button onClick={openKeepRangeModal} className="btn" title="Keep only a page range">Keep Range</button>
                 <button onClick={() => void handleAddBlankPage()} className="btn" title="Insert blank page after current (Ctrl+Shift+N)">Blank After</button>
                 <button onClick={() => void handleAddBlankPageBefore()} className="btn" title="Insert blank page before current">Blank Before</button>
                 <button onClick={() => void handleMovePageToFirst()} className="btn" disabled={currentPage === 0} title="Move current page to first">To First</button>
@@ -4166,13 +4484,16 @@ function App() {
                 <button onClick={() => void handleReversePages()} className="btn" title="Reverse page order (Ctrl+Shift+Y)">Reverse</button>
                 <button onClick={() => void handleSplitOddEven()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into odd- and even-indexed PDFs">Odd/Even</button>
                 <button onClick={() => void handleDuplicateAllPages()} className="btn" title="Duplicate every page and append copies">Dup. All</button>
+                <button onClick={() => void handleDuplicatePageToEnd()} className="btn" title="Duplicate current page to end">Dup. to End</button>
                 <button onClick={openDeleteModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page (Delete)">Delete</button>
                 <button onClick={openDeleteRangeModal} className="btn" disabled={pageCount !== null && pageCount <= 1} title="Delete page range">Delete Range</button>
                 <button onClick={openInsertModal} className="btn" title="Insert PDF (Ctrl+Shift+I)">Insert</button>
                 <button onClick={openMergeModal} className="btn" title="Merge PDF — append pages (Ctrl+Shift+G)">Merge</button>
                 <button onClick={openInterleaveModal} className="btn" title="Interleave pages from another PDF">Interleave</button>
+                <button onClick={openPrependModal} className="btn" title="Prepend pages from another PDF">Prepend</button>
                 <button onClick={openReplacePageModal} className="btn" title="Replace current page from another PDF">Replace</button>
                 <button onClick={openSplitModal} className="btn" title="Split PDF (Ctrl+Shift+K)">Split</button>
+                <button onClick={openSplitEveryModal} className="btn" title="Split every N pages">Split N</button>
                 <button onClick={openExtractModal} className="btn" title="Extract pages to new PDF (Ctrl+Shift+J)" data-testid="extract-pdf">Extract</button>
                 <button onClick={openSearchModal} className="btn" title="Find text (Ctrl+F)" data-testid="search-pdf">Find</button>
                 <div className="view-toggle" role="group" aria-label="Document view">
@@ -4205,6 +4526,8 @@ function App() {
                 <button onClick={openPageSizeModal} className="btn" title="Set page size (Letter, A4, Legal)">Page Size</button>
                 <button onClick={openWatermarkModal} className="btn" title="Add text watermark">Watermark</button>
                 <button onClick={openCropModal} className="btn" title="Crop current page margins">Crop</button>
+                <button onClick={openExpandMarginsModal} className="btn" title="Expand page margins (grow MediaBox)">Expand</button>
+                <button onClick={openPageBorderModal} className="btn" title="Draw page border">Border</button>
                 <button onClick={openFlattenModal} className="btn" title="Flatten annotations (remove markup)">Flatten</button>
                 <button
                   onClick={() => void openMetadataModal()}
@@ -4917,7 +5240,7 @@ function App() {
       {showExportPngModal && (
         <Modal onClose={() => setShowExportPngModal(false)}>
           <h3>Export Image</h3>
-          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, or TIFF images (1600×2264). The open PDF is not modified.</p>
+          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, TIFF, or GIF images (1600×2264). The open PDF is not modified.</p>
           <label>Format:</label>
           <select
             className="modal-input"
@@ -4935,6 +5258,7 @@ function App() {
             <option value="webp">WebP</option>
             <option value="bmp">BMP</option>
             <option value="tiff">TIFF</option>
+            <option value="gif">GIF</option>
           </select>
           <label>Pages to export:</label>
           <select
@@ -5344,6 +5668,154 @@ function App() {
           <div className="modal-actions">
             <button onClick={() => setShowExportPagesPdfModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleExportPagesPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Rotate Range Modal */}
+      {showRotateRangeModal && (
+        <Modal onClose={() => setShowRotateRangeModal(false)}>
+          <h3>Rotate Page Range</h3>
+          <p className="modal-help">Rotate every page in the range 90° clockwise or counter-clockwise.</p>
+          <label>From page: <input type="number" value={rotateRangeStartPage + 1} onChange={(e) => setRotateRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <label>To page: <input type="number" value={rotateRangeEndPage + 1} onChange={(e) => setRotateRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <div className="modal-actions">
+            <button onClick={() => setShowRotateRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleRotatePageRange(false)} className="btn">Rotate CW</button>
+            <button onClick={() => void handleRotatePageRange(true)} className="btn">Rotate CCW</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Keep Range Modal */}
+      {showKeepRangeModal && (
+        <Modal onClose={() => setShowKeepRangeModal(false)}>
+          <h3>Keep Page Range</h3>
+          <p className="modal-help">Delete every page outside the selected range.</p>
+          <label>From page: <input type="number" value={keepRangeStartPage + 1} onChange={(e) => setKeepRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <label>To page: <input type="number" value={keepRangeEndPage + 1} onChange={(e) => setKeepRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <div className="modal-actions">
+            <button onClick={() => setShowKeepRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleKeepPageRange()} className="btn btn-danger">Keep range</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Move Range Modal */}
+      {showMoveRangeModal && (
+        <Modal onClose={() => setShowMoveRangeModal(false)}>
+          <h3>Move Page Range</h3>
+          <p className="modal-help">Move a contiguous block so its first page lands at the target index (0 = first).</p>
+          <label>From page: <input type="number" value={moveRangeStartPage + 1} onChange={(e) => setMoveRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <label>To page: <input type="number" value={moveRangeEndPage + 1} onChange={(e) => setMoveRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <label>Target index (1-{((pageCount ?? 0) + 1)}): <input type="number" value={moveRangeToIndex + 1} onChange={(e) => setMoveRangeToIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" /></label>
+          <div className="modal-actions">
+            <button onClick={() => setShowMoveRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleMovePageRange()} className="btn">Move</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Prepend Modal */}
+      {showPrependModal && (
+        <Modal onClose={() => setShowPrependModal(false)}>
+          <h3>Prepend PDF</h3>
+          <p className="modal-help">Insert pages from another PDF at the beginning of the document.</p>
+          <label>Source PDF path:</label>
+          <div className="modal-path-row">
+            <input type="text" value={prependFilePath} onChange={(e) => void handlePrependSourcePathChange(e.target.value)} className="modal-input" placeholder="/path/to/source.pdf" />
+            <button onClick={() => openPdfBrowser('prepend')} className="btn">Browse…</button>
+          </div>
+          {prependSourcePageCount !== null && (
+            <>
+              <label>From page: <input type="number" value={prependStartPage + 1} onChange={(e) => setPrependStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={prependSourcePageCount} className="modal-input" /></label>
+              <label>To page: <input type="number" value={prependEndPage + 1} onChange={(e) => setPrependEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={prependSourcePageCount} className="modal-input" /></label>
+            </>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowPrependModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handlePrependPdf()} className="btn" disabled={!prependFilePath.trim()}>Prepend</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Split Every N Modal */}
+      {showSplitEveryModal && (
+        <Modal onClose={() => setShowSplitEveryModal(false)}>
+          <h3>Split Every N Pages</h3>
+          <p className="modal-help">Write consecutive chunk files beside the open PDF. The working copy is not modified.</p>
+          <label>Pages per file:</label>
+          <input type="number" value={splitEveryN} onChange={(e) => setSplitEveryN(Math.max(1, parseInt(e.target.value, 10) || 1))} min="1" className="modal-input" />
+          <div className="modal-actions">
+            <button onClick={() => setShowSplitEveryModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleSplitEveryN()} className="btn">Split</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Page Border Modal */}
+      {showPageBorderModal && (
+        <Modal onClose={() => setShowPageBorderModal(false)}>
+          <h3>Page Border</h3>
+          <p className="modal-help">Draw a rectangular border inset from page edges (viewer pixels).</p>
+          <label>Inset (px): <input type="number" value={pageBorderInset} onChange={(e) => setPageBorderInset(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Apply to:</label>
+          <select className="modal-input" value={pageBorderScope} onChange={(e) => setPageBorderScope(e.target.value as PageRangeScope)}>
+            <option value="current">Current page only</option>
+            <option value="range">Page range</option>
+            <option value="all">All pages</option>
+          </select>
+          {pageBorderScope === 'range' && (
+            <>
+              <label>From page: <input type="number" value={pageBorderStartPage + 1} onChange={(e) => setPageBorderStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+              <label>To page: <input type="number" value={pageBorderEndPage + 1} onChange={(e) => setPageBorderEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+            </>
+          )}
+          <div className="modal-actions">
+            <button onClick={() => setShowPageBorderModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddPageBorder()} className="btn">Apply</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bookmark All Modal */}
+      {showBookmarkAllModal && (
+        <Modal onClose={() => setShowBookmarkAllModal(false)}>
+          <h3>Bookmark All Pages</h3>
+          <p className="modal-help">Append an outline entry for every page.</p>
+          <label>Title prefix:</label>
+          <input type="text" value={bookmarkAllPrefix} onChange={(e) => setBookmarkAllPrefix(e.target.value)} className="modal-input" placeholder="Page " />
+          <div className="modal-actions">
+            <button onClick={() => setShowBookmarkAllModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleBookmarkAllPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Add all</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Expand Margins Modal */}
+      {showExpandMarginsModal && (
+        <Modal onClose={() => setShowExpandMarginsModal(false)}>
+          <h3>Expand Margins</h3>
+          <p className="modal-help">Grow MediaBox outward (adds white space; does not scale content).</p>
+          <label>Apply to:</label>
+          <select className="modal-input" value={expandMarginsScope} onChange={(e) => setExpandMarginsScope(e.target.value as PageRangeScope)}>
+            <option value="current">Current page only</option>
+            <option value="range">Page range</option>
+            <option value="all">All pages</option>
+          </select>
+          {expandMarginsScope === 'range' && (
+            <>
+              <label>From page: <input type="number" value={expandMarginsStartPage + 1} onChange={(e) => setExpandMarginsStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+              <label>To page: <input type="number" value={expandMarginsEndPage + 1} onChange={(e) => setExpandMarginsEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+            </>
+          )}
+          <label>Top: <input type="number" value={expandMarginTop} onChange={(e) => setExpandMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Right: <input type="number" value={expandMarginRight} onChange={(e) => setExpandMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Bottom: <input type="number" value={expandMarginBottom} onChange={(e) => setExpandMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <label>Left: <input type="number" value={expandMarginLeft} onChange={(e) => setExpandMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
+          <div className="modal-actions">
+            <button onClick={() => setShowExpandMarginsModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExpandPageMargins()} className="btn">Expand</button>
           </div>
         </Modal>
       )}
