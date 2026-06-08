@@ -6085,12 +6085,222 @@ fn page_width(lines: &[MarkdownTextLine]) -> f32 {
     }
 }
 
+fn line_center_y(line: &MarkdownTextLine) -> f32 {
+    (line.top + line.bottom) / 2.0
+}
+
+#[derive(Clone, Debug)]
+struct MarkdownPageLink {
+    uri: String,
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+}
+
+fn collect_page_links(page: &PdfPage<'_>) -> Vec<MarkdownPageLink> {
+    let mut links = Vec::new();
+    for link in page.links().iter() {
+        let Ok(rect) = link.rect() else {
+            continue;
+        };
+        let Some(action) = link.action() else {
+            continue;
+        };
+        let Some(uri_action) = action.as_uri_action() else {
+            continue;
+        };
+        let Ok(uri) = uri_action.uri() else {
+            continue;
+        };
+        links.push(MarkdownPageLink {
+            uri,
+            left: rect.left().value,
+            right: rect.right().value,
+            bottom: rect.bottom().value,
+            top: rect.top().value,
+        });
+    }
+    links
+}
+
+fn line_overlaps_link(line: &MarkdownTextLine, link: &MarkdownPageLink) -> bool {
+    line.left < link.right && line.right > link.left && line.bottom < link.top && line.top > link.bottom
+}
+
+fn trim_trailing_link_punctuation(token: &str) -> (&str, &str) {
+    let mut end = token.len();
+    while end > 0 {
+        let ch = token[..end].chars().last().unwrap();
+        if matches!(ch, '.' | ',' | ';' | ')' | ']' | '}' | '"' | '!') {
+            end -= ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    token.split_at(end)
+}
+
+fn autolink_token(token: &str) -> String {
+    if token.contains("](") {
+        return token.to_string();
+    }
+    let trimmed = token.trim_end();
+    let trailing_ws = &token[trimmed.len()..];
+    let (core, suffix) = trim_trailing_link_punctuation(trimmed);
+    if core.starts_with("http://") || core.starts_with("https://") {
+        return format!("[{core}]({core}){suffix}{trailing_ws}");
+    }
+    if core.contains('@') && core.contains('.') && !core.starts_with('@') {
+        return format!("[{core}](mailto:{core}){suffix}{trailing_ws}");
+    }
+    token.to_string()
+}
+
+fn autolink_inline_text(text: &str) -> String {
+    if text.contains("](") {
+        return text.to_string();
+    }
+    text.split_inclusive(char::is_whitespace).map(autolink_token).collect::<Vec<_>>().join("")
+}
+
+fn apply_links_to_text(text: &str, line: &MarkdownTextLine, links: &[MarkdownPageLink]) -> String {
+    let linked = links
+        .iter()
+        .find(|link| line_overlaps_link(line, link))
+        .map(|link| {
+            if text == link.uri || text.starts_with("http://") || text.starts_with("https://") {
+                format!("[{text}]({text})")
+            } else {
+                format!("[{text}]({})", link.uri)
+            }
+        })
+        .unwrap_or_else(|| text.to_string());
+    autolink_inline_text(&linked)
+}
+
+fn sort_lines_vertical(lines: &mut [MarkdownTextLine]) {
+    lines.sort_by(|a, b| {
+        b.top
+            .partial_cmp(&a.top)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.left.partial_cmp(&b.left).unwrap_or(std::cmp::Ordering::Equal))
+    });
+}
+
+fn detect_column_split(lines: &[MarkdownTextLine], page_w: f32) -> Option<f32> {
+    if lines.len() < 4 {
+        return None;
+    }
+    let mut lefts: Vec<f32> = lines.iter().map(|line| line.left).collect();
+    lefts.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mut best_gap = 0.0f32;
+    let mut split = None;
+    for window in lefts.windows(2) {
+        let gap = window[1] - window[0];
+        if gap > best_gap {
+            best_gap = gap;
+            split = Some((window[0] + window[1]) / 2.0);
+        }
+    }
+    if best_gap > page_w * 0.15 {
+        split
+    } else {
+        None
+    }
+}
+
+fn sort_lines_reading_order(mut lines: Vec<MarkdownTextLine>) -> Vec<MarkdownTextLine> {
+    if lines.len() < 2 {
+        return lines;
+    }
+    let page_w = page_width(&lines);
+    if let Some(split_x) = detect_column_split(&lines, page_w) {
+        let mut left_col: Vec<MarkdownTextLine> =
+            lines.iter().filter(|line| (line.left + line.right) / 2.0 < split_x).cloned().collect();
+        let mut right_col: Vec<MarkdownTextLine> =
+            lines.iter().filter(|line| (line.left + line.right) / 2.0 >= split_x).cloned().collect();
+        if !left_col.is_empty() && !right_col.is_empty() {
+            sort_lines_vertical(&mut left_col);
+            sort_lines_vertical(&mut right_col);
+            return left_col.into_iter().chain(right_col).collect();
+        }
+    }
+    sort_lines_vertical(&mut lines);
+    lines
+}
+
+fn is_probable_header_footer_text(text: &str) -> bool {
+    if is_page_marker(text) {
+        return true;
+    }
+    let trimmed = text.trim();
+    if trimmed.len() > 80 {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    lower.starts_with("confidential")
+        || lower.starts_with("draft")
+        || (lower.contains("copyright") && trimmed.split_whitespace().count() <= 10)
+}
+
+fn is_header_footer_band_line(line: &MarkdownTextLine, min_bottom: f32, max_top: f32, page_height: f32) -> bool {
+    let center = line_center_y(line);
+    let in_header_band = center > max_top - page_height * 0.1;
+    let in_footer_band = center < min_bottom + page_height * 0.1;
+    (in_header_band || in_footer_band) && line.text.split_whitespace().count() <= 12
+}
+
+fn strip_header_footer_lines(lines: Vec<MarkdownTextLine>) -> Vec<MarkdownTextLine> {
+    if lines.len() < 3 {
+        return lines;
+    }
+    let min_bottom = lines.iter().map(|line| line.bottom).fold(f32::INFINITY, f32::min);
+    let max_top = lines.iter().map(|line| line.top).fold(f32::NEG_INFINITY, f32::max);
+    let page_height = (max_top - min_bottom).max(1.0);
+    lines
+        .into_iter()
+        .filter(|line| {
+            let text = line.text.trim();
+            if text.is_empty() {
+                return false;
+            }
+            if is_probable_header_footer_text(text) {
+                return false;
+            }
+            !(is_header_footer_band_line(line, min_bottom, max_top, page_height) && is_page_marker(text))
+        })
+        .collect()
+}
+
+fn polish_heuristic_lines(lines: Vec<MarkdownTextLine>) -> Vec<MarkdownTextLine> {
+    sort_lines_reading_order(strip_header_footer_lines(lines))
+}
+
 fn is_page_marker(text: &str) -> bool {
     let trimmed = text.trim();
-    !trimmed.is_empty()
-        && trimmed.len() <= 8
+    if trimmed.is_empty() {
+        return false;
+    }
+    if trimmed.len() <= 8
         && trimmed.chars().any(|ch| ch.is_ascii_digit())
         && trimmed.chars().all(|ch| ch.is_ascii_digit() || ch == '-' || ch.is_whitespace())
+    {
+        return true;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.starts_with("page ") && trimmed.len() < 28 && trimmed.chars().filter(|ch| ch.is_ascii_digit()).count() >= 1
+    {
+        return true;
+    }
+    if lower.contains(" of ") && trimmed.len() < 28 {
+        let numeric_tokens =
+            trimmed.split_whitespace().filter(|part| part.chars().all(|ch| ch.is_ascii_digit())).count();
+        if numeric_tokens >= 2 {
+            return true;
+        }
+    }
+    false
 }
 
 fn is_bullet_line(text: &str) -> bool {
@@ -6219,6 +6429,7 @@ fn probable_heading_level(
         || parse_toc_entry(text).is_some()
         || text.len() > 90
         || !text.chars().any(char::is_alphabetic)
+        || (text.ends_with('-') && !text.ends_with("--"))
     {
         return None;
     }
@@ -6245,16 +6456,78 @@ fn probable_heading_level(
     }
 }
 
-fn flush_paragraph(output: &mut String, paragraph: &mut Vec<String>) {
+fn ends_sentence(text: &str) -> bool {
+    text.ends_with('.') || text.ends_with('!') || text.ends_with('?') || text.ends_with(':') || text.ends_with(';')
+}
+
+fn merge_wrapped_line_pair(previous: &str, next: &str) -> String {
+    let prev = previous.trim_end();
+    let next = next.trim_start();
+    if prev.is_empty() {
+        return next.to_string();
+    }
+    if next.is_empty() {
+        return prev.to_string();
+    }
+    if prev.ends_with('-') && !prev.ends_with("--") {
+        let base = prev.trim_end_matches('-');
+        if next.chars().next().is_some_and(|ch| ch.is_ascii_lowercase()) {
+            return format!("{base}{next}");
+        }
+    }
+    if !ends_sentence(prev) && next.chars().next().is_some_and(|ch| ch.is_ascii_lowercase()) {
+        return format!("{prev} {next}");
+    }
+    format!("{prev} {next}")
+}
+
+fn merge_paragraph_lines(parts: &[String]) -> String {
+    if parts.is_empty() {
+        return String::new();
+    }
+    let mut merged = parts[0].clone();
+    for part in parts.iter().skip(1) {
+        merged = merge_wrapped_line_pair(&merged, part);
+    }
+    normalize_inline_text(&merged)
+}
+
+fn should_end_paragraph(text: &str, gap_after: f32, body_height: f32, next_line: Option<&MarkdownTextLine>) -> bool {
+    if ends_sentence(text.trim()) {
+        return true;
+    }
+    if gap_after > body_height * 0.9 {
+        return true;
+    }
+    if let Some(next) = next_line {
+        let next_text = next.text.trim();
+        if gap_after < body_height * 0.55
+            && !next_text.is_empty()
+            && next_text.chars().next().is_some_and(|ch| ch.is_ascii_lowercase())
+        {
+            return false;
+        }
+    }
+    false
+}
+
+fn flush_paragraph(
+    output: &mut String,
+    paragraph: &mut Vec<String>,
+    links: &[MarkdownPageLink],
+    line: &MarkdownTextLine,
+) {
     if paragraph.is_empty() {
         return;
     }
-    output.push_str(&paragraph.join(" "));
+    let merged = merge_paragraph_lines(paragraph);
+    let merged = apply_links_to_text(&merged, line, links);
+    output.push_str(&merged);
     output.push_str("\n\n");
     paragraph.clear();
 }
 
-fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
+fn format_markdown_lines(lines: &[MarkdownTextLine], links: &[MarkdownPageLink]) -> String {
     if lines.is_empty() {
         return "_(no extractable text on this page)_\n\n".to_string();
     }
@@ -6274,7 +6547,7 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
         }
 
         if is_toc_title(text) {
-            flush_paragraph(&mut output, &mut paragraph);
+            flush_paragraph(&mut output, &mut paragraph, links, line);
             output.push_str("### Table of Contents\n\n");
             index += 1;
 
@@ -6295,7 +6568,7 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
         }
 
         if let Some((consumed, table)) = column_table_block(lines, index) {
-            flush_paragraph(&mut output, &mut paragraph);
+            flush_paragraph(&mut output, &mut paragraph, links, line);
             output.push_str(&table);
             output.push('\n');
             index += consumed;
@@ -6303,7 +6576,7 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
         }
 
         if let Some((title, page)) = parse_toc_entry(text) {
-            flush_paragraph(&mut output, &mut paragraph);
+            flush_paragraph(&mut output, &mut paragraph, links, line);
             output.push_str(&toc_table(&[(title, page)]));
             output.push('\n');
             index += 1;
@@ -6313,16 +6586,19 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
         let gap_before = line_gap_before(lines, index);
         let gap_after = line_gap_after(lines, index);
         if let Some(level) = probable_heading_level(line, body_height, width, gap_before, gap_after) {
-            flush_paragraph(&mut output, &mut paragraph);
-            output.push_str(&format!("{} {}\n\n", "#".repeat(level), text));
+            flush_paragraph(&mut output, &mut paragraph, links, line);
+            let heading = apply_links_to_text(text, line, links);
+            output.push_str(&format!("{} {}\n\n", "#".repeat(level), heading));
             index += 1;
             continue;
         }
 
         if is_bullet_line(text) {
-            flush_paragraph(&mut output, &mut paragraph);
+            flush_paragraph(&mut output, &mut paragraph, links, line);
             let bullet = text.trim_start_matches(['•', '*']).trim_start();
-            output.push_str(&format!("- {}\n", bullet.trim_start_matches("- ").trim()));
+            let bullet = bullet.trim_start_matches("- ").trim();
+            let bullet = apply_links_to_text(bullet, line, links);
+            output.push_str(&format!("- {bullet}\n"));
             if gap_after > body_height * 0.8 {
                 output.push('\n');
             }
@@ -6331,18 +6607,16 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
         }
 
         paragraph.push(text.to_string());
-        if text.ends_with('.')
-            || text.ends_with('!')
-            || text.ends_with('?')
-            || text.ends_with(':')
-            || gap_after > body_height * 0.9
-        {
-            flush_paragraph(&mut output, &mut paragraph);
+        let next_line = lines.get(index + 1);
+        if should_end_paragraph(text, gap_after, body_height, next_line) {
+            flush_paragraph(&mut output, &mut paragraph, links, line);
         }
         index += 1;
     }
 
-    flush_paragraph(&mut output, &mut paragraph);
+    if let Some(line) = lines.last() {
+        flush_paragraph(&mut output, &mut paragraph, links, line);
+    }
     if output.trim().is_empty() {
         "_(no extractable text on this page)_\n\n".to_string()
     } else {
@@ -6354,6 +6628,7 @@ fn format_markdown_lines(lines: &[MarkdownTextLine]) -> String {
 struct TaggedBlock {
     kind: String,
     text: String,
+    link_uri: Option<String>,
     children: Vec<TaggedBlock>,
 }
 
@@ -6377,6 +6652,37 @@ fn struct_tree_root_id(doc: &Document) -> Result<ObjectId, String> {
 fn page_index_for_struct(doc: &Document, dict: &Dictionary) -> Option<u32> {
     let page_ref = dict.get(b"Pg").ok()?.as_reference().ok()?;
     doc.get_pages().iter().find_map(|(num, id)| (*id == page_ref).then_some(num.saturating_sub(1)))
+}
+
+fn struct_link_uri(doc: &Document, dict: &Dictionary) -> Option<String> {
+    let annot_id = match dict.get(b"K").ok()? {
+        Object::Reference(id) => Some(*id),
+        Object::Dictionary(entry) => {
+            if entry.get(b"Type").ok().and_then(|o| o.as_name().ok()) != Some(b"OBJR") {
+                return None;
+            }
+            entry.get(b"Obj").ok()?.as_reference().ok()
+        }
+        Object::Array(items) => items.iter().find_map(|item| {
+            let Object::Dictionary(entry) = item else {
+                return None;
+            };
+            if entry.get(b"Type").ok().and_then(|o| o.as_name().ok()) != Some(b"OBJR") {
+                return None;
+            }
+            entry.get(b"Obj").ok()?.as_reference().ok()
+        }),
+        _ => None,
+    }?;
+    let annot = doc.get_dictionary(annot_id).ok()?;
+    if annot.get(b"Subtype").ok().and_then(|o| o.as_name().ok()) != Some(b"Link") {
+        return None;
+    }
+    let a = annot.get(b"A").ok()?.as_dict().ok()?;
+    if a.get(b"S").ok().and_then(|o| o.as_name().ok()) != Some(b"URI") {
+        return None;
+    }
+    decode_pdf_string(a.get(b"URI").ok()?)
 }
 
 fn struct_element_text(dict: &Dictionary) -> String {
@@ -6425,6 +6731,7 @@ fn parse_struct_element(
         .map(|name| String::from_utf8_lossy(name).into_owned())
         .unwrap_or_else(|| "Span".to_string());
     let text = struct_element_text(dict);
+    let link_uri = if kind == "Link" { struct_link_uri(doc, dict) } else { None };
     let mut children = Vec::new();
     if let Ok(k) = dict.get(b"K") {
         for child_id in struct_k_ids(k) {
@@ -6432,11 +6739,31 @@ fn parse_struct_element(
             children.push(child);
         }
     }
-    Ok((page, TaggedBlock { kind, text, children }))
+    Ok((page, TaggedBlock { kind, text, link_uri, children }))
+}
+
+fn is_struct_artifact(kind: &str) -> bool {
+    matches!(kind, "Artifact" | "Pagination" | "Layout" | "PageHeader" | "PageFooter" | "Background" | "BatesNumber")
 }
 
 fn is_struct_container(kind: &str) -> bool {
-    matches!(kind, "Document" | "Part" | "Art" | "Sect" | "Div" | "NonStruct" | "Private" | "Span" | "Form")
+    matches!(
+        kind,
+        "Document"
+            | "Part"
+            | "Art"
+            | "Sect"
+            | "Div"
+            | "NonStruct"
+            | "Private"
+            | "Span"
+            | "Form"
+            | "DocumentFragment"
+            | "Aside"
+            | "Index"
+            | "Reference"
+            | "Annot"
+    )
 }
 
 fn infer_page_from_block(block: &TaggedBlock) -> Option<u32> {
@@ -6453,6 +6780,9 @@ fn block_has_content(block: &TaggedBlock) -> bool {
 }
 
 fn distribute_tagged_block(block: TaggedBlock, page: Option<u32>, out: &mut BTreeMap<u32, Vec<TaggedBlock>>) {
+    if is_struct_artifact(block.kind.as_str()) {
+        return;
+    }
     let block_page = page.or_else(|| infer_page_from_block(&block));
     if is_struct_container(&block.kind) && block.text.is_empty() {
         if let Some(p) = block_page {
@@ -6483,24 +6813,74 @@ fn tagged_heading_level(kind: &str) -> Option<usize> {
         "H4" => Some(4),
         "H5" => Some(5),
         "H6" => Some(6),
+        "H7" => Some(6),
+        "H8" | "H9" | "H10" => Some(6),
         _ => None,
     }
 }
 
-fn tagged_block_text(block: &TaggedBlock) -> String {
+const TAGGED_INLINE_KINDS: &[&str] =
+    &["Span", "Em", "Strong", "Code", "Link", "Sub", "Lbl", "LBody", "Reference", "Underline", "Span"];
+
+fn tagged_join_inline(block: &TaggedBlock) -> String {
     let mut parts = Vec::new();
     if !block.text.is_empty() {
         parts.push(block.text.clone());
     }
     for child in &block.children {
-        if matches!(child.kind.as_str(), "Span" | "Em" | "Strong" | "Lbl" | "LBBody" | "LBody") {
-            let child_text = tagged_block_text(child);
+        if TAGGED_INLINE_KINDS.contains(&child.kind.as_str()) || child.link_uri.is_some() {
+            let child_text = tagged_format_inline(child);
             if !child_text.is_empty() {
                 parts.push(child_text);
             }
         }
     }
-    parts.join(" ")
+    normalize_inline_text(&parts.join(" "))
+}
+
+fn tagged_format_inline(block: &TaggedBlock) -> String {
+    let inner = if block.children.is_empty() && !block.text.is_empty() {
+        block.text.clone()
+    } else {
+        tagged_join_inline(block)
+    };
+    if inner.is_empty() {
+        return String::new();
+    }
+    match block.kind.as_str() {
+        "Strong" => format!("**{inner}**"),
+        "Em" => format!("*{inner}*"),
+        "Code" => format!("`{inner}`"),
+        "Link" => block.link_uri.as_ref().map(|uri| format!("[{inner}]({uri})")).unwrap_or(inner),
+        _ => inner,
+    }
+}
+
+fn tagged_block_text(block: &TaggedBlock) -> String {
+    if matches!(block.kind.as_str(), "Link" | "Strong" | "Em" | "Code") {
+        tagged_format_inline(block)
+    } else {
+        tagged_join_inline(block)
+    }
+}
+
+fn tagged_codeblock_text(block: &TaggedBlock) -> String {
+    if !block.text.is_empty() {
+        return block.text.clone();
+    }
+    block.children.iter().map(tagged_block_text).filter(|line| !line.is_empty()).collect::<Vec<_>>().join("\n")
+}
+
+fn tagged_list_label(block: &TaggedBlock) -> Option<String> {
+    for child in &block.children {
+        if child.kind == "Lbl" {
+            let label = tagged_join_inline(child);
+            if !label.is_empty() {
+                return Some(label);
+            }
+        }
+    }
+    None
 }
 
 fn tagged_list_item_text(block: &TaggedBlock) -> String {
@@ -6508,7 +6888,10 @@ fn tagged_list_item_text(block: &TaggedBlock) -> String {
         return block.text.clone();
     }
     for child in &block.children {
-        if matches!(child.kind.as_str(), "LBody" | "LBBody" | "Lbl") {
+        if matches!(child.kind.as_str(), "LBody" | "Lbl") {
+            if child.kind == "Lbl" {
+                continue;
+            }
             let text = tagged_block_text(child);
             if !text.is_empty() {
                 return text;
@@ -6518,35 +6901,80 @@ fn tagged_list_item_text(block: &TaggedBlock) -> String {
     tagged_block_text(block)
 }
 
-fn format_tagged_table(children: &[TaggedBlock]) -> String {
+fn is_ordered_list_label(label: &str) -> bool {
+    let trimmed = label.trim();
+    trimmed.chars().next().is_some_and(|ch| ch.is_ascii_digit()) && (trimmed.contains('.') || trimmed.contains(')'))
+}
+
+fn ordered_list_prefix(label: &str) -> Option<String> {
+    let digits: String = label.trim().chars().take_while(|ch| ch.is_ascii_digit()).collect();
+    digits.parse::<usize>().ok().map(|index| format!("{index}."))
+}
+
+fn tagged_table_row_cells(row: &TaggedBlock) -> Vec<String> {
+    row.children
+        .iter()
+        .filter(|cell| {
+            matches!(
+                cell.kind.as_str(),
+                "TD" | "TH" | "TableDataCell" | "TableHeaderCell" | "TableHeader" | "TableData"
+            )
+        })
+        .map(tagged_block_text)
+        .filter(|cell| !cell.is_empty())
+        .collect()
+}
+
+fn tagged_table_row_is_header(row: &TaggedBlock) -> bool {
+    row.children.iter().any(|cell| matches!(cell.kind.as_str(), "TH" | "TableHeaderCell" | "TableHeader"))
+}
+
+fn collect_tagged_table_rows(children: &[TaggedBlock]) -> Vec<(bool, Vec<String>)> {
     let mut rows = Vec::new();
     for child in children {
-        if matches!(child.kind.as_str(), "TR" | "TableRow") {
-            let cells: Vec<String> = child
-                .children
-                .iter()
-                .filter(|cell| matches!(cell.kind.as_str(), "TD" | "TH" | "TableDataCell" | "TableHeaderCell"))
-                .map(tagged_block_text)
-                .filter(|cell| !cell.is_empty())
-                .collect();
-            if !cells.is_empty() {
-                rows.push(cells);
+        match child.kind.as_str() {
+            "TR" | "TableRow" => {
+                let cells = tagged_table_row_cells(child);
+                if !cells.is_empty() {
+                    rows.push((tagged_table_row_is_header(child), cells));
+                }
             }
+            "THead" | "TBody" | "TFoot" | "TableHeaderGroup" | "TableBodyGroup" | "TableFooterGroup" | "Table" => {
+                rows.extend(collect_tagged_table_rows(&child.children));
+            }
+            "Caption" | "Figure" | "Image" => {}
+            _ if is_struct_container(child.kind.as_str()) => rows.extend(collect_tagged_table_rows(&child.children)),
+            _ => {}
         }
     }
-    if rows.len() >= 2 {
-        let headers = rows.remove(0);
-        markdown_table(&headers, &rows)
-    } else if rows.len() == 1 {
-        let headers: Vec<String> = (0..rows[0].len()).map(|index| format!("Column {}", index + 1)).collect();
-        markdown_table(&headers, &rows)
-    } else {
-        String::new()
+    rows
+}
+
+fn format_tagged_table(children: &[TaggedBlock]) -> String {
+    let rows = collect_tagged_table_rows(children);
+    if rows.is_empty() {
+        return String::new();
     }
+    if rows.len() == 1 {
+        let headers: Vec<String> = (0..rows[0].1.len()).map(|index| format!("Column {}", index + 1)).collect();
+        return markdown_table(&headers, &[rows[0].1.clone()]);
+    }
+    let header_index = rows.iter().position(|(is_header, _)| *is_header).unwrap_or(0);
+    let headers = rows[header_index].1.clone();
+    let body_rows: Vec<Vec<String>> = rows
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| *index != header_index)
+        .map(|(_, (_, cells))| cells.clone())
+        .collect();
+    markdown_table(&headers, &body_rows)
 }
 
 fn format_tagged_block(block: &TaggedBlock, list_depth: usize, out: &mut String) {
     let kind = block.kind.as_str();
+    if is_struct_artifact(kind) {
+        return;
+    }
     if let Some(level) = tagged_heading_level(kind) {
         let text = tagged_block_text(block);
         if !text.is_empty() {
@@ -6571,10 +6999,16 @@ fn format_tagged_block(block: &TaggedBlock, list_depth: usize, out: &mut String)
             let text = tagged_list_item_text(block);
             if !text.is_empty() {
                 let indent = "  ".repeat(list_depth);
-                out.push_str(&format!("{indent}- {text}\n"));
+                let label = tagged_list_label(block);
+                if label.as_deref().is_some_and(is_ordered_list_label) {
+                    let prefix = label.as_deref().and_then(ordered_list_prefix).unwrap_or_else(|| "1.".to_string());
+                    out.push_str(&format!("{indent}{prefix} {text}\n"));
+                } else {
+                    out.push_str(&format!("{indent}- {text}\n"));
+                }
             }
             for child in &block.children {
-                if !matches!(child.kind.as_str(), "LBody" | "LBBody" | "Lbl") {
+                if matches!(child.kind.as_str(), "L" | "List") || !matches!(child.kind.as_str(), "LBody" | "Lbl") {
                     format_tagged_block(child, list_depth + 1, out);
                 }
             }
@@ -6598,10 +7032,76 @@ fn format_tagged_block(block: &TaggedBlock, list_depth: usize, out: &mut String)
                 out.push('\n');
             }
         }
-        "Figure" | "Image" => {
+        "Caption" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("*{text}*\n\n"));
+            }
+        }
+        "Figure" | "Image" | "Illustration" => {
             let alt = tagged_block_text(block);
-            if !alt.is_empty() {
-                out.push_str(&format!("![{alt}]({alt})\n\n"));
+            let caption =
+                block.children.iter().find(|child| child.kind == "Caption").map(tagged_block_text).unwrap_or_default();
+            let label = if !caption.is_empty() {
+                caption.clone()
+            } else if !alt.is_empty() {
+                alt.clone()
+            } else {
+                "Figure".to_string()
+            };
+            out.push_str(&format!("![{label}]({label})\n\n"));
+            if !caption.is_empty() && caption != alt {
+                out.push_str(&format!("*{caption}*\n\n"));
+            }
+        }
+        "Code" => {
+            let text = tagged_codeblock_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("```\n{text}\n```\n\n"));
+            }
+        }
+        "Subtitle" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("### {text}\n\n"));
+            }
+        }
+        "Note" | "Footnote" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("> **Note:** {text}\n\n"));
+            }
+        }
+        "TOC" => {
+            for child in &block.children {
+                format_tagged_block(child, list_depth, out);
+            }
+            if list_depth == 0 {
+                out.push('\n');
+            }
+        }
+        "TOCI" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                let indent = "  ".repeat(list_depth);
+                out.push_str(&format!("{indent}- {text}\n"));
+            }
+            for child in &block.children {
+                if matches!(child.kind.as_str(), "TOC" | "TOCI") {
+                    format_tagged_block(child, list_depth + 1, out);
+                }
+            }
+        }
+        "Formula" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("`${text}`\n\n"));
+            }
+        }
+        "BibEntry" => {
+            let text = tagged_block_text(block);
+            if !text.is_empty() {
+                out.push_str(&format!("- {text}\n"));
             }
         }
         _ if is_struct_container(kind) => {
@@ -7268,20 +7768,21 @@ fn pdf_to_markdown(path: &Path, image_sink: Option<&MarkdownImageSink<'_>>) -> R
             markdown.push_str(page_md);
         } else {
             let text = page.text().map_err(|e| e.to_string())?;
-            let lines = lines_from_pdfium_text(&text);
+            let links = collect_page_links(&page);
+            let lines = polish_heuristic_lines(lines_from_pdfium_text(&text));
             if lines.is_empty() {
                 let all_text = text.all();
                 let trimmed = all_text.trim();
                 if trimmed.is_empty() {
                     append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink)?;
                 } else {
-                    markdown.push_str(&plain_text_to_markdown(trimmed));
+                    markdown.push_str(&plain_text_to_markdown(&autolink_inline_text(trimmed)));
                     if image_sink.is_some() && page_needs_ocr_supplement(&[], trimmed) {
                         append_page_ocr_supplement(&mut markdown, path, index as u32)?;
                     }
                 }
             } else {
-                markdown.push_str(&format_markdown_lines(&lines));
+                markdown.push_str(&format_markdown_lines(&lines, &links));
                 if image_sink.is_some() && page_needs_ocr_supplement(&lines, "") {
                     append_page_ocr_supplement(&mut markdown, path, index as u32)?;
                 }
@@ -7613,7 +8114,7 @@ fn pdf_plain_text_pages(path: &Path) -> Result<(Vec<String>, u32), String> {
             strip_markdown_for_summary(page_md)
         } else {
             let text = page.text().map_err(|e| e.to_string())?;
-            let lines = lines_from_pdfium_text(&text);
+            let lines = polish_heuristic_lines(lines_from_pdfium_text(&text));
             if lines.is_empty() {
                 let all_text = text.all();
                 let trimmed = all_text.trim();
@@ -11744,6 +12245,144 @@ mod tests {
                 Object::Reference(h1_id),
                 Object::Reference(p1_id),
                 Object::Reference(list_id),
+                Object::Reference(table_id),
+            ]),
+        );
+        let root_id = doc.add_object(Object::Dictionary(root));
+        attach_struct_tree_root(&mut doc, root_id);
+        doc
+    }
+
+    fn add_link_struct_elem(doc: &mut Document, text: &str, uri: &str, page_id: ObjectId) -> ObjectId {
+        let mut action = Dictionary::new();
+        action.set("S", Object::Name(b"URI".to_vec()));
+        action.set("URI", Object::String(uri.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        let mut annot = Dictionary::new();
+        annot.set("Type", Object::Name(b"Annot".to_vec()));
+        annot.set("Subtype", Object::Name(b"Link".to_vec()));
+        annot.set("A", Object::Dictionary(action));
+        annot.set(
+            "Rect",
+            Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Integer(1), Object::Integer(1)]),
+        );
+        let annot_id = doc.add_object(Object::Dictionary(annot));
+
+        let mut objr = Dictionary::new();
+        objr.set("Type", Object::Name(b"OBJR".to_vec()));
+        objr.set("Obj", Object::Reference(annot_id));
+        let mut link = Dictionary::new();
+        link.set("Type", Object::Name(b"StructElem".to_vec()));
+        link.set("S", Object::Name(b"Link".to_vec()));
+        link.set("Pg", Object::Reference(page_id));
+        link.set("T", Object::String(text.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        link.set("K", Object::Dictionary(objr));
+        doc.add_object(Object::Dictionary(link))
+    }
+
+    /// Tagged PDF covering inline emphasis, links, TOC, captions, code, notes, and THead/TBody tables.
+    fn build_tagged_pdf_extended() -> Document {
+        let mut doc = build_pdf(2);
+        let page1_id = *doc.get_pages().get(&1).unwrap();
+        let page2_id = *doc.get_pages().get(&2).unwrap();
+
+        let strong_id = add_struct_elem(&mut doc, b"Strong", "important", None);
+        let mut paragraph = Dictionary::new();
+        paragraph.set("Type", Object::Name(b"StructElem".to_vec()));
+        paragraph.set("S", Object::Name(b"P".to_vec()));
+        paragraph.set("Pg", Object::Reference(page1_id));
+        paragraph.set("T", Object::String(b"Value is ".to_vec(), lopdf::StringFormat::Literal));
+        paragraph.set("K", Object::Reference(strong_id));
+        let paragraph_id = doc.add_object(Object::Dictionary(paragraph));
+
+        let link_id = add_link_struct_elem(&mut doc, "Example", "https://example.com/docs", page1_id);
+
+        let mut toci = Dictionary::new();
+        toci.set("Type", Object::Name(b"StructElem".to_vec()));
+        toci.set("S", Object::Name(b"TOCI".to_vec()));
+        toci.set("Pg", Object::Reference(page1_id));
+        toci.set("T", Object::String(b"Getting started".to_vec(), lopdf::StringFormat::Literal));
+        let toci_id = doc.add_object(Object::Dictionary(toci));
+        let mut toc = Dictionary::new();
+        toc.set("Type", Object::Name(b"StructElem".to_vec()));
+        toc.set("S", Object::Name(b"TOC".to_vec()));
+        toc.set("Pg", Object::Reference(page1_id));
+        toc.set("K", Object::Array(vec![Object::Reference(toci_id)]));
+        let toc_id = doc.add_object(Object::Dictionary(toc));
+
+        let caption_id = add_struct_elem(&mut doc, b"Caption", "Quarterly revenue chart", Some(page2_id));
+        let mut figure = Dictionary::new();
+        figure.set("Type", Object::Name(b"StructElem".to_vec()));
+        figure.set("S", Object::Name(b"Figure".to_vec()));
+        figure.set("Pg", Object::Reference(page2_id));
+        figure.set("Alt", Object::String(b"Revenue chart".to_vec(), lopdf::StringFormat::Literal));
+        figure.set("K", Object::Reference(caption_id));
+        let figure_id = doc.add_object(Object::Dictionary(figure));
+
+        let code_id = add_struct_elem(&mut doc, b"Code", "fn main() {\n    println!(\"ok\");\n}", Some(page2_id));
+        let note_id = add_struct_elem(&mut doc, b"Note", "See appendix A.", Some(page2_id));
+
+        let lbl_id = add_struct_elem(&mut doc, b"Lbl", "1.", None);
+        let lbody_id = add_struct_elem(&mut doc, b"LBody", "First step", None);
+        let mut ordered_li = Dictionary::new();
+        ordered_li.set("Type", Object::Name(b"StructElem".to_vec()));
+        ordered_li.set("S", Object::Name(b"LI".to_vec()));
+        ordered_li.set("K", Object::Array(vec![Object::Reference(lbl_id), Object::Reference(lbody_id)]));
+        let ordered_li_id = doc.add_object(Object::Dictionary(ordered_li));
+        let mut ordered_list = Dictionary::new();
+        ordered_list.set("Type", Object::Name(b"StructElem".to_vec()));
+        ordered_list.set("S", Object::Name(b"L".to_vec()));
+        ordered_list.set("Pg", Object::Reference(page2_id));
+        ordered_list.set("K", Object::Array(vec![Object::Reference(ordered_li_id)]));
+        let ordered_list_id = doc.add_object(Object::Dictionary(ordered_list));
+
+        let th1 = add_struct_elem(&mut doc, b"TH", "Region", None);
+        let th2 = add_struct_elem(&mut doc, b"TH", "Total", None);
+        let mut tr_head = Dictionary::new();
+        tr_head.set("Type", Object::Name(b"StructElem".to_vec()));
+        tr_head.set("S", Object::Name(b"TR".to_vec()));
+        tr_head.set("K", Object::Array(vec![Object::Reference(th1), Object::Reference(th2)]));
+        let tr_head_id = doc.add_object(Object::Dictionary(tr_head));
+        let mut thead = Dictionary::new();
+        thead.set("Type", Object::Name(b"StructElem".to_vec()));
+        thead.set("S", Object::Name(b"THead".to_vec()));
+        thead.set("K", Object::Array(vec![Object::Reference(tr_head_id)]));
+        let thead_id = doc.add_object(Object::Dictionary(thead));
+
+        let td1 = add_struct_elem(&mut doc, b"TD", "West", None);
+        let td2 = add_struct_elem(&mut doc, b"TD", "42", None);
+        let mut tr_body = Dictionary::new();
+        tr_body.set("Type", Object::Name(b"StructElem".to_vec()));
+        tr_body.set("S", Object::Name(b"TR".to_vec()));
+        tr_body.set("K", Object::Array(vec![Object::Reference(td1), Object::Reference(td2)]));
+        let tr_body_id = doc.add_object(Object::Dictionary(tr_body));
+        let mut tbody = Dictionary::new();
+        tbody.set("Type", Object::Name(b"StructElem".to_vec()));
+        tbody.set("S", Object::Name(b"TBody".to_vec()));
+        tbody.set("K", Object::Array(vec![Object::Reference(tr_body_id)]));
+        let tbody_id = doc.add_object(Object::Dictionary(tbody));
+
+        let mut table = Dictionary::new();
+        table.set("Type", Object::Name(b"StructElem".to_vec()));
+        table.set("S", Object::Name(b"Table".to_vec()));
+        table.set("Pg", Object::Reference(page2_id));
+        table.set("K", Object::Array(vec![Object::Reference(thead_id), Object::Reference(tbody_id)]));
+        let table_id = doc.add_object(Object::Dictionary(table));
+
+        let artifact_id = add_struct_elem(&mut doc, b"Artifact", "Header text", Some(page1_id));
+
+        let mut root = Dictionary::new();
+        root.set("Type", Object::Name(b"StructTreeRoot".to_vec()));
+        root.set(
+            "K",
+            Object::Array(vec![
+                Object::Reference(paragraph_id),
+                Object::Reference(link_id),
+                Object::Reference(toc_id),
+                Object::Reference(artifact_id),
+                Object::Reference(figure_id),
+                Object::Reference(code_id),
+                Object::Reference(note_id),
+                Object::Reference(ordered_list_id),
                 Object::Reference(table_id),
             ]),
         );
@@ -29114,6 +29753,40 @@ mod tests {
     }
 
     #[test]
+    fn tagged_markdown_formats_inline_emphasis_and_links() {
+        let doc = build_tagged_pdf_extended();
+        let pages = tagged_markdown_by_page(&doc).expect("tagged pages");
+        let page1 = pages.get(&0).expect("page 1 markdown");
+        assert!(page1.contains("Value is **important**"));
+        assert!(page1.contains("[Example](https://example.com/docs)"));
+    }
+
+    #[test]
+    fn tagged_markdown_formats_toc_caption_code_and_notes() {
+        let doc = build_tagged_pdf_extended();
+        let pages = tagged_markdown_by_page(&doc).expect("tagged pages");
+        let page1 = pages.get(&0).expect("page 1 markdown");
+        let page2 = pages.get(&1).expect("page 2 markdown");
+        assert!(page1.contains("- Getting started"));
+        assert!(!page1.contains("Header text"));
+        assert!(page2.contains("*Quarterly revenue chart*"));
+        assert!(page2.contains("![Quarterly revenue chart]"));
+        assert!(page2.contains("```"));
+        assert!(page2.contains("fn main()"));
+        assert!(page2.contains("> **Note:** See appendix A."));
+    }
+
+    #[test]
+    fn tagged_markdown_formats_ordered_list_and_thead_table() {
+        let doc = build_tagged_pdf_extended();
+        let pages = tagged_markdown_by_page(&doc).expect("tagged pages");
+        let page2 = pages.get(&1).expect("page 2 markdown");
+        assert!(page2.contains("1. First step"));
+        assert!(page2.contains("| Region | Total |"));
+        assert!(page2.contains("| West | 42 |"));
+    }
+
+    #[test]
     fn split_sentences_splits_on_punctuation() {
         let sentences = split_sentences("Alpha one. Beta two! Gamma three?");
         assert_eq!(sentences.len(), 3);
@@ -29222,7 +29895,7 @@ mod tests {
             md_line("The group rates mean you pay less than individual coverage.", 654.0, 642.0, vec![]),
         ];
 
-        let markdown = format_markdown_lines(&lines);
+        let markdown = format_markdown_lines(&lines, &[]);
 
         assert!(markdown.contains("### Cigna Employee-Paid Voluntary Benefits!"));
         assert!(markdown.contains("As an eligible employee"));
@@ -29236,12 +29909,87 @@ mod tests {
             md_line("Plan Summary................................................. Page 10", 666.0, 654.0, vec![]),
         ];
 
-        let markdown = format_markdown_lines(&lines);
+        let markdown = format_markdown_lines(&lines, &[]);
 
         assert!(markdown.contains("### Table of Contents"));
         assert!(markdown.contains("| Section | Page |"));
         assert!(markdown.contains("| Plan Features | 4 |"));
         assert!(markdown.contains("| Plan Summary | 10 |"));
+    }
+
+    #[test]
+    fn merge_wrapped_line_pair_joins_hyphenation_and_wraps() {
+        assert_eq!(merge_wrapped_line_pair("docu-", "ment text"), "document text");
+        assert_eq!(
+            merge_wrapped_line_pair("The group rates mean", "you pay less than individual coverage."),
+            "The group rates mean you pay less than individual coverage."
+        );
+        assert_eq!(merge_wrapped_line_pair("End here.", "New sentence"), "End here. New sentence");
+    }
+
+    #[test]
+    fn sort_lines_reading_order_reads_left_column_before_right() {
+        let mut left_top = md_line("Alpha intro", 700.0, 688.0, vec![]);
+        left_top.left = 72.0;
+        left_top.right = 250.0;
+        let mut left_bottom = md_line("Alpha body", 660.0, 648.0, vec![]);
+        left_bottom.left = 72.0;
+        left_bottom.right = 250.0;
+        let mut right_top = md_line("Beta intro", 700.0, 688.0, vec![]);
+        right_top.left = 320.0;
+        right_top.right = 520.0;
+        let mut right_bottom = md_line("Beta body", 660.0, 648.0, vec![]);
+        right_bottom.left = 320.0;
+        right_bottom.right = 520.0;
+        let ordered = sort_lines_reading_order(vec![right_top, left_bottom, right_bottom, left_top]);
+        let texts: Vec<&str> = ordered.iter().map(|line| line.text.as_str()).collect();
+        assert_eq!(texts, vec!["Alpha intro", "Alpha body", "Beta intro", "Beta body"]);
+    }
+
+    #[test]
+    fn strip_header_footer_lines_removes_page_markers() {
+        let mut header = md_line("Page 3 of 10", 780.0, 768.0, vec![]);
+        header.left = 250.0;
+        header.right = 360.0;
+        let body = md_line("Actual content paragraph.", 650.0, 638.0, vec![]);
+        let mut footer = md_line("Confidential", 120.0, 108.0, vec![]);
+        footer.left = 250.0;
+        footer.right = 360.0;
+        let kept = strip_header_footer_lines(vec![header, body.clone(), footer]);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].text, body.text);
+    }
+
+    #[test]
+    fn format_markdown_lines_merges_wrapped_paragraph() {
+        let lines = vec![
+            md_line("This policy explains eligi-", 700.0, 688.0, vec![]),
+            md_line("bility requirements for all employees.", 680.0, 668.0, vec![]),
+        ];
+        let markdown = format_markdown_lines(&lines, &[]);
+        assert!(markdown.contains("eligibility requirements"));
+        assert!(!markdown.contains("eligi- bility"));
+    }
+
+    #[test]
+    fn format_markdown_lines_autolinks_bare_urls() {
+        let lines = vec![md_line("Visit https://example.com/docs today.", 700.0, 688.0, vec![])];
+        let markdown = format_markdown_lines(&lines, &[]);
+        assert!(markdown.contains("[https://example.com/docs](https://example.com/docs)"));
+    }
+
+    #[test]
+    fn apply_links_to_text_wraps_pdfium_link_overlap() {
+        let line = md_line("Example", 700.0, 688.0, vec![]);
+        let links = vec![MarkdownPageLink {
+            uri: "https://example.com/docs".to_string(),
+            left: line.left,
+            right: line.right,
+            bottom: line.bottom,
+            top: line.top,
+        }];
+        let linked = apply_links_to_text("Example", &line, &links);
+        assert_eq!(linked, "[Example](https://example.com/docs)");
     }
 
     #[test]
@@ -29252,7 +30000,7 @@ mod tests {
             md_line("Disability $1,000", 688.0, 676.0, vec![("Disability", 72.0, 150.0), ("$1,000", 260.0, 330.0)]),
         ];
 
-        let markdown = format_markdown_lines(&lines);
+        let markdown = format_markdown_lines(&lines, &[]);
 
         assert!(markdown.contains("| Benefit | Amount |"));
         assert!(markdown.contains("| Life | $25,000 |"));
