@@ -1449,6 +1449,34 @@ function App() {
     });
   };
 
+  const handleAddPageHeaderOddPages = async () => {
+    if (!filePath || !pageHeaderText.trim()) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_header_odd_pages', {
+        path: filePath,
+        text: pageHeaderText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageHeaderModal(false);
+      showToast(`Added header to ${stamped} odd page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddPageHeaderEvenPages = async () => {
+    if (!filePath || !pageHeaderText.trim()) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_header_even_pages', {
+        path: filePath,
+        text: pageHeaderText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageHeaderModal(false);
+      showToast(`Added header to ${stamped} even page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
   const openPageFooterModal = () => {
     if (!filePath || pageCount === null) return;
     setPageFooterScope('all');
@@ -1476,6 +1504,34 @@ function App() {
       await reloadOpenPdf(currentPage);
       setShowPageFooterModal(false);
       showToast(`Added footer to ${stamped} page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddPageFooterOddPages = async () => {
+    if (!filePath || !pageFooterText.trim()) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_footer_odd_pages', {
+        path: filePath,
+        text: pageFooterText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageFooterModal(false);
+      showToast(`Added footer to ${stamped} odd page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddPageFooterEvenPages = async () => {
+    if (!filePath || !pageFooterText.trim()) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_footer_even_pages', {
+        path: filePath,
+        text: pageFooterText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageFooterModal(false);
+      showToast(`Added footer to ${stamped} even page${stamped === 1 ? '' : 's'}`);
     });
   };
 
@@ -2639,6 +2695,34 @@ function App() {
     });
   };
 
+  const handleAddPageBorderOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const bordered = await invoke<number>('add_page_border_odd_pages', {
+        path: filePath,
+        inset: pageBorderInset,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageBorderModal(false);
+      showToast(`Added border to ${bordered} odd page${bordered === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddPageBorderEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const bordered = await invoke<number>('add_page_border_even_pages', {
+        path: filePath,
+        inset: pageBorderInset,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageBorderModal(false);
+      showToast(`Added border to ${bordered} even page${bordered === 1 ? '' : 's'}`);
+    });
+  };
+
   const openBookmarkAllModal = () => {
     if (!filePath) return;
     setBookmarkAllPrefix('Page ');
@@ -2856,6 +2940,34 @@ function App() {
     });
   };
 
+  const handleAddPageNumbersOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_numbers_odd_pages', {
+        path: filePath,
+        prefix: pageNumbersPrefix || null,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageNumbersModal(false);
+      showToast(`Added page numbers to ${stamped} odd page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddPageNumbersEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_page_numbers_even_pages', {
+        path: filePath,
+        prefix: pageNumbersPrefix || null,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowPageNumbersModal(false);
+      showToast(`Added page numbers to ${stamped} even page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
   const openWatermarkModal = () => {
     if (!filePath || pageCount === null) return;
     setWatermarkScope('all');
@@ -2883,6 +2995,34 @@ function App() {
       await reloadOpenPdf(currentPage);
       setShowWatermarkModal(false);
       showToast(`Watermarked ${stamped} page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddWatermarkOddPages = async () => {
+    if (!filePath || !watermarkText.trim()) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_text_watermark_odd_pages', {
+        path: filePath,
+        text: watermarkText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowWatermarkModal(false);
+      showToast(`Watermarked ${stamped} odd page${stamped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleAddWatermarkEvenPages = async () => {
+    if (!filePath || !watermarkText.trim()) return;
+    await withLoading(async () => {
+      const stamped = await invoke<number>('add_text_watermark_even_pages', {
+        path: filePath,
+        text: watermarkText.trim(),
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowWatermarkModal(false);
+      showToast(`Watermarked ${stamped} even page${stamped === 1 ? '' : 's'}`);
     });
   };
 
@@ -6311,6 +6451,8 @@ function App() {
           <input type="text" value={pageNumbersPrefix} onChange={(e) => setPageNumbersPrefix(e.target.value)} className="modal-input" />
           <div className="modal-actions">
             <button onClick={() => setShowPageNumbersModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddPageNumbersOddPages()} className="btn">Apply Odd</button>
+            <button onClick={() => void handleAddPageNumbersEvenPages()} className="btn">Apply Even</button>
             <button onClick={() => void handleAddPageNumbers()} className="btn">Apply</button>
           </div>
         </Modal>
@@ -6337,6 +6479,8 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowWatermarkModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddWatermarkOddPages()} className="btn" disabled={!watermarkText.trim()}>Apply Odd</button>
+            <button onClick={() => void handleAddWatermarkEvenPages()} className="btn" disabled={!watermarkText.trim()}>Apply Even</button>
             <button onClick={() => void handleAddWatermark()} className="btn" disabled={!watermarkText.trim()}>Apply</button>
           </div>
         </Modal>
@@ -6452,6 +6596,8 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowPageHeaderModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddPageHeaderOddPages()} className="btn" disabled={!pageHeaderText.trim()}>Apply Odd</button>
+            <button onClick={() => void handleAddPageHeaderEvenPages()} className="btn" disabled={!pageHeaderText.trim()}>Apply Even</button>
             <button onClick={() => void handleAddPageHeader()} className="btn" disabled={!pageHeaderText.trim()}>Apply</button>
           </div>
         </Modal>
@@ -6478,6 +6624,8 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowPageFooterModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddPageFooterOddPages()} className="btn" disabled={!pageFooterText.trim()}>Apply Odd</button>
+            <button onClick={() => void handleAddPageFooterEvenPages()} className="btn" disabled={!pageFooterText.trim()}>Apply Even</button>
             <button onClick={() => void handleAddPageFooter()} className="btn" disabled={!pageFooterText.trim()}>Apply</button>
           </div>
         </Modal>
@@ -6702,6 +6850,8 @@ function App() {
           )}
           <div className="modal-actions">
             <button onClick={() => setShowPageBorderModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleAddPageBorderOddPages()} className="btn">Apply Odd</button>
+            <button onClick={() => void handleAddPageBorderEvenPages()} className="btn">Apply Even</button>
             <button onClick={() => void handleAddPageBorder()} className="btn">Apply</button>
           </div>
         </Modal>

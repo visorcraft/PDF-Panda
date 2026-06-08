@@ -3673,6 +3673,176 @@ fn sort_even_pages_by_size(path: String, descending: bool) -> Result<u32, String
     sort_pages_by_parity_size(&PathBuf::from(&path), false, descending)
 }
 
+fn add_page_numbers_by_parity(path: &Path, odd: bool, prefix: Option<String>) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let prefix = prefix.unwrap_or_default();
+    let mut stamped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
+        let label = format!("{prefix}{}", page_index + 1);
+        let ops = build_page_number_ops(&font_name, &label, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+/// Stamp footer page numbers on odd-indexed pages only (1, 3, 5…).
+#[tauri::command]
+fn add_page_numbers_odd_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    add_page_numbers_by_parity(&PathBuf::from(&path), true, prefix)
+}
+
+/// Stamp footer page numbers on even-indexed pages only (2, 4, 6…).
+#[tauri::command]
+fn add_page_numbers_even_pages(path: String, prefix: Option<String>) -> Result<u32, String> {
+    add_page_numbers_by_parity(&PathBuf::from(&path), false, prefix)
+}
+
+fn add_text_watermark_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Watermark text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut stamped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (cx, cy) = viewer_point_to_pdf(&doc, page_id, 400.0, 566.0)?;
+        let ops = build_watermark_ops(&font_name, trimmed, cx, cy);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+/// Add a diagonal watermark to odd-indexed pages only.
+#[tauri::command]
+fn add_text_watermark_odd_pages(path: String, text: String) -> Result<u32, String> {
+    add_text_watermark_by_parity(&PathBuf::from(&path), true, &text)
+}
+
+/// Add a diagonal watermark to even-indexed pages only.
+#[tauri::command]
+fn add_text_watermark_even_pages(path: String, text: String) -> Result<u32, String> {
+    add_text_watermark_by_parity(&PathBuf::from(&path), false, &text)
+}
+
+fn add_page_header_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Header text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut stamped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+/// Stamp header text on odd-indexed pages only.
+#[tauri::command]
+fn add_page_header_odd_pages(path: String, text: String) -> Result<u32, String> {
+    add_page_header_by_parity(&PathBuf::from(&path), true, &text)
+}
+
+/// Stamp header text on even-indexed pages only.
+#[tauri::command]
+fn add_page_header_even_pages(path: String, text: String) -> Result<u32, String> {
+    add_page_header_by_parity(&PathBuf::from(&path), false, &text)
+}
+
+fn add_page_footer_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Footer text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut stamped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+/// Stamp footer text on odd-indexed pages only.
+#[tauri::command]
+fn add_page_footer_odd_pages(path: String, text: String) -> Result<u32, String> {
+    add_page_footer_by_parity(&PathBuf::from(&path), true, &text)
+}
+
+/// Stamp footer text on even-indexed pages only.
+#[tauri::command]
+fn add_page_footer_even_pages(path: String, text: String) -> Result<u32, String> {
+    add_page_footer_by_parity(&PathBuf::from(&path), false, &text)
+}
+
+fn add_page_border_by_parity(path: &Path, odd: bool, inset: f64) -> Result<u32, String> {
+    if inset < 0.0 {
+        return Err("Inset must be non-negative".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut bordered = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let ops = build_page_border_ops(&doc, page_id, inset)?;
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        bordered += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(bordered)
+}
+
+/// Draw a page border on odd-indexed pages only.
+#[tauri::command]
+fn add_page_border_odd_pages(path: String, inset: f64) -> Result<u32, String> {
+    add_page_border_by_parity(&PathBuf::from(&path), true, inset)
+}
+
+/// Draw a page border on even-indexed pages only.
+#[tauri::command]
+fn add_page_border_even_pages(path: String, inset: f64) -> Result<u32, String> {
+    add_page_border_by_parity(&PathBuf::from(&path), false, inset)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -8714,6 +8884,16 @@ fn main() {
             sort_even_pages_by_rotation,
             sort_odd_pages_by_size,
             sort_even_pages_by_size,
+            add_page_numbers_odd_pages,
+            add_page_numbers_even_pages,
+            add_text_watermark_odd_pages,
+            add_text_watermark_even_pages,
+            add_page_header_odd_pages,
+            add_page_header_even_pages,
+            add_page_footer_odd_pages,
+            add_page_footer_even_pages,
+            add_page_border_odd_pages,
+            add_page_border_even_pages,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -10424,6 +10604,86 @@ mod tests {
         set_page_size(path.clone(), 3, 3, "A4".to_string()).unwrap();
         sort_even_pages_by_size(path.clone(), false).unwrap();
         assert_eq!(page_count(&path), 4);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_odd_pages_stamps_odd_only() {
+        let path = save(&mut build_pdf(3), "nums_odd");
+        let stamped = add_page_numbers_odd_pages(path.clone(), Some("P".to_string())).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_even_pages_stamps_even_only() {
+        let path = save(&mut build_pdf(4), "nums_even");
+        let stamped = add_page_numbers_even_pages(path.clone(), None).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_odd_pages_stamps_odd_only() {
+        let path = save(&mut build_pdf(3), "wm_odd");
+        let stamped = add_text_watermark_odd_pages(path.clone(), "DRAFT".to_string()).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_even_pages_stamps_even_only() {
+        let path = save(&mut build_pdf(4), "wm_even");
+        let stamped = add_text_watermark_even_pages(path.clone(), "CONF".to_string()).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_odd_pages_stamps_odd_only() {
+        let path = save(&mut build_pdf(3), "hdr_odd");
+        let stamped = add_page_header_odd_pages(path.clone(), "TOP".to_string()).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_even_pages_stamps_even_only() {
+        let path = save(&mut build_pdf(4), "hdr_even");
+        let stamped = add_page_header_even_pages(path.clone(), "TOP".to_string()).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_odd_pages_stamps_odd_only() {
+        let path = save(&mut build_pdf(3), "ftr_odd");
+        let stamped = add_page_footer_odd_pages(path.clone(), "BOT".to_string()).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_even_pages_stamps_even_only() {
+        let path = save(&mut build_pdf(4), "ftr_even");
+        let stamped = add_page_footer_even_pages(path.clone(), "BOT".to_string()).unwrap();
+        assert_eq!(stamped, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_odd_pages_borders_odd_only() {
+        let path = save(&mut build_pdf(3), "border_odd");
+        let bordered = add_page_border_odd_pages(path.clone(), 20.0).unwrap();
+        assert_eq!(bordered, 2);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_even_pages_borders_even_only() {
+        let path = save(&mut build_pdf(4), "border_even");
+        let bordered = add_page_border_even_pages(path.clone(), 20.0).unwrap();
+        assert_eq!(bordered, 2);
         let _ = std::fs::remove_file(&path);
     }
 

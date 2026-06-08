@@ -61,7 +61,7 @@ Three things we care about:
 - **Replace** current page, **interleave** or **prepend** another PDF, **split odd/even** or **split every N**, **set page size** (Letter/A4/Legal)
 - **Rotate/move/keep/reverse page range**, **reset rotation range**, **crop range**, **crop/expand/shrink odd/even**, **clear crop odd/even**, **insert blank pages**, **blank between pages**, **duplicate range to end/before**, **duplicate page/odd/even** (append or before), **rotate odd/even** (CW/CCW/180/reset), **rotate all 180°**, **keep/delete odd/even**, **flatten odd/even**, **sort by rotation/size** (all or odd/even parity), **delete every Nth**, **move range to start/end**, **reverse odd/even**, **move odd/even to start/end**, **extract odd/even**, **split at page**, **shrink margins**
 - **Page border**, **expand margins**, **bookmark all pages**, **flatten all**, **sort by page size**, **clear metadata**
-- **Add/rename/remove/clear bookmarks**, **page dimensions**, **page numbers**, **watermarks**, **crop** (single/all/clear), **flatten** annotations
+- **Add/rename/remove/clear bookmarks**, **page dimensions**, **page numbers**, **headers/footers/borders/watermarks** (all or odd/even parity), **crop** (single/all/clear), **flatten** annotations
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
 **Annotate & mark up**
