@@ -4240,6 +4240,9 @@ include!("parity_batch5_generated.inc.rs");
 // PARITY_BATCH6_INCLUDE
 include!("parity_batch6_generated.inc.rs");
 // END_PARITY_BATCH6_INCLUDE
+// PARITY_BATCH7_INCLUDE
+include!("parity_batch7_generated.inc.rs");
+// END_PARITY_BATCH7_INCLUDE
 
 /// Deep-copy `start_page`..=`end_page` and insert the copies at the document start.
 #[tauri::command]
@@ -10233,6 +10236,122 @@ fn main() {
             export_mod6_4_pages_in_range_mod6_ico,
             export_mod6_5_pages_in_range_mod6_ico,
             // PARITY_BATCH6_HANDLERS_END
+            // PARITY_BATCH7_HANDLERS_START
+            rotate_first_third_pages_in_range,
+            rotate_second_third_pages_in_range,
+            rotate_third_third_pages_in_range,
+            rotate_first_third_pages_in_range_ccw,
+            rotate_second_third_pages_in_range_ccw,
+            rotate_third_third_pages_in_range_ccw,
+            rotate_180_first_third_pages_in_range,
+            rotate_180_second_third_pages_in_range,
+            rotate_180_third_third_pages_in_range,
+            reset_rotation_first_third_pages_in_range,
+            reset_rotation_second_third_pages_in_range,
+            reset_rotation_third_third_pages_in_range,
+            delete_first_third_pages_in_range,
+            delete_second_third_pages_in_range,
+            delete_third_third_pages_in_range,
+            keep_first_third_pages_in_range,
+            keep_second_third_pages_in_range,
+            keep_third_third_pages_in_range,
+            duplicate_first_third_pages_in_range,
+            duplicate_second_third_pages_in_range,
+            duplicate_third_third_pages_in_range,
+            flatten_first_third_pages_in_range,
+            flatten_second_third_pages_in_range,
+            flatten_third_third_pages_in_range,
+            reverse_first_third_pages_in_range,
+            reverse_second_third_pages_in_range,
+            reverse_third_third_pages_in_range,
+            crop_first_third_pages_in_range,
+            crop_second_third_pages_in_range,
+            crop_third_third_pages_in_range,
+            extract_first_third_pages_in_range,
+            extract_second_third_pages_in_range,
+            extract_third_third_pages_in_range,
+            export_first_third_pages_in_range_as_pdf,
+            export_second_third_pages_in_range_as_pdf,
+            export_third_third_pages_in_range_as_pdf,
+            export_first_third_pages_in_range_png,
+            export_second_third_pages_in_range_png,
+            export_third_third_pages_in_range_png,
+            export_first_third_pages_in_range_jpeg,
+            export_second_third_pages_in_range_jpeg,
+            export_third_third_pages_in_range_jpeg,
+            add_page_numbers_first_third_pages_in_range,
+            add_page_numbers_second_third_pages_in_range,
+            add_page_numbers_third_third_pages_in_range,
+            add_text_watermark_first_third_pages_in_range,
+            add_text_watermark_second_third_pages_in_range,
+            add_text_watermark_third_third_pages_in_range,
+            duplicate_first_third_pages_in_range_before,
+            duplicate_second_third_pages_in_range_before,
+            duplicate_third_third_pages_in_range_before,
+            duplicate_first_third_pages_in_range_to_start,
+            duplicate_second_third_pages_in_range_to_start,
+            duplicate_third_third_pages_in_range_to_start,
+            duplicate_first_third_pages_in_range_to_end,
+            duplicate_second_third_pages_in_range_to_end,
+            duplicate_third_third_pages_in_range_to_end,
+            expand_first_third_pages_in_range,
+            expand_second_third_pages_in_range,
+            expand_third_third_pages_in_range,
+            shrink_first_third_pages_in_range,
+            shrink_second_third_pages_in_range,
+            shrink_third_third_pages_in_range,
+            clear_crop_first_third_pages_in_range,
+            clear_crop_second_third_pages_in_range,
+            clear_crop_third_third_pages_in_range,
+            insert_blank_before_first_third_pages_in_range,
+            insert_blank_before_second_third_pages_in_range,
+            insert_blank_before_third_third_pages_in_range,
+            insert_blank_after_first_third_pages_in_range,
+            insert_blank_after_second_third_pages_in_range,
+            insert_blank_after_third_third_pages_in_range,
+            bookmark_first_third_pages_in_range,
+            bookmark_second_third_pages_in_range,
+            bookmark_third_third_pages_in_range,
+            set_page_size_first_third_pages_in_range,
+            set_page_size_second_third_pages_in_range,
+            set_page_size_third_third_pages_in_range,
+            add_page_header_first_third_pages_in_range,
+            add_page_header_second_third_pages_in_range,
+            add_page_header_third_third_pages_in_range,
+            add_page_footer_first_third_pages_in_range,
+            add_page_footer_second_third_pages_in_range,
+            add_page_footer_third_third_pages_in_range,
+            add_page_border_first_third_pages_in_range,
+            add_page_border_second_third_pages_in_range,
+            add_page_border_third_third_pages_in_range,
+            export_first_third_pages_in_range_webp,
+            export_second_third_pages_in_range_webp,
+            export_third_third_pages_in_range_webp,
+            export_first_third_pages_in_range_bmp,
+            export_second_third_pages_in_range_bmp,
+            export_third_third_pages_in_range_bmp,
+            export_first_third_pages_in_range_tiff,
+            export_second_third_pages_in_range_tiff,
+            export_third_third_pages_in_range_tiff,
+            export_first_third_pages_in_range_gif,
+            export_second_third_pages_in_range_gif,
+            export_third_third_pages_in_range_gif,
+            export_first_third_pages_in_range_ppm,
+            export_second_third_pages_in_range_ppm,
+            export_third_third_pages_in_range_ppm,
+            export_first_third_pages_in_range_tga,
+            export_second_third_pages_in_range_tga,
+            export_third_third_pages_in_range_tga,
+            export_first_third_pages_in_range_ico,
+            export_second_third_pages_in_range_ico,
+            export_third_third_pages_in_range_ico,
+            sort_first_third_pages_in_range_by_rotation,
+            sort_second_third_pages_in_range_by_rotation,
+            sort_third_third_pages_in_range_by_rotation,
+            sort_first_third_pages_in_range_by_size,
+            sort_second_third_pages_in_range_by_size,
+            sort_third_third_pages_in_range_by_size,
+            // PARITY_BATCH7_HANDLERS_END
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -20019,6 +20138,1006 @@ mod tests {
     }
 
     // PARITY_BATCH6_TESTS_END
+    // PARITY_BATCH7_TESTS_START
+    // Auto-generated parity batch7 tests
+
+    #[test]
+    fn rotate_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_first_third_pages_in_range");
+        let err = rotate_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_second_third_pages_in_range");
+        let err = rotate_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_third_third_pages_in_range");
+        let err = rotate_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_first_third_pages_in_range_ccw_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_first_third_pages_in_range_ccw");
+        let err = rotate_first_third_pages_in_range_ccw(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_second_third_pages_in_range_ccw_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_second_third_pages_in_range_ccw");
+        let err = rotate_second_third_pages_in_range_ccw(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_third_third_pages_in_range_ccw_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_third_third_pages_in_range_ccw");
+        let err = rotate_third_third_pages_in_range_ccw(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_180_first_third_pages_in_range");
+        let err = rotate_180_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_180_second_third_pages_in_range");
+        let err = rotate_180_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_180_third_third_pages_in_range");
+        let err = rotate_180_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reset_rotation_first_third_pages_in_range");
+        let err = reset_rotation_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reset_rotation_second_third_pages_in_range");
+        let err = reset_rotation_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reset_rotation_third_third_pages_in_range");
+        let err = reset_rotation_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "delete_first_third_pages_in_range");
+        let err = delete_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "delete_second_third_pages_in_range");
+        let err = delete_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "delete_third_third_pages_in_range");
+        let err = delete_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "keep_first_third_pages_in_range");
+        let err = keep_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "keep_second_third_pages_in_range");
+        let err = keep_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "keep_third_third_pages_in_range");
+        let err = keep_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_first_third_pages_in_range");
+        let err = duplicate_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_second_third_pages_in_range");
+        let err = duplicate_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_third_third_pages_in_range");
+        let err = duplicate_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "flatten_first_third_pages_in_range");
+        let err = flatten_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "flatten_second_third_pages_in_range");
+        let err = flatten_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "flatten_third_third_pages_in_range");
+        let err = flatten_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_first_third_pages_in_range");
+        let err = reverse_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_second_third_pages_in_range");
+        let err = reverse_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_third_third_pages_in_range");
+        let err = reverse_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_first_third_pages_in_range");
+        let err = crop_first_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_second_third_pages_in_range");
+        let err = crop_second_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_third_third_pages_in_range");
+        let err = crop_third_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_first_third_pages_in_range");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_first_third_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_second_third_pages_in_range");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_second_third_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_third_third_pages_in_range");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_third_third_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_first_third_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_third_third_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_png");
+        let output_dir = tmp("export_dir");
+        let err = export_first_third_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_png");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_png");
+        let output_dir = tmp("export_dir");
+        let err = export_third_third_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_jpeg_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_jpeg");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_first_third_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_jpeg_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_jpeg");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_jpeg_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_jpeg");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_third_third_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_numbers_first_third_pages_in_range");
+        let err = add_page_numbers_first_third_pages_in_range(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_numbers_second_third_pages_in_range");
+        let err = add_page_numbers_second_third_pages_in_range(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_numbers_third_third_pages_in_range");
+        let err = add_page_numbers_third_third_pages_in_range(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_text_watermark_first_third_pages_in_range");
+        let err = add_text_watermark_first_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_text_watermark_second_third_pages_in_range");
+        let err = add_text_watermark_second_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_text_watermark_third_third_pages_in_range");
+        let err = add_text_watermark_third_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_first_third_pages_in_range_before_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_first_third_pages_in_range_before");
+        let err = duplicate_first_third_pages_in_range_before(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_second_third_pages_in_range_before_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_second_third_pages_in_range_before");
+        let err = duplicate_second_third_pages_in_range_before(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_third_third_pages_in_range_before_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_third_third_pages_in_range_before");
+        let err = duplicate_third_third_pages_in_range_before(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_first_third_pages_in_range_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_first_third_pages_in_range_to_start");
+        let err = duplicate_first_third_pages_in_range_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_second_third_pages_in_range_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_second_third_pages_in_range_to_start");
+        let err = duplicate_second_third_pages_in_range_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_third_third_pages_in_range_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_third_third_pages_in_range_to_start");
+        let err = duplicate_third_third_pages_in_range_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_first_third_pages_in_range_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_first_third_pages_in_range_to_end");
+        let err = duplicate_first_third_pages_in_range_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_second_third_pages_in_range_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_second_third_pages_in_range_to_end");
+        let err = duplicate_second_third_pages_in_range_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_third_third_pages_in_range_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_third_third_pages_in_range_to_end");
+        let err = duplicate_third_third_pages_in_range_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "expand_first_third_pages_in_range");
+        let err = expand_first_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "expand_second_third_pages_in_range");
+        let err = expand_second_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "expand_third_third_pages_in_range");
+        let err = expand_third_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "shrink_first_third_pages_in_range");
+        let err = shrink_first_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "shrink_second_third_pages_in_range");
+        let err = shrink_second_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "shrink_third_third_pages_in_range");
+        let err = shrink_third_third_pages_in_range(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "clear_crop_first_third_pages_in_range");
+        let err = clear_crop_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "clear_crop_second_third_pages_in_range");
+        let err = clear_crop_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "clear_crop_third_third_pages_in_range");
+        let err = clear_crop_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_before_first_third_pages_in_range");
+        let err = insert_blank_before_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_before_second_third_pages_in_range");
+        let err = insert_blank_before_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_before_third_third_pages_in_range");
+        let err = insert_blank_before_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_after_first_third_pages_in_range");
+        let err = insert_blank_after_first_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_after_second_third_pages_in_range");
+        let err = insert_blank_after_second_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_after_third_third_pages_in_range");
+        let err = insert_blank_after_third_third_pages_in_range(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "bookmark_first_third_pages_in_range");
+        let err = bookmark_first_third_pages_in_range(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "bookmark_second_third_pages_in_range");
+        let err = bookmark_second_third_pages_in_range(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "bookmark_third_third_pages_in_range");
+        let err = bookmark_third_third_pages_in_range(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "set_page_size_first_third_pages_in_range");
+        let err = set_page_size_first_third_pages_in_range(path.clone(), 5, 10, "letter".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "set_page_size_second_third_pages_in_range");
+        let err = set_page_size_second_third_pages_in_range(path.clone(), 5, 10, "letter".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "set_page_size_third_third_pages_in_range");
+        let err = set_page_size_third_third_pages_in_range(path.clone(), 5, 10, "letter".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_header_first_third_pages_in_range");
+        let err = add_page_header_first_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_header_second_third_pages_in_range");
+        let err = add_page_header_second_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_header_third_third_pages_in_range");
+        let err = add_page_header_third_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_footer_first_third_pages_in_range");
+        let err = add_page_footer_first_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_footer_second_third_pages_in_range");
+        let err = add_page_footer_second_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_footer_third_third_pages_in_range");
+        let err = add_page_footer_third_third_pages_in_range(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_first_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_border_first_third_pages_in_range");
+        let err = add_page_border_first_third_pages_in_range(path.clone(), 5, 10, 1.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_second_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_border_second_third_pages_in_range");
+        let err = add_page_border_second_third_pages_in_range(path.clone(), 5, 10, 1.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_third_third_pages_in_range_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_border_third_third_pages_in_range");
+        let err = add_page_border_third_third_pages_in_range(path.clone(), 5, 10, 1.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_webp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_webp");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_first_third_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_webp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_webp");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_webp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_webp");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_third_third_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_bmp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_bmp");
+        let output_dir = tmp("export_dir");
+        let err = export_first_third_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_bmp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_bmp");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_bmp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_bmp");
+        let output_dir = tmp("export_dir");
+        let err = export_third_third_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_tiff_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_tiff");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_first_third_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_tiff_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_tiff");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_tiff_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_tiff");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_third_third_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_gif_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_gif");
+        let output_dir = tmp("export_dir");
+        let err = export_first_third_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_gif_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_gif");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_gif_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_gif");
+        let output_dir = tmp("export_dir");
+        let err = export_third_third_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_ppm_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_ppm");
+        let output_dir = tmp("export_dir");
+        let err = export_first_third_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_ppm_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_ppm");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_ppm_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_ppm");
+        let output_dir = tmp("export_dir");
+        let err = export_third_third_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_tga_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_tga");
+        let output_dir = tmp("export_dir");
+        let err = export_first_third_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_tga_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_tga");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_tga_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_tga");
+        let output_dir = tmp("export_dir");
+        let err = export_third_third_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_first_third_pages_in_range_ico_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_first_third_pages_in_range_ico");
+        let output_dir = tmp("export_dir");
+        let err = export_first_third_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_second_third_pages_in_range_ico_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_second_third_pages_in_range_ico");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_second_third_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_third_third_pages_in_range_ico_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_third_third_pages_in_range_ico");
+        let output_dir = tmp("export_dir");
+        let err = export_third_third_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_first_third_pages_in_range_by_rotation_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_first_third_pages_in_range_by_rotation");
+        let err = sort_first_third_pages_in_range_by_rotation(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_second_third_pages_in_range_by_rotation_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_second_third_pages_in_range_by_rotation");
+        let err = sort_second_third_pages_in_range_by_rotation(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_third_third_pages_in_range_by_rotation_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_third_third_pages_in_range_by_rotation");
+        let err = sort_third_third_pages_in_range_by_rotation(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_first_third_pages_in_range_by_size_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_first_third_pages_in_range_by_size");
+        let err = sort_first_third_pages_in_range_by_size(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_second_third_pages_in_range_by_size_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_second_third_pages_in_range_by_size");
+        let err = sort_second_third_pages_in_range_by_size(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_third_third_pages_in_range_by_size_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_third_third_pages_in_range_by_size");
+        let err = sort_third_third_pages_in_range_by_size(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    // PARITY_BATCH7_TESTS_END
 
     #[test]
     fn duplicate_page_range_to_start_inserts_copies() {
