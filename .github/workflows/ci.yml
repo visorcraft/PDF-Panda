@@ -1,6 +1,10 @@
 name: CI
 
 on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 env:
@@ -9,7 +13,6 @@ env:
 
 jobs:
   check:
-    if: github.event_name == 'workflow_dispatch'
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -67,7 +70,6 @@ jobs:
         run: npx tauri build --no-bundle
 
   e2e-linux:
-    if: github.event_name == 'workflow_dispatch'
     name: E2E (Linux)
     runs-on: ubuntu-latest
     steps:

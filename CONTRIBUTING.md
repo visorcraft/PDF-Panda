@@ -35,6 +35,8 @@ Run these before opening a pull request:
 scripts/smoke-test.sh
 ```
 
+CI runs the same gates on push/PR to `master` (see `.github/workflows/ci.yml`).
+
 On Linux, also run:
 
 ```sh

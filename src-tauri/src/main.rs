@@ -24702,6 +24702,10 @@ mod tests {
     fn native_file_dialogs_policy_wayland_requires_opt_in() {
         assert!(!native_file_dialogs_policy(false, false, true, true, None, None));
         assert!(native_file_dialogs_policy(false, false, true, true, Some("1"), None));
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_linux_x11_enables_by_default() {
         assert!(native_file_dialogs_policy(false, false, true, false, None, None));
     }
 
