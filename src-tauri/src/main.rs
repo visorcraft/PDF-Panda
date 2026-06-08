@@ -3278,6 +3278,218 @@ fn rotate_all_pages_180(path: String) -> Result<u32, String> {
     Ok(total)
 }
 
+fn crop_pages_by_parity(
+    path: &Path,
+    odd: bool,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
+        return Err("Margins must be non-negative".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut cropped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        apply_crop_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
+        cropped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(cropped)
+}
+
+/// Apply uniform crop margins to odd-indexed pages (1, 3, 5, …).
+#[tauri::command]
+fn crop_odd_pages(
+    path: String,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    crop_pages_by_parity(&PathBuf::from(&path), true, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+/// Apply uniform crop margins to even-indexed pages (2, 4, 6, …).
+#[tauri::command]
+fn crop_even_pages(
+    path: String,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    crop_pages_by_parity(&PathBuf::from(&path), false, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+fn expand_pages_by_parity(
+    path: &Path,
+    odd: bool,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
+        return Err("Margins must be non-negative".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut expanded = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        apply_expand_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
+        expanded += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(expanded)
+}
+
+/// Expand MediaBox outward on odd-indexed pages.
+#[tauri::command]
+fn expand_odd_pages(
+    path: String,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    expand_pages_by_parity(&PathBuf::from(&path), true, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+/// Expand MediaBox outward on even-indexed pages.
+#[tauri::command]
+fn expand_even_pages(
+    path: String,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    expand_pages_by_parity(&PathBuf::from(&path), false, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+fn shrink_pages_by_parity(
+    path: &Path,
+    odd: bool,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
+        return Err("Margins must be non-negative".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut shrunk = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        apply_shrink_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
+        shrunk += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(shrunk)
+}
+
+/// Shrink MediaBox inward on odd-indexed pages.
+#[tauri::command]
+fn shrink_odd_pages(
+    path: String,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    shrink_pages_by_parity(&PathBuf::from(&path), true, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+/// Shrink MediaBox inward on even-indexed pages.
+#[tauri::command]
+fn shrink_even_pages(
+    path: String,
+    margin_top: f64,
+    margin_right: f64,
+    margin_bottom: f64,
+    margin_left: f64,
+) -> Result<u32, String> {
+    shrink_pages_by_parity(&PathBuf::from(&path), false, margin_top, margin_right, margin_bottom, margin_left)
+}
+
+fn reverse_pages_by_parity(path: &Path, odd: bool) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (mut kids, _) = get_pages_kids(&doc)?;
+    let parity_indices: Vec<usize> = (0..kids.len()).filter(|i| (i % 2 == 0) == odd).collect();
+    if parity_indices.len() < 2 {
+        return Ok(0);
+    }
+    let mut parity_kids: Vec<Object> = parity_indices.iter().map(|i| kids[*i].clone()).collect();
+    parity_kids.reverse();
+    for (pos, idx) in parity_indices.iter().enumerate() {
+        kids[*idx] = parity_kids[pos].clone();
+    }
+    set_pages_kids(&mut doc, pages_ref, kids)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(parity_indices.len() as u32)
+}
+
+/// Reverse order among odd-indexed pages only.
+#[tauri::command]
+fn reverse_odd_pages(path: String) -> Result<u32, String> {
+    reverse_pages_by_parity(&PathBuf::from(&path), true)
+}
+
+/// Reverse order among even-indexed pages only.
+#[tauri::command]
+fn reverse_even_pages(path: String) -> Result<u32, String> {
+    reverse_pages_by_parity(&PathBuf::from(&path), false)
+}
+
+fn move_pages_by_parity_to_start(path: &Path, odd_first: bool) -> Result<(), String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let pages_ref = flatten_pages(&mut doc)?;
+    let (kids, _) = get_pages_kids(&doc)?;
+    let mut odd = Vec::new();
+    let mut even = Vec::new();
+    for (i, kid) in kids.into_iter().enumerate() {
+        if i % 2 == 0 {
+            odd.push(kid);
+        } else {
+            even.push(kid);
+        }
+    }
+    let new_kids =
+        if odd_first { odd.into_iter().chain(even).collect() } else { even.into_iter().chain(odd).collect() };
+    set_pages_kids(&mut doc, pages_ref, new_kids)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Move odd-indexed pages to the beginning (even pages follow).
+#[tauri::command]
+fn move_odd_pages_to_start(path: String) -> Result<(), String> {
+    move_pages_by_parity_to_start(&PathBuf::from(&path), true)
+}
+
+/// Move even-indexed pages to the beginning (odd pages follow).
+#[tauri::command]
+fn move_even_pages_to_start(path: String) -> Result<(), String> {
+    move_pages_by_parity_to_start(&PathBuf::from(&path), false)
+}
+
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
@@ -8299,6 +8511,16 @@ fn main() {
             flatten_odd_pages,
             flatten_even_pages,
             rotate_all_pages_180,
+            crop_odd_pages,
+            crop_even_pages,
+            expand_odd_pages,
+            expand_even_pages,
+            shrink_odd_pages,
+            shrink_even_pages,
+            reverse_odd_pages,
+            reverse_even_pages,
+            move_odd_pages_to_start,
+            move_even_pages_to_start,
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -9820,6 +10042,89 @@ mod tests {
         let doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
         assert_eq!(page_rotation(&doc, page_id), 180);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_odd_pages_sets_crop_boxes() {
+        let path = save(&mut build_pdf(3), "crop_odd");
+        let cropped = crop_odd_pages(path.clone(), 30.0, 30.0, 30.0, 30.0).unwrap();
+        assert_eq!(cropped, 2);
+        let doc = Document::load(&path).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        assert!(doc.get_dictionary(page_id).unwrap().get(b"CropBox").is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_even_pages_sets_crop_boxes() {
+        let path = save(&mut build_pdf(3), "crop_even");
+        let cropped = crop_even_pages(path.clone(), 30.0, 30.0, 30.0, 30.0).unwrap();
+        assert_eq!(cropped, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_odd_pages_expands_media_box() {
+        let path = save(&mut build_pdf(2), "expand_odd");
+        let expanded = expand_odd_pages(path.clone(), 20.0, 20.0, 20.0, 20.0).unwrap();
+        assert_eq!(expanded, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_even_pages_expands_media_box() {
+        let path = save(&mut build_pdf(2), "expand_even");
+        let expanded = expand_even_pages(path.clone(), 20.0, 20.0, 20.0, 20.0).unwrap();
+        assert_eq!(expanded, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_odd_pages_reduces_media_box() {
+        let path = save(&mut build_pdf(2), "shrink_odd");
+        let shrunk = shrink_odd_pages(path.clone(), 20.0, 20.0, 20.0, 20.0).unwrap();
+        assert_eq!(shrunk, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_even_pages_reduces_media_box() {
+        let path = save(&mut build_pdf(2), "shrink_even");
+        let shrunk = shrink_even_pages(path.clone(), 20.0, 20.0, 20.0, 20.0).unwrap();
+        assert_eq!(shrunk, 1);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_odd_pages_reorders_odd_indices() {
+        let path = save(&mut build_pdf(4), "rev_odd");
+        reverse_odd_pages(path.clone()).unwrap();
+        assert_eq!(page_order(&path), vec![2, 1, 0, 3]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_even_pages_reorders_even_indices() {
+        let path = save(&mut build_pdf(4), "rev_even");
+        reverse_even_pages(path.clone()).unwrap();
+        assert_eq!(page_order(&path), vec![0, 3, 2, 1]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_odd_pages_to_start_groups_odd_first() {
+        let path = save(&mut build_pdf(4), "move_odd_start");
+        move_odd_pages_to_start(path.clone()).unwrap();
+        assert_eq!(page_order(&path), vec![0, 2, 1, 3]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_even_pages_to_start_groups_even_first() {
+        let path = save(&mut build_pdf(4), "move_even_start");
+        move_even_pages_to_start(path.clone()).unwrap();
+        assert_eq!(page_order(&path), vec![1, 3, 0, 2]);
         let _ = std::fs::remove_file(&path);
     }
 

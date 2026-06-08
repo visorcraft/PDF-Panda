@@ -2181,6 +2181,156 @@ function App() {
     });
   };
 
+  const handleCropOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const cropped = await invoke<number>('crop_odd_pages', {
+        path: filePath,
+        marginTop: cropMarginTop,
+        marginRight: cropMarginRight,
+        marginBottom: cropMarginBottom,
+        marginLeft: cropMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowCropRangeModal(false);
+      showToast(`Cropped ${cropped} odd page${cropped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleCropEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const cropped = await invoke<number>('crop_even_pages', {
+        path: filePath,
+        marginTop: cropMarginTop,
+        marginRight: cropMarginRight,
+        marginBottom: cropMarginBottom,
+        marginLeft: cropMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowCropRangeModal(false);
+      showToast(`Cropped ${cropped} even page${cropped === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleExpandOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const expanded = await invoke<number>('expand_odd_pages', {
+        path: filePath,
+        marginTop: expandMarginTop,
+        marginRight: expandMarginRight,
+        marginBottom: expandMarginBottom,
+        marginLeft: expandMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowExpandMarginsModal(false);
+      showToast(`Expanded margins on ${expanded} odd page${expanded === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleExpandEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const expanded = await invoke<number>('expand_even_pages', {
+        path: filePath,
+        marginTop: expandMarginTop,
+        marginRight: expandMarginRight,
+        marginBottom: expandMarginBottom,
+        marginLeft: expandMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowExpandMarginsModal(false);
+      showToast(`Expanded margins on ${expanded} even page${expanded === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleShrinkOddPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const shrunk = await invoke<number>('shrink_odd_pages', {
+        path: filePath,
+        marginTop: shrinkMarginTop,
+        marginRight: shrinkMarginRight,
+        marginBottom: shrinkMarginBottom,
+        marginLeft: shrinkMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowShrinkMarginsModal(false);
+      showToast(`Shrunk margins on ${shrunk} odd page${shrunk === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleShrinkEvenPages = async () => {
+    if (!filePath) return;
+    await withLoading(async () => {
+      const shrunk = await invoke<number>('shrink_even_pages', {
+        path: filePath,
+        marginTop: shrinkMarginTop,
+        marginRight: shrinkMarginRight,
+        marginBottom: shrinkMarginBottom,
+        marginLeft: shrinkMarginLeft,
+      });
+      markPdfEdited();
+      await reloadOpenPdf(currentPage);
+      setShowShrinkMarginsModal(false);
+      showToast(`Shrunk margins on ${shrunk} even page${shrunk === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleReverseOddPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const reversed = await invoke<number>('reverse_odd_pages', { path: filePath });
+      if (reversed === 0) {
+        showToast('Need at least two odd pages to reverse', 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Reversed ${reversed} odd page${reversed === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleReverseEvenPages = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      const reversed = await invoke<number>('reverse_even_pages', { path: filePath });
+      if (reversed === 0) {
+        showToast('Need at least two even pages to reverse', 'error');
+        return;
+      }
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast(`Reversed ${reversed} even page${reversed === 1 ? '' : 's'}`);
+    });
+  };
+
+  const handleMoveOddPagesToStart = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      await invoke('move_odd_pages_to_start', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast('Moved odd pages to start');
+    });
+  };
+
+  const handleMoveEvenPagesToStart = async () => {
+    if (!filePath || pageCount === null || pageCount < 2) return;
+    await withLoading(async () => {
+      await invoke('move_even_pages_to_start', { path: filePath });
+      markPdfEdited();
+      await reloadOpenPdf(0);
+      showToast('Moved even pages to start');
+    });
+  };
+
   const handleSortPagesByRotation = async (descending: boolean) => {
     if (!filePath) return;
     await withLoading(async () => {
@@ -5099,6 +5249,10 @@ function App() {
                 <button onClick={openSwapPagesModal} className="btn" title="Swap two pages by number">Swap</button>
                 <button onClick={() => void handleReversePages()} className="btn" title="Reverse page order (Ctrl+Shift+Y)">Reverse</button>
                 <button onClick={openReverseRangeModal} className="btn" title="Reverse order within a page range">Rev. Range</button>
+                <button onClick={() => void handleReverseOddPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Reverse order among odd pages">Rev. Odd</button>
+                <button onClick={() => void handleReverseEvenPages()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Reverse order among even pages">Rev. Even</button>
+                <button onClick={() => void handleMoveOddPagesToStart()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move odd pages to document start">Odd→Start</button>
+                <button onClick={() => void handleMoveEvenPagesToStart()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Move even pages to document start">Even→Start</button>
                 <button onClick={() => void handleSplitOddEven()} className="btn" disabled={pageCount !== null && pageCount < 2} title="Split into odd- and even-indexed PDFs">Odd/Even</button>
                 <button onClick={() => void handleDuplicateAllPages()} className="btn" title="Duplicate every page and append copies">Dup. All</button>
                 <button onClick={() => void handleDuplicatePageToEnd()} className="btn" title="Duplicate current page to end">Dup. to End</button>
@@ -5150,6 +5304,8 @@ function App() {
                 <button onClick={openWatermarkModal} className="btn" title="Add text watermark">Watermark</button>
                 <button onClick={openCropModal} className="btn" title="Crop current page margins">Crop</button>
                 <button onClick={openCropRangeModal} className="btn" title="Crop a page range">Crop Range</button>
+                <button onClick={() => void handleCropOddPages()} className="btn" title="Crop odd pages (uses Crop margin values)">Crop Odd</button>
+                <button onClick={() => void handleCropEvenPages()} className="btn" title="Crop even pages (uses Crop margin values)">Crop Even</button>
                 <button onClick={openExpandMarginsModal} className="btn" title="Expand page margins (grow MediaBox)">Expand</button>
                 <button onClick={openShrinkMarginsModal} className="btn" title="Shrink page margins (reduce MediaBox)">Shrink</button>
                 <button onClick={openPageBorderModal} className="btn" title="Draw page border">Border</button>
@@ -6456,6 +6612,8 @@ function App() {
           <label>Left: <input type="number" value={shrinkMarginLeft} onChange={(e) => setShrinkMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <div className="modal-actions">
             <button onClick={() => setShowShrinkMarginsModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleShrinkOddPages()} className="btn">Shrink Odd</button>
+            <button onClick={() => void handleShrinkEvenPages()} className="btn">Shrink Even</button>
             <button onClick={() => void handleShrinkPageMargins()} className="btn">Shrink</button>
           </div>
         </Modal>
@@ -6540,6 +6698,8 @@ function App() {
           <label>Left: <input type="number" value={expandMarginLeft} onChange={(e) => setExpandMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <div className="modal-actions">
             <button onClick={() => setShowExpandMarginsModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleExpandOddPages()} className="btn">Expand Odd</button>
+            <button onClick={() => void handleExpandEvenPages()} className="btn">Expand Even</button>
             <button onClick={() => void handleExpandPageMargins()} className="btn">Expand</button>
           </div>
         </Modal>
@@ -6588,6 +6748,8 @@ function App() {
           <label>Left: <input type="number" value={cropMarginLeft} onChange={(e) => setCropMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <div className="modal-actions">
             <button onClick={() => setShowCropRangeModal(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={() => void handleCropOddPages()} className="btn">Crop Odd</button>
+            <button onClick={() => void handleCropEvenPages()} className="btn">Crop Even</button>
             <button onClick={() => void handleCropPageRange()} className="btn">Crop</button>
           </div>
         </Modal>
