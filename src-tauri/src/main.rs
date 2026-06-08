@@ -8146,6 +8146,53 @@ fn append_page_embedded_images(
     Ok(block)
 }
 
+/// Per-page text plan from PDFium. Built while the PDFium mutex is held; OCR and
+/// image rendering run afterward so nested `render_page_png` calls cannot deadlock.
+enum PdfPageMarkdownPlan {
+    Tagged(String),
+    Scanned,
+    Plain { text: String, needs_ocr_supplement: bool },
+    Heuristic { lines: Vec<MarkdownTextLine>, links: Vec<MarkdownPageLink>, needs_ocr_supplement: bool },
+}
+
+fn extract_pdf_page_markdown_plans(
+    path: &Path,
+    tagged_pages: &Option<BTreeMap<u32, String>>,
+) -> Result<Vec<PdfPageMarkdownPlan>, String> {
+    // Use PDFium's text layer: it decodes font encodings (including CID/Type0
+    // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
+    // produce text instead of empty pages.
+    let pdfium = get_pdfium()?;
+    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let mut plans = Vec::with_capacity(document.pages().len() as usize);
+    for (index, page) in document.pages().iter().enumerate() {
+        if let Some(page_md) = tagged_pages
+            .as_ref()
+            .and_then(|pages| pages.get(&(index as u32)))
+            .filter(|page_md| tagged_page_has_content(page_md))
+        {
+            plans.push(PdfPageMarkdownPlan::Tagged(page_md.clone()));
+            continue;
+        }
+        let text = page.text().map_err(|e| e.to_string())?;
+        let links = collect_page_links(&page);
+        let lines = polish_heuristic_lines(lines_from_pdfium_text(&text));
+        if lines.is_empty() {
+            let trimmed = text.all().trim().to_string();
+            if trimmed.is_empty() {
+                plans.push(PdfPageMarkdownPlan::Scanned);
+            } else {
+                let needs_ocr_supplement = page_needs_ocr_supplement(&[], &trimmed);
+                plans.push(PdfPageMarkdownPlan::Plain { text: trimmed, needs_ocr_supplement });
+            }
+        } else {
+            let needs_ocr_supplement = page_needs_ocr_supplement(&lines, "");
+            plans.push(PdfPageMarkdownPlan::Heuristic { lines, links, needs_ocr_supplement });
+        }
+    }
+    Ok(plans)
+}
+
 fn pdf_to_markdown(
     path: &Path,
     image_sink: Option<&MarkdownImageSink<'_>>,
@@ -8159,40 +8206,26 @@ fn pdf_to_markdown(
     stats.available = resolve_tesseract().is_some();
     stats.language = ocr_language();
 
-    // Use PDFium's text layer: it decodes font encodings (including CID/Type0
-    // fonts) that a raw content-stream walk cannot, so real-world PDFs actually
-    // produce text instead of empty pages.
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let page_plans = extract_pdf_page_markdown_plans(path, &tagged_pages)?;
 
     let mut markdown = String::from("# PDF to Markdown Conversion\n\n");
-    for (index, page) in document.pages().iter().enumerate() {
+    for (index, plan) in page_plans.iter().enumerate() {
         markdown.push_str(&format!("## Page {}\n\n", index + 1));
 
-        if let Some(page_md) = tagged_pages
-            .as_ref()
-            .and_then(|pages| pages.get(&(index as u32)))
-            .filter(|page_md| tagged_page_has_content(page_md))
-        {
-            markdown.push_str(page_md);
-        } else {
-            let text = page.text().map_err(|e| e.to_string())?;
-            let links = collect_page_links(&page);
-            let lines = polish_heuristic_lines(lines_from_pdfium_text(&text));
-            if lines.is_empty() {
-                let all_text = text.all();
-                let trimmed = all_text.trim();
-                if trimmed.is_empty() {
-                    append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink, stats)?;
-                } else {
-                    markdown.push_str(&plain_text_to_markdown(&autolink_inline_text(trimmed)));
-                    if image_sink.is_some() && page_needs_ocr_supplement(&[], trimmed) {
-                        append_page_ocr_supplement(&mut markdown, path, index as u32, stats)?;
-                    }
+        match plan {
+            PdfPageMarkdownPlan::Tagged(page_md) => markdown.push_str(page_md),
+            PdfPageMarkdownPlan::Scanned => {
+                append_scanned_page_markdown(&mut markdown, path, index as u32, image_sink, stats)?;
+            }
+            PdfPageMarkdownPlan::Plain { text, needs_ocr_supplement } => {
+                markdown.push_str(&plain_text_to_markdown(&autolink_inline_text(text)));
+                if image_sink.is_some() && *needs_ocr_supplement {
+                    append_page_ocr_supplement(&mut markdown, path, index as u32, stats)?;
                 }
-            } else {
-                markdown.push_str(&format_markdown_lines(&lines, &links));
-                if image_sink.is_some() && page_needs_ocr_supplement(&lines, "") {
+            }
+            PdfPageMarkdownPlan::Heuristic { lines, links, needs_ocr_supplement } => {
+                markdown.push_str(&format_markdown_lines(lines, links));
+                if image_sink.is_some() && *needs_ocr_supplement {
                     append_page_ocr_supplement(&mut markdown, path, index as u32, stats)?;
                 }
             }
