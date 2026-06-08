@@ -6897,12 +6897,132 @@ fn pdf_numeric_f32(obj: &Object) -> Option<f32> {
     }
 }
 
+fn pdf_content_stream_bytes(doc: &Document, contents: &Object) -> Vec<Vec<u8>> {
+    let mut out = Vec::new();
+    match contents {
+        Object::Reference(id) => {
+            if let Ok(Object::Stream(stream)) = doc.get_object(*id) {
+                if let Ok(bytes) = stream.decompressed_content() {
+                    out.push(bytes);
+                }
+            }
+        }
+        Object::Array(items) => {
+            for item in items {
+                out.extend(pdf_content_stream_bytes(doc, item));
+            }
+        }
+        Object::Stream(stream) => {
+            if let Ok(bytes) = stream.decompressed_content() {
+                out.push(bytes);
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+fn pdf_name_token_char(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'
+}
+
+/// Collect `/Name Do` XObject invocations from a page or form content stream.
+fn parse_xobject_do_names(bytes: &[u8]) -> BTreeSet<Vec<u8>> {
+    let mut names = BTreeSet::new();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if bytes[index] != b'/' {
+            index += 1;
+            continue;
+        }
+        let start = index + 1;
+        index += 1;
+        while index < bytes.len() && pdf_name_token_char(bytes[index]) {
+            index += 1;
+        }
+        if start == index {
+            continue;
+        }
+        let mut cursor = index;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        if bytes[cursor..].starts_with(b"Do") && !bytes.get(cursor + 2).copied().is_some_and(pdf_name_token_char) {
+            names.insert(bytes[start..index].to_vec());
+        }
+    }
+    names
+}
+
+fn resolve_page_resources(doc: &Document, page_id: ObjectId) -> Option<Dictionary> {
+    let page = doc.get_dictionary(page_id).ok()?;
+    if let Ok(resources) = page.get(b"Resources") {
+        if let Ok(dict) = resources.as_dict() {
+            return Some(dict.clone());
+        }
+    }
+    inherited_page_attr(doc, page_id, b"Resources").and_then(|obj| obj.as_dict().ok().cloned())
+}
+
+fn xobject_names_used_on_page(doc: &Document, page_id: ObjectId) -> BTreeSet<Vec<u8>> {
+    let page = match doc.get_dictionary(page_id) {
+        Ok(page) => page,
+        Err(_) => return BTreeSet::new(),
+    };
+    let contents = match page.get(b"Contents") {
+        Ok(contents) => contents,
+        Err(_) => return BTreeSet::new(),
+    };
+    let mut used = BTreeSet::new();
+    for bytes in pdf_content_stream_bytes(doc, contents) {
+        used.extend(parse_xobject_do_names(&bytes));
+    }
+    used
+}
+
+fn merge_pdf_resource_dicts(mut base: Dictionary, overlay: &Dictionary) -> Dictionary {
+    for (key, val) in overlay.iter() {
+        let mergeable = matches!(key.as_slice(), b"XObject" | b"Font" | b"ExtGState" | b"ColorSpace" | b"Pattern");
+        if mergeable {
+            let base_sub = base.get(key).ok().and_then(|o| o.as_dict().ok());
+            let overlay_sub = val.as_dict().ok();
+            if let (Some(base_sub), Some(overlay_sub)) = (base_sub, overlay_sub) {
+                let mut merged = base_sub.clone();
+                for (sub_key, sub_val) in overlay_sub.iter() {
+                    merged.set(sub_key.clone(), sub_val.clone());
+                }
+                base.set(key.clone(), Object::Dictionary(merged));
+                continue;
+            }
+        }
+        if base.get(key).is_err() {
+            base.set(key.clone(), val.clone());
+        }
+    }
+    base
+}
+
 fn pdf_form_bbox(stream: &Stream) -> Option<[f32; 4]> {
     let arr = stream.dict.get(b"BBox").ok()?.as_array().ok()?;
     if arr.len() < 4 {
         return None;
     }
     Some([pdf_numeric_f32(&arr[0])?, pdf_numeric_f32(&arr[1])?, pdf_numeric_f32(&arr[2])?, pdf_numeric_f32(&arr[3])?])
+}
+
+fn pdf_form_matrix(stream: &Stream) -> Option<[f32; 6]> {
+    let arr = stream.dict.get(b"Matrix").ok()?.as_array().ok()?;
+    if arr.len() < 6 {
+        return None;
+    }
+    Some([
+        pdf_numeric_f32(&arr[0])?,
+        pdf_numeric_f32(&arr[1])?,
+        pdf_numeric_f32(&arr[2])?,
+        pdf_numeric_f32(&arr[3])?,
+        pdf_numeric_f32(&arr[4])?,
+        pdf_numeric_f32(&arr[5])?,
+    ])
 }
 
 fn pdf_name_for_content_stream(name: &[u8]) -> String {
@@ -6920,10 +7040,18 @@ fn pdf_name_for_content_stream(name: &[u8]) -> String {
     out
 }
 
+const FORM_RENDER_MAX_PX: i32 = 2400;
+
 fn form_render_pixel_size(width_pt: f32, height_pt: f32) -> (i32, i32) {
     let scale = (OCR_RENDER_W as f32 / width_pt.max(1.0)).max(1.0);
-    let w = (width_pt * scale).round().max(1.0) as i32;
-    let h = (height_pt * scale).round().max(1.0) as i32;
+    let mut w = (width_pt * scale).round().max(1.0) as i32;
+    let mut h = (height_pt * scale).round().max(1.0) as i32;
+    let max_dim = w.max(h);
+    if max_dim > FORM_RENDER_MAX_PX {
+        let downscale = FORM_RENDER_MAX_PX as f32 / max_dim as f32;
+        w = (w as f32 * downscale).round().max(1.0) as i32;
+        h = (h as f32 * downscale).round().max(1.0) as i32;
+    }
     (w, h)
 }
 
@@ -6951,14 +7079,19 @@ fn build_form_render_pdf(
     let mut remap = BTreeMap::new();
 
     let form_dst_id = import_object(&mut dst, src, form_src_id, pages_id, &mut remap);
+    let form_stream = src.get_object(form_src_id).ok().and_then(|o| o.as_stream().ok());
 
-    let mut page_resources_dst = src
-        .get_dictionary(page_id)
-        .ok()
-        .and_then(|page| page.get(b"Resources").ok())
-        .and_then(|obj| obj.as_dict().ok())
-        .map(|dict| import_dict(&mut dst, src, dict, pages_id, &mut remap))
+    let mut page_resources_dst = resolve_page_resources(src, page_id)
+        .map(|dict| import_dict(&mut dst, src, &dict, pages_id, &mut remap))
         .unwrap_or_default();
+    if let Some(form_stream) = form_stream {
+        if let Ok(form_resources) = form_stream.dict.get(b"Resources") {
+            if let Ok(form_resources) = form_resources.as_dict() {
+                let imported = import_dict(&mut dst, src, form_resources, pages_id, &mut remap);
+                page_resources_dst = merge_pdf_resource_dicts(page_resources_dst, &imported);
+            }
+        }
+    }
 
     let mut xobjects = page_resources_dst
         .get(b"XObject")
@@ -6970,7 +7103,13 @@ fn build_form_render_pdf(
     page_resources_dst.set(b"XObject", Object::Dictionary(xobjects));
 
     let pdf_name = pdf_name_for_content_stream(xobject_name);
-    let content = format!("q 1 0 0 1 {} {} cm /{pdf_name} Do Q\n", -llx, -lly);
+    let matrix_cm = form_stream
+        .and_then(pdf_form_matrix)
+        .map(|matrix| {
+            format!("{} {} {} {} {} {} cm ", matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5])
+        })
+        .unwrap_or_default();
+    let content = format!("q {matrix_cm}1 0 0 1 {} {} cm /{pdf_name} Do Q\n", -llx, -lly);
     let content_id = dst.add_object(Stream::new(Dictionary::new(), content.into_bytes()));
 
     let mut page = Dictionary::new();
@@ -7039,11 +7178,7 @@ fn append_page_embedded_images(
         Some(id) => *id,
         None => return Ok(String::new()),
     };
-    let resources = doc
-        .get_dictionary(page_id)
-        .ok()
-        .and_then(|page| page.get(b"Resources").ok())
-        .and_then(|obj| obj.as_dict().ok());
+    let resources = resolve_page_resources(doc, page_id);
     let Some(resources) = resources else {
         return Ok(String::new());
     };
@@ -7051,9 +7186,13 @@ fn append_page_embedded_images(
     let Some(xobjects) = xobjects else {
         return Ok(String::new());
     };
+    let used_on_page = xobject_names_used_on_page(doc, page_id);
 
     let mut block = String::new();
     for (name, obj) in xobjects.iter() {
+        if !used_on_page.is_empty() && !used_on_page.contains(name) {
+            continue;
+        }
         let id = match obj {
             Object::Reference(id) => id,
             _ => continue,
@@ -30111,6 +30250,7 @@ mod tests {
             Dictionary::from_iter(vec![
                 (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
                 (b"Subtype".to_vec(), Object::Name(b"Form".to_vec())),
+                (b"FormType".to_vec(), Object::Integer(1)),
                 (
                     b"BBox".to_vec(),
                     Object::Array(vec![
@@ -30127,8 +30267,133 @@ mod tests {
         xobjects.set(b"Chart1", Object::Reference(form_id));
         let mut resources = Dictionary::new();
         resources.set(b"XObject", Object::Dictionary(xobjects));
-        doc.get_dictionary_mut(page_id).unwrap().set(b"Resources", Object::Dictionary(resources));
+        let content_id = doc.add_object(Stream::new(Dictionary::new(), b"q 72 650 cm /Chart1 Do Q".to_vec()));
+        let page = doc.get_dictionary_mut(page_id).unwrap();
+        page.set(b"Resources", Object::Dictionary(resources));
+        page.set(b"Contents", Object::Reference(content_id));
         doc
+    }
+
+    #[test]
+    fn parse_xobject_do_names_finds_form_invocations() {
+        let names = parse_xobject_do_names(b"q 72 650 cm /Chart1 Do Q /Im2 Do");
+        assert!(names.contains(b"Chart1".as_slice()));
+        assert!(names.contains(b"Im2".as_slice()));
+    }
+
+    #[test]
+    fn xobject_names_used_on_page_reads_page_contents() {
+        let doc = build_pdf_with_vector_form();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let used = xobject_names_used_on_page(&doc, page_id);
+        assert!(used.contains(b"Chart1".as_slice()));
+    }
+
+    #[test]
+    fn xobject_names_used_on_page_ignores_unpainted_forms() {
+        let mut doc = build_pdf_with_vector_form();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let unused_form_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Form".to_vec())),
+                (
+                    b"BBox".to_vec(),
+                    Object::Array(vec![
+                        Object::Integer(0),
+                        Object::Integer(0),
+                        Object::Integer(50),
+                        Object::Integer(50),
+                    ]),
+                ),
+            ]),
+            b"q 1 0 0 rg 0 0 50 50 re f Q".to_vec(),
+        )));
+        let resources = doc.get_dictionary_mut(page_id).unwrap().get_mut(b"Resources").unwrap().as_dict_mut().unwrap();
+        let xobjects = resources.get_mut(b"XObject").unwrap().as_dict_mut().unwrap();
+        xobjects.set(b"UnusedChart", Object::Reference(unused_form_id));
+
+        let used = xobject_names_used_on_page(&doc, page_id);
+        assert!(used.contains(b"Chart1".as_slice()));
+        assert!(!used.contains(b"UnusedChart".as_slice()));
+    }
+
+    #[test]
+    fn resolve_page_resources_inherits_from_parent_pages_node() {
+        let mut doc = build_pdf(1);
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let catalog_id = doc.trailer.get(b"Root").unwrap().as_reference().unwrap();
+        let pages_id = doc.get_dictionary(catalog_id).unwrap().get(b"Pages").unwrap().as_reference().unwrap();
+        let form_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Form".to_vec())),
+                (
+                    b"BBox".to_vec(),
+                    Object::Array(vec![
+                        Object::Integer(0),
+                        Object::Integer(0),
+                        Object::Integer(100),
+                        Object::Integer(50),
+                    ]),
+                ),
+            ]),
+            b"q 0 0 1 rg 0 0 100 50 re f Q".to_vec(),
+        )));
+        let mut xobjects = Dictionary::new();
+        xobjects.set(b"Chart1", Object::Reference(form_id));
+        let mut resources = Dictionary::new();
+        resources.set(b"XObject", Object::Dictionary(xobjects));
+        doc.get_dictionary_mut(pages_id).unwrap().set(b"Resources", Object::Dictionary(resources));
+        doc.get_dictionary_mut(page_id).unwrap().remove(b"Resources");
+        let content_id = doc.add_object(Stream::new(Dictionary::new(), b"q /Chart1 Do Q".to_vec()));
+        doc.get_dictionary_mut(page_id).unwrap().set(b"Contents", Object::Reference(content_id));
+
+        let resolved = resolve_page_resources(&doc, page_id).expect("inherited resources");
+        assert!(resolved.get(b"XObject").is_ok());
+    }
+
+    #[test]
+    fn build_form_render_pdf_applies_form_matrix() {
+        let mut doc = build_pdf_with_vector_form();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let form_id = doc
+            .get_dictionary(page_id)
+            .unwrap()
+            .get(b"Resources")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"XObject")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"Chart1")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        if let Ok(Object::Stream(stream)) = doc.get_object_mut(form_id) {
+            stream.dict.set(
+                b"Matrix",
+                Object::Array(vec![
+                    Object::Real(2.0),
+                    Object::Real(0.0),
+                    Object::Real(0.0),
+                    Object::Real(2.0),
+                    Object::Real(0.0),
+                    Object::Real(0.0),
+                ]),
+            );
+        }
+        let wrapper = build_form_render_pdf(&doc, page_id, form_id, b"Chart1").unwrap();
+        let page_id = *wrapper.get_pages().get(&1).unwrap();
+        let contents = wrapper.get_dictionary(page_id).unwrap().get(b"Contents").unwrap().as_reference().unwrap();
+        let Object::Stream(stream) = wrapper.get_object(contents).unwrap() else {
+            panic!("contents stream missing");
+        };
+        let bytes = stream.decompressed_content().unwrap();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("2 0 0 2 0 0 cm"));
     }
 
     #[test]
