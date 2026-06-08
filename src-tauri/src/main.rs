@@ -4225,6 +4225,9 @@ fn export_even_pages_tga(path: String, output_dir: String) -> Result<Vec<String>
 // PARITY_BATCH_INCLUDE
 include!("parity_batch_generated.inc.rs");
 // END_PARITY_BATCH_INCLUDE
+// PARITY_BATCH2_INCLUDE
+include!("parity_batch2_generated.inc.rs");
+// END_PARITY_BATCH2_INCLUDE
 
 /// Deep-copy `start_page`..=`end_page` and insert the copies at the document start.
 #[tauri::command]
@@ -9423,7 +9426,109 @@ fn main() {
             flatten_range_local_even_pages,
             export_odd_pages_ico,
             export_even_pages_ico,
-// PARITY_BATCH_HANDLERS_END
+            // PARITY_BATCH_HANDLERS_END
+            // PARITY_BATCH2_HANDLERS_START
+            reverse_range_local_odd_pages,
+            reverse_range_local_even_pages,
+            move_odd_range_local_pages_to_start,
+            move_even_range_local_pages_to_start,
+            move_odd_range_local_pages_to_end,
+            move_even_range_local_pages_to_end,
+            sort_range_local_odd_pages_by_rotation,
+            sort_range_local_even_pages_by_rotation,
+            sort_range_local_odd_pages_by_size,
+            sort_range_local_even_pages_by_size,
+            duplicate_range_local_odd_pages_to_start,
+            duplicate_range_local_even_pages_to_start,
+            duplicate_range_local_odd_pages_to_end,
+            duplicate_range_local_even_pages_to_end,
+            crop_range_local_odd_pages,
+            crop_range_local_even_pages,
+            expand_range_local_odd_pages,
+            expand_range_local_even_pages,
+            shrink_range_local_odd_pages,
+            shrink_range_local_even_pages,
+            clear_crop_range_local_odd_pages,
+            clear_crop_range_local_even_pages,
+            insert_blank_before_range_local_odd_pages,
+            insert_blank_before_range_local_even_pages,
+            insert_blank_after_range_local_odd_pages,
+            insert_blank_after_range_local_even_pages,
+            bookmark_range_local_odd_pages,
+            bookmark_range_local_even_pages,
+            set_page_size_range_local_odd_pages,
+            set_page_size_range_local_even_pages,
+            extract_range_local_odd_pages,
+            extract_range_local_even_pages,
+            add_page_numbers_range_local_odd_pages,
+            add_page_numbers_range_local_even_pages,
+            add_text_watermark_range_local_odd_pages,
+            add_text_watermark_range_local_even_pages,
+            add_page_header_range_local_odd_pages,
+            add_page_header_range_local_even_pages,
+            add_page_footer_range_local_odd_pages,
+            add_page_footer_range_local_even_pages,
+            add_page_border_range_local_odd_pages,
+            add_page_border_range_local_even_pages,
+            export_range_local_odd_pages_as_pdf,
+            export_range_local_even_pages_as_pdf,
+            export_range_local_odd_pages_png,
+            export_range_local_even_pages_png,
+            export_range_local_odd_pages_jpeg,
+            export_range_local_even_pages_jpeg,
+            export_range_local_odd_pages_webp,
+            export_range_local_even_pages_webp,
+            export_range_local_odd_pages_bmp,
+            export_range_local_even_pages_bmp,
+            export_range_local_odd_pages_tiff,
+            export_range_local_even_pages_tiff,
+            export_range_local_odd_pages_gif,
+            export_range_local_even_pages_gif,
+            export_range_local_odd_pages_ppm,
+            export_range_local_even_pages_ppm,
+            export_range_local_odd_pages_tga,
+            export_range_local_even_pages_tga,
+            rotate_mod3_0_pages_in_range_mod3,
+            rotate_mod3_1_pages_in_range_mod3,
+            rotate_mod3_2_pages_in_range_mod3,
+            rotate_mod3_0_pages_in_range_mod3_ccw,
+            rotate_mod3_1_pages_in_range_mod3_ccw,
+            rotate_mod3_2_pages_in_range_mod3_ccw,
+            rotate_180_mod3_0_pages_in_range_mod3,
+            rotate_180_mod3_1_pages_in_range_mod3,
+            rotate_180_mod3_2_pages_in_range_mod3,
+            reset_rotation_mod3_0_pages_in_range_mod3,
+            reset_rotation_mod3_1_pages_in_range_mod3,
+            reset_rotation_mod3_2_pages_in_range_mod3,
+            delete_mod3_0_pages_in_range_mod3,
+            delete_mod3_1_pages_in_range_mod3,
+            delete_mod3_2_pages_in_range_mod3,
+            keep_mod3_0_pages_in_range_mod3,
+            keep_mod3_1_pages_in_range_mod3,
+            keep_mod3_2_pages_in_range_mod3,
+            duplicate_mod3_0_pages_in_range_mod3,
+            duplicate_mod3_1_pages_in_range_mod3,
+            duplicate_mod3_2_pages_in_range_mod3,
+            flatten_mod3_0_pages_in_range_mod3,
+            flatten_mod3_1_pages_in_range_mod3,
+            flatten_mod3_2_pages_in_range_mod3,
+            reverse_mod3_0_pages_in_range_mod3,
+            reverse_mod3_1_pages_in_range_mod3,
+            reverse_mod3_2_pages_in_range_mod3,
+            crop_mod3_0_pages_in_range_mod3,
+            crop_mod3_1_pages_in_range_mod3,
+            crop_mod3_2_pages_in_range_mod3,
+            extract_mod3_0_pages_in_range_mod3,
+            extract_mod3_1_pages_in_range_mod3,
+            extract_mod3_2_pages_in_range_mod3,
+            export_mod3_0_pages_in_range_mod3_as_pdf,
+            export_mod3_1_pages_in_range_mod3_as_pdf,
+            export_mod3_2_pages_in_range_mod3_as_pdf,
+            export_mod3_0_pages_in_range_mod3_png,
+            export_mod3_1_pages_in_range_mod3_png,
+            export_mod3_2_pages_in_range_mod3_png,
+            export_mod3_0_pages_in_range_mod3_jpeg,
+            // PARITY_BATCH2_HANDLERS_END
             add_text_watermark,
             flatten_annotations,
             crop_page,
@@ -11510,7 +11615,7 @@ mod tests {
     }
 
     // PARITY_BATCH_TESTS_START
-// Auto-generated parity batch tests
+    // Auto-generated parity batch tests
 
     #[test]
     fn rotate_odd_pages_in_range_rejects_invalid_range() {
@@ -11520,7 +11625,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn rotate_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "rotate_even_pages_in_range");
@@ -11528,7 +11632,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn rotate_odd_pages_in_range_ccw_rejects_invalid_range() {
@@ -11538,7 +11641,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn rotate_even_pages_in_range_ccw_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "rotate_even_pages_in_range_ccw");
@@ -11546,7 +11648,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn rotate_180_odd_pages_in_range_rejects_invalid_range() {
@@ -11556,7 +11657,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn rotate_180_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "rotate_180_even_pages_in_range");
@@ -11564,7 +11664,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn reset_rotation_odd_pages_in_range_rejects_invalid_range() {
@@ -11574,7 +11673,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn reset_rotation_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "reset_rotation_even_pages_in_range");
@@ -11582,7 +11680,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn delete_odd_pages_in_range_rejects_invalid_range() {
@@ -11592,7 +11689,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn delete_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "delete_even_pages_in_range");
@@ -11600,7 +11696,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn keep_odd_pages_in_range_rejects_invalid_range() {
@@ -11610,7 +11705,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn keep_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "keep_even_pages_in_range");
@@ -11618,7 +11712,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn duplicate_odd_pages_in_range_rejects_invalid_range() {
@@ -11628,7 +11721,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn duplicate_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "duplicate_even_pages_in_range");
@@ -11636,7 +11728,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn duplicate_odd_pages_in_range_before_rejects_invalid_range() {
@@ -11646,7 +11737,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn duplicate_even_pages_in_range_before_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "duplicate_even_pages_in_range_before");
@@ -11654,7 +11744,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn duplicate_odd_pages_in_range_to_start_rejects_invalid_range() {
@@ -11664,7 +11753,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn duplicate_even_pages_in_range_to_start_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "duplicate_even_pages_in_range_to_start");
@@ -11672,7 +11760,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn duplicate_odd_pages_in_range_to_end_rejects_invalid_range() {
@@ -11682,7 +11769,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn duplicate_even_pages_in_range_to_end_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "duplicate_even_pages_in_range_to_end");
@@ -11690,7 +11776,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn flatten_odd_pages_in_range_rejects_invalid_range() {
@@ -11700,7 +11785,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn flatten_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "flatten_even_pages_in_range");
@@ -11708,7 +11792,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn reverse_odd_pages_in_range_rejects_invalid_range() {
@@ -11718,7 +11801,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn reverse_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "reverse_even_pages_in_range");
@@ -11726,7 +11808,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn move_odd_pages_in_range_to_start_rejects_invalid_range() {
@@ -11736,7 +11817,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn move_even_pages_in_range_to_start_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "move_even_pages_in_range_to_start");
@@ -11744,7 +11824,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn move_odd_pages_in_range_to_end_rejects_invalid_range() {
@@ -11754,7 +11833,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn move_even_pages_in_range_to_end_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "move_even_pages_in_range_to_end");
@@ -11762,7 +11840,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn sort_odd_pages_in_range_by_rotation_rejects_invalid_range() {
@@ -11772,7 +11849,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn sort_even_pages_in_range_by_rotation_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "sort_even_pages_in_range_by_rotation");
@@ -11780,7 +11856,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn sort_odd_pages_in_range_by_size_rejects_invalid_range() {
@@ -11790,7 +11865,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn sort_even_pages_in_range_by_size_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "sort_even_pages_in_range_by_size");
@@ -11798,7 +11872,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn crop_odd_pages_in_range_rejects_invalid_range() {
@@ -11808,7 +11881,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn crop_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "crop_even_pages_in_range");
@@ -11816,7 +11888,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn expand_odd_pages_in_range_rejects_invalid_range() {
@@ -11826,7 +11897,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn expand_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "expand_even_pages_in_range");
@@ -11834,7 +11904,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn shrink_odd_pages_in_range_rejects_invalid_range() {
@@ -11844,7 +11913,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn shrink_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "shrink_even_pages_in_range");
@@ -11852,7 +11920,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn clear_crop_odd_pages_in_range_rejects_invalid_range() {
@@ -11862,7 +11929,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn clear_crop_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "clear_crop_even_pages_in_range");
@@ -11870,7 +11936,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn insert_blank_before_odd_pages_in_range_rejects_invalid_range() {
@@ -11880,7 +11945,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn insert_blank_before_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "insert_blank_before_even_pages_in_range");
@@ -11888,7 +11952,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn insert_blank_after_odd_pages_in_range_rejects_invalid_range() {
@@ -11898,7 +11961,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn insert_blank_after_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "insert_blank_after_even_pages_in_range");
@@ -11906,7 +11968,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn bookmark_odd_pages_in_range_rejects_invalid_range() {
@@ -11916,7 +11977,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn bookmark_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "bookmark_even_pages_in_range");
@@ -11924,7 +11984,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn set_page_size_odd_pages_in_range_rejects_invalid_range() {
@@ -11934,7 +11993,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn set_page_size_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "set_page_size_even_pages_in_range");
@@ -11943,26 +12001,25 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn extract_odd_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "extract_odd_pages_in_range");
         let output_path = tmp("extract_out.pdf");
-        let err = extract_odd_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            extract_odd_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn extract_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "extract_even_pages_in_range");
         let output_path = tmp("extract_out.pdf");
-        let err = extract_even_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            extract_even_pages_in_range(path.clone(), 5, 10, output_path.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn add_page_numbers_odd_pages_in_range_rejects_invalid_range() {
@@ -11972,7 +12029,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn add_page_numbers_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "add_page_numbers_even_pages_in_range");
@@ -11980,7 +12036,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn add_text_watermark_odd_pages_in_range_rejects_invalid_range() {
@@ -11990,7 +12045,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn add_text_watermark_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "add_text_watermark_even_pages_in_range");
@@ -11998,7 +12052,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn add_page_header_odd_pages_in_range_rejects_invalid_range() {
@@ -12008,7 +12061,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn add_page_header_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "add_page_header_even_pages_in_range");
@@ -12016,7 +12068,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn add_page_footer_odd_pages_in_range_rejects_invalid_range() {
@@ -12026,7 +12077,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn add_page_footer_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "add_page_footer_even_pages_in_range");
@@ -12034,7 +12084,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn add_page_border_odd_pages_in_range_rejects_invalid_range() {
@@ -12044,7 +12093,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn add_page_border_even_pages_in_range_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "add_page_border_even_pages_in_range");
@@ -12053,206 +12101,205 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn export_odd_pages_in_range_as_pdf_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_as_pdf");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err = export_odd_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_as_pdf_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_as_pdf");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err = export_even_pages_in_range_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_png_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_png");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_png_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_png");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_in_range_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_jpeg_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_jpeg");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_jpeg_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_jpeg");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err = export_even_pages_in_range_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_webp_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_webp");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_webp_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_webp");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err = export_even_pages_in_range_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_bmp_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_bmp");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_bmp_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_bmp");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_in_range_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_tiff_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_tiff");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_tiff_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_tiff");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err = export_even_pages_in_range_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_gif_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_gif");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_gif_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_gif");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_in_range_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_ppm_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_ppm");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_ppm_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_ppm");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_in_range_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_tga_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_tga");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_tga_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_tga");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_in_range_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_odd_pages_in_range_ico_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_odd_pages_in_range_ico");
         let output_dir = tmp("export_dir");
-        let err = export_odd_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn export_even_pages_in_range_ico_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "export_even_pages_in_range_ico");
         let output_dir = tmp("export_dir");
-        let err = export_even_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_in_range_ico(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned()).unwrap_err();
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn rotate_range_local_odd_pages_rejects_invalid_range() {
@@ -12262,7 +12309,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn rotate_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "rotate_range_local_even_pages");
@@ -12270,7 +12316,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn rotate_range_local_odd_pages_ccw_rejects_invalid_range() {
@@ -12280,7 +12325,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn rotate_range_local_even_pages_ccw_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "rotate_range_local_even_pages_ccw");
@@ -12288,7 +12332,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn rotate_180_range_local_odd_pages_rejects_invalid_range() {
@@ -12298,7 +12341,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn rotate_180_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "rotate_180_range_local_even_pages");
@@ -12306,7 +12348,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn reset_rotation_range_local_odd_pages_rejects_invalid_range() {
@@ -12316,7 +12357,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn reset_rotation_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "reset_rotation_range_local_even_pages");
@@ -12324,7 +12364,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn delete_range_local_odd_pages_rejects_invalid_range() {
@@ -12334,7 +12373,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn delete_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "delete_range_local_even_pages");
@@ -12342,7 +12380,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn keep_range_local_odd_pages_rejects_invalid_range() {
@@ -12352,7 +12389,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn keep_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "keep_range_local_even_pages");
@@ -12360,7 +12396,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn duplicate_range_local_odd_pages_rejects_invalid_range() {
@@ -12370,7 +12405,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn duplicate_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "duplicate_range_local_even_pages");
@@ -12378,7 +12412,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn duplicate_range_local_odd_pages_before_rejects_invalid_range() {
@@ -12388,7 +12421,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn duplicate_range_local_even_pages_before_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "duplicate_range_local_even_pages_before");
@@ -12396,7 +12428,6 @@ mod tests {
         assert!(err.contains("Invalid page range"));
         let _ = std::fs::remove_file(&path);
     }
-
 
     #[test]
     fn flatten_range_local_odd_pages_rejects_invalid_range() {
@@ -12406,7 +12437,6 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn flatten_range_local_even_pages_rejects_invalid_range() {
         let path = save(&mut build_pdf(2), "flatten_range_local_even_pages");
@@ -12415,25 +12445,895 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
-
     #[test]
     fn export_odd_pages_ico_rejects_missing_file() {
         let missing = tmp("export_odd_pages_ico_missing_src");
         let output_dir = tmp("export_odd_pages_ico_missing_dir");
-        let err = export_odd_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_odd_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
         assert!(err.contains("File not found"));
     }
-
 
     #[test]
     fn export_even_pages_ico_rejects_missing_file() {
         let missing = tmp("export_even_pages_ico_missing_src");
         let output_dir = tmp("export_even_pages_ico_missing_dir");
-        let err = export_even_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned()).unwrap_err();
+        let err =
+            export_even_pages_ico(missing.to_string_lossy().into_owned(), output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
         assert!(err.contains("File not found"));
     }
 
     // PARITY_BATCH_TESTS_END
+    // PARITY_BATCH2_TESTS_START
+    // Auto-generated parity batch2 tests
+
+    #[test]
+    fn reverse_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_range_local_odd_pages");
+        let err = reverse_range_local_odd_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_range_local_even_pages");
+        let err = reverse_range_local_even_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_odd_range_local_pages_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "move_odd_range_local_pages_to_start");
+        let err = move_odd_range_local_pages_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_even_range_local_pages_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "move_even_range_local_pages_to_start");
+        let err = move_even_range_local_pages_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_odd_range_local_pages_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "move_odd_range_local_pages_to_end");
+        let err = move_odd_range_local_pages_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn move_even_range_local_pages_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "move_even_range_local_pages_to_end");
+        let err = move_even_range_local_pages_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_range_local_odd_pages_by_rotation_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_range_local_odd_pages_by_rotation");
+        let err = sort_range_local_odd_pages_by_rotation(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_range_local_even_pages_by_rotation_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_range_local_even_pages_by_rotation");
+        let err = sort_range_local_even_pages_by_rotation(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_range_local_odd_pages_by_size_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_range_local_odd_pages_by_size");
+        let err = sort_range_local_odd_pages_by_size(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn sort_range_local_even_pages_by_size_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "sort_range_local_even_pages_by_size");
+        let err = sort_range_local_even_pages_by_size(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_range_local_odd_pages_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_range_local_odd_pages_to_start");
+        let err = duplicate_range_local_odd_pages_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_range_local_even_pages_to_start_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_range_local_even_pages_to_start");
+        let err = duplicate_range_local_even_pages_to_start(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_range_local_odd_pages_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_range_local_odd_pages_to_end");
+        let err = duplicate_range_local_odd_pages_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_range_local_even_pages_to_end_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_range_local_even_pages_to_end");
+        let err = duplicate_range_local_even_pages_to_end(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_range_local_odd_pages");
+        let err = crop_range_local_odd_pages(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_range_local_even_pages");
+        let err = crop_range_local_even_pages(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "expand_range_local_odd_pages");
+        let err = expand_range_local_odd_pages(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn expand_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "expand_range_local_even_pages");
+        let err = expand_range_local_even_pages(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "shrink_range_local_odd_pages");
+        let err = shrink_range_local_odd_pages(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn shrink_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "shrink_range_local_even_pages");
+        let err = shrink_range_local_even_pages(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "clear_crop_range_local_odd_pages");
+        let err = clear_crop_range_local_odd_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn clear_crop_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "clear_crop_range_local_even_pages");
+        let err = clear_crop_range_local_even_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_before_range_local_odd_pages");
+        let err = insert_blank_before_range_local_odd_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_before_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_before_range_local_even_pages");
+        let err = insert_blank_before_range_local_even_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_after_range_local_odd_pages");
+        let err = insert_blank_after_range_local_odd_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn insert_blank_after_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "insert_blank_after_range_local_even_pages");
+        let err = insert_blank_after_range_local_even_pages(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "bookmark_range_local_odd_pages");
+        let err = bookmark_range_local_odd_pages(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmark_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "bookmark_range_local_even_pages");
+        let err = bookmark_range_local_even_pages(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "set_page_size_range_local_odd_pages");
+        let err = set_page_size_range_local_odd_pages(path.clone(), 5, 10, "letter".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn set_page_size_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "set_page_size_range_local_even_pages");
+        let err = set_page_size_range_local_even_pages(path.clone(), 5, 10, "letter".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_range_local_odd_pages");
+        let output_path = tmp("extract_out.pdf");
+        let err =
+            extract_range_local_odd_pages(path.clone(), 5, 10, output_path.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_range_local_even_pages");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_range_local_even_pages(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_numbers_range_local_odd_pages");
+        let err = add_page_numbers_range_local_odd_pages(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_numbers_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_numbers_range_local_even_pages");
+        let err = add_page_numbers_range_local_even_pages(path.clone(), 5, 10, None).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_text_watermark_range_local_odd_pages");
+        let err = add_text_watermark_range_local_odd_pages(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_text_watermark_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_text_watermark_range_local_even_pages");
+        let err = add_text_watermark_range_local_even_pages(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_header_range_local_odd_pages");
+        let err = add_page_header_range_local_odd_pages(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_header_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_header_range_local_even_pages");
+        let err = add_page_header_range_local_even_pages(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_footer_range_local_odd_pages");
+        let err = add_page_footer_range_local_odd_pages(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_footer_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_footer_range_local_even_pages");
+        let err = add_page_footer_range_local_even_pages(path.clone(), 5, 10, "wm".to_string()).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_range_local_odd_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_border_range_local_odd_pages");
+        let err = add_page_border_range_local_odd_pages(path.clone(), 5, 10, 1.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn add_page_border_range_local_even_pages_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "add_page_border_range_local_even_pages");
+        let err = add_page_border_range_local_even_pages(path.clone(), 5, 10, 1.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_png");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_png");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_jpeg_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_jpeg");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_jpeg_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_jpeg");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_webp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_webp");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_webp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_webp");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_webp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_bmp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_bmp");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_bmp_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_bmp");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_bmp(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_tiff_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_tiff");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_tiff_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_tiff");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_tiff(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_gif_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_gif");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_gif_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_gif");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_gif(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_ppm_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_ppm");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_ppm_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_ppm");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_ppm(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_odd_pages_tga_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_odd_pages_tga");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_odd_pages_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_range_local_even_pages_tga_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_range_local_even_pages_tga");
+        let output_dir = tmp("export_dir");
+        let err = export_range_local_even_pages_tga(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_mod3_0_pages_in_range_mod3");
+        let err = rotate_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_mod3_1_pages_in_range_mod3");
+        let err = rotate_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_mod3_2_pages_in_range_mod3");
+        let err = rotate_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_mod3_0_pages_in_range_mod3_ccw_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_mod3_0_pages_in_range_mod3_ccw");
+        let err = rotate_mod3_0_pages_in_range_mod3_ccw(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_mod3_1_pages_in_range_mod3_ccw_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_mod3_1_pages_in_range_mod3_ccw");
+        let err = rotate_mod3_1_pages_in_range_mod3_ccw(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_mod3_2_pages_in_range_mod3_ccw_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_mod3_2_pages_in_range_mod3_ccw");
+        let err = rotate_mod3_2_pages_in_range_mod3_ccw(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_180_mod3_0_pages_in_range_mod3");
+        let err = rotate_180_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_180_mod3_1_pages_in_range_mod3");
+        let err = rotate_180_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn rotate_180_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "rotate_180_mod3_2_pages_in_range_mod3");
+        let err = rotate_180_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reset_rotation_mod3_0_pages_in_range_mod3");
+        let err = reset_rotation_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reset_rotation_mod3_1_pages_in_range_mod3");
+        let err = reset_rotation_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reset_rotation_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reset_rotation_mod3_2_pages_in_range_mod3");
+        let err = reset_rotation_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "delete_mod3_0_pages_in_range_mod3");
+        let err = delete_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "delete_mod3_1_pages_in_range_mod3");
+        let err = delete_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "delete_mod3_2_pages_in_range_mod3");
+        let err = delete_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "keep_mod3_0_pages_in_range_mod3");
+        let err = keep_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "keep_mod3_1_pages_in_range_mod3");
+        let err = keep_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn keep_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "keep_mod3_2_pages_in_range_mod3");
+        let err = keep_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_mod3_0_pages_in_range_mod3");
+        let err = duplicate_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_mod3_1_pages_in_range_mod3");
+        let err = duplicate_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn duplicate_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "duplicate_mod3_2_pages_in_range_mod3");
+        let err = duplicate_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "flatten_mod3_0_pages_in_range_mod3");
+        let err = flatten_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "flatten_mod3_1_pages_in_range_mod3");
+        let err = flatten_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn flatten_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "flatten_mod3_2_pages_in_range_mod3");
+        let err = flatten_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_mod3_0_pages_in_range_mod3");
+        let err = reverse_mod3_0_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_mod3_1_pages_in_range_mod3");
+        let err = reverse_mod3_1_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reverse_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "reverse_mod3_2_pages_in_range_mod3");
+        let err = reverse_mod3_2_pages_in_range_mod3(path.clone(), 5, 10).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_mod3_0_pages_in_range_mod3");
+        let err = crop_mod3_0_pages_in_range_mod3(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_mod3_1_pages_in_range_mod3");
+        let err = crop_mod3_1_pages_in_range_mod3(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn crop_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "crop_mod3_2_pages_in_range_mod3");
+        let err = crop_mod3_2_pages_in_range_mod3(path.clone(), 5, 10, 0.0, 0.0, 0.0, 0.0).unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_mod3_0_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_mod3_0_pages_in_range_mod3");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_mod3_0_pages_in_range_mod3(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_mod3_1_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_mod3_1_pages_in_range_mod3");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_mod3_1_pages_in_range_mod3(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn extract_mod3_2_pages_in_range_mod3_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "extract_mod3_2_pages_in_range_mod3");
+        let output_path = tmp("extract_out.pdf");
+        let err = extract_mod3_2_pages_in_range_mod3(path.clone(), 5, 10, output_path.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_0_pages_in_range_mod3_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_0_pages_in_range_mod3_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod3_0_pages_in_range_mod3_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_1_pages_in_range_mod3_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_1_pages_in_range_mod3_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod3_1_pages_in_range_mod3_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_2_pages_in_range_mod3_as_pdf_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_2_pages_in_range_mod3_as_pdf");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod3_2_pages_in_range_mod3_as_pdf(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_0_pages_in_range_mod3_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_0_pages_in_range_mod3_png");
+        let output_dir = tmp("export_dir");
+        let err = export_mod3_0_pages_in_range_mod3_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_1_pages_in_range_mod3_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_1_pages_in_range_mod3_png");
+        let output_dir = tmp("export_dir");
+        let err = export_mod3_1_pages_in_range_mod3_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_2_pages_in_range_mod3_png_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_2_pages_in_range_mod3_png");
+        let output_dir = tmp("export_dir");
+        let err = export_mod3_2_pages_in_range_mod3_png(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+            .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn export_mod3_0_pages_in_range_mod3_jpeg_rejects_invalid_range() {
+        let path = save(&mut build_pdf(2), "export_mod3_0_pages_in_range_mod3_jpeg");
+        let output_dir = tmp("export_dir");
+        let err =
+            export_mod3_0_pages_in_range_mod3_jpeg(path.clone(), 5, 10, output_dir.to_string_lossy().into_owned())
+                .unwrap_err();
+        assert!(err.contains("Invalid page range"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    // PARITY_BATCH2_TESTS_END
 
     #[test]
     fn duplicate_page_range_to_start_inserts_copies() {
