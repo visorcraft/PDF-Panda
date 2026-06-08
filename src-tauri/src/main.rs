@@ -6889,6 +6889,145 @@ fn pdf_image_stream_bytes(stream: &Stream) -> Option<(Vec<u8>, &'static str)> {
     Some((png, "png"))
 }
 
+fn pdf_numeric_f32(obj: &Object) -> Option<f32> {
+    match obj {
+        Object::Integer(v) => Some(*v as f32),
+        Object::Real(v) => Some(*v),
+        _ => None,
+    }
+}
+
+fn pdf_form_bbox(stream: &Stream) -> Option<[f32; 4]> {
+    let arr = stream.dict.get(b"BBox").ok()?.as_array().ok()?;
+    if arr.len() < 4 {
+        return None;
+    }
+    Some([pdf_numeric_f32(&arr[0])?, pdf_numeric_f32(&arr[1])?, pdf_numeric_f32(&arr[2])?, pdf_numeric_f32(&arr[3])?])
+}
+
+fn pdf_name_for_content_stream(name: &[u8]) -> String {
+    if name.is_empty() {
+        return "X".to_string();
+    }
+    let mut out = String::new();
+    for &byte in name {
+        if byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-' {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("#{:02X}", byte));
+        }
+    }
+    out
+}
+
+fn form_render_pixel_size(width_pt: f32, height_pt: f32) -> (i32, i32) {
+    let scale = (OCR_RENDER_W as f32 / width_pt.max(1.0)).max(1.0);
+    let w = (width_pt * scale).round().max(1.0) as i32;
+    let h = (height_pt * scale).round().max(1.0) as i32;
+    (w, h)
+}
+
+/// Build a one-page PDF that draws a single Form XObject at its natural BBox so
+/// PDFium can rasterize vector charts and other non-image XObjects.
+fn build_form_render_pdf(
+    src: &Document,
+    page_id: ObjectId,
+    form_src_id: ObjectId,
+    xobject_name: &[u8],
+) -> Result<Document, String> {
+    let bbox = src
+        .get_object(form_src_id)
+        .ok()
+        .and_then(|o| o.as_stream().ok())
+        .and_then(pdf_form_bbox)
+        .unwrap_or([0.0, 0.0, 612.0, 792.0]);
+    let llx = bbox[0];
+    let lly = bbox[1];
+    let width = (bbox[2] - llx).max(1.0);
+    let height = (bbox[3] - lly).max(1.0);
+
+    let mut dst = Document::with_version("1.5");
+    let pages_id = dst.new_object_id();
+    let mut remap = BTreeMap::new();
+
+    let form_dst_id = import_object(&mut dst, src, form_src_id, pages_id, &mut remap);
+
+    let mut page_resources_dst = src
+        .get_dictionary(page_id)
+        .ok()
+        .and_then(|page| page.get(b"Resources").ok())
+        .and_then(|obj| obj.as_dict().ok())
+        .map(|dict| import_dict(&mut dst, src, dict, pages_id, &mut remap))
+        .unwrap_or_default();
+
+    let mut xobjects = page_resources_dst
+        .get(b"XObject")
+        .ok()
+        .and_then(|obj| obj.as_dict().ok())
+        .cloned()
+        .unwrap_or_else(Dictionary::new);
+    xobjects.set(xobject_name.to_vec(), Object::Reference(form_dst_id));
+    page_resources_dst.set(b"XObject", Object::Dictionary(xobjects));
+
+    let pdf_name = pdf_name_for_content_stream(xobject_name);
+    let content = format!("q 1 0 0 1 {} {} cm /{pdf_name} Do Q\n", -llx, -lly);
+    let content_id = dst.add_object(Stream::new(Dictionary::new(), content.into_bytes()));
+
+    let mut page = Dictionary::new();
+    page.set("Type", Object::Name(b"Page".to_vec()));
+    page.set("Parent", Object::Reference(pages_id));
+    page.set("Resources", Object::Dictionary(page_resources_dst));
+    page.set(
+        "MediaBox",
+        Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(width), Object::Real(height)]),
+    );
+    page.set("Contents", Object::Reference(content_id));
+    let page_obj_id = dst.add_object(Object::Dictionary(page));
+
+    let mut pages = Dictionary::new();
+    pages.set("Type", Object::Name(b"Pages".to_vec()));
+    pages.set("Count", Object::Integer(1));
+    pages.set("Kids", Object::Array(vec![Object::Reference(page_obj_id)]));
+    dst.objects.insert(pages_id, Object::Dictionary(pages));
+
+    let mut catalog = Dictionary::new();
+    catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+    catalog.set("Pages", Object::Reference(pages_id));
+    let catalog_id = dst.add_object(Object::Dictionary(catalog));
+    dst.trailer.set("Root", Object::Reference(catalog_id));
+
+    Ok(dst)
+}
+
+fn render_imported_form_xobject_png(
+    src: &Document,
+    page_id: ObjectId,
+    form_src_id: ObjectId,
+    xobject_name: &[u8],
+) -> Result<Option<Vec<u8>>, String> {
+    let bbox = src
+        .get_object(form_src_id)
+        .ok()
+        .and_then(|o| o.as_stream().ok())
+        .and_then(pdf_form_bbox)
+        .unwrap_or([0.0, 0.0, 612.0, 792.0]);
+    let width_pt = (bbox[2] - bbox[0]).max(1.0);
+    let height_pt = (bbox[3] - bbox[1]).max(1.0);
+    let (render_w, render_h) = form_render_pixel_size(width_pt, height_pt);
+
+    let mut wrapper = build_form_render_pdf(src, page_id, form_src_id, xobject_name)?;
+    let temp_path =
+        std::env::temp_dir().join(format!("pp_form_{}_{}_{}.pdf", std::process::id(), form_src_id.0, form_src_id.1));
+    wrapper.save(&temp_path).map_err(|e| e.to_string())?;
+    let png = match render_page_png(&temp_path, 0, render_w, render_h) {
+        Ok(bytes) if !bytes.is_empty() => Some(bytes),
+        Ok(_) => None,
+        Err(_) => None,
+    };
+    let _ = fs::remove_file(&temp_path);
+    Ok(png)
+}
+
 fn append_page_embedded_images(
     doc: &Document,
     page_number: u32,
@@ -6914,7 +7053,7 @@ fn append_page_embedded_images(
     };
 
     let mut block = String::new();
-    for (_name, obj) in xobjects.iter() {
+    for (name, obj) in xobjects.iter() {
         let id = match obj {
             Object::Reference(id) => id,
             _ => continue,
@@ -6924,6 +7063,28 @@ fn append_page_embedded_images(
             None => continue,
         };
         let subtype = stream.dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok());
+        if subtype == Some(b"Form") {
+            if let Some(png) =
+                render_imported_form_xobject_png(doc, page_id, *id, name)?.filter(|bytes| !bytes.is_empty())
+            {
+                *image_seq += 1;
+                let file_name = format!("page-{page_number}-form-{image_seq}.png");
+                let ocr_text = ocr_png_bytes(&png)?;
+                fs::write(sink.assets_dir.join(&file_name), &png).map_err(|e| e.to_string())?;
+                block.push_str(&format!(
+                    "![Page {page_number} embedded form (vector chart)]({}/{file_name})\n\n",
+                    sink.rel_prefix
+                ));
+                if let Some(text) = ocr_text {
+                    let trimmed = text.trim();
+                    if !trimmed.is_empty() {
+                        block.push_str("#### OCR (embedded form)\n\n");
+                        block.push_str(&plain_text_to_markdown(trimmed));
+                    }
+                }
+            }
+            continue;
+        }
         if subtype != Some(b"Image") {
             continue;
         }
@@ -29940,6 +30101,76 @@ mod tests {
         assert!(block.contains("embedded image"));
         assert!(assets_dir.join("page-1-img-1.png").is_file());
 
+        let _ = fs::remove_dir_all(&assets_dir);
+    }
+
+    fn build_pdf_with_vector_form() -> Document {
+        let mut doc = build_pdf(1);
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let form_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Form".to_vec())),
+                (
+                    b"BBox".to_vec(),
+                    Object::Array(vec![
+                        Object::Integer(0),
+                        Object::Integer(0),
+                        Object::Integer(200),
+                        Object::Integer(100),
+                    ]),
+                ),
+            ]),
+            b"q 0.2 0.4 0.9 rg 10 10 180 80 re f Q".to_vec(),
+        )));
+        let mut xobjects = Dictionary::new();
+        xobjects.set(b"Chart1", Object::Reference(form_id));
+        let mut resources = Dictionary::new();
+        resources.set(b"XObject", Object::Dictionary(xobjects));
+        doc.get_dictionary_mut(page_id).unwrap().set(b"Resources", Object::Dictionary(resources));
+        doc
+    }
+
+    #[test]
+    fn build_form_render_pdf_produces_single_page() {
+        let doc = build_pdf_with_vector_form();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let form_id = doc
+            .get_dictionary(page_id)
+            .unwrap()
+            .get(b"Resources")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"XObject")
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"Chart1")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let wrapper = build_form_render_pdf(&doc, page_id, form_id, b"Chart1").unwrap();
+        assert_eq!(wrapper.get_pages().len(), 1);
+    }
+
+    /// Needs PDFium. Run: `PDFIUM_LIB_PATH=... cargo test append_page_embedded_images_renders_form -- --ignored --nocapture`
+    #[test]
+    #[ignore = "requires a PDFium library"]
+    fn append_page_embedded_images_renders_form() {
+        let doc = build_pdf_with_vector_form();
+        let assets_dir = std::env::temp_dir().join(format!("pp_md_form_assets_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&assets_dir);
+        let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: "doc_assets" };
+        let mut seq = 0u32;
+        let block = append_page_embedded_images(&doc, 1, &sink, &mut seq).unwrap();
+        assert_eq!(seq, 1);
+        assert!(block.contains("vector chart"));
+        let png_path = assets_dir.join("page-1-form-1.png");
+        assert!(png_path.is_file());
+        let png = fs::read(&png_path).unwrap();
+        assert!(png.starts_with(b"\x89PNG"));
+        assert!(png.len() > 100);
         let _ = fs::remove_dir_all(&assets_dir);
     }
 
