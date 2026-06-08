@@ -6588,6 +6588,9 @@ function App() {
       {showOpenModal && (
         <Modal onClose={() => setShowOpenModal(false)}>
           <h3>Open PDF</h3>
+          {!nativeDialogs && (
+            <p className="modal-help">Enter a path or use Browse…. Native file picker is off this session (Linux Wayland default).</p>
+          )}
           <label>PDF path:</label>
           <div className="modal-path-row">
             <input

@@ -164,6 +164,11 @@ macOS/Windows **package** signing via repository secrets — see
 | H N D S T X E G I F | Highlight / note / draw / shape / stamp / redact / page text / vector / image / forms |
 | Delete · Escape | Delete page (confirm) · exit tool or close modal |
 
+### Linux (Wayland & GPU)
+
+- **File dialogs:** Open/Save default to in-app path entry and the built-in PDF browser on **Linux Wayland** — the XDG desktop-portal picker can hang WebKitGTK on some stacks. macOS, Windows, and Linux X11 use native **Choose file…** buttons by default. Set `PDF_PANDA_NATIVE_DIALOGS=1` to opt in on Wayland; `PDF_PANDA_DISABLE_NATIVE_DIALOGS=1` forces in-app paths everywhere.
+- **DMABUF renderer:** At startup the app sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` when unset, avoiding `Gdk Error 71 (Protocol error)` crashes on some multi-GPU Wayland setups. GPU compositing stays on; only zero-copy presentation is disabled. Set your own value before launch to override.
+
 ### Environment variables
 
 | Variable | Purpose |
@@ -171,8 +176,9 @@ macOS/Windows **package** signing via repository secrets — see
 | `PDFIUM_LIB_PATH` | Override path to the PDFium shared library |
 | `PDF_PANDA_OCR_LANG` | Tesseract language code (default `eng`) |
 | `TESSERACT_CMD` | Path to the `tesseract` executable |
-| `PDF_PANDA_NATIVE_DIALOGS` | Set to `1` to enable native file dialogs on Linux Wayland |
-| `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | Set to `1` to force in-app path entry only |
+| `PDF_PANDA_NATIVE_DIALOGS` | `1` = enable native file dialogs on Linux Wayland |
+| `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | `1` = in-app path entry only (all platforms) |
+| `WEBKIT_DISABLE_DMABUF_RENDERER` | `1` = disable WebKitGTK DMABUF (set automatically on Linux when unset) |
 | `PDF_PANDA_TEST_PDF` | PDF path for the ignored `render_real_pdf_smoke` integration test |
 
 ---

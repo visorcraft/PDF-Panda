@@ -42,4 +42,7 @@ before a release tag.
 - [ ] Open an encrypted `_protected.pdf` with password prompt
 
 ## Platforms
-- [ ] Linux (Wayland), macOS, Windows smoke pass
+- [ ] Linux Wayland — Open PDF via path or Browse… (no **Choose file…** unless `PDF_PANDA_NATIVE_DIALOGS=1`); open/save does not hang
+- [ ] Linux Wayland — launch + page render without Gdk DMABUF protocol error (multi-GPU stack)
+- [ ] Linux X11 — native **Choose file…** on Open/Save when offered
+- [ ] macOS and Windows smoke pass
