@@ -4,6 +4,11 @@ mod licenses;
 mod pdf;
 
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
+use pdf::page_tree::{
+    delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict,
+    set_pages_kids, INHERITABLE_PAGE_KEYS,
+};
+use pdf::rotation::{page_rotation, rotate_all_pages_by, rotate_page_at, set_page_rotation};
 
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
@@ -840,86 +845,6 @@ fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u
     Ok(thumbnails)
 }
 
-fn get_pages_kids(doc: &Document) -> Result<(Vec<Object>, ObjectId), String> {
-    let catalog = doc.catalog().map_err(|e| e.to_string())?;
-    let pages_ref = catalog
-        .get(b"Pages")
-        .map_err(|_| "No Pages entry in catalog".to_string())?
-        .as_reference()
-        .map_err(|_| "Pages entry is not a reference".to_string())?;
-    let kids = doc
-        .get_dictionary(pages_ref)
-        .map_err(|e| e.to_string())?
-        .get(b"Kids")
-        .map_err(|_| "No Kids entry in pages dictionary".to_string())?
-        .as_array()
-        .map_err(|_| "Kids is not an array".to_string())?
-        .clone();
-    Ok((kids, pages_ref))
-}
-
-fn set_pages_kids(doc: &mut Document, pages_ref: ObjectId, kids: Vec<Object>) -> Result<(), String> {
-    // Keep /Count in sync with /Kids. These operations assume a flat page tree
-    // (every kid is a leaf page), which is what the rest of this module builds
-    // and edits, so the leaf count equals the number of kids. A stale /Count
-    // produces technically-malformed PDFs that stricter readers reject.
-    let count = kids.len() as i64;
-    let dict = doc.get_dictionary_mut(pages_ref).map_err(|e| e.to_string())?;
-    dict.set(b"Kids", Object::Array(kids));
-    dict.set(b"Count", Object::Integer(count));
-    Ok(())
-}
-
-/// Attributes a leaf page can inherit from ancestor /Pages nodes.
-const INHERITABLE_PAGE_KEYS: [&[u8]; 4] = [b"MediaBox", b"CropBox", b"Resources", b"Rotate"];
-
-fn is_page_dict(d: &Dictionary) -> bool {
-    d.get(b"Type").ok().and_then(|o| o.as_name().ok()).map(|n| n == b"Page").unwrap_or(false)
-}
-
-/// Resolve an inheritable page attribute by walking the page's /Parent chain.
-fn inherited_page_attr(doc: &Document, page: ObjectId, key: &[u8]) -> Option<Object> {
-    let mut dict = doc.get_dictionary(page).ok()?;
-    loop {
-        let parent_ref = dict.get(b"Parent").ok()?.as_reference().ok()?;
-        let parent = doc.get_dictionary(parent_ref).ok()?;
-        if let Ok(val) = parent.get(key) {
-            return Some(val.clone());
-        }
-        dict = parent;
-    }
-}
-
-/// Collapse a (possibly nested) page tree so every leaf page is a direct child of
-/// the root /Pages node. Inheritable attributes are pushed onto each leaf first
-/// so reparenting can't drop a page's MediaBox/Resources/etc. Afterwards /Kids is
-/// a flat, ordered leaf list (index == page order) and /Count is correct, which
-/// is what `move_page`/`insert_pdf` assume. Returns the root /Pages id.
-fn flatten_pages(doc: &mut Document) -> Result<ObjectId, String> {
-    let (_, pages_ref) = get_pages_kids(doc)?;
-    let leaves: Vec<ObjectId> = doc.get_pages().into_values().collect();
-    for &leaf in &leaves {
-        for key in INHERITABLE_PAGE_KEYS {
-            let present = doc.get_dictionary(leaf).map(|d| d.get(key).is_ok()).unwrap_or(false);
-            if present {
-                continue;
-            }
-            if let Some(val) = inherited_page_attr(doc, leaf, key) {
-                if let Ok(d) = doc.get_dictionary_mut(leaf) {
-                    d.set(key.to_vec(), val);
-                }
-            }
-        }
-    }
-    for &leaf in &leaves {
-        if let Ok(d) = doc.get_dictionary_mut(leaf) {
-            d.set("Parent", Object::Reference(pages_ref));
-        }
-    }
-    let kids: Vec<Object> = leaves.iter().map(|id| Object::Reference(*id)).collect();
-    set_pages_kids(doc, pages_ref, kids)?;
-    Ok(pages_ref)
-}
 
 /// Deep-copy object `id` (and everything it transitively references) from `src`
 /// into `dst` with a fresh id, remapping references. `remap` dedupes shared
@@ -1337,45 +1262,17 @@ fn merge_pdf(path: String, merge_path: String, merge_start: u32, merge_end: u32)
 #[tauri::command]
 fn rotate_page(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let current_rotation = doc
-        .get_dictionary(*page_id)
-        .ok()
-        .and_then(|d| d.get(b"Rotate").ok())
-        .and_then(|o| o.as_i64().ok())
-        .unwrap_or(0);
-
-    let next_rotation = (current_rotation + 90) % 360;
-
-    doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.set(b"Rotate", Object::Integer(next_rotation));
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::io::mutate_pdf(&path, |doc| {
+        rotate_page_at(doc, page_index, 90)?;
+        Ok(())
+    })
 }
 
 /// Rotate every page in the document 90° clockwise.
 #[tauri::command]
 fn rotate_all_pages(path: String) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
-    for page_id in &page_ids {
-        let current_rotation = doc
-            .get_dictionary(*page_id)
-            .ok()
-            .and_then(|d| d.get(b"Rotate").ok())
-            .and_then(|o| o.as_i64().ok())
-            .unwrap_or(0);
-        doc.get_dictionary_mut(*page_id)
-            .map_err(|e| e.to_string())?
-            .set(b"Rotate", Object::Integer((current_rotation + 90) % 360));
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(page_ids.len() as u32)
+    pdf::io::mutate_pdf(&path, |doc| rotate_all_pages_by(doc, 90))
 }
 
 /// Reverse the document page order.
@@ -1427,21 +1324,7 @@ fn add_blank_page(path: String, at_index: u32) -> Result<u32, String> {
 #[tauri::command]
 fn delete_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    pdf::io::mutate_pdf(&path, |doc| {
-        let pages_ref = flatten_pages(doc)?;
-        let (mut kids, _) = get_pages_kids(doc)?;
-        let total = kids.len() as u32;
-        if start_page >= total || end_page >= total || start_page > end_page {
-            return Err(format!("Invalid page range: {start_page}-{end_page}"));
-        }
-        let delete_count = end_page - start_page + 1;
-        if delete_count >= total {
-            return Err("Cannot delete every page in the document".to_string());
-        }
-        kids.drain(start_page as usize..=end_page as usize);
-        set_pages_kids(doc, pages_ref, kids)?;
-        Ok(delete_count)
-    })
+    pdf::io::mutate_pdf(&path, |doc| delete_kids_in_range(doc, start_page, end_page))
 }
 
 fn append_outline_item(doc: &mut Document, title: &str, page_id: ObjectId) -> Result<(), String> {
@@ -1637,28 +1520,13 @@ fn crop_page(
     Ok(())
 }
 
-fn page_rotation(doc: &Document, page_id: ObjectId) -> i64 {
-    doc.get_dictionary(page_id).ok().and_then(|d| d.get(b"Rotate").ok()).and_then(|o| o.as_i64().ok()).unwrap_or(0)
-}
-
-fn set_page_rotation(doc: &mut Document, page_id: ObjectId, rotation: i64) -> Result<(), String> {
-    let normalized = rotation.rem_euclid(360);
-    if normalized == 0 {
-        doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"Rotate");
-    } else {
-        doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Rotate", Object::Integer(normalized));
-    }
-    Ok(())
-}
 
 /// Rotate `page_index` 90° counter-clockwise.
 #[tauri::command]
 fn rotate_page_ccw(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
     pdf::io::mutate_pdf(&path, |doc| {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let next = (page_rotation(doc, page_id) + 270) % 360;
-        set_page_rotation(doc, page_id, next)?;
+        rotate_page_at(doc, page_index, 270)?;
         Ok(())
     })
 }

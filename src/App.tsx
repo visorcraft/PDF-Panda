@@ -2,12 +2,14 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openNativeDialog } from '@tauri-apps/plugin-dialog';
-import { TitleBar } from './chrome/TitleBar';
+import { AppShell } from './chrome/AppShell';
 import { buildAppMenus } from './menu/buildAppMenus';
 import { buildAppMenuContext } from './menu/buildAppMenuContext';
-import { MenuChrome } from './menu/MenuChrome';
+import { useAppBootstrap } from './app/useAppBootstrap';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
-import { Toast } from './ui/Toast';
+import { usePdfSearch } from './pdf/usePdfSearch';
+import { usePdfBrowser } from './pdf/usePdfBrowser';
+import { usePrintJobs } from './pdf/usePrintJobs';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
 import {
   type ImageExportFormat,
@@ -24,16 +26,13 @@ import {
 import { useUndoHistory } from './pdf/useUndoHistory';
 import { usePdfDocument } from './pdf/usePdfDocument';
 import { type FormFieldKind } from './modals/AddFormFieldModal';
-import { type PdfBrowserEntry, type PdfBrowserListing } from './modals/PdfBrowserModal';
 import { type PageSizePreset } from './modals/PageSizeModal';
-import { type PdfTextSearchMatch } from './modals/SearchModal';
 import { type TesseractInstallGuide } from './modals/TesseractReminderModal';
 import { type UnsavedChoice } from './modals/UnsavedChangesModal';
-import { AppModals } from './modals/AppModals';
 import { buildAppModalsContext } from './modals/appModalsContext';
-import { AppBody } from './viewer/AppBody';
+import { buildViewerContext } from './viewer/buildViewerContext';
 import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
-import { PageControls } from './viewer/PageControls';
+import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
   BMP_DIALOG_FILTER,
   CERT_DIALOG_FILTER,
@@ -49,7 +48,6 @@ import {
   LAST_BROWSER_DIR_KEY,
   TIFF_DIALOG_FILTER,
   WEBP_DIALOG_FILTER,
-  WHEEL_NAV_COOLDOWN,
   ZOOM_STEP,
   type ShapeKind,
   type StampKind,
@@ -63,7 +61,6 @@ import {
   type PageTextEdit,
   type PageVectorEdit,
   type PdfBookmarkEntry,
-  type PdfBrowserTarget,
   type PdfDocumentMetadata,
   type PdfPageSize,
   type PdfSignatureInfo,
@@ -211,23 +208,11 @@ function App() {
   const loadPdfBookmarksRef = useRef<(path: string) => void>(() => {});
   const loadPageSizesRef = useRef<(path: string) => void>(() => {});
 
-  // Scrolling / wheel navigation
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const pendingScrollRef = useRef<'top' | 'bottom' | null>(null);
-  const lastWheelNavRef = useRef(0);
-
-  // Print
-  const [printPages, setPrintPages] = useState<string[]>([]);
-
   // Modals
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [openFilePath, setOpenFilePath] = useState<string>('');
   const [recentPdfs, setRecentPdfs] = useState<string[]>(() => readStoredStringArray(RECENT_PDFS_KEY));
   const [lastBrowserDir, setLastBrowserDir] = useState<string>(() => readStoredString(LAST_BROWSER_DIR_KEY));
-  const [showBrowserModal, setShowBrowserModal] = useState(false);
-  const [browserTarget, setBrowserTarget] = useState<PdfBrowserTarget>('open');
-  const [browserListing, setBrowserListing] = useState<PdfBrowserListing | null>(null);
-  const [browserPathInput, setBrowserPathInput] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePageInput, setDeletePageInput] = useState('1');
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -327,15 +312,6 @@ function App() {
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeFilePath, setMergeFilePath] = useState('');
   const [mergeSourcePageCount, setMergeSourcePageCount] = useState<number | null>(null);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchMatchCase, setSearchMatchCase] = useState(false);
-  const [searchWholeWord, setSearchWholeWord] = useState(false);
-  const [searchResults, setSearchResults] = useState<PdfTextSearchMatch[]>([]);
-  const [searchResultIndex, setSearchResultIndex] = useState(0);
-  const [activeSearchRect, setActiveSearchRect] = useState<[number, number, number, number] | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
   // When a source PDF is chosen for Insert, load *its* page count so the From/To
   // range reflects the source document (not the currently open one) and defaults
   // to inserting the whole file.
@@ -425,22 +401,17 @@ function App() {
     }
   }, [tesseractDoNotRemind, tesseractReminderSource]);
 
-  useEffect(() => {
-    void (async () => {
-      const [dialogs, available, guide] = await Promise.all([
-        invoke<boolean>('native_file_dialogs_enabled').catch(() => false),
-        invoke<boolean>('ocr_available').catch(() => true),
-        invoke<TesseractInstallGuide>('tesseract_install_guide').catch(() => null),
-      ]);
-      setNativeDialogs(dialogs);
-      setOcrAvailable(available);
-      setTesseractInstallGuide(guide ?? DEFAULT_TESSERACT_GUIDE);
-      if (!available && !isTesseractReminderDismissed()) {
-        setTesseractReminderSource('launch');
-        setShowTesseractModal(true);
-      }
-    })();
+  const showLaunchTesseractReminder = useCallback(() => {
+    setTesseractReminderSource('launch');
+    setShowTesseractModal(true);
   }, []);
+
+  useAppBootstrap({
+    onNativeDialogs: setNativeDialogs,
+    onOcrAvailable: setOcrAvailable,
+    onTesseractInstallGuide: setTesseractInstallGuide,
+    onShowTesseractReminder: showLaunchTesseractReminder,
+  });
 
   const loadPageEdits = useCallback(async (path: string, page: number) => {
     if (!path) {
@@ -603,6 +574,78 @@ function App() {
     return loaded === true;
   };
 
+  const {
+    showBrowserModal,
+    setShowBrowserModal,
+    browserListing,
+    browserPathInput,
+    setBrowserPathInput,
+    loadPdfBrowser,
+    openPdfBrowser,
+    commitBrowserPath,
+    handleBrowserEntryClick,
+  } = usePdfBrowser({
+    lastBrowserDir,
+    originalPath,
+    openFilePath,
+    insertFilePath,
+    replaceSourcePath,
+    interleaveFilePath,
+    prependFilePath,
+    mergeFilePath,
+    withLoading,
+    loadPdfFromPath,
+    rememberBrowserDirectory,
+    interleaveRange,
+    prependRange,
+    setOpenFilePath,
+    setInsertFilePath,
+    setReplaceSourcePath,
+    setReplaceSourcePageCount,
+    setReplaceSourcePage,
+    setInterleaveFilePath,
+    setInterleaveSourcePageCount,
+    setPrependFilePath,
+    setPrependSourcePageCount,
+    setMergeFilePath,
+    setShowOpenModal,
+  });
+
+  const {
+    showSearchModal,
+    searchQuery,
+    setSearchQuery,
+    searchMatchCase,
+    setSearchMatchCase,
+    searchWholeWord,
+    setSearchWholeWord,
+    searchResults,
+    searchResultIndex,
+    activeSearchRect,
+    searchInputRef,
+    openSearchModal,
+    closeSearchModal,
+    runPdfSearch,
+    stepSearchMatch,
+  } = usePdfSearch({
+    filePath,
+    withLoading,
+    renderPage,
+    setViewMode,
+    setCurrentPage,
+    setPageInput,
+    showToast,
+  });
+
+  const { printPages, handlePrint, clearPrintPages } = usePrintJobs({ filePath, pageCount, withLoading });
+
+  const { scrollRef, handleWheel, handleImageLoad } = useWheelNavigation({
+    pageCount,
+    viewMode,
+    currentPage,
+    goToPage,
+  });
+
   const openPdf = () => guardUnsaved(() => {
     setOpenFilePath(originalPath);
     setShowOpenModal(true);
@@ -638,80 +681,6 @@ function App() {
     setOpenFilePath(path);
     const loaded = await loadPdfFromPath(path);
     if (loaded) setShowOpenModal(false);
-  };
-
-  const loadPdfBrowser = async (path?: string) => {
-    await withLoading(async () => {
-      const listing = await invoke<PdfBrowserListing>('list_pdf_browser_entries', {
-        path: path && path.trim() ? path.trim() : null,
-      });
-      setBrowserListing(listing);
-      setBrowserPathInput(listing.currentDir);
-    });
-  };
-
-  const openPdfBrowser = (target: PdfBrowserTarget) => {
-    setBrowserTarget(target);
-    setShowBrowserModal(true);
-    const sourcePath = target === 'insert'
-      ? insertFilePath
-      : target === 'replace'
-        ? replaceSourcePath
-        : target === 'interleave'
-          ? interleaveFilePath
-          : target === 'prepend'
-            ? prependFilePath
-            : mergeFilePath;
-    const startPath = target === 'open'
-      ? lastBrowserDir || directoryFromPath(openFilePath) || directoryFromPath(originalPath)
-      : directoryFromPath(sourcePath) || lastBrowserDir || directoryFromPath(originalPath);
-    void loadPdfBrowser(startPath);
-  };
-
-  const commitBrowserPath = () => {
-    void loadPdfBrowser(browserPathInput);
-  };
-
-  const handleBrowserEntryClick = async (entry: PdfBrowserEntry) => {
-    if (entry.isDir) {
-      await loadPdfBrowser(entry.path);
-      return;
-    }
-
-    if (browserTarget === 'open') {
-      setOpenFilePath(entry.path);
-      const loaded = await loadPdfFromPath(entry.path);
-      if (!loaded) return;
-      setShowOpenModal(false);
-    } else if (browserTarget === 'insert') {
-      setInsertFilePath(entry.path);
-      rememberBrowserDirectory(entry.path);
-    } else if (browserTarget === 'replace') {
-      setReplaceSourcePath(entry.path);
-      rememberBrowserDirectory(entry.path);
-      void invoke<number>('get_pdf_page_count', { path: entry.path }).then((count) => {
-        setReplaceSourcePageCount(count);
-        setReplaceSourcePage(0);
-      });
-    } else if (browserTarget === 'interleave') {
-      setInterleaveFilePath(entry.path);
-      rememberBrowserDirectory(entry.path);
-      void invoke<number>('get_pdf_page_count', { path: entry.path }).then((count) => {
-        setInterleaveSourcePageCount(count);
-        interleaveRange.reset(0, Math.max(0, count - 1));
-      });
-    } else if (browserTarget === 'prepend') {
-      setPrependFilePath(entry.path);
-      rememberBrowserDirectory(entry.path);
-      void invoke<number>('get_pdf_page_count', { path: entry.path }).then((count) => {
-        setPrependSourcePageCount(count);
-        prependRange.reset(0, Math.max(0, count - 1));
-      });
-    } else {
-      setMergeFilePath(entry.path);
-      rememberBrowserDirectory(entry.path);
-    }
-    setShowBrowserModal(false);
   };
 
   const handleDragStart = (idx: number) => setDraggedIndex(idx);
@@ -2179,56 +2148,6 @@ function App() {
     setShowMergeModal(true);
   };
 
-  const openSearchModal = () => {
-    if (!filePath) return;
-    setShowSearchModal(true);
-    window.requestAnimationFrame(() => searchInputRef.current?.focus());
-  };
-
-  const closeSearchModal = () => {
-    setShowSearchModal(false);
-    setActiveSearchRect(null);
-  };
-
-  const goToSearchMatch = async (index: number, results: PdfTextSearchMatch[] = searchResults) => {
-    if (!filePath || results.length === 0) return;
-    const clamped = Math.max(0, Math.min(index, results.length - 1));
-    const match = results[clamped];
-    setSearchResultIndex(clamped);
-    setActiveSearchRect(match.rect);
-    setViewMode('pdf');
-    setCurrentPage(match.page_index);
-    setPageInput(String(match.page_index + 1));
-    await withLoading(() => renderPage(filePath, match.page_index));
-  };
-
-  const runPdfSearch = async () => {
-    if (!filePath || !searchQuery.trim()) return;
-    await withLoading(async () => {
-      const results = await invoke<PdfTextSearchMatch[]>('search_pdf_text', {
-        path: filePath,
-        query: searchQuery.trim(),
-        matchCase: searchMatchCase,
-        matchWholeWord: searchWholeWord,
-      });
-      setSearchResults(results);
-      if (results.length === 0) {
-        setSearchResultIndex(0);
-        setActiveSearchRect(null);
-        showToast('No matches found', 'error');
-        return;
-      }
-      showToast(`${results.length} match${results.length === 1 ? '' : 'es'} found`);
-      await goToSearchMatch(0, results);
-    });
-  };
-
-  const stepSearchMatch = (delta: number) => {
-    if (searchResults.length === 0) return;
-    const next = (searchResultIndex + delta + searchResults.length) % searchResults.length;
-    void goToSearchMatch(next);
-  };
-
   const handleDeletePage = async () => {
     if (!filePath || pageCount === null) return;
     if (pageCount <= 1) {
@@ -2309,36 +2228,6 @@ function App() {
       return;
     }
     goToPage(n - 1);
-  };
-
-  // Wheel-driven page turn at the scroll boundaries.
-  const handleWheel = (e: React.WheelEvent) => {
-    const el = scrollRef.current;
-    if (!el || pageCount === null || viewMode !== 'pdf') return;
-
-    const atTop = el.scrollTop <= 0;
-    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-    const now = Date.now();
-    if (now - lastWheelNavRef.current < WHEEL_NAV_COOLDOWN) return;
-
-    if (e.deltaY > 0 && atBottom && currentPage < pageCount - 1) {
-      lastWheelNavRef.current = now;
-      pendingScrollRef.current = 'top';
-      goToPage(currentPage + 1);
-    } else if (e.deltaY < 0 && atTop && currentPage > 0) {
-      lastWheelNavRef.current = now;
-      pendingScrollRef.current = 'bottom';
-      goToPage(currentPage - 1);
-    }
-  };
-
-  // After a wheel page-turn, position the new page sensibly: top when going
-  // forward, bottom when going back.
-  const handleImageLoad = () => {
-    const el = scrollRef.current;
-    if (!el || pendingScrollRef.current === null) return;
-    el.scrollTop = pendingScrollRef.current === 'bottom' ? el.scrollHeight : 0;
-    pendingScrollRef.current = null;
   };
 
   // Highlight annotation handlers — coordinates are stored in natural (unscaled)
@@ -3321,8 +3210,7 @@ function App() {
     setInsertFilePath('');
     setShowMergeModal(false);
     setMergeFilePath('');
-    setShowSearchModal(false);
-    setActiveSearchRect(null);
+    closeSearchModal();
     setShowImageInsertModal(false);
     setShowAddFormFieldModal(false);
     setShowSummaryModal(false);
@@ -3802,10 +3690,7 @@ function App() {
     setNewFormCheckboxChecked(false);
     setShowDeleteModal(false);
     revokeViewerAssets();
-    setPrintPages((prev) => {
-      prev.forEach((url) => URL.revokeObjectURL(url));
-      return [];
-    });
+    clearPrintPages();
     showToast('PDF closed');
   };
   requestClosePdfRef.current = () => guardUnsaved(closePdf);
@@ -4141,33 +4026,7 @@ function App() {
   const toggleSignaturesPanel = () => setShowSignaturesPanel((prev) => !prev);
   openSignModalRef.current = openSignModal;
 
-  const handlePrint = async () => {
-    if (!filePath || pageCount === null) return;
-    await withLoading(async () => {
-      const urls: string[] = [];
-      for (let i = 0; i < pageCount; i++) {
-        const bytes = await invoke<number[]>('render_pdf_page', {
-          path: filePath, pageIndex: i, width: 1000, height: 1414,
-        });
-        const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-        urls.push(URL.createObjectURL(blob));
-      }
-      setPrintPages(urls);
-    });
-  };
   handlePrintRef.current = handlePrint;
-
-  // Once the print pages are in the DOM, open the native print dialog, then
-  // clean up the object URLs.
-  useEffect(() => {
-    if (printPages.length === 0) return;
-    const timer = setTimeout(() => {
-      window.print();
-      printPages.forEach((url) => URL.revokeObjectURL(url));
-      setPrintPages([]);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [printPages]);
 
   const appMenus = buildAppMenus(buildAppMenuContext({
     hasPdf: !!filePath,
@@ -4465,57 +4324,44 @@ function App() {
 
 
   return (
-    <div className="app">
-      <TitleBar title={windowTitle} />
-      <Toast notification={toast} />
-
-      {loading && (
-        <div className="loading-overlay">
-          <div className="spinner" />
-        </div>
-      )}
-
-      <div className="app-chrome">
-        <MenuChrome
-          menus={appMenus.menus}
-          quickAccess={appMenus.quickAccess}
-          allActions={appMenus.allActions}
-          showCommandPalette={showCommandPalette}
-          showShortcutsHelp={showShortcutsHelp}
-          showLicenses={showLicenses}
-          showCredits={showCredits}
-          showAbout={showAbout}
-          onCloseCommandPalette={() => setShowCommandPalette(false)}
-          onCloseShortcutsHelp={() => setShowShortcutsHelp(false)}
-          onCloseLicenses={() => setShowLicenses(false)}
-          onCloseCredits={() => setShowCredits(false)}
-          onCloseAbout={() => setShowAbout(false)}
-          modeExtras={modeToolbarExtras}
-        />
-
-        {pageCount !== null && viewMode === 'pdf' && (
-          <PageControls
-            pageCount={pageCount}
-            currentPage={currentPage}
-            pageInput={pageInput}
-            pageSizes={pageSizes}
-            onPageInputChange={setPageInput}
-            onCommitPage={commitPage}
-            onGoToPage={goToPage}
-            zoom={zoom}
-            zoomInput={zoomInput}
-            onZoomInputChange={setZoomInput}
-            onCommitZoom={commitZoom}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onResetZoom={resetZoom}
-          />
-        )}
-      </div>
-
-      <AppBody
-        filePath={filePath}
-        sidebar={{
+    <AppShell
+      windowTitle={windowTitle}
+      toast={toast}
+      loading={loading}
+      chrome={{
+        menus: appMenus,
+        showCommandPalette,
+        showShortcutsHelp,
+        showLicenses,
+        showCredits,
+        showAbout,
+        onCloseCommandPalette: () => setShowCommandPalette(false),
+        onCloseShortcutsHelp: () => setShowShortcutsHelp(false),
+        onCloseLicenses: () => setShowLicenses(false),
+        onCloseCredits: () => setShowCredits(false),
+        onCloseAbout: () => setShowAbout(false),
+        modeExtras: modeToolbarExtras,
+        showPageControls: pageCount !== null && viewMode === 'pdf',
+        pageControls: pageCount !== null && viewMode === 'pdf' ? {
+          pageCount,
+          currentPage,
+          pageInput,
+          pageSizes,
+          onPageInputChange: setPageInput,
+          onCommitPage: commitPage,
+          onGoToPage: goToPage,
+          zoom,
+          zoomInput,
+          onZoomInputChange: setZoomInput,
+          onCommitZoom: commitZoom,
+          onZoomIn: zoomIn,
+          onZoomOut: zoomOut,
+          onResetZoom: resetZoom,
+        } : null,
+      }}
+      body={buildViewerContext({
+        filePath,
+        sidebar: {
           filePath,
           thumbnails,
           currentPage,
@@ -4542,8 +4388,8 @@ function App() {
           onFormDraftsChange: setFormDrafts,
           onOpenAddFormFieldModal: openAddFormFieldModal,
           onApplyFormField: applyFormField,
-        }}
-        viewer={{
+        },
+        viewer: {
           viewMode,
           scrollRef,
           onWheel: handleWheel,
@@ -4591,18 +4437,11 @@ function App() {
             onRemoveInkStroke: removeInkStroke,
             onRemoveTextNote: removeTextNote,
           },
-        }}
-      />
-
-      <AppModals ctx={modalCtx} />
-
-      {/* Print surface — hidden on screen, shown only by the print stylesheet */}
-      <div className="print-root">
-        {printPages.map((src, i) => (
-          <img key={i} src={src} className="print-page" alt={`Print page ${i + 1}`} />
-        ))}
-      </div>
-    </div>
+        },
+      })}
+      modals={{ ctx: modalCtx }}
+      printPages={printPages}
+    />
   );
 }
 
