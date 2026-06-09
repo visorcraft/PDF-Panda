@@ -28,9 +28,18 @@ import { usePdfDocument } from './pdf/usePdfDocument';
 import { type FormFieldKind } from './modals/AddFormFieldModal';
 import { type PageSizePreset } from './modals/PageSizeModal';
 import { type TesseractInstallGuide } from './modals/TesseractReminderModal';
-import { type UnsavedChoice } from './modals/UnsavedChangesModal';
 import { buildAppModalsContext } from './modals/appModalsContext';
 import { buildViewerContext } from './viewer/buildViewerContext';
+import { buildChromeContext } from './chrome/buildChromeContext';
+import { useUnsavedGuard } from './app/useUnsavedGuard';
+import { useModalDismiss } from './app/useModalDismiss';
+import { useAppKeyboard, type AppKeyboardActions } from './app/useAppKeyboard';
+import { usePanelLoaders } from './app/usePanelLoaders';
+import { useClosePdf } from './app/usePdfLifecycle';
+import { usePdfRecents } from './app/usePdfRecents';
+import { usePageZoom } from './viewer/usePageZoom';
+import { useDrawingGesture } from './viewer/useDrawingGesture';
+import { getImageCoords as imageCoordsFromClick } from './viewer/getImageCoords';
 import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
@@ -43,12 +52,10 @@ import {
   PDF_DIALOG_FILTER,
   PNG_DIALOG_FILTER,
   PPM_DIALOG_FILTER,
-  RECENT_PDF_LIMIT,
   RECENT_PDFS_KEY,
   LAST_BROWSER_DIR_KEY,
   TIFF_DIALOG_FILTER,
   WEBP_DIALOG_FILTER,
-  ZOOM_STEP,
   type ShapeKind,
   type StampKind,
   STAMP_PRESETS,
@@ -71,7 +78,6 @@ import {
   type ViewMode,
 } from './app/types';
 import {
-  clampZoom,
   directoryFromPath,
   dismissTesseractReminder,
   ensureExtension,
@@ -86,7 +92,6 @@ import {
   readStoredStringArray,
   siblingMarkdownPath,
   writeStoredString,
-  writeStoredStringArray,
 } from './app/utils';
 import { runAnnotationRemoveViaEdit, type AnnotationRemoveCommand } from './pdf/runAnnotationEdit';
 
@@ -95,8 +100,6 @@ function App() {
   const [originalPath, setOriginalPath] = useState<string>(''); // user's real file (display / recents / Save target)
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const isDirtyRef = useRef(false);
-  const pendingNavRef = useRef<null | (() => void | Promise<void>)>(null);
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsPath, setSaveAsPath] = useState<string>('');
   const [showMarkdownSaveAsModal, setShowMarkdownSaveAsModal] = useState(false);
@@ -197,12 +200,21 @@ function App() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
-  const [highlightStart, setHighlightStart] = useState<{ x: number; y: number } | null>(null);
-  const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  const [inkDrawing, setInkDrawing] = useState(false);
-  const [inkDraft, setInkDraft] = useState<number[]>([]);
-  const [shapeLineEnd, setShapeLineEnd] = useState<{ x: number; y: number } | null>(null);
-  const [drawing, setDrawing] = useState(false);
+  const {
+    highlightStart,
+    setHighlightStart,
+    highlightRect,
+    setHighlightRect,
+    inkDrawing,
+    setInkDrawing,
+    inkDraft,
+    setInkDraft,
+    shapeLineEnd,
+    setShapeLineEnd,
+    drawing,
+    setDrawing,
+    cancelDrawing,
+  } = useDrawingGesture();
   const imgRef = useRef<HTMLImageElement>(null);
   const cancelDrawingRef = useRef<() => void>(() => {});
   const loadPdfBookmarksRef = useRef<(path: string) => void>(() => {});
@@ -358,6 +370,17 @@ function App() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  const { loadFormFields, loadPdfBookmarks, loadPdfSignatures } = usePanelLoaders({
+    filePath,
+    setFormFields,
+    setFormDrafts,
+    setPdfBookmarks,
+    setPdfSignatures,
+    setSignatureVerification,
+  });
+  loadPdfBookmarksRef.current = (path) => { void loadPdfBookmarks(path); };
+
+
   const pageNumbersRange = usePageRange({ pageCount, currentPage, showToast });
   const watermarkRange = usePageRange({ pageCount, currentPage, showToast });
   const flattenRange = usePageRange({ pageCount, currentPage, showToast });
@@ -461,14 +484,21 @@ function App() {
     writeStoredString(LAST_BROWSER_DIR_KEY, dir);
   }, []);
 
-  const rememberOpenedPdf = useCallback((path: string) => {
-    rememberBrowserDirectory(path);
-    setRecentPdfs((prev) => {
-      const next = [path, ...prev.filter((item) => item !== path)].slice(0, RECENT_PDF_LIMIT);
-      writeStoredStringArray(RECENT_PDFS_KEY, next);
-      return next;
-    });
-  }, [rememberBrowserDirectory]);
+  const handleSaveRef = useRef<() => void | Promise<void>>(async () => {});
+
+  const {
+    showUnsavedModal,
+    setShowUnsavedModal,
+    pendingNavRef,
+    guardUnsaved,
+    resolveUnsaved,
+  } = useUnsavedGuard({
+    isDirty,
+    setIsDirty,
+    onSave: () => handleSaveRef.current(),
+  });
+
+  const { rememberOpenedPdf } = usePdfRecents({ rememberBrowserDirectory, setRecentPdfs });
 
   const withLoading = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
     setLoading(true);
@@ -638,6 +668,52 @@ function App() {
   });
 
   const { printPages, handlePrint, clearPrintPages } = usePrintJobs({ filePath, pageCount, withLoading });
+
+  const { closePdf } = useClosePdf({
+    filePath,
+    discardHistory,
+    cancelDrawing,
+    revokeViewerAssets,
+    clearPrintPages,
+    showToast,
+    setFilePath,
+    setOriginalPath,
+    setIsDirty,
+    setPageCount,
+    setCurrentPage,
+    setPageInput,
+    setZoom,
+    setViewMode,
+    setMarkdownText,
+    setMarkdownPath,
+    setMarkdownOcrNotice,
+    setPdfRevision,
+    setMarkdownRevision,
+    setHighlightMode,
+    setImageInsertMode,
+    setFormAddMode,
+    setImageSourcePath,
+    setShowImageInsertModal,
+    setShowFormsPanel,
+    setShowSignaturesPanel,
+    setShowBookmarksPanel,
+    setPdfBookmarks,
+    setPageSizes,
+    setPdfSignatures,
+    setSignatureVerification,
+    setShowSignModal,
+    setShowMetadataModal,
+    setFormFields,
+    setFormDrafts,
+    setShowAddFormFieldModal,
+    setNewFormFieldName,
+    setNewFormFieldKind,
+    setNewFormFieldOptions,
+    setNewFormRadioGroup,
+    setNewFormRadioOption,
+    setNewFormCheckboxChecked,
+    setShowDeleteModal,
+  });
 
   const { scrollRef, handleWheel, handleImageLoad } = useWheelNavigation({
     pageCount,
@@ -2207,39 +2283,9 @@ function App() {
     });
   };
 
-  // Zoom
-  const zoomIn = () => setZoom((z) => clampZoom(+(z + ZOOM_STEP).toFixed(2)));
-  const zoomOut = () => setZoom((z) => clampZoom(+(z - ZOOM_STEP).toFixed(2)));
-  const resetZoom = () => setZoom(1);
 
-  const commitZoom = () => {
-    const n = parseInt(zoomInput, 10);
-    if (Number.isNaN(n)) {
-      setZoomInput(String(Math.round(zoom * 100)));
-      return;
-    }
-    setZoom(clampZoom(n / 100));
-  };
-
-  const commitPage = () => {
-    const n = parseInt(pageInput, 10);
-    if (Number.isNaN(n) || pageCount === null) {
-      setPageInput(String(currentPage + 1));
-      return;
-    }
-    goToPage(n - 1);
-  };
-
-  // Highlight annotation handlers — coordinates are stored in natural (unscaled)
-  // image pixels so they stay aligned regardless of the current zoom.
-  const getImageCoords = (clientX: number, clientY: number) => {
-    if (!imgRef.current) return { x: 0, y: 0 };
-    const b = imgRef.current.getBoundingClientRect();
-    return {
-      x: (clientX - b.left) / zoom,
-      y: (clientY - b.top) / zoom,
-    };
-  };
+  const getImageCoords = (clientX: number, clientY: number) =>
+    imageCoordsFromClick(imgRef, zoom, clientX, clientY);
 
   const refreshAnnotations = async () => {
     const annots = await invoke<AnnotationData[]>('get_annotations', {
@@ -2248,62 +2294,7 @@ function App() {
     setAnnotations(annots);
   };
 
-  const loadFormFields = useCallback(async (path: string = filePath) => {
-    if (!path) {
-      setFormFields([]);
-      setFormDrafts({});
-      return;
-    }
-    try {
-      const fields = await invoke<FormFieldData[]>('get_pdf_form_fields', { path });
-      setFormFields(fields);
-      const drafts: Record<string, string> = {};
-      fields.forEach((field) => {
-        if (field.field_type === 'checkbox' || field.field_type === 'radio') {
-          drafts[field.name] = field.checked ? 'true' : 'false';
-        } else {
-          drafts[field.name] = field.value;
-        }
-      });
-      setFormDrafts(drafts);
-    } catch {
-      setFormFields([]);
-      setFormDrafts({});
-    }
-  }, [filePath]);
 
-  const loadPdfBookmarks = useCallback(async (path: string = filePath) => {
-    if (!path) {
-      setPdfBookmarks([]);
-      return;
-    }
-    try {
-      const bookmarks = await invoke<PdfBookmarkEntry[]>('get_pdf_bookmarks', { path });
-      setPdfBookmarks(bookmarks);
-    } catch {
-      setPdfBookmarks([]);
-    }
-  }, [filePath]);
-  loadPdfBookmarksRef.current = (path) => { void loadPdfBookmarks(path); };
-
-  const loadPdfSignatures = useCallback(async (path: string = filePath) => {
-    if (!path) {
-      setPdfSignatures([]);
-      setSignatureVerification(null);
-      return;
-    }
-    try {
-      const [listed, verified] = await Promise.all([
-        invoke<PdfSignatureInfo[]>('list_pdf_signatures', { path }),
-        invoke<PdfSignatureVerificationSummary>('verify_pdf_signatures', { path, trustPemPath: null }),
-      ]);
-      setPdfSignatures(listed);
-      setSignatureVerification(verified);
-    } catch {
-      setPdfSignatures([]);
-      setSignatureVerification(null);
-    }
-  }, [filePath]);
 
   const applyFormField = (name: string) => {
     const field = formFields.find((entry) => entry.name === name);
@@ -2333,14 +2324,6 @@ function App() {
     if (filePath) void loadPageSizes(filePath);
   }, [filePath, pdfRevision, loadPageSizes]);
 
-  const cancelDrawing = () => {
-    setDrawing(false);
-    setHighlightStart(null);
-    setHighlightRect(null);
-    setInkDrawing(false);
-    setInkDraft([]);
-    setShapeLineEnd(null);
-  };
   cancelDrawingRef.current = cancelDrawing;
 
   // Highlighting is a two-click gesture: click once to set the start corner,
@@ -3072,6 +3055,7 @@ function App() {
       showToast('Saved');
     });
   };
+  handleSaveRef.current = handleSave;
 
   const chooseOpenPdfNative = async () => {
     const path = await pickPdfWithNativeDialog(openFilePath || lastBrowserDir || originalPath);
@@ -3138,562 +3122,6 @@ function App() {
     setShowSaveAsModal(true);
   };
 
-  // Run `action`, but if there are unsaved edits prompt Save/Discard/Cancel first.
-  const guardUnsaved = (action: () => void | Promise<void>) => {
-    if (isDirty) {
-      pendingNavRef.current = action;
-      setShowUnsavedModal(true);
-    } else {
-      void action();
-    }
-  };
-
-  const resolveUnsaved = async (choice: UnsavedChoice) => {
-    if (choice === 'cancel') { pendingNavRef.current = null; setShowUnsavedModal(false); return; }
-    if (choice === 'save') await handleSave();
-    else setIsDirty(false);
-    setShowUnsavedModal(false);
-    const action = pendingNavRef.current;
-    pendingNavRef.current = null;
-    if (action) await action();
-  };
-
-  const dismissModals = useCallback(() => {
-    if (showUnsavedModal) {
-      void resolveUnsaved('cancel');
-      return;
-    }
-    setShowSaveAsModal(false);
-    setShowMarkdownSaveAsModal(false);
-    setShowProtectModal(false);
-    setShowSignModal(false);
-    setShowMetadataModal(false);
-    setShowPasswordModal(false);
-    setPendingEncryptedPath('');
-    setPdfPasswordDraft('');
-    setShowOpenModal(false);
-    setShowBrowserModal(false);
-    setShowDeleteModal(false);
-    setShowSplitModal(false);
-    setShowExtractModal(false);
-    setShowExportPngModal(false);
-    setShowDeleteRangeModal(false);
-    setShowPageNumbersModal(false);
-    setShowWatermarkModal(false);
-    setShowCropModal(false);
-    setShowFlattenModal(false);
-    setShowAddBookmarkModal(false);
-    setShowRenameBookmarkModal(false);
-    setShowDuplicateRangeModal(false);
-    setShowPageHeaderModal(false);
-    setShowPageFooterModal(false);
-    setShowSwapPagesModal(false);
-    setShowReplacePageModal(false);
-    setShowInterleaveModal(false);
-    setShowPageSizeModal(false);
-    setShowDecryptModal(false);
-    setShowRotateRangeModal(false);
-    setShowKeepRangeModal(false);
-    setShowMoveRangeModal(false);
-    setShowPrependModal(false);
-    setShowSplitEveryModal(false);
-    setShowPageBorderModal(false);
-    setShowBookmarkAllModal(false);
-    setShowExpandMarginsModal(false);
-    setShowReverseRangeModal(false);
-    setShowInsertBlankPagesModal(false);
-    setShowCropRangeModal(false);
-    setShowExportPagesPdfModal(false);
-    setShowInsertImagePageModal(false);
-    setShowExportPagePdfModal(false);
-    setShowInsertModal(false);
-    setInsertFilePath('');
-    setShowMergeModal(false);
-    setMergeFilePath('');
-    closeSearchModal();
-    setShowImageInsertModal(false);
-    setShowAddFormFieldModal(false);
-    setShowSummaryModal(false);
-    setShowPageTextModal(false);
-    setEditingTextIndex(null);
-    setPendingTextPos(null);
-    setShowPageEditsModal(false);
-    setShowCommandPalette(false);
-    setShowShortcutsHelp(false);
-    setShowLicenses(false);
-    setShowCredits(false);
-    setShowAbout(false);
-    setShowTesseractModal(false);
-  }, [showUnsavedModal]);
-
-  const undoRedoRef = useRef({ undo, redo });
-  undoRedoRef.current = { undo, redo };
-  const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
-  const openSaveAsRef = useRef(openSaveAs);
-  openSaveAsRef.current = openSaveAs;
-  const canUndoRef = useRef(canUndo);
-  const canRedoRef = useRef(canRedo);
-  const hasOpenPdfRef = useRef(!!filePath);
-  canUndoRef.current = canUndo;
-  canRedoRef.current = canRedo;
-  hasOpenPdfRef.current = !!filePath;
-  const highlightModeRef = useRef(highlightMode);
-  highlightModeRef.current = highlightMode;
-  const noteModeRef = useRef(noteMode);
-  noteModeRef.current = noteMode;
-  const drawModeRef = useRef(drawMode);
-  drawModeRef.current = drawMode;
-  const shapeModeRef = useRef(shapeMode);
-  shapeModeRef.current = shapeMode;
-  const stampModeRef = useRef(stampMode);
-  stampModeRef.current = stampMode;
-  const redactModeRef = useRef(redactMode);
-  redactModeRef.current = redactMode;
-  const imageInsertModeRef = useRef(imageInsertMode);
-  imageInsertModeRef.current = imageInsertMode;
-  const textEditModeRef = useRef(textEditMode);
-  textEditModeRef.current = textEditMode;
-  const vectorEditModeRef = useRef(vectorEditMode);
-  vectorEditModeRef.current = vectorEditMode;
-  const exitTextEditModeRef = useRef(exitTextEditMode);
-  exitTextEditModeRef.current = exitTextEditMode;
-  const exitVectorEditModeRef = useRef(exitVectorEditMode);
-  exitVectorEditModeRef.current = exitVectorEditMode;
-  const toggleTextEditModeRef = useRef(toggleTextEditMode);
-  toggleTextEditModeRef.current = toggleTextEditMode;
-  const toggleVectorEditModeRef = useRef(toggleVectorEditMode);
-  toggleVectorEditModeRef.current = toggleVectorEditMode;
-  const formAddModeRef = useRef(formAddMode);
-  formAddModeRef.current = formAddMode;
-  const exitHighlightModeRef = useRef(exitHighlightMode);
-  exitHighlightModeRef.current = exitHighlightMode;
-  const exitNoteModeRef = useRef(exitNoteMode);
-  exitNoteModeRef.current = exitNoteMode;
-  const exitDrawModeRef = useRef(exitDrawMode);
-  exitDrawModeRef.current = exitDrawMode;
-  const exitShapeModeRef = useRef(exitShapeMode);
-  exitShapeModeRef.current = exitShapeMode;
-  const exitStampModeRef = useRef(exitStampMode);
-  exitStampModeRef.current = exitStampMode;
-  const exitRedactModeRef = useRef(exitRedactMode);
-  exitRedactModeRef.current = exitRedactMode;
-  const exitImageInsertModeRef = useRef(exitImageInsertMode);
-  exitImageInsertModeRef.current = exitImageInsertMode;
-  const exitFormAddModeRef = useRef(exitFormAddMode);
-  exitFormAddModeRef.current = exitFormAddMode;
-  const toggleFormsPanelRef = useRef(toggleFormsPanel);
-  toggleFormsPanelRef.current = toggleFormsPanel;
-  const toggleNoteModeRef = useRef(toggleNoteMode);
-  toggleNoteModeRef.current = toggleNoteMode;
-  const goToPageRef = useRef(goToPage);
-  goToPageRef.current = goToPage;
-  const pageCountRef = useRef(pageCount);
-  pageCountRef.current = pageCount;
-  const currentPageRef = useRef(currentPage);
-  currentPageRef.current = currentPage;
-  const viewModeRef = useRef(viewMode);
-  viewModeRef.current = viewMode;
-  const toggleHighlightModeRef = useRef(toggleHighlightMode);
-  toggleHighlightModeRef.current = toggleHighlightMode;
-  const toggleDrawModeRef = useRef(toggleDrawMode);
-  toggleDrawModeRef.current = toggleDrawMode;
-  const toggleShapeModeRef = useRef(toggleShapeMode);
-  toggleShapeModeRef.current = toggleShapeMode;
-  const toggleStampModeRef = useRef(toggleStampMode);
-  toggleStampModeRef.current = toggleStampMode;
-  const toggleRedactModeRef = useRef(toggleRedactMode);
-  toggleRedactModeRef.current = toggleRedactMode;
-  const toggleImageInsertModeRef = useRef(toggleImageInsertMode);
-  toggleImageInsertModeRef.current = toggleImageInsertMode;
-  const zoomInRef = useRef(zoomIn);
-  zoomInRef.current = zoomIn;
-  const zoomOutRef = useRef(zoomOut);
-  zoomOutRef.current = zoomOut;
-  const resetZoomRef = useRef(resetZoom);
-  resetZoomRef.current = resetZoom;
-  const requestClosePdfRef = useRef<() => void>(() => {});
-  const openPdfRef = useRef(openPdf);
-  openPdfRef.current = openPdf;
-  const handlePrintRef = useRef(async () => {});
-  const handleRotatePageRef = useRef(handleRotatePage);
-  handleRotatePageRef.current = handleRotatePage;
-  const handleDuplicatePageRef = useRef(handleDuplicatePage);
-  handleDuplicatePageRef.current = handleDuplicatePage;
-  const toggleMarkdownViewRef = useRef(async () => {});
-  const openDeleteModalRef = useRef(openDeleteModal);
-  openDeleteModalRef.current = openDeleteModal;
-  const openInsertModalRef = useRef(openInsertModal);
-  openInsertModalRef.current = openInsertModal;
-  const openSplitModalRef = useRef(openSplitModal);
-  openSplitModalRef.current = openSplitModal;
-  const openExtractModalRef = useRef(openExtractModal);
-  openExtractModalRef.current = openExtractModal;
-  const openExportPngModalRef = useRef(openExportPngModal);
-  openExportPngModalRef.current = openExportPngModal;
-  const handleReversePagesRef = useRef(handleReversePages);
-  handleReversePagesRef.current = handleReversePages;
-  const handleAddBlankPageRef = useRef(handleAddBlankPage);
-  handleAddBlankPageRef.current = handleAddBlankPage;
-  const openDeleteRangeModalRef = useRef(openDeleteRangeModal);
-  openDeleteRangeModalRef.current = openDeleteRangeModal;
-  const openPageNumbersModalRef = useRef(openPageNumbersModal);
-  openPageNumbersModalRef.current = openPageNumbersModal;
-  const openWatermarkModalRef = useRef(openWatermarkModal);
-  openWatermarkModalRef.current = openWatermarkModal;
-  const openCropModalRef = useRef(openCropModal);
-  openCropModalRef.current = openCropModal;
-  const openFlattenModalRef = useRef(openFlattenModal);
-  openFlattenModalRef.current = openFlattenModal;
-  const openMergeModalRef = useRef(openMergeModal);
-  openMergeModalRef.current = openMergeModal;
-  const openSearchModalRef = useRef(openSearchModal);
-  openSearchModalRef.current = openSearchModal;
-  const runPdfSearchRef = useRef(runPdfSearch);
-  runPdfSearchRef.current = runPdfSearch;
-  const stepSearchMatchRef = useRef(stepSearchMatch);
-  stepSearchMatchRef.current = stepSearchMatch;
-  const handleOptimizePdfRef = useRef(async () => {});
-  const handleSummarizePdfRef = useRef(async () => {});
-  const openSignModalRef = useRef<() => void>(() => {});
-  const dismissModalsRef = useRef(dismissModals);
-  dismissModalsRef.current = dismissModals;
-  const anyModalOpenRef = useRef(false);
-  anyModalOpenRef.current =
-    showUnsavedModal || showSaveAsModal || showMarkdownSaveAsModal || showProtectModal || showSignModal || showMetadataModal
-    || showPasswordModal || showOpenModal || showBrowserModal || showDeleteModal
-    || showSplitModal || showExtractModal || showExportPngModal || showDeleteRangeModal
-    || showPageNumbersModal || showWatermarkModal || showCropModal || showFlattenModal || showAddBookmarkModal
-    || showRenameBookmarkModal || showDuplicateRangeModal || showPageHeaderModal || showPageFooterModal
-    || showSwapPagesModal || showReplacePageModal || showInterleaveModal || showPageSizeModal || showDecryptModal
-    || showRotateRangeModal || showKeepRangeModal || showMoveRangeModal || showPrependModal || showSplitEveryModal
-    || showPageBorderModal || showBookmarkAllModal || showExpandMarginsModal || showShrinkMarginsModal
-    || showDeleteNthModal || showExtractOddModal || showExtractEvenModal || showSplitAtModal
-    || showReverseRangeModal || showInsertBlankPagesModal || showCropRangeModal || showParityRangeModal
-    || showExportPagesPdfModal
-    || showInsertImagePageModal || showExportPagePdfModal
-    || showInsertModal || showMergeModal || showSearchModal
-    || showNoteModal || showImageInsertModal
-    || showAddFormFieldModal || showSummaryModal || showPageTextModal || showPageEditsModal
-    || showCommandPalette || showShortcutsHelp || showLicenses || showCredits || showAbout || showTesseractModal;
-
-  useEffect(() => {
-    const isTextInput = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false;
-      if (target.isContentEditable) return true;
-      const tag = target.tagName;
-      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isTextInput(e.target)) return;
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        openPdfRef.current();
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        setShowCommandPalette(true);
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        if (noteModeRef.current && hasOpenPdfRef.current) {
-          exitNoteModeRef.current();
-          return;
-        }
-        if (drawModeRef.current && hasOpenPdfRef.current) {
-          exitDrawModeRef.current();
-          return;
-        }
-        if (shapeModeRef.current && hasOpenPdfRef.current) {
-          exitShapeModeRef.current();
-          return;
-        }
-        if (stampModeRef.current && hasOpenPdfRef.current) {
-          exitStampModeRef.current();
-          return;
-        }
-        if (redactModeRef.current && hasOpenPdfRef.current) {
-          exitRedactModeRef.current();
-          return;
-        }
-        if (imageInsertModeRef.current && hasOpenPdfRef.current) {
-          exitImageInsertModeRef.current();
-          return;
-        }
-        if (textEditModeRef.current && hasOpenPdfRef.current) {
-          exitTextEditModeRef.current();
-          return;
-        }
-        if (vectorEditModeRef.current && hasOpenPdfRef.current) {
-          exitVectorEditModeRef.current();
-          return;
-        }
-        if (formAddModeRef.current && hasOpenPdfRef.current) {
-          exitFormAddModeRef.current();
-          return;
-        }
-        if (highlightModeRef.current && hasOpenPdfRef.current) {
-          exitHighlightModeRef.current();
-          return;
-        }
-        if (anyModalOpenRef.current) {
-          dismissModalsRef.current();
-          return;
-        }
-      }
-
-      if (!hasOpenPdfRef.current) return;
-
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        const count = pageCountRef.current;
-        const page = currentPageRef.current;
-        if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && page > 0) {
-          e.preventDefault();
-          goToPageRef.current(page - 1);
-          return;
-        }
-        if ((e.key === 'ArrowRight' || e.key === 'PageDown') && count !== null && page < count - 1) {
-          e.preventDefault();
-          goToPageRef.current(page + 1);
-          return;
-        }
-        if (e.key.toLowerCase() === 'h' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleHighlightModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'n' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleNoteModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'd' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleDrawModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 's' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleShapeModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 't' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleStampModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'x' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleRedactModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'e' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleTextEditModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'g' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleVectorEditModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'i' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleImageInsertModeRef.current();
-          return;
-        }
-        if (e.key.toLowerCase() === 'f' && viewModeRef.current === 'pdf') {
-          e.preventDefault();
-          toggleFormsPanelRef.current();
-          return;
-        }
-        if (e.key === 'Home' && page > 0) {
-          e.preventDefault();
-          goToPageRef.current(0);
-          return;
-        }
-        if (e.key === 'End' && count !== null && page < count - 1) {
-          e.preventDefault();
-          goToPageRef.current(count - 1);
-          return;
-        }
-        if (e.key === 'Delete' && count !== null && count > 1) {
-          e.preventDefault();
-          openDeleteModalRef.current();
-          return;
-        }
-      }
-
-      if (!e.ctrlKey && !e.metaKey) return;
-
-      const key = e.key.toLowerCase();
-      if (key === 's') {
-        e.preventDefault();
-        if (e.shiftKey) openSaveAsRef.current();
-        else if (isDirtyRef.current) void handleSaveRef.current();
-        return;
-      }
-      if (key === 'w') {
-        e.preventDefault();
-        requestClosePdfRef.current();
-        return;
-      }
-      if (key === 'p') {
-        e.preventDefault();
-        void handlePrintRef.current();
-        return;
-      }
-      if (key === 'r') {
-        e.preventDefault();
-        void handleRotatePageRef.current();
-        return;
-      }
-      if (key === 'f') {
-        e.preventDefault();
-        openSearchModalRef.current();
-        return;
-      }
-      if (key === 'd' && e.shiftKey) {
-        e.preventDefault();
-        void handleDuplicatePageRef.current();
-        return;
-      }
-      if (key === 'm' && e.shiftKey) {
-        e.preventDefault();
-        void toggleMarkdownViewRef.current();
-        return;
-      }
-      if (key === 'o' && e.shiftKey) {
-        e.preventDefault();
-        void handleOptimizePdfRef.current();
-        return;
-      }
-      if (key === 'e' && e.shiftKey) {
-        e.preventDefault();
-        void handleSummarizePdfRef.current();
-        return;
-      }
-      if (key === 'u' && e.shiftKey) {
-        e.preventDefault();
-        openSignModalRef.current();
-        return;
-      }
-      if (key === 'i' && e.shiftKey) {
-        e.preventDefault();
-        openInsertModalRef.current();
-        return;
-      }
-      if (key === 'k' && e.shiftKey) {
-        e.preventDefault();
-        openSplitModalRef.current();
-        return;
-      }
-      if (key === 'j' && e.shiftKey) {
-        e.preventDefault();
-        openExtractModalRef.current();
-        return;
-      }
-      if (key === 'b' && e.shiftKey) {
-        e.preventDefault();
-        openExportPngModalRef.current();
-        return;
-      }
-      if (key === 'n' && e.shiftKey) {
-        e.preventDefault();
-        void handleAddBlankPageRef.current();
-        return;
-      }
-      if (key === 'y' && e.shiftKey) {
-        e.preventDefault();
-        void handleReversePagesRef.current();
-        return;
-      }
-      if (key === 'g' && e.shiftKey) {
-        e.preventDefault();
-        openMergeModalRef.current();
-        return;
-      }
-      if (key === '=' || key === '+') {
-        e.preventDefault();
-        zoomInRef.current();
-        return;
-      }
-      if (key === '-') {
-        e.preventDefault();
-        zoomOutRef.current();
-        return;
-      }
-      if (key === '0') {
-        e.preventDefault();
-        resetZoomRef.current();
-        return;
-      }
-      if (key === 'z' && !e.shiftKey && canUndoRef.current) {
-        e.preventDefault();
-        void undoRedoRef.current.undo();
-        return;
-      }
-      if (canRedoRef.current && ((key === 'y' && !e.shiftKey) || (key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        void undoRedoRef.current.redo();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  const closePdf = () => {
-    if (filePath) void invoke('discard_working_copy', { working: filePath }).catch(() => {});
-    discardHistory();
-    cancelDrawing();
-    setFilePath('');
-    setOriginalPath('');
-    setIsDirty(false);
-    setPageCount(null);
-    setCurrentPage(0);
-    setPageInput('1');
-    setZoom(1);
-    setViewMode('pdf');
-    setMarkdownText('');
-    setMarkdownPath('');
-    setMarkdownOcrNotice(null);
-    setPdfRevision(0);
-    setMarkdownRevision(null);
-    setHighlightMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setImageSourcePath('');
-    setShowImageInsertModal(false);
-    setShowFormsPanel(false);
-    setShowSignaturesPanel(false);
-    setShowBookmarksPanel(false);
-    setPdfBookmarks([]);
-    setPageSizes([]);
-    setPdfSignatures([]);
-    setSignatureVerification(null);
-    setShowSignModal(false);
-    setShowMetadataModal(false);
-    setFormFields([]);
-    setFormDrafts({});
-    setShowAddFormFieldModal(false);
-    setNewFormFieldName('');
-    setNewFormFieldKind('text');
-    setNewFormFieldOptions('Option A, Option B');
-    setNewFormRadioGroup('');
-    setNewFormRadioOption('');
-    setNewFormCheckboxChecked(false);
-    setShowDeleteModal(false);
-    revokeViewerAssets();
-    clearPrintPages();
-    showToast('PDF closed');
-  };
-  requestClosePdfRef.current = () => guardUnsaved(closePdf);
 
   const saveMarkdownToPath = async (target: string, switchToMarkdown: boolean) => {
     if (!filePath || !target) return;
@@ -3743,7 +3171,6 @@ function App() {
     }
     await handleMarkdownView();
   };
-  toggleMarkdownViewRef.current = toggleMarkdownView;
   handleMarkdownViewRef.current = handleMarkdownView;
 
   const handleMarkdownSaveAs = async () => {
@@ -3816,7 +3243,6 @@ function App() {
       showToast(result.written ? `Summary saved to ${result.summaryPath}` : 'Summary already saved');
     });
   };
-  handleSummarizePdfRef.current = handleSummarizePdf;
 
   const handleSplitPdf = async () => {
     if (!filePath || !splitRanges) return;
@@ -3909,7 +3335,6 @@ function App() {
       showToast(result);
     });
   };
-  handleOptimizePdfRef.current = handleOptimizePdf;
 
   const openProtectModal = () => {
     setProtectUserPassword('');
@@ -4024,9 +3449,216 @@ function App() {
   };
 
   const toggleSignaturesPanel = () => setShowSignaturesPanel((prev) => !prev);
-  openSignModalRef.current = openSignModal;
+  const { zoomIn, zoomOut, resetZoom, commitZoom, commitPage } = usePageZoom({
+    zoom,
+    setZoom,
+    zoomInput,
+    setZoomInput,
+    pageInput,
+    setPageInput,
+    pageCount,
+    currentPage,
+    goToPage,
+  });
 
-  handlePrintRef.current = handlePrint;
+  const { dismissModals, anyModalOpen } = useModalDismiss({
+    showUnsavedModal,
+    showSaveAsModal,
+    showMarkdownSaveAsModal,
+    showProtectModal,
+    showSignModal,
+    showMetadataModal,
+    showPasswordModal,
+    showOpenModal,
+    showBrowserModal,
+    showDeleteModal,
+    showSplitModal,
+    showExtractModal,
+    showExportPngModal,
+    showDeleteRangeModal,
+    showPageNumbersModal,
+    showWatermarkModal,
+    showCropModal,
+    showFlattenModal,
+    showAddBookmarkModal,
+    showRenameBookmarkModal,
+    showDuplicateRangeModal,
+    showPageHeaderModal,
+    showPageFooterModal,
+    showSwapPagesModal,
+    showReplacePageModal,
+    showInterleaveModal,
+    showPageSizeModal,
+    showDecryptModal,
+    showRotateRangeModal,
+    showKeepRangeModal,
+    showMoveRangeModal,
+    showPrependModal,
+    showSplitEveryModal,
+    showPageBorderModal,
+    showBookmarkAllModal,
+    showExpandMarginsModal,
+    showShrinkMarginsModal,
+    showDeleteNthModal,
+    showExtractOddModal,
+    showExtractEvenModal,
+    showSplitAtModal,
+    showReverseRangeModal,
+    showInsertBlankPagesModal,
+    showCropRangeModal,
+    showParityRangeModal,
+    showExportPagesPdfModal,
+    showInsertImagePageModal,
+    showExportPagePdfModal,
+    showInsertModal,
+    showMergeModal,
+    showSearchModal,
+    showNoteModal,
+    showImageInsertModal,
+    showAddFormFieldModal,
+    showSummaryModal,
+    showPageTextModal,
+    showPageEditsModal,
+    showCommandPalette,
+    showShortcutsHelp,
+    showLicenses,
+    showCredits,
+    showAbout,
+    showTesseractModal,
+    closeSearchModal,
+    resolveUnsaved,
+    setShowSaveAsModal,
+    setShowMarkdownSaveAsModal,
+    setShowProtectModal,
+    setShowSignModal,
+    setShowMetadataModal,
+    setShowPasswordModal,
+    setPendingEncryptedPath,
+    setPdfPasswordDraft,
+    setShowOpenModal,
+    setShowBrowserModal,
+    setShowDeleteModal,
+    setShowSplitModal,
+    setShowExtractModal,
+    setShowExportPngModal,
+    setShowDeleteRangeModal,
+    setShowPageNumbersModal,
+    setShowWatermarkModal,
+    setShowCropModal,
+    setShowFlattenModal,
+    setShowAddBookmarkModal,
+    setShowRenameBookmarkModal,
+    setShowDuplicateRangeModal,
+    setShowPageHeaderModal,
+    setShowPageFooterModal,
+    setShowSwapPagesModal,
+    setShowReplacePageModal,
+    setShowInterleaveModal,
+    setShowPageSizeModal,
+    setShowDecryptModal,
+    setShowRotateRangeModal,
+    setShowKeepRangeModal,
+    setShowMoveRangeModal,
+    setShowPrependModal,
+    setShowSplitEveryModal,
+    setShowPageBorderModal,
+    setShowBookmarkAllModal,
+    setShowExpandMarginsModal,
+    setShowReverseRangeModal,
+    setShowInsertBlankPagesModal,
+    setShowCropRangeModal,
+    setShowExportPagesPdfModal,
+    setShowInsertImagePageModal,
+    setShowExportPagePdfModal,
+    setShowInsertModal,
+    setInsertFilePath,
+    setShowMergeModal,
+    setMergeFilePath,
+    setShowImageInsertModal,
+    setShowAddFormFieldModal,
+    setShowSummaryModal,
+    setShowPageTextModal,
+    setEditingTextIndex,
+    setPendingTextPos,
+    setShowPageEditsModal,
+    setShowCommandPalette,
+    setShowShortcutsHelp,
+    setShowLicenses,
+    setShowCredits,
+    setShowAbout,
+    setShowTesseractModal,
+  });
+
+  const keyboardActionsRef = useRef<AppKeyboardActions>({} as AppKeyboardActions);
+  keyboardActionsRef.current = {
+    isDirty,
+    canUndo,
+    canRedo,
+    hasOpenPdf: !!filePath,
+    noteMode,
+    drawMode,
+    shapeMode,
+    stampMode,
+    redactMode,
+    imageInsertMode,
+    textEditMode,
+    vectorEditMode,
+    formAddMode,
+    highlightMode,
+    anyModalOpen,
+    pageCount,
+    currentPage,
+    viewMode,
+    openPdf,
+    openCommandPalette: () => setShowCommandPalette(true),
+    dismissModals,
+    exitNoteMode,
+    exitDrawMode,
+    exitShapeMode,
+    exitStampMode,
+    exitRedactMode,
+    exitImageInsertMode,
+    exitTextEditMode,
+    exitVectorEditMode,
+    exitFormAddMode,
+    exitHighlightMode,
+    goToPage,
+    toggleHighlightMode,
+    toggleNoteMode,
+    toggleDrawMode,
+    toggleShapeMode,
+    toggleStampMode,
+    toggleRedactMode,
+    toggleTextEditMode,
+    toggleVectorEditMode,
+    toggleImageInsertMode,
+    toggleFormsPanel,
+    openDeleteModal,
+    openSaveAs,
+    handleSave,
+    requestClosePdf: () => guardUnsaved(closePdf),
+    handlePrint,
+    handleRotatePage,
+    openSearchModal,
+    handleDuplicatePage,
+    toggleMarkdownView,
+    handleOptimizePdf,
+    handleSummarizePdf,
+    openSignModal,
+    openInsertModal,
+    openSplitModal,
+    openExtractModal,
+    openExportPngModal,
+    handleAddBlankPage,
+    handleReversePages,
+    openMergeModal,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    undo,
+    redo,
+  };
+  useAppKeyboard(keyboardActionsRef);
 
   const appMenus = buildAppMenus(buildAppMenuContext({
     hasPdf: !!filePath,
@@ -4328,7 +3960,7 @@ function App() {
       windowTitle={windowTitle}
       toast={toast}
       loading={loading}
-      chrome={{
+      chrome={buildChromeContext({
         menus: appMenus,
         showCommandPalette,
         showShortcutsHelp,
@@ -4358,7 +3990,7 @@ function App() {
           onZoomOut: zoomOut,
           onResetZoom: resetZoom,
         } : null,
-      }}
+      })}
       body={buildViewerContext({
         filePath,
         sidebar: {

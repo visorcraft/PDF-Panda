@@ -41,3 +41,21 @@ pub fn rotate_all_pages_by(doc: &mut Document, delta_degrees: i64) -> Result<u32
     }
     Ok(page_ids.len() as u32)
 }
+
+/// Clear rotation on one page.
+pub fn reset_page_rotation_at(doc: &mut Document, page_index: u32) -> Result<(), String> {
+    let page_id = *doc
+        .get_pages()
+        .get(&(page_index + 1))
+        .ok_or("Page not found".to_string())?;
+    set_page_rotation(doc, page_id, 0)
+}
+
+/// Clear rotation on every page. Returns the number of pages cleared.
+pub fn reset_all_page_rotations(doc: &mut Document) -> Result<u32, String> {
+    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
+    for page_id in &page_ids {
+        set_page_rotation(doc, *page_id, 0)?;
+    }
+    Ok(page_ids.len() as u32)
+}

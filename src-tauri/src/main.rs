@@ -8,7 +8,10 @@ use pdf::page_tree::{
     delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict,
     set_pages_kids, INHERITABLE_PAGE_KEYS,
 };
-use pdf::rotation::{page_rotation, rotate_all_pages_by, rotate_page_at, set_page_rotation};
+use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
+use pdf::rotation::{
+    page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation,
+};
 
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
@@ -1536,8 +1539,7 @@ fn rotate_page_ccw(path: String, page_index: u32) -> Result<(), String> {
 fn reset_page_rotation(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
     pdf::io::mutate_pdf(&path, |doc| {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        set_page_rotation(doc, page_id, 0)?;
+        reset_page_rotation_at(doc, page_index)?;
         Ok(())
     })
 }
@@ -1546,13 +1548,7 @@ fn reset_page_rotation(path: String, page_index: u32) -> Result<(), String> {
 #[tauri::command]
 fn reset_all_page_rotations(path: String) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
-    for page_id in &page_ids {
-        set_page_rotation(&mut doc, *page_id, 0)?;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(page_ids.len() as u32)
+    pdf::io::mutate_pdf(&path, |doc| pdf::rotation::reset_all_page_rotations(doc))
 }
 
 /// Deep-copy `start_page`..=`end_page` and insert the copies immediately after the range.
@@ -1792,26 +1788,17 @@ fn crop_all_pages(
 #[tauri::command]
 fn rotate_page_180(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let next = (page_rotation(&doc, page_id) + 180) % 360;
-    set_page_rotation(&mut doc, page_id, next)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::io::mutate_pdf(&path, |doc| {
+        rotate_page_at(doc, page_index, 180)?;
+        Ok(())
+    })
 }
 
 /// Rotate every page 90° counter-clockwise.
 #[tauri::command]
 fn rotate_all_pages_ccw(path: String) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
-    for page_id in &page_ids {
-        let next = (page_rotation(&doc, *page_id) + 270) % 360;
-        set_page_rotation(&mut doc, *page_id, next)?;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(page_ids.len() as u32)
+    pdf::io::mutate_pdf(&path, |doc| rotate_all_pages_by(doc, 270))
 }
 
 /// Move `page_index` to the first position.
@@ -4194,37 +4181,6 @@ fn export_page_as_pdf(path: String, page_index: u32, output_path: String) -> Res
     extract_pdf_pages(path, output_path, page_index, page_index)
 }
 
-// Viewer render size — must stay aligned with `BASE_W` / `BASE_H` in `App.tsx`.
-const VIEWER_PAGE_W: f64 = 800.0;
-const VIEWER_PAGE_H: f64 = 1132.0;
-
-fn page_media_box(doc: &Document, page_id: ObjectId) -> Result<[f64; 4], String> {
-    let page = doc.get_dictionary(page_id).map_err(|e| e.to_string())?;
-    let arr = page.get(b"MediaBox").map_err(|e| e.to_string())?.as_array().map_err(|_| "Bad MediaBox")?;
-    let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
-    Ok([get(0), get(1), get(2), get(3)])
-}
-
-fn viewer_rect_to_pdf(
-    doc: &Document,
-    page_id: ObjectId,
-    x: f64,
-    y: f64,
-    w: f64,
-    h: f64,
-) -> Result<(f64, f64, f64, f64), String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 || w <= 0.0 || h <= 0.0 {
-        return Err("Invalid page or image size".to_string());
-    }
-    let px = x * mw / VIEWER_PAGE_W;
-    let pw = w * mw / VIEWER_PAGE_W;
-    let ph = h * mh / VIEWER_PAGE_H;
-    let py = mh - (y * mh / VIEWER_PAGE_H) - ph;
-    Ok((px, py, pw, ph))
-}
 
 fn next_image_xobject_name(xobjects: &Dictionary) -> String {
     for n in 1..=9999 {
@@ -9585,16 +9541,6 @@ fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
     })
 }
 
-/// Coerce a PDF numeric object to f64. Necessary because a value written as
-/// `Real(10.0)` is serialized as `10` and parsed back as `Integer`, so reading
-/// it as a float only (`as_f32`) silently yields nothing.
-fn obj_to_f64(o: &Object) -> f64 {
-    match o {
-        Object::Real(r) => *r as f64,
-        Object::Integer(i) => *i as f64,
-        _ => 0.0,
-    }
-}
 
 #[tauri::command]
 fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>, String> {

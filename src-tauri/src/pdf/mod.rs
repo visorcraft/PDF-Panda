@@ -1,3 +1,4 @@
+pub mod coords;
 pub mod export;
 pub mod io;
 pub mod page_tree;
