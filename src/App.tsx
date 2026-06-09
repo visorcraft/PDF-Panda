@@ -1,14 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useState, useRef, useCallback } from 'react';
 import { AppShell } from './chrome/AppShell';
 import { buildAppMenus } from './menu/buildAppMenus';
 import { buildAppMenuContext } from './menu/buildAppMenuContext';
+import { buildAppMenuSource } from './menu/buildAppMenuSource';
 import { useAppBootstrap } from './app/useAppBootstrap';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { usePdfSearch } from './pdf/usePdfSearch';
 import { usePdfBrowser } from './pdf/usePdfBrowser';
 import { usePrintJobs } from './pdf/usePrintJobs';
-import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
 import { type ImageExportFormat } from './pdf/imageExportCommands';
 import { useUndoHistory } from './pdf/useUndoHistory';
 import { usePdfDocument } from './pdf/usePdfDocument';
@@ -59,8 +58,12 @@ import { useSourcePdfPageCounts } from './app/useSourcePdfPageCounts';
 import { usePageEditsLoader } from './app/usePageEditsLoader';
 import { buildAppKeyboardActions } from './app/buildAppKeyboardActions';
 import { useWindowTitle } from './app/useWindowTitle';
-
-import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
+import { useTesseractReminder } from './app/useTesseractReminder';
+import { useWindowCloseGuard } from './app/useWindowCloseGuard';
+import { usePageZoomInputSync } from './app/usePageZoomInputSync';
+import { useAppLoading } from './app/useAppLoading';
+import { useAppPageRanges } from './app/useAppPageRanges';
+import { buildModeToolbarExtras } from './viewer/buildModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
   DEFAULT_TESSERACT_GUIDE,
@@ -84,9 +87,7 @@ import {
 } from './app/types';
 import {
   directoryFromPath,
-  dismissTesseractReminder,
   fileNameFromPath,
-  isTesseractReminderDismissed,
   readStoredString,
   readStoredStringArray,
   writeStoredString,
@@ -324,10 +325,7 @@ function App() {
   // When a source PDF is chosen for Insert, load *its* page count so the From/To
   // range reflects the source document (not the currently open one) and defaults
   // to inserting the whole file.
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
+  const { showToast, withLoading } = useAppLoading({ setToast, setLoading });
 
   const { loadFormFields, loadPdfBookmarks, loadPdfSignatures, loadPageSizes } = usePanelLoaders({
     filePath,
@@ -343,30 +341,32 @@ function App() {
 
   const { loadPageEdits } = usePageEditsLoader({ setPageTextEdits, setPageVectorEdits });
 
-  const pageNumbersRange = usePageRange({ pageCount, currentPage, showToast });
-  const watermarkRange = usePageRange({ pageCount, currentPage, showToast });
-  const flattenRange = usePageRange({ pageCount, currentPage, showToast });
-  const pageHeaderRange = usePageRange({ pageCount, currentPage, showToast });
-  const pageFooterRange = usePageRange({ pageCount, currentPage, showToast });
-  const pageSizeRange = usePageRange({ pageCount, currentPage, showToast });
-  const pageBorderRange = usePageRange({ pageCount, currentPage, showToast });
-  const expandMarginsRange = usePageRange({ pageCount, currentPage, showToast });
-  const shrinkMarginsRange = usePageRange({ pageCount, currentPage, showToast });
-  const pngExportRange = usePageRange({ pageCount, currentPage, defaultScope: 'current', showToast });
-  const exportPagesPdfRange = usePageRange({ pageCount, currentPage, showToast });
-  const duplicateRange = usePageRangePair({ showToast });
-  const deleteRange = usePageRangePair({ showToast });
-  const extractRange = usePageRangePair({ showToast });
-  const interleaveRange = usePageRangePair({ showToast });
-  const rotateRange = usePageRangePair({ showToast });
-  const keepRange = usePageRangePair({ showToast });
-  const moveRange = usePageRangePair({ showToast });
-  const prependRange = usePageRangePair({ showToast });
-  const reverseRange = usePageRangePair({ showToast });
-  const cropRange = usePageRangePair({ showToast });
-  const parityRange = usePageRangePair({ showToast });
-  const insertRange = usePageRangePair({ showToast });
-  const mergeRange = usePageRangePair({ showToast });
+  const {
+    pageNumbersRange,
+    watermarkRange,
+    flattenRange,
+    pageHeaderRange,
+    pageFooterRange,
+    pageSizeRange,
+    pageBorderRange,
+    expandMarginsRange,
+    shrinkMarginsRange,
+    pngExportRange,
+    exportPagesPdfRange,
+    duplicateRange,
+    deleteRange,
+    extractRange,
+    interleaveRange,
+    rotateRange,
+    keepRange,
+    moveRange,
+    prependRange,
+    reverseRange,
+    cropRange,
+    parityRange,
+    insertRange,
+    mergeRange,
+  } = useAppPageRanges({ pageCount, currentPage, showToast });
 
   useSourcePdfPageCounts({
     insertFilePath,
@@ -377,26 +377,20 @@ function App() {
     setMergeSourcePageCount,
   });
 
-  const shouldShowTesseractReminder = useCallback(
-    () => ocrAvailable === false && !isTesseractReminderDismissed(),
-    [ocrAvailable],
-  );
-
-  const closeTesseractReminderModal = useCallback(() => {
-    const source = tesseractReminderSource;
-    if (tesseractDoNotRemind) dismissTesseractReminder();
-    setShowTesseractModal(false);
-    setTesseractDoNotRemind(false);
-    setTesseractReminderSource(null);
-    if (source === 'markdown') {
-      void handleMarkdownViewRef.current();
-    }
-  }, [tesseractDoNotRemind, tesseractReminderSource]);
-
-  const showLaunchTesseractReminder = useCallback(() => {
-    setTesseractReminderSource('launch');
-    setShowTesseractModal(true);
-  }, []);
+  const {
+    shouldShowTesseractReminder,
+    closeTesseractReminderModal,
+    showLaunchTesseractReminder,
+    openTesseractGuide,
+  } = useTesseractReminder({
+    ocrAvailable,
+    tesseractReminderSource,
+    setTesseractReminderSource,
+    tesseractDoNotRemind,
+    setTesseractDoNotRemind,
+    setShowTesseractModal,
+    handleMarkdownViewRef,
+  });
 
   useAppBootstrap({
     onNativeDialogs: setNativeDialogs,
@@ -406,19 +400,6 @@ function App() {
   });
 
   useWindowTitle({ filePath, originalPath, isDirty, isDirtyRef, filePathRef });
-
-  // Intercept window close (quit) so unsaved edits prompt first.
-  useEffect(() => {
-    const w = getCurrentWindow();
-    const unlisten = w.onCloseRequested((event) => {
-      if (isDirtyRef.current) {
-        event.preventDefault();
-        pendingNavRef.current = () => w.destroy();
-        setShowUnsavedModal(true);
-      }
-    });
-    return () => { void unlisten.then((f) => f()); };
-  }, []);
 
   const rememberBrowserDirectory = useCallback((path: string) => {
     const dir = directoryFromPath(path);
@@ -441,19 +422,9 @@ function App() {
     onSave: () => handleSaveRef.current(),
   });
 
-  const { rememberOpenedPdf } = usePdfRecents({ rememberBrowserDirectory, setRecentPdfs });
+  useWindowCloseGuard({ isDirtyRef, pendingNavRef, setShowUnsavedModal });
 
-  const withLoading = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
-    setLoading(true);
-    try {
-      return await fn();
-    } catch (err) {
-      showToast(String(err), 'error');
-      return undefined;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { rememberOpenedPdf } = usePdfRecents({ rememberBrowserDirectory, setRecentPdfs });
 
   const {
     imageSrc,
@@ -506,9 +477,7 @@ function App() {
   const undo = () => undoHistory(filePath);
   const redo = () => redoHistory(filePath);
 
-  // Keep the editable fields in sync when page/zoom change via buttons, wheel, etc.
-  useEffect(() => setPageInput(String(currentPage + 1)), [currentPage]);
-  useEffect(() => setZoomInput(String(Math.round(zoom * 100))), [zoom]);
+  usePageZoomInputSync({ currentPage, setPageInput, zoom, setZoomInput });
 
   const {
     loadPdfFromPath,
@@ -1791,8 +1760,8 @@ function App() {
   });
   useAppKeyboard(keyboardActionsRef);
 
-  const appMenus = buildAppMenus(buildAppMenuContext({
-    hasPdf: !!filePath,
+  const appMenus = buildAppMenus(buildAppMenuContext(buildAppMenuSource({
+    filePath,
     isDirty,
     canUndo,
     canRedo,
@@ -1811,11 +1780,21 @@ function App() {
     showFormsPanel,
     showBookmarksPanel,
     showSignaturesPanel,
-    tesseractInstalled: ocrAvailable === true,
+    ocrAvailable,
+    guardUnsaved,
+    closePdf,
+    setViewMode,
+    setShowBookmarksPanel,
+    setShowPageEditsModal,
+    setShowShortcutsHelp,
+    setShowLicenses,
+    setShowCredits,
+    setShowAbout,
+    setShowCommandPalette,
+    openTesseractGuide,
     openPdf,
     handleSave,
     openSaveAs,
-    requestClosePdf: () => guardUnsaved(closePdf),
     undo,
     redo,
     handlePrint,
@@ -1893,7 +1872,6 @@ function App() {
     openExtractModal,
     openExtractOddModal,
     openExtractEvenModal,
-    setViewModePdf: () => setViewMode('pdf'),
     toggleMarkdownView,
     handleOptimizePdf,
     openExportPngModal,
@@ -1928,7 +1906,6 @@ function App() {
     openDecryptModal,
     openSignModal,
     toggleSignaturesPanel,
-    toggleBookmarksPanel: () => setShowBookmarksPanel((prev) => !prev),
     toggleRedactMode,
     toggleHighlightMode,
     toggleNoteMode,
@@ -1938,34 +1915,23 @@ function App() {
     toggleImageInsertMode,
     toggleTextEditMode,
     toggleVectorEditMode,
-    openPageEditsModal: () => setShowPageEditsModal(true),
     toggleFormsPanel,
-    openTesseractGuide: () => {
-      setTesseractReminderSource('launch');
-      setShowTesseractModal(true);
-    },
-    openShortcutsHelp: () => setShowShortcutsHelp(true),
-    openLicenses: () => setShowLicenses(true),
-    openCredits: () => setShowCredits(true),
-    openAbout: () => setShowAbout(true),
-    openCommandPalette: () => setShowCommandPalette(true),
-  }));
+  })));
 
-  const modeToolbarExtras = filePath ? (
-    <ModeToolbarExtras
-      imageInsertMode={imageInsertMode}
-      imageSourcePath={imageSourcePath}
-      onOpenImageInsertModal={openImageInsertModal}
-      stampMode={stampMode}
-      stampKind={stampKind}
-      stampPreset={stampPreset}
-      onStampKindChange={setStampKind}
-      onStampPresetChange={setStampPreset}
-      shapeMode={shapeMode}
-      shapeKind={shapeKind}
-      onShapeKindChange={setShapeKind}
-    />
-  ) : null;
+  const modeToolbarExtras = buildModeToolbarExtras({
+    filePath,
+    imageInsertMode,
+    imageSourcePath,
+    onOpenImageInsertModal: openImageInsertModal,
+    stampMode,
+    stampKind,
+    stampPreset,
+    onStampKindChange: setStampKind,
+    onStampPresetChange: setStampPreset,
+    shapeMode,
+    shapeKind,
+    onShapeKindChange: setShapeKind,
+  });
 
   const windowTitle = originalPath
     ? `${isDirty ? '• ' : ''}${originalPath.split('/').pop() ?? ''} — PDF Panda`

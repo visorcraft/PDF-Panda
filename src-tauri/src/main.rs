@@ -3,10 +3,17 @@
 mod licenses;
 mod pdf;
 
+use pdf::annotations::append_page_annotation;
 use pdf::bookmarks::{collect_outline_items, flat_outline_ids, remove_outline_item, PdfBookmarkEntry};
 use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
 use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
+use pdf::forms::field_type_label_for;
+use pdf::forms::{
+    append_field_kid, choice_options_object, collect_form_fields, field_partial_name, find_form_field_id_by_name,
+    find_radio_group_by_name, mark_acroform_need_appearances, push_acroform_field, resolve_field_dict,
+    set_btn_widget_checked, set_radio_group_checked, viewer_widget_rect, FormFieldData,
+};
 use pdf::metadata::{current_pdf_mod_date, ensure_info_dict_id, read_info_string, write_info_text_field};
 use pdf::ocr::{
     build_tesseract_install_guide, ocr_language, ocr_page_segmentation_mode, os_release_value, resolve_tesseract,
@@ -16,6 +23,10 @@ use pdf::page_text::{ensure_helvetica_font, escape_pdf_literal_string, viewer_po
 use pdf::page_tree::{
     delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict, set_pages_kids,
     INHERITABLE_PAGE_KEYS,
+};
+use pdf::pdfium_bind::{
+    get_pdfium, render_page_bmp, render_page_gif, render_page_ico, render_page_image, render_page_jpeg,
+    render_page_png, render_page_ppm, render_page_tga, render_page_tiff, render_page_webp, set_bundled_pdfium_dir,
 };
 use pdf::rotation::{page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation};
 use pdf::search::{search_pdf_text as search_pdf_text_impl, PdfTextSearchMatch};
@@ -28,90 +39,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::OnceLock;
 use underskrift::inspect::signatures::inspect_signatures;
 use underskrift::trust::{TrustStore, TrustStoreSet};
 use underskrift::verify::report::SignatureStatus;
 use underskrift::verify::SignatureVerifier;
 use underskrift::{PdfSigner, SigningOptions, SoftwareSigner, SubFilter};
-
-static PDFIUM: OnceLock<Result<Mutex<Pdfium>, String>> = OnceLock::new();
-/// Directory holding the bundled PDFium library, populated during Tauri `setup`
-/// from the app's resource directory (only meaningful in a packaged build).
-static BUNDLED_PDFIUM_DIR: OnceLock<PathBuf> = OnceLock::new();
-
-/// Try to bind a standard PDFium build at `dir`, recording the attempted path on
-/// failure.
-fn try_pdfium_dir(dir: &std::path::Path, tried: &mut Vec<String>) -> Option<Pdfium> {
-    let candidate = Pdfium::pdfium_platform_library_name_at_path(dir);
-    match Pdfium::bind_to_library(&candidate) {
-        Ok(bindings) => Some(Pdfium::new(bindings)),
-        Err(_) => {
-            tried.push(candidate.to_string_lossy().into_owned());
-            None
-        }
-    }
-}
-
-/// Bind to a standard PDFium library (the C `FPDF_*` API that `pdfium-render`
-/// requires). Search order: an explicit `PDFIUM_LIB_PATH`, a `libpdfium` shipped
-/// next to the executable, a vendored copy under the crate, then any system
-/// library. The system's `libdeepin-pdfium` is a *different*, incompatible C++
-/// API and is intentionally never used.
-fn bind_pdfium() -> Result<Pdfium, String> {
-    let mut tried: Vec<String> = Vec::new();
-
-    // 1. Explicit override.
-    if let Some(path) = std::env::var_os("PDFIUM_LIB_PATH") {
-        let path = PathBuf::from(path);
-        match Pdfium::bind_to_library(&path) {
-            Ok(bindings) => return Ok(Pdfium::new(bindings)),
-            Err(_) => tried.push(path.to_string_lossy().into_owned()),
-        }
-    }
-    // 2. Next to the executable (bundled distribution).
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            if let Some(pdfium) = try_pdfium_dir(dir, &mut tried) {
-                return Ok(pdfium);
-            }
-        }
-    }
-    // 2b. Tauri resource directory of a packaged build (set during setup).
-    if let Some(dir) = BUNDLED_PDFIUM_DIR.get() {
-        if let Some(pdfium) = try_pdfium_dir(dir, &mut tried) {
-            return Ok(pdfium);
-        }
-    }
-    // 3. Vendored copy under the crate (developer runs).
-    let vendor = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("vendor/pdfium");
-    if let Some(pdfium) = try_pdfium_dir(&vendor, &mut tried) {
-        return Ok(pdfium);
-    }
-    // 4. Any system-installed PDFium.
-    if let Ok(bindings) = Pdfium::bind_to_system_library() {
-        return Ok(Pdfium::new(bindings));
-    }
-    tried.push("system library".to_string());
-
-    Err(format!(
-        "Could not load a standard PDFium library. The system's libdeepin-pdfium is a \
-         different, incompatible API. Install libpdfium or set PDFIUM_LIB_PATH. Tried: {}",
-        tried.join(", ")
-    ))
-}
-
-/// Returns the process-wide PDFium binding, or a user-facing error string if no
-/// compatible library is available (so commands surface a message instead of
-/// aborting the app).
-fn get_pdfium() -> Result<MutexGuard<'static, Pdfium>, String> {
-    PDFIUM
-        .get_or_init(|| bind_pdfium().map(Mutex::new))
-        .as_ref()
-        .map_err(|e| e.clone())?
-        .lock()
-        .map_err(|_| "PDFium renderer lock poisoned".to_string())
-}
 
 #[tauri::command]
 fn get_pdf_page_count(path: String) -> Result<u32, String> {
@@ -216,53 +149,6 @@ fn list_pdf_browser_entries(path: Option<String>) -> Result<pdf::browser::PdfBro
         dir
     };
     pdf::browser::list_pdf_entries_for_dir(&dir)
-}
-
-fn render_page_image(
-    path: &Path,
-    page_index: u32,
-    width: i32,
-    height: i32,
-    format: image::ImageFormat,
-) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    pdf::render::render_page_bytes(&pdfium, path, page_index, width, height, format)
-}
-
-fn render_page_png(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Png)
-}
-
-fn render_page_jpeg(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Jpeg)
-}
-
-fn render_page_webp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::WebP)
-}
-
-fn render_page_bmp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Bmp)
-}
-
-fn render_page_tiff(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Tiff)
-}
-
-fn render_page_gif(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Gif)
-}
-
-fn render_page_ppm(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Pnm)
-}
-
-fn render_page_tga(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Tga)
-}
-
-fn render_page_ico(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    render_page_image(path, page_index, width, height, image::ImageFormat::Ico)
 }
 
 #[tauri::command]
@@ -3789,339 +3675,6 @@ fn remove_page_vector(path: String, page_index: u32, index: u32) -> Result<(), S
     Ok(())
 }
 
-fn pdf_object_string(obj: &Object) -> Option<String> {
-    match obj {
-        Object::String(bytes, _) => Some(String::from_utf8_lossy(bytes).to_string()),
-        Object::Name(name) => Some(String::from_utf8_lossy(name).to_string()),
-        _ => None,
-    }
-}
-
-fn pdf_rect_to_viewer(doc: &Document, page_id: ObjectId, rect: [f64; 4]) -> Result<[f64; 4], String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 {
-        return Err("Invalid page size".to_string());
-    }
-    let x1 = (rect[0] - media[0]) * VIEWER_PAGE_W / mw;
-    let x2 = (rect[2] - media[0]) * VIEWER_PAGE_W / mw;
-    let y1 = (media[3] - rect[3]) * VIEWER_PAGE_H / mh;
-    let y2 = (media[3] - rect[1]) * VIEWER_PAGE_H / mh;
-    Ok([x1, y1, x2, y2])
-}
-
-fn pdf_rect_array(dict: &Dictionary) -> Option<[f64; 4]> {
-    let arr = dict.get(b"Rect").ok()?.as_array().ok()?;
-    let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
-    Some([get(0), get(1), get(2), get(3)])
-}
-
-fn btn_field_kind(dict: &Dictionary) -> &'static str {
-    let ff = dict.get(b"Ff").ok().and_then(|o| o.as_i64().ok()).unwrap_or(0);
-    if ff & (1 << 16) != 0 {
-        return "radio";
-    }
-    if ff & (1 << 17) != 0 {
-        return "button";
-    }
-    "checkbox"
-}
-
-fn field_type_label(dict: &Dictionary) -> String {
-    match dict.get(b"FT").ok().and_then(|o| o.as_name().ok()) {
-        Some(b"Tx") => "text".to_string(),
-        Some(b"Btn") => btn_field_kind(dict).to_string(),
-        Some(b"Ch") => "choice".to_string(),
-        Some(b"Sig") => "signature".to_string(),
-        _ => "unknown".to_string(),
-    }
-}
-
-fn field_type_label_for(doc: &Document, id: ObjectId) -> String {
-    let Some(dict) = resolve_field_dict(doc, id) else {
-        return "unknown".to_string();
-    };
-    if let Ok(Object::Reference(parent_id)) = dict.get(b"Parent") {
-        if let Some(parent) = resolve_field_dict(doc, *parent_id) {
-            let ff = parent.get(b"Ff").ok().and_then(|o| o.as_i64().ok()).unwrap_or(0);
-            if ff & (1 << 16) != 0 {
-                return "radio".to_string();
-            }
-        }
-    }
-    field_type_label(dict)
-}
-
-fn field_value_string(dict: &Dictionary) -> String {
-    dict.get(b"V").ok().and_then(pdf_object_string).unwrap_or_default()
-}
-
-fn field_is_checked(dict: &Dictionary) -> bool {
-    match dict.get(b"V").ok() {
-        Some(Object::Name(name)) => name != b"Off",
-        Some(other) => pdf_object_string(other).is_some_and(|v| !v.is_empty() && !v.eq_ignore_ascii_case("off")),
-        None => dict.get(b"AS").ok().and_then(|o| o.as_name().ok()).is_some_and(|n| n != b"Off"),
-    }
-}
-
-fn field_choice_options(dict: &Dictionary) -> Vec<String> {
-    let Some(Object::Array(opts)) = dict.get(b"Opt").ok() else {
-        return Vec::new();
-    };
-    opts.iter()
-        .filter_map(|entry| match entry {
-            Object::String(bytes, _) => Some(String::from_utf8_lossy(bytes).to_string()),
-            Object::Array(pair) if pair.len() >= 2 => pair.get(1).and_then(pdf_object_string),
-            _ => None,
-        })
-        .collect()
-}
-
-fn page_index_for_annotation(doc: &Document, annot_id: ObjectId) -> Option<u32> {
-    for (page_num, page_id) in doc.get_pages() {
-        let page = doc.get_dictionary(page_id).ok()?;
-        let annots = page.get(b"Annots").ok()?.as_array().ok()?;
-        if annots.iter().any(|entry| matches!(entry, Object::Reference(id) if *id == annot_id)) {
-            return Some(page_num.saturating_sub(1));
-        }
-    }
-    None
-}
-
-fn resolve_field_dict(doc: &Document, id: ObjectId) -> Option<&Dictionary> {
-    doc.get_object(id).ok()?.as_dict().ok()
-}
-
-fn field_partial_name(dict: &Dictionary) -> Option<String> {
-    dict.get(b"T").ok().and_then(pdf_object_string)
-}
-
-fn full_field_name(doc: &Document, mut id: ObjectId) -> Option<String> {
-    let mut parts: Vec<String> = Vec::new();
-    for _ in 0..16 {
-        let dict = resolve_field_dict(doc, id)?;
-        if let Some(name) = field_partial_name(dict) {
-            parts.push(name);
-        }
-        match dict.get(b"Parent") {
-            Ok(Object::Reference(parent_id)) => id = *parent_id,
-            _ => break,
-        }
-    }
-    parts.reverse();
-    if parts.is_empty() {
-        None
-    } else {
-        Some(parts.join("."))
-    }
-}
-
-fn collect_field_rect(doc: &Document, id: ObjectId) -> Option<[f64; 4]> {
-    let dict = resolve_field_dict(doc, id)?;
-    if let Some(rect) = pdf_rect_array(dict) {
-        return Some(rect);
-    }
-    let kids = dict.get(b"Kids").ok()?.as_array().ok()?;
-    for kid in kids {
-        let kid_id = match kid {
-            Object::Reference(kid_id) => *kid_id,
-            _ => continue,
-        };
-        if let Some(rect) = collect_field_rect(doc, kid_id) {
-            return Some(rect);
-        }
-    }
-    None
-}
-
-fn collect_field_widget_id(doc: &Document, id: ObjectId) -> Option<ObjectId> {
-    let dict = resolve_field_dict(doc, id)?;
-    if dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok()) == Some(b"Widget") {
-        return Some(id);
-    }
-    let kids = dict.get(b"Kids").ok()?.as_array().ok()?;
-    for kid in kids {
-        let kid_id = match kid {
-            Object::Reference(kid_id) => *kid_id,
-            _ => continue,
-        };
-        if let Some(widget_id) = collect_field_widget_id(doc, kid_id) {
-            return Some(widget_id);
-        }
-    }
-    None
-}
-
-fn walk_form_nodes(doc: &Document, obj: &Object, out: &mut Vec<ObjectId>) {
-    let id = match obj {
-        Object::Reference(id) => *id,
-        _ => return,
-    };
-    let Some(dict) = resolve_field_dict(doc, id) else {
-        return;
-    };
-    let ff = dict.get(b"Ff").ok().and_then(|o| o.as_i64().ok()).unwrap_or(0);
-    let is_radio_parent = ff & (1 << 16) != 0 && dict.get(b"Kids").ok().and_then(|o| o.as_array().ok()).is_some();
-    if dict.get(b"FT").is_ok() && !is_radio_parent {
-        out.push(id);
-    }
-    if let Some(arr) = dict.get(b"Kids").ok().and_then(|o| o.as_array().ok()) {
-        for kid in arr {
-            walk_form_nodes(doc, kid, out);
-        }
-    }
-}
-
-fn mark_acroform_need_appearances(doc: &mut Document) -> Result<(), String> {
-    let catalog_id =
-        doc.trailer.get(b"Root").ok().and_then(|o| o.as_reference().ok()).ok_or("No catalog".to_string())?;
-    let catalog = doc.get_dictionary(catalog_id).map_err(|e| e.to_string())?;
-    let acroform_id = match catalog.get(b"AcroForm") {
-        Ok(Object::Reference(id)) => *id,
-        _ => return Ok(()),
-    };
-    let acroform = doc.get_dictionary_mut(acroform_id).map_err(|e| e.to_string())?;
-    acroform.set(b"NeedAppearances", Object::Boolean(true));
-    Ok(())
-}
-
-fn ensure_acroform(doc: &mut Document) -> Result<ObjectId, String> {
-    let catalog_id =
-        doc.trailer.get(b"Root").ok().and_then(|o| o.as_reference().ok()).ok_or("No catalog".to_string())?;
-    if let Ok(catalog) = doc.get_dictionary(catalog_id) {
-        if let Ok(Object::Reference(id)) = catalog.get(b"AcroForm") {
-            return Ok(*id);
-        }
-    }
-    let acroform_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
-        (b"Fields".to_vec(), Object::Array(vec![])),
-        (b"NeedAppearances".to_vec(), Object::Boolean(true)),
-    ])));
-    doc.get_dictionary_mut(catalog_id).map_err(|e| e.to_string())?.set(b"AcroForm", Object::Reference(acroform_id));
-    Ok(acroform_id)
-}
-
-fn push_acroform_field(doc: &mut Document, field_id: ObjectId) -> Result<(), String> {
-    let acroform_id = ensure_acroform(doc)?;
-    let acroform = doc.get_dictionary_mut(acroform_id).map_err(|e| e.to_string())?;
-    match acroform.get_mut(b"Fields") {
-        Ok(Object::Array(fields)) => fields.push(Object::Reference(field_id)),
-        _ => {
-            acroform.set(b"Fields", Object::Array(vec![Object::Reference(field_id)]));
-        }
-    }
-    Ok(())
-}
-
-fn append_page_annotation(doc: &mut Document, page_id: ObjectId, annot_id: ObjectId) -> Result<(), String> {
-    let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-    match page_dict.get_mut(b"Annots") {
-        Ok(Object::Array(arr)) => arr.push(Object::Reference(annot_id)),
-        _ => page_dict.set(b"Annots", Object::Array(vec![Object::Reference(annot_id)])),
-    }
-    Ok(())
-}
-
-#[derive(Serialize, Clone, Debug, PartialEq)]
-struct FormFieldData {
-    name: String,
-    field_type: String,
-    value: String,
-    page_index: Option<u32>,
-    rect: Option<[f64; 4]>,
-    options: Vec<String>,
-    checked: bool,
-}
-
-fn form_field_from_id(doc: &Document, id: ObjectId) -> Option<FormFieldData> {
-    let dict = resolve_field_dict(doc, id)?;
-    let name = full_field_name(doc, id).or_else(|| field_partial_name(dict))?;
-    let field_type = field_type_label_for(doc, id);
-    let value = field_value_string(dict);
-    let checked = field_is_checked(dict);
-    let options = field_choice_options(dict);
-    let widget_id = collect_field_widget_id(doc, id).unwrap_or(id);
-    let page_index = page_index_for_annotation(doc, widget_id);
-    let rect = collect_field_rect(doc, id).and_then(|pdf_rect| {
-        page_index
-            .and_then(|idx| doc.get_pages().get(&(idx + 1)).copied())
-            .and_then(|page_id| pdf_rect_to_viewer(doc, page_id, pdf_rect).ok())
-    });
-    Some(FormFieldData { name, field_type, value, page_index, rect, options, checked })
-}
-
-fn collect_form_fields(doc: &Document) -> Vec<FormFieldData> {
-    let mut ids = Vec::new();
-    if let Ok(catalog) = doc.catalog() {
-        if let Ok(Object::Reference(acroform_id)) = catalog.get(b"AcroForm") {
-            if let Ok(acroform) = doc.get_dictionary(*acroform_id) {
-                if let Ok(Object::Array(fields)) = acroform.get(b"Fields") {
-                    for field in fields {
-                        walk_form_nodes(doc, field, &mut ids);
-                    }
-                }
-            }
-        }
-    }
-    if ids.is_empty() {
-        for page_id in doc.get_pages().values() {
-            let Ok(page) = doc.get_dictionary(*page_id) else { continue };
-            let Ok(Object::Array(annots)) = page.get(b"Annots") else { continue };
-            for annot in annots {
-                let Object::Reference(id) = annot else { continue };
-                let Some(dict) = resolve_field_dict(doc, *id) else { continue };
-                if dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok()) == Some(b"Widget")
-                    && dict.get(b"FT").is_ok()
-                {
-                    ids.push(*id);
-                }
-            }
-        }
-    }
-    let mut seen = BTreeMap::new();
-    for id in ids {
-        if let Some(field) = form_field_from_id(doc, id) {
-            seen.entry(field.name.clone()).or_insert(field);
-        }
-    }
-    seen.into_values().collect()
-}
-
-fn find_form_field_id_by_name(doc: &Document, target: &str) -> Result<ObjectId, String> {
-    let mut ids = Vec::new();
-    if let Ok(catalog) = doc.catalog() {
-        if let Ok(Object::Reference(acroform_id)) = catalog.get(b"AcroForm") {
-            if let Ok(acroform) = doc.get_dictionary(*acroform_id) {
-                if let Ok(Object::Array(fields)) = acroform.get(b"Fields") {
-                    for field in fields {
-                        walk_form_nodes(doc, field, &mut ids);
-                    }
-                }
-            }
-        }
-    }
-    if ids.is_empty() {
-        for page_id in doc.get_pages().values() {
-            let Ok(page) = doc.get_dictionary(*page_id) else { continue };
-            let Ok(Object::Array(annots)) = page.get(b"Annots") else { continue };
-            for annot in annots {
-                if let Object::Reference(id) = annot {
-                    ids.push(*id);
-                }
-            }
-        }
-    }
-    for id in ids {
-        if full_field_name(doc, id).or_else(|| resolve_field_dict(doc, id).and_then(field_partial_name))
-            == Some(target.to_string())
-        {
-            return Ok(id);
-        }
-    }
-    Err(format!("Form field not found: {target}"))
-}
-
 #[tauri::command]
 fn get_pdf_form_fields(path: String) -> Result<Vec<FormFieldData>, String> {
     let doc = Document::load(PathBuf::from(&path)).map_err(|e| e.to_string())?;
@@ -4162,102 +3715,6 @@ fn set_pdf_form_field(path: String, name: String, value: String) -> Result<(), S
     mark_acroform_need_appearances(&mut doc)?;
     doc.save(&path).map_err(|e| e.to_string())?;
     Ok(())
-}
-
-fn btn_on_state_name(dict: &Dictionary) -> Vec<u8> {
-    dict.get(b"AP")
-        .ok()
-        .and_then(|o| o.as_dict().ok())
-        .and_then(|ap| ap.get(b"N").ok())
-        .and_then(|o| o.as_dict().ok())
-        .and_then(|n| n.iter().find(|(k, _)| *k != b"Off").map(|(k, _)| k.clone()))
-        .unwrap_or_else(|| b"Yes".to_vec())
-}
-
-fn set_btn_widget_checked(doc: &mut Document, widget_id: ObjectId, on: bool) -> Result<(), String> {
-    let on_name = doc.get_dictionary(widget_id).map_err(|e| e.to_string()).map(btn_on_state_name)?;
-    let dict = doc.get_dictionary_mut(widget_id).map_err(|e| e.to_string())?;
-    if on {
-        dict.set(b"V", Object::Name(on_name.clone()));
-        dict.set(b"AS", Object::Name(on_name));
-    } else {
-        dict.set(b"V", Object::Name(b"Off".to_vec()));
-        dict.set(b"AS", Object::Name(b"Off".to_vec()));
-    }
-    Ok(())
-}
-
-fn radio_group_widget_ids(doc: &Document, group_id: ObjectId) -> Vec<ObjectId> {
-    let Some(dict) = resolve_field_dict(doc, group_id) else {
-        return vec![group_id];
-    };
-    if let Some(kids) = dict.get(b"Kids").ok().and_then(|o| o.as_array().ok()) {
-        return kids
-            .iter()
-            .filter_map(|kid| match kid {
-                Object::Reference(id) => Some(*id),
-                _ => None,
-            })
-            .collect();
-    }
-    vec![group_id]
-}
-
-fn set_radio_group_checked(doc: &mut Document, selected_id: ObjectId) -> Result<(), String> {
-    let group_id = doc
-        .get_dictionary(selected_id)
-        .ok()
-        .and_then(|dict| dict.get(b"Parent").ok())
-        .and_then(|o| o.as_reference().ok())
-        .unwrap_or(selected_id);
-    for widget_id in radio_group_widget_ids(doc, group_id) {
-        set_btn_widget_checked(doc, widget_id, widget_id == selected_id)?;
-    }
-    Ok(())
-}
-
-fn find_radio_group_by_name(doc: &Document, group_name: &str) -> Option<ObjectId> {
-    let catalog = doc.catalog().ok()?;
-    let af_id = catalog.get(b"AcroForm").ok()?.as_reference().ok()?;
-    let af = doc.get_dictionary(af_id).ok()?;
-    let fields = af.get(b"Fields").ok()?.as_array().ok()?;
-    for field in fields {
-        let Object::Reference(id) = field else { continue };
-        let dict = resolve_field_dict(doc, *id)?;
-        if field_partial_name(dict).as_deref() != Some(group_name) {
-            continue;
-        }
-        let ff = dict.get(b"Ff").ok().and_then(|o| o.as_i64().ok()).unwrap_or(0);
-        if ff & (1 << 16) != 0 {
-            return Some(*id);
-        }
-    }
-    None
-}
-
-fn append_field_kid(doc: &mut Document, parent_id: ObjectId, kid_id: ObjectId) -> Result<(), String> {
-    let parent = doc.get_dictionary_mut(parent_id).map_err(|e| e.to_string())?;
-    match parent.get_mut(b"Kids") {
-        Ok(Object::Array(kids)) => kids.push(Object::Reference(kid_id)),
-        _ => parent.set(b"Kids", Object::Array(vec![Object::Reference(kid_id)])),
-    }
-    Ok(())
-}
-
-fn viewer_widget_rect(doc: &Document, page_id: ObjectId, x: f64, y: f64, w: f64, h: f64) -> Result<Object, String> {
-    let (px, py, pw, ph) = viewer_rect_to_pdf(doc, page_id, x, y, w, h)?;
-    Ok(Object::Array(vec![
-        Object::Real(px as f32),
-        Object::Real(py as f32),
-        Object::Real((px + pw) as f32),
-        Object::Real((py + ph) as f32),
-    ]))
-}
-
-fn choice_options_object(options: &[String]) -> Object {
-    Object::Array(
-        options.iter().map(|option| Object::String(option.as_bytes().to_vec(), lopdf::StringFormat::Literal)).collect(),
-    )
 }
 
 #[tauri::command]
@@ -9085,7 +8542,7 @@ fn main() {
             // directory; record it so the loader can find it at runtime.
             use tauri::Manager;
             if let Ok(resources) = app.path().resource_dir() {
-                let _ = BUNDLED_PDFIUM_DIR.set(resources.join("vendor").join("pdfium"));
+                set_bundled_pdfium_dir(resources.join("vendor").join("pdfium"));
             }
             Ok(())
         })

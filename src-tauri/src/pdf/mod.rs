@@ -1,13 +1,16 @@
+pub mod annotations;
 pub mod bookmarks;
 pub mod browser;
 pub mod content;
 pub mod coords;
 pub mod export;
+pub mod forms;
 pub mod io;
 pub mod metadata;
 pub mod ocr;
 pub mod page_text;
 pub mod page_tree;
+pub mod pdfium_bind;
 pub mod render;
 pub mod rotation;
 pub mod search;
