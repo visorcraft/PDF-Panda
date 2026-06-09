@@ -1,8 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { open as openNativeDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog';
-import parityBatchCommands from './parity_batch_commands.json';
+import { open as openNativeDialog } from '@tauri-apps/plugin-dialog';
 import pandaWelcome from './assets/panda.png';
 import { TitleBar } from './chrome/TitleBar';
 import { buildAppMenus } from './menu/buildAppMenus';
@@ -10,7 +9,6 @@ import { buildAppMenuContext } from './menu/buildAppMenuContext';
 import { MenuChrome } from './menu/MenuChrome';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { Toast } from './ui/Toast';
-import type { PageRangeScope } from './pageRange/types';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
 import {
   type ImageExportFormat,
@@ -25,404 +23,79 @@ import {
   parityBatchNeedsRange,
 } from './pdf/parityPayload';
 import { useUndoHistory } from './pdf/useUndoHistory';
-import { type PdfAnnotation, PDF_BASE_HEIGHT, PDF_BASE_WIDTH, usePdfDocument } from './pdf/usePdfDocument';
-import { DeleteRangeModal } from './modals/DeleteRangeModal';
-import { FlattenModal } from './modals/FlattenModal';
-import { PageFooterModal } from './modals/PageFooterModal';
-import { PageHeaderModal } from './modals/PageHeaderModal';
-import { PageNumbersModal } from './modals/PageNumbersModal';
-import { WatermarkModal } from './modals/WatermarkModal';
-import { DuplicateRangeModal } from './modals/DuplicateRangeModal';
-import { ExportPagesPdfModal } from './modals/ExportPagesPdfModal';
-import { KeepRangeModal } from './modals/KeepRangeModal';
-import { MoveRangeModal } from './modals/MoveRangeModal';
-import { PageBorderModal } from './modals/PageBorderModal';
-import { type PageSizePreset, PageSizeModal } from './modals/PageSizeModal';
-import { ReverseRangeModal } from './modals/ReverseRangeModal';
-import { RotateRangeModal } from './modals/RotateRangeModal';
-import { AddBookmarkModal } from './modals/AddBookmarkModal';
-import { BookmarkAllModal } from './modals/BookmarkAllModal';
-import { DeleteNthModal } from './modals/DeleteNthModal';
-import { ExpandMarginsModal } from './modals/ExpandMarginsModal';
-import { ExtractEvenPagesModal } from './modals/ExtractEvenPagesModal';
-import { ExtractOddPagesModal } from './modals/ExtractOddPagesModal';
-import { InsertBlankPagesModal } from './modals/InsertBlankPagesModal';
-import { InterleaveModal } from './modals/InterleaveModal';
-import { PrependModal } from './modals/PrependModal';
-import { ReplacePageModal } from './modals/ReplacePageModal';
-import { ShrinkMarginsModal } from './modals/ShrinkMarginsModal';
-import { SplitAtModal } from './modals/SplitAtModal';
-import { SplitEveryModal } from './modals/SplitEveryModal';
-import { SwapPagesModal } from './modals/SwapPagesModal';
-import { CropModal } from './modals/CropModal';
-import { CropRangeModal } from './modals/CropRangeModal';
-import { DecryptModal } from './modals/DecryptModal';
-import { DeletePageModal } from './modals/DeletePageModal';
-import { ExportPagePdfModal } from './modals/ExportPagePdfModal';
-import { ExportPngModal } from './modals/ExportPngModal';
-import { ExtractPagesModal } from './modals/ExtractPagesModal';
-import { ImageInsertModal } from './modals/ImageInsertModal';
-import { InsertImagePageModal } from './modals/InsertImagePageModal';
-import { InsertPdfModal } from './modals/InsertPdfModal';
-import { MergePdfModal } from './modals/MergePdfModal';
-import { OpenPdfModal } from './modals/OpenPdfModal';
-import { ParityRangeModal } from './modals/ParityRangeModal';
-import { RenameBookmarkModal } from './modals/RenameBookmarkModal';
-import { SplitPdfModal } from './modals/SplitPdfModal';
-import { StickyNoteModal } from './modals/StickyNoteModal';
-import { AddFormFieldModal, type FormFieldKind } from './modals/AddFormFieldModal';
-import { DocumentSummaryModal } from './modals/DocumentSummaryModal';
-import { MarkdownSaveAsModal } from './modals/MarkdownSaveAsModal';
-import { MetadataModal } from './modals/MetadataModal';
-import { PageEditsModal } from './modals/PageEditsModal';
-import { PageTextModal } from './modals/PageTextModal';
-import { PasswordModal } from './modals/PasswordModal';
-import { PdfBrowserModal } from './modals/PdfBrowserModal';
-import { ProtectPdfModal } from './modals/ProtectPdfModal';
-import { SaveAsModal } from './modals/SaveAsModal';
-import { SearchModal } from './modals/SearchModal';
-import { SignPdfModal } from './modals/SignPdfModal';
-import { TesseractReminderModal, type TesseractInstallGuide } from './modals/TesseractReminderModal';
-import { UnsavedChangesModal, type UnsavedChoice } from './modals/UnsavedChangesModal';
-import { type PageTextEditItem } from './modals/PageEditsModal';
+import { PDF_BASE_HEIGHT, PDF_BASE_WIDTH, usePdfDocument } from './pdf/usePdfDocument';
+import { type FormFieldKind } from './modals/AddFormFieldModal';
 import { type PdfBrowserEntry, type PdfBrowserListing } from './modals/PdfBrowserModal';
+import { type PageSizePreset } from './modals/PageSizeModal';
 import { type PdfTextSearchMatch } from './modals/SearchModal';
+import { type TesseractInstallGuide } from './modals/TesseractReminderModal';
+import { type UnsavedChoice } from './modals/UnsavedChangesModal';
+import { AppModals } from './modals/AppModals';
+import { buildAppModalsContext } from './modals/appModalsContext';
+import {
+  BMP_DIALOG_FILTER,
+  CERT_DIALOG_FILTER,
+  DEFAULT_TESSERACT_GUIDE,
+  GIF_DIALOG_FILTER,
+  JPEG_DIALOG_FILTER,
+  MARKDOWN_DIALOG_FILTER,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  PDF_DIALOG_FILTER,
+  PNG_DIALOG_FILTER,
+  PPM_DIALOG_FILTER,
+  RECENT_PDF_LIMIT,
+  RECENT_PDFS_KEY,
+  LAST_BROWSER_DIR_KEY,
+  TIFF_DIALOG_FILTER,
+  WEBP_DIALOG_FILTER,
+  WHEEL_NAV_COOLDOWN,
+  ZOOM_STEP,
+  type ShapeKind,
+  type StampKind,
+  STAMP_PRESETS,
+} from './app/constants';
+import {
+  type AnnotationData,
+  type FormFieldData,
+  type MarkdownOcrNotice,
+  type MarkdownSaveResult,
+  type PageTextEdit,
+  type PageVectorEdit,
+  type PdfBookmarkEntry,
+  type PdfBrowserTarget,
+  type PdfDocumentMetadata,
+  type PdfPageSize,
+  type PdfSignatureInfo,
+  type PdfSignatureVerificationSummary,
+  type PdfSummaryResult,
+  type PngExportScope,
+  type SummarySaveResult,
+  type ViewMode,
+} from './app/types';
+import {
+  clampZoom,
+  directoryFromPath,
+  dismissTesseractReminder,
+  ensureExtension,
+  fileNameFromPath,
+  formatSummaryMarkdown,
+  inkPointsToPolyline,
+  isTesseractReminderDismissed,
+  markdownOcrNoticeFromResult,
+  markdownSaveToastMessage,
+  pickPdfWithNativeDialog,
+  pickSaveWithNativeDialog,
+  readStoredString,
+  readStoredStringArray,
+  shapeStrokeColor,
+  siblingMarkdownPath,
+  signatureStatusLabel,
+  stampPresetMeta,
+  writeStoredString,
+  writeStoredStringArray,
+} from './app/utils';
 import { runAnnotationRemoveViaEdit, type AnnotationRemoveCommand } from './pdf/runAnnotationEdit';
-
-const MIN_ZOOM = 0.25; // 25%
-const MAX_ZOOM = 4; // 400%
-const ZOOM_STEP = 0.25;
-
-// Cooldown (ms) between wheel-driven page changes so one scroll gesture / inertia
-// doesn't skip several pages at once.
-const WHEEL_NAV_COOLDOWN = 350;
-
-const RECENT_PDFS_KEY = 'pdf-panda:recent-pdfs';
-const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
-const TESSERACT_REMIND_DISMISSED_KEY = 'pdf-panda:tesseract-remind-dismissed';
-const RECENT_PDF_LIMIT = 8;
-
-type ShapeKind = 'square' | 'circle' | 'line';
-type StampKind = 'text' | 'image';
-const STAMP_PRESETS = [
-  { id: 'approved', label: 'APPROVED', color: '#228b22' },
-  { id: 'draft', label: 'DRAFT', color: '#787878' },
-  { id: 'confidential', label: 'CONFIDENTIAL', color: '#b22222' },
-  { id: 'reviewed', label: 'REVIEWED', color: '#1e5aa0' },
-] as const;
-
-type AnnotationData = PdfAnnotation & {
-  is_redaction: boolean;
-}
-
-interface FormFieldData {
-  name: string;
-  field_type: string;
-  value: string;
-  page_index: number | null;
-  rect: [number, number, number, number] | null;
-  options: string[];
-  checked: boolean;
-}
-
-function stampPresetMeta(preset: string | null | undefined) {
-  return STAMP_PRESETS.find((entry) => entry.id === preset);
-}
-
-function shapeStrokeColor(color: [number, number, number] | null): string {
-  if (!color) return 'rgb(255,0,0)';
-  return `rgb(${color[0] * 255},${color[1] * 255},${color[2] * 255})`;
-}
-
-function inkPointsToPolyline(points: number[] | null | undefined): string {
-  if (!points || points.length < 2) return '';
-  const pairs: string[] = [];
-  for (let i = 0; i + 1 < points.length; i += 2) {
-    pairs.push(`${points[i]},${points[i + 1]}`);
-  }
-  return pairs.join(' ');
-}
-
-type ViewMode = 'pdf' | 'markdown';
-
-interface MarkdownSaveResult {
-  markdown: string;
-  markdownPath: string;
-  written: boolean;
-  conflict: boolean;
-  ocrAvailable: boolean;
-  ocrLanguage: string;
-  pagesNeedingOcr: number;
-  ocrTextBlocks: number;
-  ocrMissingHints: number;
-}
-
-interface MarkdownOcrNotice {
-  tone: 'success' | 'warning';
-  message: string;
-}
-
-const markdownOcrNoticeFromResult = (result: MarkdownSaveResult): MarkdownOcrNotice | null => {
-  if (result.pagesNeedingOcr === 0) return null;
-  if (result.ocrMissingHints > 0 || result.ocrTextBlocks === 0) {
-    return {
-      tone: 'warning',
-      message: 'Scanned pages — pictures saved, text not read',
-    };
-  }
-  return {
-    tone: 'success',
-    message: 'Text read from scanned pages',
-  };
-};
-
-const markdownSaveToastMessage = (result: MarkdownSaveResult): string => {
-  const base = result.written
-    ? `Markdown saved to ${result.markdownPath}`
-    : 'Markdown file is already up to date';
-  if (result.pagesNeedingOcr === 0) return base;
-  if (result.ocrMissingHints > 0 || result.ocrTextBlocks === 0) {
-    return `${base}. Some pages are scans — pictures were saved, but their text couldn't be read.`;
-  }
-  return `${base}. Text was read from scanned pages.`;
-};
-
-interface PdfIntelligentExtraction {
-  headings: string[];
-  emails: string[];
-  urls: string[];
-  dates: string[];
-}
-
-interface PdfSummaryResult {
-  pageCount: number;
-  wordCount: number;
-  titleGuess: string | null;
-  overview: string;
-  keyPoints: string[];
-  extraction: PdfIntelligentExtraction;
-  scannedPages: number;
-}
-
-interface SummarySaveResult {
-  summary: PdfSummaryResult;
-  summaryPath: string;
-  written: boolean;
-  conflict: boolean;
-}
-
-type PageTextEdit = PageTextEditItem;
-
-interface PageVectorEdit {
-  index: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  kind: string;
-}
-
-interface PdfSignatureInfo {
-  field_name: string;
-  signer_name: string | null;
-  reason: string | null;
-  location: string | null;
-  signing_time: string | null;
-  sub_filter: string | null;
-  signed_percent: number | null;
-}
-
-interface PdfSignatureVerificationEntry {
-  field_name: string;
-  status: string;
-  signer_name: string | null;
-  signing_time: string | null;
-  integrity_ok: boolean;
-  modifications_after_signing: boolean;
-  summary: string;
-}
-
-interface PdfSignatureVerificationSummary {
-  signature_count: number;
-  valid_count: number;
-  invalid_count: number;
-  document_modified: boolean;
-  overall_valid: boolean;
-  summary: string;
-  signatures: PdfSignatureVerificationEntry[];
-}
-
-interface PdfBookmarkEntry {
-  title: string;
-  depth: number;
-  page_index: number | null;
-}
-
-interface PdfPageSize {
-  width: number;
-  height: number;
-  rotation: number;
-}
-
-interface PdfDocumentMetadata {
-  title: string | null;
-  author: string | null;
-  subject: string | null;
-  keywords: string | null;
-  creator: string | null;
-  producer: string | null;
-  creation_date: string | null;
-  mod_date: string | null;
-}
-
-type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
-type PngExportScope = PageRangeScope;
-
-const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
-
-const siblingMarkdownPath = (pdfPath: string) => pdfPath.replace(/\.pdf$/i, '.md');
-
-const formatSummaryMarkdown = (summary: PdfSummaryResult): string => {
-  const lines: string[] = ['# Document Summary', ''];
-  if (summary.titleGuess) lines.push(`**Title guess:** ${summary.titleGuess}`, '');
-  lines.push(
-    `**Pages:** ${summary.pageCount} · **Words:** ${summary.wordCount} · **Scanned/image-only pages:** ${summary.scannedPages}`,
-    '',
-    '## Overview',
-    '',
-    summary.overview,
-    '',
-    '## Key points',
-    '',
-  );
-  if (summary.keyPoints.length === 0) lines.push('_(none)_', '');
-  else summary.keyPoints.forEach((point) => lines.push(`- ${point}`));
-  lines.push('', '## Extracted headings', '');
-  if (summary.extraction.headings.length === 0) lines.push('_(none)_', '');
-  else summary.extraction.headings.forEach((heading) => lines.push(`- ${heading}`));
-  lines.push('', '## Emails', '');
-  if (summary.extraction.emails.length === 0) lines.push('_(none)_', '');
-  else summary.extraction.emails.forEach((email) => lines.push(`- ${email}`));
-  lines.push('', '## URLs', '');
-  if (summary.extraction.urls.length === 0) lines.push('_(none)_', '');
-  else summary.extraction.urls.forEach((url) => lines.push(`- ${url}`));
-  lines.push('', '## Dates', '');
-  if (summary.extraction.dates.length === 0) lines.push('_(none)_');
-  else summary.extraction.dates.forEach((date) => lines.push(`- ${date}`));
-  return lines.join('\n');
-};
-
-const readStoredString = (key: string): string => {
-  try {
-    return window.localStorage.getItem(key) ?? '';
-  } catch {
-    return '';
-  }
-};
-
-const readStoredStringArray = (key: string): string[] => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(key) ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeStoredString = (key: string, value: string) => {
-  try {
-    if (value) window.localStorage.setItem(key, value);
-  } catch {
-    // localStorage can be unavailable in restricted webviews; persistence is optional.
-  }
-};
-
-const writeStoredStringArray = (key: string, value: string[]) => {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // localStorage can be unavailable in restricted webviews; persistence is optional.
-  }
-};
-
-const isTesseractReminderDismissed = () => readStoredString(TESSERACT_REMIND_DISMISSED_KEY) === '1';
-
-const dismissTesseractReminder = () => writeStoredString(TESSERACT_REMIND_DISMISSED_KEY, '1');
-
-const DEFAULT_TESSERACT_GUIDE: TesseractInstallGuide = {
-  platform: 'unknown',
-  summary:
-    'Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.',
-  steps: [
-    'Install Tesseract with English language support for your operating system.',
-    'Restart PDF Panda.',
-  ],
-  installCommand: null,
-  downloadUrl: 'https://github.com/tesseract-ocr/tesseract',
-  licenseNote: 'Tesseract is free, open-source software. You do not need to pay for it.',
-};
-
-const directoryFromPath = (path: string): string => {
-  const trimmed = path.trim();
-  const slash = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
-  return slash > 0 ? trimmed.slice(0, slash) : '';
-};
-
-const fileNameFromPath = (path: string): string => {
-  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
-  return slash >= 0 ? path.slice(slash + 1) : path;
-};
-
-const PDF_DIALOG_FILTER = [{ name: 'PDF', extensions: ['pdf'] }];
-const PNG_DIALOG_FILTER = [{ name: 'PNG', extensions: ['png'] }];
-const JPEG_DIALOG_FILTER = [{ name: 'JPEG', extensions: ['jpg', 'jpeg'] }];
-const WEBP_DIALOG_FILTER = [{ name: 'WebP', extensions: ['webp'] }];
-const BMP_DIALOG_FILTER = [{ name: 'BMP', extensions: ['bmp'] }];
-const TIFF_DIALOG_FILTER = [{ name: 'TIFF', extensions: ['tiff', 'tif'] }];
-const GIF_DIALOG_FILTER = [{ name: 'GIF', extensions: ['gif'] }];
-const PPM_DIALOG_FILTER = [{ name: 'PPM', extensions: ['ppm', 'pnm'] }];
-const MARKDOWN_DIALOG_FILTER = [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
-const CERT_DIALOG_FILTER = [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }];
-
-const signatureStatusLabel = (status: string): string => {
-  switch (status) {
-    case 'valid':
-      return 'Valid (trusted)';
-    case 'valid_untrusted':
-      return 'Valid (untrusted CA)';
-    case 'invalid':
-      return 'Invalid';
-    case 'indeterminate':
-      return 'Indeterminate';
-    default:
-      return status;
-  }
-};
-
-const ensureExtension = (path: string, extension: string): string => {
-  const lower = path.toLowerCase();
-  const suffix = `.${extension}`;
-  return lower.endsWith(suffix) ? path : `${path}${suffix}`;
-};
-
-const pickPdfWithNativeDialog = async (defaultPath?: string): Promise<string | null> => {
-  const selected = await openNativeDialog({
-    multiple: false,
-    directory: false,
-    defaultPath: defaultPath?.trim() || undefined,
-    filters: PDF_DIALOG_FILTER,
-  });
-  if (selected === null) return null;
-  return typeof selected === 'string' ? selected : selected[0] ?? null;
-};
-
-const pickSaveWithNativeDialog = async (
-  defaultPath: string,
-  filters: { name: string; extensions: string[] }[],
-): Promise<string | null> => saveNativeDialog({
-  defaultPath: defaultPath.trim() || undefined,
-  filters,
-});
 
 function App() {
   const [filePath, setFilePath] = useState<string>(''); // working-copy path; all backend ops target this
@@ -4742,6 +4415,121 @@ function App() {
     ? `${isDirty ? '• ' : ''}${originalPath.split('/').pop() ?? ''} — PDF Panda`
     : 'PDF Panda';
 
+  const modalCtx = buildAppModalsContext({
+    bookmarkAllPrefix, bookmarkTitle, browserListing, browserPathInput,
+    chooseExportPngOutputNative, chooseExtractOutputNative, chooseInsertPdfNative, chooseMarkdownSaveAsNative,
+    chooseMergePdfNative, chooseOpenPdfNative, chooseSaveAsNative, chooseSignCertNative,
+    closePageTextModal, closePasswordModal, closeSearchModal, closeTesseractReminderModal,
+    commitBrowserPath, confirmAddFormField, confirmImageSource, cropApplyAll,
+    cropMarginBottom, cropMarginLeft, cropMarginRight, cropMarginTop,
+    cropRange, currentPage, decryptPassword, defaultExtractOutputPath,
+    expandMarginBottom, expandMarginLeft, expandMarginRight, expandMarginTop,
+    defaultImageExportOutput, deleteNthValue, deletePageInput, deleteRange,
+    duplicateRange, editingTextIndex, exitNoteMode, expandMarginsRange,
+    exportPagePdfPath, exportPagesPdfOutputDir, exportPagesPdfRange, extractEvenOutputPath,
+    extractOddOutputPath, extractOutputPath, extractRange, fileNameFromPath,
+    flattenRange, handleAddBookmark, handleAddPageBorder, handleAddPageBorderEvenPages,
+    handleAddPageBorderOddPages, handleAddPageFooter, handleAddPageFooterEvenPages, handleAddPageFooterOddPages,
+    handleAddPageHeader, handleAddPageHeaderEvenPages, handleAddPageHeaderOddPages, handleAddPageNumbers,
+    handleAddPageNumbersEvenPages, handleAddPageNumbersOddPages, handleAddWatermark, handleAddWatermarkEvenPages,
+    handleAddWatermarkOddPages, handleBookmarkAllPages, handleBookmarkEvenPages, handleBookmarkOddPages,
+    handleBrowserEntryClick, handleClearAllCrops, handleClearCropEvenPages, handleClearCropOddPages,
+    handleClearPageCrop, handleClearPdfMetadata, handleCopySummary, handleCropEvenPages,
+    handleCropOddPages, handleCropPage, handleCropPageRange, handleDeleteEveryNthPage,
+    handleDeletePage, handleDeletePageRange, handleDuplicatePageRange, handleDuplicatePageRangeBefore,
+    handleDuplicatePageRangeToEnd, handleDuplicatePageRangeToStart, handleExpandEvenPages, handleExpandOddPages,
+    handleExpandPageMargins, handleExportEvenPagesAsPdf, handleExportEvenPagesImage, handleExportOddPagesAsPdf,
+    handleExportOddPagesImage, handleExportPagePdf, handleExportPagesPdf, handleExportPng,
+    handleExtractEvenPages, handleExtractOddPages, handleExtractPdf, handleFlattenAnnotations,
+    handleInsertBlankPages, handleInsertImagePage, handleInsertPdf, handleInterleavePdf,
+    handleInterleaveSourcePathChange, handleKeepPageRange, handleMarkdownSaveAs, handleMergePdf,
+    handleMovePageRange, handleMovePageRangeToEnd, handleMovePageRangeToStart, handleOpenEncryptedPdf,
+    handleOpenPdfPath, handleOpenRecentPdf, handleParityRangeAction, handlePrependPdf,
+    handlePrependSourcePathChange, handleProtectPdf, handleRemovePdfPassword, handleRenameBookmark,
+    handleReplacePage, handleReplaceSourcePathChange, handleResetRotationRange, handleReversePageRange,
+    handleRotatePage180Range, handleRotatePageRange, handleSaveAs, handleSaveMetadata,
+    handleSaveSummary, handleSetPageSize, handleSetPageSizeEvenPages, handleSetPageSizeOddPages,
+    handleShrinkEvenPages, handleShrinkOddPages, handleShrinkPageMargins, handleSignPdf,
+    handleSplitEveryN, handleSplitPdf, handleSplitPdfAtPage, handleSwapPages,
+    imageExportFormat, imageSourceDraft, insertAtPage, insertBlankAtIndex,
+    insertBlankCount, insertFilePath, insertImageAtIndex, insertImagePagePath,
+    insertRange, insertSourcePageCount, interleaveFilePath, interleaveRange,
+    interleaveSourcePageCount, keepRange, loadPdfBrowser, markdownSaveAsPath,
+    mergeFilePath, mergeRange, mergeSourcePageCount, metadataAuthor,
+    metadataCreationDate, metadataCreator, metadataKeywords, metadataModDate,
+    metadataProducer, metadataSubject, metadataTitle, moveRange,
+    moveRangeToIndex, nativeDialogs, newFormCheckboxChecked, newFormFieldKind,
+    newFormFieldName, newFormFieldOptions, newFormRadioGroup, newFormRadioOption,
+    noteDraft, openFilePath, openPdfBrowser, pageBorderInset,
+    pageBorderRange, pageCount, pageFooterRange, pageFooterText,
+    pageHeaderRange, pageHeaderText, pageNumbersPrefix, pageNumbersRange,
+    pageSizePreset, pageSizeRange, pageTextDraft, pageTextEdits,
+    pageTextFontSize, pageVectorEdits, parityRange, parityRangeCommand,
+    parityRangeOutputPath, pdfPasswordDraft, pdfSummary, pngExportOutputPath,
+    pngExportRange, prependFilePath, prependRange, prependSourcePageCount,
+    protectOwnerPassword, protectUserPassword, protectUserPasswordConfirm, recentPdfs,
+    removePageTextEdit, removePageVectorEdit, renameBookmarkTitle, replaceSourcePage,
+    replaceSourcePageCount, replaceSourcePath, resolveUnsaved, reverseRange,
+    rotateRange, runPdfSearch, saveAsPath, searchInputRef,
+    searchMatchCase, searchQuery, searchResultIndex, searchResults,
+    searchWholeWord, setBookmarkAllPrefix, setBookmarkTitle, setBrowserPathInput,
+    setCropApplyAll, setCropMarginBottom, setCropMarginLeft, setCropMarginRight,
+    setCropMarginTop, setDecryptPassword, setDeleteNthValue, setDeletePageInput,
+    setExpandMarginBottom, setExpandMarginLeft, setExpandMarginRight,
+    setExpandMarginTop, setExportPagePdfPath, setExportPagesPdfOutputDir, setExtractEvenOutputPath,
+    setExtractOddOutputPath, setExtractOutputPath, setImageExportFormat, setImageSourceDraft,
+    setInsertAtPage, setInsertBlankAtIndex, setInsertBlankCount, setInsertFilePath,
+    setInsertImageAtIndex, setInsertImagePagePath, setMarkdownSaveAsPath, setMergeFilePath,
+    setMetadataAuthor, setMetadataCreator, setMetadataKeywords, setMetadataProducer,
+    setMetadataSubject, setMetadataTitle, setMoveRangeToIndex, setNewFormCheckboxChecked,
+    setNewFormFieldKind, setNewFormFieldName, setNewFormFieldOptions, setNewFormRadioGroup,
+    setNewFormRadioOption, setNoteDraft, setOpenFilePath, setPageBorderInset,
+    setPageFooterText, setPageHeaderText, setPageNumbersPrefix, setPageSizePreset,
+    setPageTextDraft, setPageTextFontSize, setParityRangeCommand, setParityRangeOutputPath,
+    setPdfPasswordDraft, setPngExportOutputPath, setProtectOwnerPassword, setProtectUserPassword,
+    setProtectUserPasswordConfirm, setRenameBookmarkTitle, setReplaceSourcePage, setSaveAsPath,
+    setSearchMatchCase, setSearchQuery, setSearchWholeWord, setShowAddBookmarkModal,
+    setShowAddFormFieldModal, setShowBookmarkAllModal, setShowBrowserModal, setShowCropModal,
+    setShowCropRangeModal, setShowDecryptModal, setShowDeleteModal, setShowDeleteNthModal,
+    setShowDeleteRangeModal, setShowDuplicateRangeModal, setShowExpandMarginsModal, setShowExportPagePdfModal,
+    setShowExportPagesPdfModal, setShowExportPngModal, setShowExtractEvenModal, setShowExtractModal,
+    setShowExtractOddModal, setShowFlattenModal, setShowImageInsertModal, setShowInsertBlankPagesModal,
+    setShowInsertImagePageModal, setShowInsertModal, setShowInterleaveModal, setShowKeepRangeModal,
+    setShowMarkdownSaveAsModal, setShowMergeModal, setShowMetadataModal, setShowMoveRangeModal,
+    setShowOpenModal, setShowPageBorderModal, setShowPageEditsModal, setShowPageFooterModal,
+    setShowPageHeaderModal, setShowPageNumbersModal, setShowPageSizeModal, setShowParityRangeModal,
+    setShowPrependModal, setShowProtectModal, setShowRenameBookmarkModal, setShowReplacePageModal,
+    setShowReverseRangeModal, setShowRotateRangeModal, setShowSaveAsModal, setShowShrinkMarginsModal,
+    setShowSignModal, setShowSplitAtModal, setShowSplitEveryModal, setShowSplitModal,
+    setShowSummaryModal, setShowSwapPagesModal, setShowWatermarkModal, setShrinkMarginBottom,
+    setShrinkMarginLeft, setShrinkMarginRight, setShrinkMarginTop, setSignCertPassword,
+    setSignCertPath, setSignLocation, setSignReason, setSplitAtPage,
+    setSplitEveryN, setSplitRanges, setSwapPageA,
+    setSwapPageB, setTesseractDoNotRemind, setWatermarkText, showAddBookmarkModal,
+    showAddFormFieldModal, showBookmarkAllModal, showBrowserModal, showCropModal,
+    showCropRangeModal, showDecryptModal, showDeleteModal, showDeleteNthModal,
+    showDeleteRangeModal, showDuplicateRangeModal, showExpandMarginsModal, showExportPagePdfModal,
+    showExportPagesPdfModal, showExportPngModal, showExtractEvenModal, showExtractModal,
+    showExtractOddModal, showFlattenModal, showImageInsertModal, showInsertBlankPagesModal,
+    showInsertImagePageModal, showInsertModal, showInterleaveModal, showKeepRangeModal,
+    showMarkdownSaveAsModal, showMergeModal, showMetadataModal, showMoveRangeModal,
+    showNoteModal, showOpenModal, showPageBorderModal, showPageEditsModal,
+    showPageFooterModal, showPageHeaderModal, showPageNumbersModal, showPageSizeModal,
+    showPageTextModal, showParityRangeModal, showPasswordModal, showPrependModal,
+    showProtectModal, showRenameBookmarkModal, showReplacePageModal, showReverseRangeModal,
+    showRotateRangeModal, showSaveAsModal, showSearchModal, showShrinkMarginsModal,
+    showSignModal, showSplitAtModal, showSplitEveryModal, showSplitModal,
+    showSummaryModal, showSwapPagesModal, showTesseractModal, showToast,
+    showUnsavedModal, showWatermarkModal, shrinkMarginBottom, shrinkMarginLeft,
+    shrinkMarginRight, shrinkMarginTop, shrinkMarginsRange, signCertPassword,
+    signCertPath, signLocation, signReason, splitAtPage,
+    splitEveryN, splitRanges, startEditPageText, stepSearchMatch,
+    submitPageText, submitTextNote, swapPageA, swapPageB,
+    tesseractDoNotRemind, tesseractInstallGuide, watermarkRange, watermarkText,
+    pageSizes,
+  });
+
+
   return (
     <div className="app">
       <TitleBar title={windowTitle} />
@@ -5407,796 +5195,7 @@ function App() {
       </main>
       </div>
 
-      {showOpenModal && (
-        <OpenPdfModal
-          filePath={openFilePath}
-          nativeDialogs={nativeDialogs}
-          recentPdfs={recentPdfs}
-          fileNameFromPath={fileNameFromPath}
-          onFilePathChange={setOpenFilePath}
-          onClose={() => setShowOpenModal(false)}
-          onOpen={handleOpenPdfPath}
-          onOpenRecent={handleOpenRecentPdf}
-          onChooseNative={chooseOpenPdfNative}
-          onBrowse={() => openPdfBrowser('open')}
-        />
-      )}
-
-      {showNoteModal && (
-        <StickyNoteModal
-          noteDraft={noteDraft}
-          onNoteDraftChange={setNoteDraft}
-          onClose={exitNoteMode}
-          onSubmit={submitTextNote}
-        />
-      )}
-
-      {showDeleteModal && pageCount !== null && (
-        <DeletePageModal
-          deletePageInput={deletePageInput}
-          currentPage={currentPage}
-          pageCount={pageCount}
-          onDeletePageInputChange={setDeletePageInput}
-          onClose={() => setShowDeleteModal(false)}
-          onDelete={handleDeletePage}
-        />
-      )}
-
-      {showExportPngModal && (
-        <ExportPngModal
-          range={pngExportRange}
-          pageCount={pageCount}
-          currentPage={currentPage}
-          format={imageExportFormat}
-          outputPath={pngExportOutputPath}
-          nativeDialogs={nativeDialogs}
-          defaultOutputPath={defaultImageExportOutput}
-          onFormatChange={setImageExportFormat}
-          onOutputPathChange={setPngExportOutputPath}
-          onClose={() => setShowExportPngModal(false)}
-          onChooseOutputNative={chooseExportPngOutputNative}
-          onExport={handleExportPng}
-          onExportOdd={handleExportOddPagesImage}
-          onExportEven={handleExportEvenPagesImage}
-        />
-      )}
-
-      {showDeleteRangeModal && (
-        <DeleteRangeModal
-          startPage={deleteRange.startPage}
-          endPage={deleteRange.endPage}
-          pageCount={pageCount}
-          onStartChange={deleteRange.setStartPage}
-          onEndChange={deleteRange.setEndPage}
-          onClose={() => setShowDeleteRangeModal(false)}
-          onDelete={handleDeletePageRange}
-        />
-      )}
-
-      {showPageNumbersModal && (
-        <PageNumbersModal
-          range={pageNumbersRange}
-          pageCount={pageCount}
-          prefix={pageNumbersPrefix}
-          onPrefixChange={setPageNumbersPrefix}
-          onClose={() => setShowPageNumbersModal(false)}
-          onApply={handleAddPageNumbers}
-          onApplyOdd={handleAddPageNumbersOddPages}
-          onApplyEven={handleAddPageNumbersEvenPages}
-        />
-      )}
-
-      {showWatermarkModal && (
-        <WatermarkModal
-          range={watermarkRange}
-          pageCount={pageCount}
-          text={watermarkText}
-          onTextChange={setWatermarkText}
-          onClose={() => setShowWatermarkModal(false)}
-          onApply={handleAddWatermark}
-          onApplyOdd={handleAddWatermarkOddPages}
-          onApplyEven={handleAddWatermarkEvenPages}
-        />
-      )}
-
-      {showCropModal && (
-        <CropModal
-          currentPage={currentPage}
-          applyAll={cropApplyAll}
-          pageWidth={pageSizes[currentPage]?.width}
-          pageHeight={pageSizes[currentPage]?.height}
-          margins={{
-            top: cropMarginTop,
-            right: cropMarginRight,
-            bottom: cropMarginBottom,
-            left: cropMarginLeft,
-          }}
-          onApplyAllChange={setCropApplyAll}
-          onMarginsChange={(m) => {
-            setCropMarginTop(m.top);
-            setCropMarginRight(m.right);
-            setCropMarginBottom(m.bottom);
-            setCropMarginLeft(m.left);
-          }}
-          onClose={() => setShowCropModal(false)}
-          onClearPageCrop={handleClearPageCrop}
-          onClearAllCrops={handleClearAllCrops}
-          onClearOddCrops={handleClearCropOddPages}
-          onClearEvenCrops={handleClearCropEvenPages}
-          onCrop={handleCropPage}
-        />
-      )}
-
-      {showDuplicateRangeModal && (
-        <DuplicateRangeModal
-          startPage={duplicateRange.startPage}
-          endPage={duplicateRange.endPage}
-          pageCount={pageCount}
-          onStartChange={duplicateRange.setStartPage}
-          onEndChange={duplicateRange.setEndPage}
-          onClose={() => setShowDuplicateRangeModal(false)}
-          onDuplicate={handleDuplicatePageRange}
-          onDuplicateBefore={handleDuplicatePageRangeBefore}
-          onDuplicateToStart={handleDuplicatePageRangeToStart}
-          onDuplicateToEnd={handleDuplicatePageRangeToEnd}
-        />
-      )}
-
-      {showFlattenModal && (
-        <FlattenModal
-          range={flattenRange}
-          pageCount={pageCount}
-          onClose={() => setShowFlattenModal(false)}
-          onFlatten={handleFlattenAnnotations}
-        />
-      )}
-
-      {showAddBookmarkModal && (
-        <AddBookmarkModal
-          currentPage={currentPage}
-          title={bookmarkTitle}
-          onTitleChange={setBookmarkTitle}
-          onClose={() => setShowAddBookmarkModal(false)}
-          onAdd={handleAddBookmark}
-        />
-      )}
-
-      {showPageHeaderModal && (
-        <PageHeaderModal
-          range={pageHeaderRange}
-          pageCount={pageCount}
-          text={pageHeaderText}
-          onTextChange={setPageHeaderText}
-          onClose={() => setShowPageHeaderModal(false)}
-          onApply={handleAddPageHeader}
-          onApplyOdd={handleAddPageHeaderOddPages}
-          onApplyEven={handleAddPageHeaderEvenPages}
-        />
-      )}
-
-      {showPageFooterModal && (
-        <PageFooterModal
-          range={pageFooterRange}
-          pageCount={pageCount}
-          text={pageFooterText}
-          onTextChange={setPageFooterText}
-          onClose={() => setShowPageFooterModal(false)}
-          onApply={handleAddPageFooter}
-          onApplyOdd={handleAddPageFooterOddPages}
-          onApplyEven={handleAddPageFooterEvenPages}
-        />
-      )}
-
-      {showSwapPagesModal && (
-        <SwapPagesModal
-          pageA={swapPageA}
-          pageB={swapPageB}
-          pageCount={pageCount}
-          onPageAChange={setSwapPageA}
-          onPageBChange={setSwapPageB}
-          onClose={() => setShowSwapPagesModal(false)}
-          onSwap={handleSwapPages}
-        />
-      )}
-
-      {showReplacePageModal && (
-        <ReplacePageModal
-          currentPage={currentPage}
-          sourcePath={replaceSourcePath}
-          sourcePage={replaceSourcePage}
-          sourcePageCount={replaceSourcePageCount}
-          onSourcePathChange={(value) => void handleReplaceSourcePathChange(value)}
-          onSourcePageChange={setReplaceSourcePage}
-          onBrowse={() => openPdfBrowser('replace')}
-          onClose={() => setShowReplacePageModal(false)}
-          onReplace={handleReplacePage}
-        />
-      )}
-
-      {showInterleaveModal && (
-        <InterleaveModal
-          sourcePath={interleaveFilePath}
-          sourcePageCount={interleaveSourcePageCount}
-          startPage={interleaveRange.startPage}
-          endPage={interleaveRange.endPage}
-          onSourcePathChange={(value) => void handleInterleaveSourcePathChange(value)}
-          onStartChange={interleaveRange.setStartPage}
-          onEndChange={interleaveRange.setEndPage}
-          onBrowse={() => openPdfBrowser('interleave')}
-          onClose={() => setShowInterleaveModal(false)}
-          onInterleave={handleInterleavePdf}
-        />
-      )}
-
-      {showPageSizeModal && (
-        <PageSizeModal
-          range={pageSizeRange}
-          pageCount={pageCount}
-          preset={pageSizePreset}
-          onPresetChange={setPageSizePreset}
-          onClose={() => setShowPageSizeModal(false)}
-          onApply={handleSetPageSize}
-          onApplyOdd={handleSetPageSizeOddPages}
-          onApplyEven={handleSetPageSizeEvenPages}
-        />
-      )}
-
-      {showExportPagesPdfModal && (
-        <ExportPagesPdfModal
-          range={exportPagesPdfRange}
-          pageCount={pageCount}
-          outputDir={exportPagesPdfOutputDir}
-          onOutputDirChange={setExportPagesPdfOutputDir}
-          onClose={() => setShowExportPagesPdfModal(false)}
-          onExport={handleExportPagesPdf}
-          onExportOdd={handleExportOddPagesAsPdf}
-          onExportEven={handleExportEvenPagesAsPdf}
-        />
-      )}
-
-      {showRotateRangeModal && (
-        <RotateRangeModal
-          startPage={rotateRange.startPage}
-          endPage={rotateRange.endPage}
-          pageCount={pageCount}
-          onStartChange={rotateRange.setStartPage}
-          onEndChange={rotateRange.setEndPage}
-          onClose={() => setShowRotateRangeModal(false)}
-          onRotateCw={() => handleRotatePageRange(false)}
-          onRotateCcw={() => handleRotatePageRange(true)}
-          onRotate180={handleRotatePage180Range}
-          onResetRotation={handleResetRotationRange}
-        />
-      )}
-
-      {showKeepRangeModal && (
-        <KeepRangeModal
-          startPage={keepRange.startPage}
-          endPage={keepRange.endPage}
-          pageCount={pageCount}
-          onStartChange={keepRange.setStartPage}
-          onEndChange={keepRange.setEndPage}
-          onClose={() => setShowKeepRangeModal(false)}
-          onKeep={handleKeepPageRange}
-        />
-      )}
-
-      {showMoveRangeModal && (
-        <MoveRangeModal
-          startPage={moveRange.startPage}
-          endPage={moveRange.endPage}
-          targetIndex={moveRangeToIndex}
-          pageCount={pageCount}
-          onStartChange={moveRange.setStartPage}
-          onEndChange={moveRange.setEndPage}
-          onTargetChange={setMoveRangeToIndex}
-          onClose={() => setShowMoveRangeModal(false)}
-          onMoveToStart={handleMovePageRangeToStart}
-          onMoveToEnd={handleMovePageRangeToEnd}
-          onMove={handleMovePageRange}
-        />
-      )}
-
-      {showPrependModal && (
-        <PrependModal
-          sourcePath={prependFilePath}
-          sourcePageCount={prependSourcePageCount}
-          startPage={prependRange.startPage}
-          endPage={prependRange.endPage}
-          onSourcePathChange={(value) => void handlePrependSourcePathChange(value)}
-          onStartChange={prependRange.setStartPage}
-          onEndChange={prependRange.setEndPage}
-          onBrowse={() => openPdfBrowser('prepend')}
-          onClose={() => setShowPrependModal(false)}
-          onPrepend={handlePrependPdf}
-        />
-      )}
-
-      {showSplitEveryModal && (
-        <SplitEveryModal
-          everyN={splitEveryN}
-          onEveryNChange={setSplitEveryN}
-          onClose={() => setShowSplitEveryModal(false)}
-          onSplit={handleSplitEveryN}
-        />
-      )}
-
-      {showPageBorderModal && (
-        <PageBorderModal
-          range={pageBorderRange}
-          pageCount={pageCount}
-          inset={pageBorderInset}
-          onInsetChange={setPageBorderInset}
-          onClose={() => setShowPageBorderModal(false)}
-          onApply={handleAddPageBorder}
-          onApplyOdd={handleAddPageBorderOddPages}
-          onApplyEven={handleAddPageBorderEvenPages}
-        />
-      )}
-
-      {showBookmarkAllModal && (
-        <BookmarkAllModal
-          prefix={bookmarkAllPrefix}
-          onPrefixChange={setBookmarkAllPrefix}
-          onClose={() => setShowBookmarkAllModal(false)}
-          onBookmarkOdd={handleBookmarkOddPages}
-          onBookmarkEven={handleBookmarkEvenPages}
-          onBookmarkAll={handleBookmarkAllPages}
-        />
-      )}
-
-      {showShrinkMarginsModal && (
-        <ShrinkMarginsModal
-          range={shrinkMarginsRange}
-          pageCount={pageCount}
-          margins={{
-            top: shrinkMarginTop,
-            right: shrinkMarginRight,
-            bottom: shrinkMarginBottom,
-            left: shrinkMarginLeft,
-          }}
-          onMarginsChange={(m) => {
-            setShrinkMarginTop(m.top);
-            setShrinkMarginRight(m.right);
-            setShrinkMarginBottom(m.bottom);
-            setShrinkMarginLeft(m.left);
-          }}
-          onClose={() => setShowShrinkMarginsModal(false)}
-          onShrink={handleShrinkPageMargins}
-          onShrinkOdd={handleShrinkOddPages}
-          onShrinkEven={handleShrinkEvenPages}
-        />
-      )}
-
-      {showSplitAtModal && (
-        <SplitAtModal
-          splitAtPage={splitAtPage}
-          pageCount={pageCount}
-          onSplitAtPageChange={setSplitAtPage}
-          onClose={() => setShowSplitAtModal(false)}
-          onSplit={handleSplitPdfAtPage}
-        />
-      )}
-
-      {showDeleteNthModal && (
-        <DeleteNthModal
-          nth={deleteNthValue}
-          onNthChange={setDeleteNthValue}
-          onClose={() => setShowDeleteNthModal(false)}
-          onDelete={handleDeleteEveryNthPage}
-        />
-      )}
-
-      {showExtractOddModal && (
-        <ExtractOddPagesModal
-          outputPath={extractOddOutputPath}
-          onOutputPathChange={setExtractOddOutputPath}
-          onClose={() => setShowExtractOddModal(false)}
-          onExtract={handleExtractOddPages}
-        />
-      )}
-
-      {showExtractEvenModal && (
-        <ExtractEvenPagesModal
-          outputPath={extractEvenOutputPath}
-          onOutputPathChange={setExtractEvenOutputPath}
-          onClose={() => setShowExtractEvenModal(false)}
-          onExtract={handleExtractEvenPages}
-        />
-      )}
-
-      {showExpandMarginsModal && (
-        <ExpandMarginsModal
-          range={expandMarginsRange}
-          pageCount={pageCount}
-          margins={{
-            top: expandMarginTop,
-            right: expandMarginRight,
-            bottom: expandMarginBottom,
-            left: expandMarginLeft,
-          }}
-          onMarginsChange={(m) => {
-            setExpandMarginTop(m.top);
-            setExpandMarginRight(m.right);
-            setExpandMarginBottom(m.bottom);
-            setExpandMarginLeft(m.left);
-          }}
-          onClose={() => setShowExpandMarginsModal(false)}
-          onExpand={handleExpandPageMargins}
-          onExpandOdd={handleExpandOddPages}
-          onExpandEven={handleExpandEvenPages}
-        />
-      )}
-
-      {showReverseRangeModal && (
-        <ReverseRangeModal
-          startPage={reverseRange.startPage}
-          endPage={reverseRange.endPage}
-          pageCount={pageCount}
-          onStartChange={reverseRange.setStartPage}
-          onEndChange={reverseRange.setEndPage}
-          onClose={() => setShowReverseRangeModal(false)}
-          onReverse={handleReversePageRange}
-        />
-      )}
-
-      {showInsertBlankPagesModal && (
-        <InsertBlankPagesModal
-          atIndex={insertBlankAtIndex}
-          count={insertBlankCount}
-          pageCount={pageCount}
-          onAtIndexChange={setInsertBlankAtIndex}
-          onCountChange={setInsertBlankCount}
-          onClose={() => setShowInsertBlankPagesModal(false)}
-          onInsert={handleInsertBlankPages}
-        />
-      )}
-
-      {showParityRangeModal && (
-        <ParityRangeModal
-          commands={parityBatchCommands as string[]}
-          command={parityRangeCommand}
-          outputPath={parityRangeOutputPath}
-          startPage={parityRange.startPage}
-          endPage={parityRange.endPage}
-          pageCount={pageCount}
-          onCommandChange={setParityRangeCommand}
-          onOutputPathChange={setParityRangeOutputPath}
-          onStartChange={parityRange.setStartPage}
-          onEndChange={parityRange.setEndPage}
-          onClose={() => setShowParityRangeModal(false)}
-          onRun={handleParityRangeAction}
-        />
-      )}
-
-      {showCropRangeModal && (
-        <CropRangeModal
-          startPage={cropRange.startPage}
-          endPage={cropRange.endPage}
-          pageCount={pageCount}
-          margins={{
-            top: cropMarginTop,
-            right: cropMarginRight,
-            bottom: cropMarginBottom,
-            left: cropMarginLeft,
-          }}
-          onStartChange={cropRange.setStartPage}
-          onEndChange={cropRange.setEndPage}
-          onMarginsChange={(m) => {
-            setCropMarginTop(m.top);
-            setCropMarginRight(m.right);
-            setCropMarginBottom(m.bottom);
-            setCropMarginLeft(m.left);
-          }}
-          onClose={() => setShowCropRangeModal(false)}
-          onCropOdd={handleCropOddPages}
-          onCropEven={handleCropEvenPages}
-          onCrop={handleCropPageRange}
-        />
-      )}
-
-      {showDecryptModal && (
-        <DecryptModal
-          password={decryptPassword}
-          onPasswordChange={setDecryptPassword}
-          onClose={() => setShowDecryptModal(false)}
-          onDecrypt={handleRemovePdfPassword}
-        />
-      )}
-
-      {showInsertImagePageModal && (
-        <InsertImagePageModal
-          atIndex={insertImageAtIndex}
-          imagePath={insertImagePagePath}
-          pageCount={pageCount}
-          onAtIndexChange={setInsertImageAtIndex}
-          onImagePathChange={setInsertImagePagePath}
-          onClose={() => setShowInsertImagePageModal(false)}
-          onInsert={handleInsertImagePage}
-        />
-      )}
-
-      {showExportPagePdfModal && (
-        <ExportPagePdfModal
-          currentPage={currentPage}
-          outputPath={exportPagePdfPath}
-          onOutputPathChange={setExportPagePdfPath}
-          onClose={() => setShowExportPagePdfModal(false)}
-          onExport={handleExportPagePdf}
-        />
-      )}
-
-      {showRenameBookmarkModal && (
-        <RenameBookmarkModal
-          title={renameBookmarkTitle}
-          onTitleChange={setRenameBookmarkTitle}
-          onClose={() => setShowRenameBookmarkModal(false)}
-          onRename={handleRenameBookmark}
-        />
-      )}
-
-      {showExtractModal && (
-        <ExtractPagesModal
-          startPage={extractRange.startPage}
-          endPage={extractRange.endPage}
-          pageCount={pageCount}
-          outputPath={extractOutputPath}
-          nativeDialogs={nativeDialogs}
-          onStartChange={(start) => {
-            extractRange.setStartPage(start);
-            setExtractOutputPath(defaultExtractOutputPath(start, extractRange.endPage));
-          }}
-          onEndChange={(end) => {
-            extractRange.setEndPage(end);
-            setExtractOutputPath(defaultExtractOutputPath(extractRange.startPage, end));
-          }}
-          onOutputPathChange={setExtractOutputPath}
-          onClose={() => setShowExtractModal(false)}
-          onChooseOutputNative={chooseExtractOutputNative}
-          onExtract={handleExtractPdf}
-        />
-      )}
-
-      {showSplitModal && (
-        <SplitPdfModal
-          splitRanges={splitRanges}
-          pageCount={pageCount}
-          onSplitRangesChange={setSplitRanges}
-          onClose={() => setShowSplitModal(false)}
-          onSplit={handleSplitPdf}
-        />
-      )}
-
-      {showAddFormFieldModal && (
-        <AddFormFieldModal
-          fieldKind={newFormFieldKind}
-          fieldName={newFormFieldName}
-          fieldOptions={newFormFieldOptions}
-          checkboxChecked={newFormCheckboxChecked}
-          radioGroup={newFormRadioGroup}
-          radioOption={newFormRadioOption}
-          onFieldKindChange={setNewFormFieldKind}
-          onFieldNameChange={setNewFormFieldName}
-          onFieldOptionsChange={setNewFormFieldOptions}
-          onCheckboxCheckedChange={setNewFormCheckboxChecked}
-          onRadioGroupChange={setNewFormRadioGroup}
-          onRadioOptionChange={setNewFormRadioOption}
-          onClose={() => setShowAddFormFieldModal(false)}
-          onConfirm={confirmAddFormField}
-        />
-      )}
-
-      {showImageInsertModal && (
-        <ImageInsertModal
-          imagePath={imageSourceDraft}
-          onImagePathChange={setImageSourceDraft}
-          onClose={() => setShowImageInsertModal(false)}
-          onConfirm={confirmImageSource}
-        />
-      )}
-
-      {showSearchModal && (
-        <SearchModal
-          inputRef={searchInputRef}
-          query={searchQuery}
-          matchCase={searchMatchCase}
-          wholeWord={searchWholeWord}
-          results={searchResults}
-          resultIndex={searchResultIndex}
-          onQueryChange={setSearchQuery}
-          onMatchCaseChange={setSearchMatchCase}
-          onWholeWordChange={setSearchWholeWord}
-          onClose={closeSearchModal}
-          onFind={runPdfSearch}
-          onStepMatch={stepSearchMatch}
-        />
-      )}
-
-      {showMergeModal && (
-        <MergePdfModal
-          sourcePath={mergeFilePath}
-          sourcePageCount={mergeSourcePageCount}
-          pageCount={pageCount}
-          startPage={mergeRange.startPage}
-          endPage={mergeRange.endPage}
-          nativeDialogs={nativeDialogs}
-          onSourcePathChange={setMergeFilePath}
-          onStartChange={mergeRange.setStartPage}
-          onEndChange={mergeRange.setEndPage}
-          onClose={() => { setShowMergeModal(false); setMergeFilePath(''); }}
-          onChooseNative={chooseMergePdfNative}
-          onBrowse={() => openPdfBrowser('merge')}
-          onMerge={handleMergePdf}
-        />
-      )}
-
-      {showInsertModal && (
-        <InsertPdfModal
-          sourcePath={insertFilePath}
-          sourcePageCount={insertSourcePageCount}
-          pageCount={pageCount}
-          insertAtPage={insertAtPage}
-          startPage={insertRange.startPage}
-          endPage={insertRange.endPage}
-          nativeDialogs={nativeDialogs}
-          onSourcePathChange={setInsertFilePath}
-          onInsertAtPageChange={setInsertAtPage}
-          onStartChange={insertRange.setStartPage}
-          onEndChange={insertRange.setEndPage}
-          onClose={() => { setShowInsertModal(false); setInsertFilePath(''); }}
-          onChooseNative={chooseInsertPdfNative}
-          onBrowse={() => openPdfBrowser('insert')}
-          onInsert={handleInsertPdf}
-        />
-      )}
-
-      {showPageTextModal && (
-        <PageTextModal
-          editing={editingTextIndex !== null}
-          text={pageTextDraft}
-          fontSize={pageTextFontSize}
-          onTextChange={setPageTextDraft}
-          onFontSizeChange={setPageTextFontSize}
-          onClose={closePageTextModal}
-          onSave={submitPageText}
-        />
-      )}
-
-      {showPageEditsModal && (
-        <PageEditsModal
-          currentPage={currentPage}
-          textEdits={pageTextEdits}
-          vectorEdits={pageVectorEdits}
-          onClose={() => setShowPageEditsModal(false)}
-          onEditText={startEditPageText}
-          onRemoveText={removePageTextEdit}
-          onRemoveVector={removePageVectorEdit}
-        />
-      )}
-
-      {showSummaryModal && pdfSummary && (
-        <DocumentSummaryModal
-          summary={pdfSummary}
-          onClose={() => setShowSummaryModal(false)}
-          onCopy={handleCopySummary}
-          onSave={handleSaveSummary}
-        />
-      )}
-
-      {showTesseractModal && (
-        <TesseractReminderModal
-          guide={tesseractInstallGuide}
-          doNotRemind={tesseractDoNotRemind}
-          onDoNotRemindChange={setTesseractDoNotRemind}
-          onClose={closeTesseractReminderModal}
-          onCopyInstallCommand={() => {
-            void navigator.clipboard.writeText(tesseractInstallGuide.installCommand ?? '');
-            showToast('Install command copied');
-          }}
-        />
-      )}
-
-      {showMarkdownSaveAsModal && (
-        <MarkdownSaveAsModal
-          outputPath={markdownSaveAsPath}
-          nativeDialogs={nativeDialogs}
-          onOutputPathChange={setMarkdownSaveAsPath}
-          onClose={() => setShowMarkdownSaveAsModal(false)}
-          onChooseNative={chooseMarkdownSaveAsNative}
-          onSave={handleMarkdownSaveAs}
-        />
-      )}
-
-      {showPasswordModal && (
-        <PasswordModal
-          password={pdfPasswordDraft}
-          onPasswordChange={setPdfPasswordDraft}
-          onClose={closePasswordModal}
-          onOpen={handleOpenEncryptedPdf}
-        />
-      )}
-
-      {showMetadataModal && (
-        <MetadataModal
-          title={metadataTitle}
-          author={metadataAuthor}
-          subject={metadataSubject}
-          keywords={metadataKeywords}
-          creator={metadataCreator}
-          producer={metadataProducer}
-          creationDate={metadataCreationDate}
-          modDate={metadataModDate}
-          onTitleChange={setMetadataTitle}
-          onAuthorChange={setMetadataAuthor}
-          onSubjectChange={setMetadataSubject}
-          onKeywordsChange={setMetadataKeywords}
-          onCreatorChange={setMetadataCreator}
-          onProducerChange={setMetadataProducer}
-          onClose={() => setShowMetadataModal(false)}
-          onClear={handleClearPdfMetadata}
-          onApply={handleSaveMetadata}
-        />
-      )}
-
-      {showSignModal && (
-        <SignPdfModal
-          certPath={signCertPath}
-          certPassword={signCertPassword}
-          reason={signReason}
-          location={signLocation}
-          nativeDialogs={nativeDialogs}
-          onCertPathChange={setSignCertPath}
-          onCertPasswordChange={setSignCertPassword}
-          onReasonChange={setSignReason}
-          onLocationChange={setSignLocation}
-          onClose={() => setShowSignModal(false)}
-          onChooseCertNative={chooseSignCertNative}
-          onSign={handleSignPdf}
-        />
-      )}
-
-      {showProtectModal && (
-        <ProtectPdfModal
-          userPassword={protectUserPassword}
-          userPasswordConfirm={protectUserPasswordConfirm}
-          ownerPassword={protectOwnerPassword}
-          onUserPasswordChange={setProtectUserPassword}
-          onUserPasswordConfirmChange={setProtectUserPasswordConfirm}
-          onOwnerPasswordChange={setProtectOwnerPassword}
-          onClose={() => setShowProtectModal(false)}
-          onProtect={handleProtectPdf}
-        />
-      )}
-
-      {showSaveAsModal && (
-        <SaveAsModal
-          outputPath={saveAsPath}
-          nativeDialogs={nativeDialogs}
-          onOutputPathChange={setSaveAsPath}
-          onClose={() => setShowSaveAsModal(false)}
-          onChooseNative={chooseSaveAsNative}
-          onSave={handleSaveAs}
-        />
-      )}
-
-      {showUnsavedModal && (
-        <UnsavedChangesModal
-          onClose={() => resolveUnsaved('cancel')}
-          onChoose={resolveUnsaved}
-        />
-      )}
-
-      {showBrowserModal && (
-        <PdfBrowserModal
-          pathInput={browserPathInput}
-          listing={browserListing}
-          onPathInputChange={setBrowserPathInput}
-          onClose={() => setShowBrowserModal(false)}
-          onCommitPath={commitBrowserPath}
-          onNavigateParent={(parentDir) => void loadPdfBrowser(parentDir)}
-          onEntryClick={(entry) => void handleBrowserEntryClick(entry)}
-        />
-      )}
+      <AppModals ctx={modalCtx} />
 
       {/* Print surface — hidden on screen, shown only by the print stylesheet */}
       <div className="print-root">
