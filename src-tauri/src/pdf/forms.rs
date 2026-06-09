@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use lopdf::{Dictionary, Document, Object, ObjectId};
 use serde::Serialize;
 
+use crate::pdf::annotations::append_page_annotation;
 use crate::pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
 
 fn pdf_object_string(obj: &Object) -> Option<String> {
@@ -423,4 +425,249 @@ pub fn choice_options_object(options: &[String]) -> Object {
     Object::Array(
         options.iter().map(|option| Object::String(option.as_bytes().to_vec(), lopdf::StringFormat::Literal)).collect(),
     )
+}
+
+pub fn get_pdf_form_fields(path: &Path) -> Result<Vec<FormFieldData>, String> {
+    let doc = Document::load(path).map_err(|e| e.to_string())?;
+    Ok(collect_form_fields(&doc))
+}
+
+pub fn set_pdf_form_field(path: &Path, name: String, value: String) -> Result<(), String> {
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let field_id = find_form_field_id_by_name(&doc, &name)?;
+    let field_type = field_type_label_for(&doc, field_id);
+
+    match field_type.as_str() {
+        "checkbox" => {
+            let on = matches!(value.as_str(), "1" | "true" | "yes" | "on" | "checked");
+            set_btn_widget_checked(&mut doc, field_id, on)?;
+        }
+        "radio" => {
+            let on = matches!(value.as_str(), "1" | "true" | "yes" | "on" | "checked");
+            if on {
+                set_radio_group_checked(&mut doc, field_id)?;
+            } else {
+                set_btn_widget_checked(&mut doc, field_id, false)?;
+            }
+        }
+        "choice" => {
+            let dict = doc.get_dictionary_mut(field_id).map_err(|e| e.to_string())?;
+            dict.set(b"V", Object::String(value.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        }
+        "button" => return Err("Push buttons cannot be filled".to_string()),
+        "signature" => return Err("Signature fields cannot be filled".to_string()),
+        _ => {
+            let dict = doc.get_dictionary_mut(field_id).map_err(|e| e.to_string())?;
+            dict.set(b"V", Object::String(value.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        }
+    }
+    mark_acroform_need_appearances(&mut doc)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn add_text_form_field(
+    path: &Path,
+    page_index: u32,
+    name: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Field name is required".to_string());
+    }
+    if width < 20.0 || height < 10.0 {
+        return Err("Form field is too small".to_string());
+    }
+
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+
+    let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
+    let field_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
+        (b"FT".to_vec(), Object::Name(b"Tx".to_vec())),
+        (b"T".to_vec(), Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+        (b"V".to_vec(), Object::String(vec![], lopdf::StringFormat::Literal)),
+        (
+            b"Rect".to_vec(),
+            Object::Array(vec![
+                Object::Real(px as f32),
+                Object::Real(py as f32),
+                Object::Real((px + pw) as f32),
+                Object::Real((py + ph) as f32),
+            ]),
+        ),
+        (b"F".to_vec(), Object::Integer(4)),
+        (b"DA".to_vec(), Object::String(b"/Helv 12 Tf 0 g".to_vec(), lopdf::StringFormat::Literal)),
+    ])));
+
+    append_page_annotation(&mut doc, page_id, field_id)?;
+    push_acroform_field(&mut doc, field_id)?;
+    mark_acroform_need_appearances(&mut doc)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn add_checkbox_form_field(
+    path: &Path,
+    page_index: u32,
+    name: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    checked: bool,
+) -> Result<(), String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Field name is required".to_string());
+    }
+    if width < 12.0 || height < 12.0 {
+        return Err("Checkbox is too small".to_string());
+    }
+
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let rect = viewer_widget_rect(&doc, page_id, x, y, width, height)?;
+
+    let field_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
+        (b"FT".to_vec(), Object::Name(b"Btn".to_vec())),
+        (b"Ff".to_vec(), Object::Integer(0)),
+        (b"T".to_vec(), Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+        (b"Rect".to_vec(), rect),
+        (b"F".to_vec(), Object::Integer(4)),
+        (b"V".to_vec(), Object::Name(if checked { b"Yes".to_vec() } else { b"Off".to_vec() })),
+        (b"AS".to_vec(), Object::Name(if checked { b"Yes".to_vec() } else { b"Off".to_vec() })),
+    ])));
+
+    append_page_annotation(&mut doc, page_id, field_id)?;
+    push_acroform_field(&mut doc, field_id)?;
+    mark_acroform_need_appearances(&mut doc)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn add_choice_form_field(
+    path: &Path,
+    page_index: u32,
+    name: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    options: Vec<String>,
+    combo: bool,
+) -> Result<(), String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Field name is required".to_string());
+    }
+    if width < 40.0 || height < 14.0 {
+        return Err("Choice field is too small".to_string());
+    }
+    let cleaned: Vec<String> = options.into_iter().map(|o| o.trim().to_string()).filter(|o| !o.is_empty()).collect();
+    if cleaned.is_empty() {
+        return Err("At least one option is required".to_string());
+    }
+
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let rect = viewer_widget_rect(&doc, page_id, x, y, width, height)?;
+    let default_value = cleaned[0].clone();
+
+    let mut entries = vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
+        (b"FT".to_vec(), Object::Name(b"Ch".to_vec())),
+        (b"T".to_vec(), Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+        (b"Rect".to_vec(), rect),
+        (b"F".to_vec(), Object::Integer(4)),
+        (b"Opt".to_vec(), choice_options_object(&cleaned)),
+        (b"V".to_vec(), Object::String(default_value.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+        (b"DA".to_vec(), Object::String(b"/Helv 12 Tf 0 g".to_vec(), lopdf::StringFormat::Literal)),
+    ];
+    if combo {
+        entries.push((b"Ff".to_vec(), Object::Integer(1 << 17)));
+    }
+    let field_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(entries)));
+
+    append_page_annotation(&mut doc, page_id, field_id)?;
+    push_acroform_field(&mut doc, field_id)?;
+    mark_acroform_need_appearances(&mut doc)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn add_radio_form_field(
+    path: &Path,
+    page_index: u32,
+    group_name: String,
+    option_name: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    let group_name = group_name.trim().to_string();
+    let option_name = option_name.trim().to_string();
+    if group_name.is_empty() || option_name.is_empty() {
+        return Err("Group and option names are required".to_string());
+    }
+    if width < 12.0 || height < 12.0 {
+        return Err("Radio button is too small".to_string());
+    }
+
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let pages = doc.get_pages();
+    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let rect = viewer_widget_rect(&doc, page_id, x, y, width, height)?;
+
+    let group_id = if let Some(existing) = find_radio_group_by_name(&doc, &group_name) {
+        existing
+    } else {
+        let parent_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+            (b"FT".to_vec(), Object::Name(b"Btn".to_vec())),
+            (b"Ff".to_vec(), Object::Integer(1 << 16)),
+            (b"T".to_vec(), Object::String(group_name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+            (b"Kids".to_vec(), Object::Array(vec![])),
+        ])));
+        push_acroform_field(&mut doc, parent_id)?;
+        parent_id
+    };
+
+    let widget_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
+        (b"Parent".to_vec(), Object::Reference(group_id)),
+        (b"FT".to_vec(), Object::Name(b"Btn".to_vec())),
+        (b"T".to_vec(), Object::String(option_name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
+        (b"Rect".to_vec(), rect),
+        (b"F".to_vec(), Object::Integer(4)),
+        (b"V".to_vec(), Object::Name(b"Off".to_vec())),
+        (b"AS".to_vec(), Object::Name(b"Off".to_vec())),
+    ])));
+
+    append_page_annotation(&mut doc, page_id, widget_id)?;
+    append_field_kid(&mut doc, group_id, widget_id)?;
+    mark_acroform_need_appearances(&mut doc)?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
 }

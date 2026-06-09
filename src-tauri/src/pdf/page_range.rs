@@ -214,3 +214,14 @@ pub fn move_page_range_to_end(path: &Path, start_page: u32, end_page: u32) -> Re
     doc.save(path).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+pub fn duplicate_page_range_to_start(path: &Path, start_page: u32, end_page: u32) -> Result<u32, String> {
+    let path_buf = path.to_path_buf();
+    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let count = end_page - start_page + 1;
+    crate::pdf::merge_split::insert_pdf(&path_buf, &path_buf, 0, start_page, end_page)?;
+    Ok(count)
+}

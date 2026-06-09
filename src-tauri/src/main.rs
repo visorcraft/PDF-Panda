@@ -3,20 +3,13 @@
 mod licenses;
 mod pdf;
 
-use pdf::annotations::append_page_annotation;
 use pdf::bookmarks::{collect_outline_items, flat_outline_ids, remove_outline_item, PdfBookmarkEntry};
-use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
-use pdf::coords::{page_media_box, viewer_rect_to_pdf};
+use pdf::content::append_page_content;
+use pdf::coords::page_media_box;
 use pdf::crop::apply_crop_margins;
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
 use pdf::fonts::dedup_fonts_after_insert;
 use pdf::form_merge::merge_acroform_after_insert;
-use pdf::forms::field_type_label_for;
-use pdf::forms::{
-    append_field_kid, choice_options_object, collect_form_fields, find_form_field_id_by_name, find_radio_group_by_name,
-    mark_acroform_need_appearances, push_acroform_field, set_btn_widget_checked, set_radio_group_checked,
-    viewer_widget_rect, FormFieldData,
-};
 use pdf::history::HistorySnapshot;
 use pdf::import::import_object;
 use pdf::markdown::MarkdownSaveResult;
@@ -43,7 +36,7 @@ use pdf::search::{search_pdf_text as search_pdf_text_impl, PdfTextSearchMatch};
 use pdf::security::{PdfSignatureInfo, PdfSignatureVerificationSummary};
 use pdf::summary::{PdfSummaryResult, SummarySaveResult};
 
-use lopdf::{Dictionary, Document, Object, ObjectId, Stream};
+use lopdf::{Document, Object, ObjectId};
 use pdfium_render::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -1837,87 +1830,24 @@ include!("parity_batch8_generated.inc.rs");
 /// Deep-copy `start_page`..=`end_page` and insert the copies at the document start.
 #[tauri::command]
 fn duplicate_page_range_to_start(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
-    let path_buf = PathBuf::from(&path);
-    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let count = end_page - start_page + 1;
-    let path_str = path_buf.to_string_lossy().into_owned();
-    insert_pdf(path_str.clone(), path_str, 0, start_page, end_page)?;
-    Ok(count)
+    pdf::page_range::duplicate_page_range_to_start(&PathBuf::from(path), start_page, end_page)
 }
 
 /// Insert a new page at `at_index` containing a centered copy of `image_path`.
 #[tauri::command]
 fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<u32, String> {
-    let image_path = PathBuf::from(&image_path);
-    if !image_path.is_file() {
-        return Err("Image file not found".to_string());
-    }
-    let img = image::open(&image_path).map_err(|e| e.to_string())?;
-    let rgb = img.to_rgb8();
-    let (img_w, img_h) = rgb.dimensions();
-    if img_w == 0 || img_h == 0 {
-        return Err("Image has no pixels".to_string());
-    }
-    let mut jpeg = Vec::new();
-    image::DynamicImage::ImageRgb8(rgb)
-        .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
-        .map_err(|e| e.to_string())?;
-
-    let path_buf = PathBuf::from(&path);
-    let mut doc = Document::load(&path_buf).map_err(|e| e.to_string())?;
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut kids, _) = get_pages_kids(&doc)?;
-    let at = at_index as usize;
-    if at > kids.len() {
-        return Err("Insert index out of bounds".to_string());
-    }
-
-    const PAGE_W: f64 = 612.0;
-    const PAGE_H: f64 = 792.0;
-    let scale = (PAGE_W / img_w as f64).min(PAGE_H / img_h as f64);
-    let draw_w = img_w as f64 * scale;
-    let draw_h = img_h as f64 * scale;
-    let offset_x = (PAGE_W - draw_w) / 2.0;
-    let offset_y = (PAGE_H - draw_h) / 2.0;
-
-    let image_id = embed_jpeg_xobject(&mut doc, jpeg, img_w, img_h);
-    let mut xobjects = Dictionary::new();
-    xobjects.set(b"Im1", Object::Reference(image_id));
-    let mut resources = Dictionary::new();
-    resources.set(b"XObject", Object::Dictionary(xobjects));
-
-    let ops = format!("q {draw_w} 0 0 {draw_h} {offset_x} {offset_y} cm /Im1 Do Q\n");
-    let content_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.into_bytes())));
-
-    let mut page = Dictionary::new();
-    page.set("Type", Object::Name(b"Page".to_vec()));
-    page.set("Parent", Object::Reference(pages_ref));
-    page.set("Resources", Object::Dictionary(resources));
-    page.set(
-        "MediaBox",
-        Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Integer(612), Object::Integer(792)]),
-    );
-    page.set("Contents", Object::Reference(content_id));
-    let page_id = doc.add_object(Object::Dictionary(page));
-    kids.insert(at, Object::Reference(page_id));
-    set_pages_kids(&mut doc, pages_ref, kids)?;
-    doc.save(&path_buf).map_err(|e| e.to_string())?;
-    Ok(at_index)
+    pdf::page_images::insert_image_page(&PathBuf::from(path), at_index, &PathBuf::from(image_path))
 }
 
 /// Write a single page from the open PDF to `output_path` (does not modify the source).
 #[tauri::command]
 fn export_page_as_pdf(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    extract_pdf_pages(path, output_path, page_index, page_index)
+    pdf::page_images::export_page_as_pdf(&PathBuf::from(path), page_index, &PathBuf::from(output_path))
 }
 
 #[tauri::command]
 fn get_image_dimensions(path: String) -> Result<[u32; 2], String> {
-    let img = image::open(PathBuf::from(&path)).map_err(|e| e.to_string())?;
-    Ok([img.width(), img.height()])
+    pdf::page_images::get_image_dimensions(&PathBuf::from(path))
 }
 
 #[tauri::command]
@@ -1930,108 +1860,17 @@ fn add_page_image(
     height: f64,
     image_path: String,
 ) -> Result<(), String> {
-    if width < 5.0 || height < 5.0 {
-        return Err("Image placement is too small".to_string());
-    }
-
-    let image_path = PathBuf::from(&image_path);
-    if !image_path.is_file() {
-        return Err("Image file not found".to_string());
-    }
-
-    let img = image::open(&image_path).map_err(|e| e.to_string())?;
-    let rgb = img.to_rgb8();
-    let (img_w, img_h) = rgb.dimensions();
-    let mut jpeg = Vec::new();
-    image::DynamicImage::ImageRgb8(rgb)
-        .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
-        .map_err(|e| e.to_string())?;
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
-    let image_id = embed_jpeg_xobject(&mut doc, jpeg, img_w, img_h);
-
-    if !matches!(doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Resources"), Ok(Object::Dictionary(_))) {
-        doc.get_dictionary_mut(page_id)
-            .map_err(|e| e.to_string())?
-            .set(b"Resources", Object::Dictionary(Dictionary::new()));
-    }
-
-    let xobject_name = {
-        let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-        let resources = page_dict
-            .get_mut(b"Resources")
-            .map_err(|e| e.to_string())?
-            .as_dict_mut()
-            .map_err(|_| "Bad Resources".to_string())?;
-        match resources.get_mut(b"XObject") {
-            Ok(Object::Dictionary(dict)) => {
-                let name = next_image_xobject_name(dict);
-                dict.set(name.as_bytes(), Object::Reference(image_id));
-                name
-            }
-            _ => {
-                let mut dict = Dictionary::new();
-                dict.set(b"Im1", Object::Reference(image_id));
-                resources.set(b"XObject", Object::Dictionary(dict));
-                "Im1".to_string()
-            }
-        }
-    };
-
-    let ops = format!("q {pw} 0 0 {ph} {px} {py} cm /{xobject_name} Do Q\n");
-    append_page_content(&mut doc, page_id, ops.as_bytes())?;
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::page_images::add_page_image(&PathBuf::from(path), page_index, x, y, width, height, &PathBuf::from(image_path))
 }
 
 #[tauri::command]
 fn add_page_text(path: String, page_index: u32, x: f64, y: f64, font_size: f64, text: String) -> Result<u32, String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Text cannot be empty".to_string());
-    }
-    if !(8.0..=72.0).contains(&font_size) {
-        return Err("Font size must be between 8 and 72".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-    let (px, py) = viewer_point_to_pdf(&doc, page_id, x, y)?;
-    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
-    let index = pdf::page_text::next_panda_text_index(&content);
-    let mut ops = pdf::page_text::build_page_text_ops(pdf::page_text::PageTextOpsArgs {
-        index,
-        x,
-        y,
-        font_size,
-        text: trimmed,
-        px,
-        py,
-        font_name: &font_name,
-    });
-    if !ops.starts_with('\n') {
-        ops.insert(0, '\n');
-    }
-    append_page_content(&mut doc, page_id, ops.as_bytes())?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(index)
+    pdf::page_text::add_page_text(&PathBuf::from(path), page_index, x, y, font_size, text)
 }
 
 #[tauri::command]
 fn list_page_text_edits(path: String, page_index: u32) -> Result<Vec<pdf::page_text::PageTextEdit>, String> {
-    let path = PathBuf::from(path);
-    let doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let bytes = pdf::page_text::read_page_content(&doc, page_id)?;
-    let content = String::from_utf8_lossy(&bytes).into_owned();
-    Ok(pdf::page_text::parse_page_text_edits(&content))
+    pdf::page_text::list_page_text_edits(&PathBuf::from(path), page_index)
 }
 
 #[tauri::command]
@@ -2044,133 +1883,37 @@ fn update_page_text(
     y: Option<f64>,
     font_size: Option<f64>,
 ) -> Result<(), String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Text cannot be empty".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
-    let existing = pdf::page_text::parse_page_text_edits(&content)
-        .into_iter()
-        .find(|edit| edit.index == index)
-        .ok_or_else(|| "Text block not found".to_string())?;
-    let next_x = x.unwrap_or(existing.x);
-    let next_y = y.unwrap_or(existing.y);
-    let next_font_size = font_size.unwrap_or(existing.font_size);
-    if !(8.0..=72.0).contains(&next_font_size) {
-        return Err("Font size must be between 8 and 72".to_string());
-    }
-    let mut content = pdf::page_text::remove_panda_block(&content, "%PP-TXT", index)?;
-    let (px, py) = viewer_point_to_pdf(&doc, page_id, next_x, next_y)?;
-    content.push_str(&pdf::page_text::build_page_text_ops(pdf::page_text::PageTextOpsArgs {
-        index,
-        x: next_x,
-        y: next_y,
-        font_size: next_font_size,
-        text: trimmed,
-        px,
-        py,
-        font_name: &font_name,
-    }));
-    pdf::page_text::write_page_content(&mut doc, page_id, content.into_bytes())?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::page_text::update_page_text(&PathBuf::from(path), page_index, index, text, x, y, font_size)
 }
 
 #[tauri::command]
 fn remove_page_text(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
-    let content = pdf::page_text::remove_panda_block(&content, "%PP-TXT", index)?;
-    pdf::page_text::write_page_content(&mut doc, page_id, content.into_bytes())?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::page_text::remove_page_text(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
 fn add_page_vector_rect(path: String, page_index: u32, x: f64, y: f64, width: f64, height: f64) -> Result<u32, String> {
-    if width < 2.0 || height < 2.0 {
-        return Err("Vector shape is too small".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
-    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
-    let index = pdf::page_text::next_panda_vector_index(&content);
-    let ops = format!("\n%PP-VEC {index} {x} {y} {width} {height} stroke\nq 1 w {px} {py} {pw} {ph} re S Q\n");
-    append_page_content(&mut doc, page_id, ops.as_bytes())?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(index)
+    pdf::page_text::add_page_vector_rect(&PathBuf::from(path), page_index, x, y, width, height)
 }
 
 #[tauri::command]
 fn list_page_vectors(path: String, page_index: u32) -> Result<Vec<pdf::page_text::PageVectorEdit>, String> {
-    let path = PathBuf::from(path);
-    let doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let bytes = pdf::page_text::read_page_content(&doc, page_id)?;
-    let content = String::from_utf8_lossy(&bytes).into_owned();
-    Ok(pdf::page_text::parse_page_vectors(&content))
+    pdf::page_text::list_page_vectors(&PathBuf::from(path), page_index)
 }
 
 #[tauri::command]
 fn remove_page_vector(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
-    let content = pdf::page_text::remove_panda_block(&content, "%PP-VEC", index)?;
-    pdf::page_text::write_page_content(&mut doc, page_id, content.into_bytes())?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::page_text::remove_page_vector(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
-fn get_pdf_form_fields(path: String) -> Result<Vec<FormFieldData>, String> {
-    let doc = Document::load(PathBuf::from(&path)).map_err(|e| e.to_string())?;
-    Ok(collect_form_fields(&doc))
+fn get_pdf_form_fields(path: String) -> Result<Vec<pdf::forms::FormFieldData>, String> {
+    pdf::forms::get_pdf_form_fields(&PathBuf::from(path))
 }
 
 #[tauri::command]
 fn set_pdf_form_field(path: String, name: String, value: String) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let field_id = find_form_field_id_by_name(&doc, &name)?;
-    let field_type = field_type_label_for(&doc, field_id);
-
-    match field_type.as_str() {
-        "checkbox" => {
-            let on = matches!(value.as_str(), "1" | "true" | "yes" | "on" | "checked");
-            set_btn_widget_checked(&mut doc, field_id, on)?;
-        }
-        "radio" => {
-            let on = matches!(value.as_str(), "1" | "true" | "yes" | "on" | "checked");
-            if on {
-                set_radio_group_checked(&mut doc, field_id)?;
-            } else {
-                set_btn_widget_checked(&mut doc, field_id, false)?;
-            }
-        }
-        "choice" => {
-            let dict = doc.get_dictionary_mut(field_id).map_err(|e| e.to_string())?;
-            dict.set(b"V", Object::String(value.as_bytes().to_vec(), lopdf::StringFormat::Literal));
-        }
-        "button" => return Err("Push buttons cannot be filled".to_string()),
-        "signature" => return Err("Signature fields cannot be filled".to_string()),
-        _ => {
-            let dict = doc.get_dictionary_mut(field_id).map_err(|e| e.to_string())?;
-            dict.set(b"V", Object::String(value.as_bytes().to_vec(), lopdf::StringFormat::Literal));
-        }
-    }
-    mark_acroform_need_appearances(&mut doc)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::forms::set_pdf_form_field(&PathBuf::from(path), name, value)
 }
 
 #[tauri::command]
@@ -2183,44 +1926,7 @@ fn add_text_form_field(
     width: f64,
     height: f64,
 ) -> Result<(), String> {
-    let name = name.trim().to_string();
-    if name.is_empty() {
-        return Err("Field name is required".to_string());
-    }
-    if width < 20.0 || height < 10.0 {
-        return Err("Form field is too small".to_string());
-    }
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
-    let field_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
-        (b"FT".to_vec(), Object::Name(b"Tx".to_vec())),
-        (b"T".to_vec(), Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-        (b"V".to_vec(), Object::String(vec![], lopdf::StringFormat::Literal)),
-        (
-            b"Rect".to_vec(),
-            Object::Array(vec![
-                Object::Real(px as f32),
-                Object::Real(py as f32),
-                Object::Real((px + pw) as f32),
-                Object::Real((py + ph) as f32),
-            ]),
-        ),
-        (b"F".to_vec(), Object::Integer(4)),
-        (b"DA".to_vec(), Object::String(b"/Helv 12 Tf 0 g".to_vec(), lopdf::StringFormat::Literal)),
-    ])));
-
-    append_page_annotation(&mut doc, page_id, field_id)?;
-    push_acroform_field(&mut doc, field_id)?;
-    mark_acroform_need_appearances(&mut doc)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::forms::add_text_form_field(&PathBuf::from(path), page_index, name, x, y, width, height)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2235,37 +1941,7 @@ fn add_checkbox_form_field(
     height: f64,
     checked: bool,
 ) -> Result<(), String> {
-    let name = name.trim().to_string();
-    if name.is_empty() {
-        return Err("Field name is required".to_string());
-    }
-    if width < 12.0 || height < 12.0 {
-        return Err("Checkbox is too small".to_string());
-    }
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let rect = viewer_widget_rect(&doc, page_id, x, y, width, height)?;
-
-    let field_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
-        (b"FT".to_vec(), Object::Name(b"Btn".to_vec())),
-        (b"Ff".to_vec(), Object::Integer(0)),
-        (b"T".to_vec(), Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-        (b"Rect".to_vec(), rect),
-        (b"F".to_vec(), Object::Integer(4)),
-        (b"V".to_vec(), Object::Name(if checked { b"Yes".to_vec() } else { b"Off".to_vec() })),
-        (b"AS".to_vec(), Object::Name(if checked { b"Yes".to_vec() } else { b"Off".to_vec() })),
-    ])));
-
-    append_page_annotation(&mut doc, page_id, field_id)?;
-    push_acroform_field(&mut doc, field_id)?;
-    mark_acroform_need_appearances(&mut doc)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::forms::add_checkbox_form_field(&PathBuf::from(path), page_index, name, x, y, width, height, checked)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2281,46 +1957,7 @@ fn add_choice_form_field(
     options: Vec<String>,
     combo: bool,
 ) -> Result<(), String> {
-    let name = name.trim().to_string();
-    if name.is_empty() {
-        return Err("Field name is required".to_string());
-    }
-    if width < 40.0 || height < 14.0 {
-        return Err("Choice field is too small".to_string());
-    }
-    let cleaned: Vec<String> = options.into_iter().map(|o| o.trim().to_string()).filter(|o| !o.is_empty()).collect();
-    if cleaned.is_empty() {
-        return Err("At least one option is required".to_string());
-    }
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let rect = viewer_widget_rect(&doc, page_id, x, y, width, height)?;
-    let default_value = cleaned[0].clone();
-
-    let mut entries = vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
-        (b"FT".to_vec(), Object::Name(b"Ch".to_vec())),
-        (b"T".to_vec(), Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-        (b"Rect".to_vec(), rect),
-        (b"F".to_vec(), Object::Integer(4)),
-        (b"Opt".to_vec(), choice_options_object(&cleaned)),
-        (b"V".to_vec(), Object::String(default_value.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-        (b"DA".to_vec(), Object::String(b"/Helv 12 Tf 0 g".to_vec(), lopdf::StringFormat::Literal)),
-    ];
-    if combo {
-        entries.push((b"Ff".to_vec(), Object::Integer(1 << 17)));
-    }
-    let field_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(entries)));
-
-    append_page_annotation(&mut doc, page_id, field_id)?;
-    push_acroform_field(&mut doc, field_id)?;
-    mark_acroform_need_appearances(&mut doc)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::forms::add_choice_form_field(&PathBuf::from(path), page_index, name, x, y, width, height, options, combo)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2335,51 +1972,7 @@ fn add_radio_form_field(
     width: f64,
     height: f64,
 ) -> Result<(), String> {
-    let group_name = group_name.trim().to_string();
-    let option_name = option_name.trim().to_string();
-    if group_name.is_empty() || option_name.is_empty() {
-        return Err("Group and option names are required".to_string());
-    }
-    if width < 12.0 || height < 12.0 {
-        return Err("Radio button is too small".to_string());
-    }
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let rect = viewer_widget_rect(&doc, page_id, x, y, width, height)?;
-
-    let group_id = if let Some(existing) = find_radio_group_by_name(&doc, &group_name) {
-        existing
-    } else {
-        let parent_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
-            (b"FT".to_vec(), Object::Name(b"Btn".to_vec())),
-            (b"Ff".to_vec(), Object::Integer(1 << 16)),
-            (b"T".to_vec(), Object::String(group_name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-            (b"Kids".to_vec(), Object::Array(vec![])),
-        ])));
-        push_acroform_field(&mut doc, parent_id)?;
-        parent_id
-    };
-
-    let widget_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Widget".to_vec())),
-        (b"Parent".to_vec(), Object::Reference(group_id)),
-        (b"FT".to_vec(), Object::Name(b"Btn".to_vec())),
-        (b"T".to_vec(), Object::String(option_name.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-        (b"Rect".to_vec(), rect),
-        (b"F".to_vec(), Object::Integer(4)),
-        (b"V".to_vec(), Object::Name(b"Off".to_vec())),
-        (b"AS".to_vec(), Object::Name(b"Off".to_vec())),
-    ])));
-
-    append_page_annotation(&mut doc, page_id, widget_id)?;
-    append_field_kid(&mut doc, group_id, widget_id)?;
-    mark_acroform_need_appearances(&mut doc)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::forms::add_radio_form_field(&PathBuf::from(path), page_index, group_name, option_name, x, y, width, height)
 }
 
 #[tauri::command]

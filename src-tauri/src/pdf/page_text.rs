@@ -1,6 +1,8 @@
-use super::coords::{page_media_box, VIEWER_PAGE_H, VIEWER_PAGE_W};
+use super::coords::{page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
+use crate::pdf::content::append_page_content;
 use lopdf::{Dictionary, Document, Object, ObjectId, Stream};
 use serde::Serialize;
+use std::path::Path;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -217,4 +219,144 @@ pub fn build_page_text_ops(args: PageTextOpsArgs<'_>) -> String {
         py = args.py,
         label = marker_label(args.text)
     )
+}
+
+pub fn add_page_text(
+    path: &Path,
+    page_index: u32,
+    x: f64,
+    y: f64,
+    font_size: f64,
+    text: String,
+) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Text cannot be empty".to_string());
+    }
+    if !(8.0..=72.0).contains(&font_size) {
+        return Err("Font size must be between 8 and 72".to_string());
+    }
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+    let (px, py) = viewer_point_to_pdf(&doc, page_id, x, y)?;
+    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
+    let index = next_panda_text_index(&content);
+    let mut ops =
+        build_page_text_ops(PageTextOpsArgs { index, x, y, font_size, text: trimmed, px, py, font_name: &font_name });
+    if !ops.starts_with('\n') {
+        ops.insert(0, '\n');
+    }
+    append_page_content(&mut doc, page_id, ops.as_bytes())?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(index)
+}
+
+pub fn list_page_text_edits(path: &Path, page_index: u32) -> Result<Vec<PageTextEdit>, String> {
+    let path = path.to_path_buf();
+    let doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let bytes = read_page_content(&doc, page_id)?;
+    let content = String::from_utf8_lossy(&bytes).into_owned();
+    Ok(parse_page_text_edits(&content))
+}
+
+pub fn update_page_text(
+    path: &Path,
+    page_index: u32,
+    index: u32,
+    text: String,
+    x: Option<f64>,
+    y: Option<f64>,
+    font_size: Option<f64>,
+) -> Result<(), String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Text cannot be empty".to_string());
+    }
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
+    let existing = parse_page_text_edits(&content)
+        .into_iter()
+        .find(|edit| edit.index == index)
+        .ok_or_else(|| "Text block not found".to_string())?;
+    let next_x = x.unwrap_or(existing.x);
+    let next_y = y.unwrap_or(existing.y);
+    let next_font_size = font_size.unwrap_or(existing.font_size);
+    if !(8.0..=72.0).contains(&next_font_size) {
+        return Err("Font size must be between 8 and 72".to_string());
+    }
+    let mut content = remove_panda_block(&content, "%PP-TXT", index)?;
+    let (px, py) = viewer_point_to_pdf(&doc, page_id, next_x, next_y)?;
+    content.push_str(&build_page_text_ops(PageTextOpsArgs {
+        index,
+        x: next_x,
+        y: next_y,
+        font_size: next_font_size,
+        text: trimmed,
+        px,
+        py,
+        font_name: &font_name,
+    }));
+    write_page_content(&mut doc, page_id, content.into_bytes())?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn remove_page_text(path: &Path, page_index: u32, index: u32) -> Result<(), String> {
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
+    let content = remove_panda_block(&content, "%PP-TXT", index)?;
+    write_page_content(&mut doc, page_id, content.into_bytes())?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn add_page_vector_rect(
+    path: &Path,
+    page_index: u32,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<u32, String> {
+    if width < 2.0 || height < 2.0 {
+        return Err("Vector shape is too small".to_string());
+    }
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
+    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
+    let index = next_panda_vector_index(&content);
+    let ops = format!("\n%PP-VEC {index} {x} {y} {width} {height} stroke\nq 1 w {px} {py} {pw} {ph} re S Q\n");
+    append_page_content(&mut doc, page_id, ops.as_bytes())?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(index)
+}
+
+pub fn list_page_vectors(path: &Path, page_index: u32) -> Result<Vec<PageVectorEdit>, String> {
+    let path = path.to_path_buf();
+    let doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let bytes = read_page_content(&doc, page_id)?;
+    let content = String::from_utf8_lossy(&bytes).into_owned();
+    Ok(parse_page_vectors(&content))
+}
+
+pub fn remove_page_vector(path: &Path, page_index: u32, index: u32) -> Result<(), String> {
+    let path = path.to_path_buf();
+    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
+    let content = remove_panda_block(&content, "%PP-VEC", index)?;
+    write_page_content(&mut doc, page_id, content.into_bytes())?;
+    doc.save(&path).map_err(|e| e.to_string())?;
+    Ok(())
 }

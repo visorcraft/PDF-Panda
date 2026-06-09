@@ -22,6 +22,7 @@ pub mod metadata;
 pub mod ocr;
 pub mod optimize;
 pub mod page_decor;
+pub mod page_images;
 pub mod page_margins;
 pub mod page_ops;
 pub mod page_range;
