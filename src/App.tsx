@@ -14,12 +14,21 @@ import type { PageRangeScope } from './pageRange/types';
 import { resolvePageRange } from './pageRange/resolvePageRange';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
 import { PageRangeFields, PageRangePairInputs } from './pageRange/PageRangeFields';
-
-// Base resolution each page is rendered at. Zoom is applied as a CSS transform
-// on top of this so the rendered image and the annotation overlays scale
-// together and stay aligned at any zoom level.
-const BASE_W = 800;
-const BASE_H = 1132;
+import {
+  type ImageExportFormat,
+  imageExportCommand,
+  imageExportExtension,
+  imageExportLabel,
+  parityImageExportCommand,
+} from './pdf/imageExportCommands';
+import { useUndoHistory } from './pdf/useUndoHistory';
+import { type PdfAnnotation, PDF_BASE_HEIGHT, PDF_BASE_WIDTH, usePdfDocument } from './pdf/usePdfDocument';
+import { DeleteRangeModal } from './modals/DeleteRangeModal';
+import { FlattenModal } from './modals/FlattenModal';
+import { PageFooterModal } from './modals/PageFooterModal';
+import { PageHeaderModal } from './modals/PageHeaderModal';
+import { PageNumbersModal } from './modals/PageNumbersModal';
+import { WatermarkModal } from './modals/WatermarkModal';
 
 const MIN_ZOOM = 0.25; // 25%
 const MAX_ZOOM = 4; // 400%
@@ -33,17 +42,6 @@ const RECENT_PDFS_KEY = 'pdf-panda:recent-pdfs';
 const LAST_BROWSER_DIR_KEY = 'pdf-panda:last-browser-dir';
 const TESSERACT_REMIND_DISMISSED_KEY = 'pdf-panda:tesseract-remind-dismissed';
 const RECENT_PDF_LIMIT = 8;
-// Cap undo snapshots so very large PDFs don't accumulate unbounded working copies.
-const MAX_UNDO_HISTORY = 50;
-// Above this size, per-edit snapshots store compact binary deltas instead of full copies.
-const SNAPSHOT_BYTE_LIMIT = 32 * 1024 * 1024;
-
-interface HistorySnapshot {
-  kind: 'full' | 'delta';
-  path: string;
-  baseIndex?: number;
-  size: number;
-}
 
 type ShapeKind = 'square' | 'circle' | 'line';
 type StampKind = 'text' | 'image';
@@ -56,15 +54,7 @@ const STAMP_PRESETS = [
   { id: 'reviewed', label: 'REVIEWED', color: '#1e5aa0' },
 ] as const;
 
-interface AnnotationData {
-  subtype: string;
-  rect: [number, number, number, number];
-  color: [number, number, number] | null;
-  contents: string | null;
-  ink_points: number[] | null;
-  line_endpoints: [number, number, number, number] | null;
-  stamp_kind: string | null;
-  stamp_preset: string | null;
+type AnnotationData = PdfAnnotation & {
   is_redaction: boolean;
 }
 
@@ -242,7 +232,6 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
 type PngExportScope = PageRangeScope;
-type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif' | 'ppm' | 'tga' | 'ico';
 type PageSizePreset = 'letter' | 'a4' | 'legal';
 
 interface PdfBrowserEntry {
@@ -452,17 +441,10 @@ function App() {
   const [nativeDialogs, setNativeDialogs] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [pdfSummary, setPdfSummary] = useState<PdfSummaryResult | null>(null);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-  const historyRef = useRef<HistorySnapshot[]>([]); // historyRef[histIdx] == current working state
-  const histIdxRef = useRef(0);
-  const savedIdxRef = useRef(0); // history index matching the last saved/opened state
   const filePathRef = useRef('');
   const handleMarkdownViewRef = useRef(async () => {});
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(0);
-  const [imageSrc, setImageSrc] = useState<string>('');
-  const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -526,7 +508,6 @@ function App() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
-  const [annotations, setAnnotations] = useState<AnnotationData[]>([]);
   const [highlightStart, setHighlightStart] = useState<{ x: number; y: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [inkDrawing, setInkDrawing] = useState(false);
@@ -534,7 +515,9 @@ function App() {
   const [shapeLineEnd, setShapeLineEnd] = useState<{ x: number; y: number } | null>(null);
   const [drawing, setDrawing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-  const deltaSnapshotNotifiedRef = useRef(false);
+  const cancelDrawingRef = useRef<() => void>(() => {});
+  const loadPdfBookmarksRef = useRef<(path: string) => void>(() => {});
+  const loadPageSizesRef = useRef<(path: string) => void>(() => {});
 
   // Scrolling / wheel navigation
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -767,64 +750,24 @@ function App() {
     })();
   }, []);
 
-  const refreshUndoRedoState = useCallback(() => {
-    setCanUndo(histIdxRef.current > 0);
-    setCanRedo(histIdxRef.current < historyRef.current.length - 1);
-    setIsDirty(histIdxRef.current !== savedIdxRef.current);
-  }, []);
-
-  const pruneUndoHistory = useCallback(async () => {
-    while (historyRef.current.length > MAX_UNDO_HISTORY) {
-      const dropAt = savedIdxRef.current === 0 ? 1 : 0;
-      if (historyRef.current.length <= dropAt) break;
-      try {
-        historyRef.current = await invoke<HistorySnapshot[]>('prune_history_entry', {
-          history: historyRef.current,
-          dropIndex: dropAt,
-        });
-      } catch {
-        /* best-effort */
-      }
-      if (histIdxRef.current > dropAt) histIdxRef.current -= 1;
-      else if (histIdxRef.current === dropAt) histIdxRef.current = Math.max(0, dropAt - 1);
-      if (savedIdxRef.current > dropAt) savedIdxRef.current -= 1;
+  const loadPageEdits = useCallback(async (path: string, page: number) => {
+    if (!path) {
+      setPageTextEdits([]);
+      setPageVectorEdits([]);
+      return;
     }
-  }, []);
-
-  // Snapshot the working copy into the undo history after an edit.
-  const recordHistory = useCallback(async () => {
-    const working = filePathRef.current;
-    if (!working) return;
     try {
-      const size = await invoke<number>('file_byte_size', { path: working });
-      const snapshot = await invoke<HistorySnapshot>('snapshot_pdf_entry', {
-        history: historyRef.current.slice(0, histIdxRef.current + 1),
-        source: working,
-      });
-      if (size > SNAPSHOT_BYTE_LIMIT && snapshot.kind === 'delta' && !deltaSnapshotNotifiedRef.current) {
-        deltaSnapshotNotifiedRef.current = true;
-        showToast('Large file: using compact undo snapshots', 'success');
-      }
-      // Drop any redo branch we're overwriting.
-      historyRef.current.slice(histIdxRef.current + 1).forEach((entry) => {
-        void invoke('discard_history_entry', { entry }).catch(() => {});
-      });
-      historyRef.current = historyRef.current.slice(0, histIdxRef.current + 1);
-      historyRef.current.push(snapshot);
-      histIdxRef.current = historyRef.current.length - 1;
-      await pruneUndoHistory();
-      refreshUndoRedoState();
+      const [texts, vectors] = await Promise.all([
+        invoke<PageTextEdit[]>('list_page_text_edits', { path, pageIndex: page }),
+        invoke<PageVectorEdit[]>('list_page_vectors', { path, pageIndex: page }),
+      ]);
+      setPageTextEdits(texts);
+      setPageVectorEdits(vectors);
     } catch {
-      /* history is best-effort */
+      setPageTextEdits([]);
+      setPageVectorEdits([]);
     }
-  }, [pruneUndoHistory, refreshUndoRedoState, showToast]);
-
-  const markPdfEdited = useCallback(() => {
-    setPdfRevision((revision) => revision + 1);
-    setViewMode('pdf');
-    setIsDirty(true);
-    void recordHistory();
-  }, [recordHistory]);
+  }, []);
 
   // Mirror dirty state into a ref + reflect it in the window title (the quit
   // handler reads the ref so it isn't stale).
@@ -876,6 +819,57 @@ function App() {
     }
   };
 
+  const {
+    imageSrc,
+    thumbnails,
+    annotations,
+    setAnnotations,
+    loadThumbnails,
+    renderPage,
+    goToPage,
+    reloadOpenPdf,
+    refreshAfterWorkingChange,
+    revokeViewerAssets,
+  } = usePdfDocument({
+    filePath,
+    pageCount,
+    currentPage,
+    viewMode,
+    setPageCount,
+    setCurrentPage,
+    setPageInput,
+    setViewMode,
+    setPdfRevision,
+    setMarkdownRevision,
+    withLoading,
+    loadPageEdits,
+    loadPdfBookmarks: (path) => loadPdfBookmarksRef.current(path),
+    loadPageSizes: (path) => loadPageSizesRef.current(path),
+    cancelDrawing: () => cancelDrawingRef.current(),
+  });
+
+  const {
+    canUndo,
+    canRedo,
+    markPdfEdited,
+    resetHistoryForOpen,
+    markSaved,
+    discardHistory,
+    undo: undoHistory,
+    redo: redoHistory,
+  } = useUndoHistory({
+    filePathRef,
+    showToast,
+    withLoading,
+    onRestore: refreshAfterWorkingChange,
+    setPdfRevision,
+    setViewMode,
+    setIsDirty,
+  });
+
+  const undo = () => undoHistory(filePath);
+  const redo = () => redoHistory(filePath);
+
   // Keep the editable fields in sync when page/zoom change via buttons, wheel, etc.
   useEffect(() => setPageInput(String(currentPage + 1)), [currentPage]);
   useEffect(() => setZoomInput(String(Math.round(zoom * 100))), [zoom]);
@@ -896,16 +890,7 @@ function App() {
       const count = await invoke<number>('get_pdf_page_count', { path: working });
       setOriginalPath(path);
       setFilePath(working);
-      deltaSnapshotNotifiedRef.current = false;
-      setIsDirty(false);
-      // Reset undo/redo history with the freshly-opened state as the baseline.
-      historyRef.current.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
-      const baseline = await invoke<HistorySnapshot>('snapshot_pdf_entry', { history: [], source: working });
-      historyRef.current = [baseline];
-      histIdxRef.current = 0;
-      savedIdxRef.current = 0;
-      setCanUndo(false);
-      setCanRedo(false);
+      await resetHistoryForOpen(working);
       setViewMode('pdf');
       setMarkdownText('');
       setMarkdownPath('');
@@ -1037,70 +1022,6 @@ function App() {
     setShowBrowserModal(false);
   };
 
-  const loadThumbnails = async (path: string) => {
-    const thumbBytesArray = await invoke<number[][]>('get_pdf_thumbnails', {
-      path, width: 100, height: 141,
-    });
-    const thumbs = thumbBytesArray.map((bytes) => {
-      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-      return URL.createObjectURL(blob);
-    });
-    setThumbnails((prev) => {
-      prev.forEach((url) => URL.revokeObjectURL(url));
-      return thumbs;
-    });
-  };
-
-  const loadPageEdits = useCallback(async (path: string, page: number) => {
-    if (!path) {
-      setPageTextEdits([]);
-      setPageVectorEdits([]);
-      return;
-    }
-    try {
-      const [texts, vectors] = await Promise.all([
-        invoke<PageTextEdit[]>('list_page_text_edits', { path, pageIndex: page }),
-        invoke<PageVectorEdit[]>('list_page_vectors', { path, pageIndex: page }),
-      ]);
-      setPageTextEdits(texts);
-      setPageVectorEdits(vectors);
-    } catch {
-      setPageTextEdits([]);
-      setPageVectorEdits([]);
-    }
-  }, []);
-
-  const renderPage = async (path: string, index: number) => {
-    const bytes = await invoke<number[]>('render_pdf_page', {
-      path, pageIndex: index, width: BASE_W, height: BASE_H,
-    });
-    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-    setImageSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(blob);
-    });
-
-    const annots = await invoke<AnnotationData[]>('get_annotations', { path, pageIndex: index });
-    setAnnotations(annots);
-    await loadPageEdits(path, index);
-  };
-
-  // Navigate to a page (0-based), clamped to the document.
-  const goToPage = (index: number) => {
-    if (pageCount === null || !filePath) return;
-    const clamped = Math.max(0, Math.min(index, pageCount - 1));
-    setViewMode('pdf');
-    setCurrentPage(clamped);
-    const render = () => {
-      void withLoading(() => renderPage(filePath, clamped));
-    };
-    if (viewMode === 'markdown') {
-      window.requestAnimationFrame(() => window.requestAnimationFrame(render));
-      return;
-    }
-    render();
-  };
-
   const handleDragStart = (idx: number) => setDraggedIndex(idx);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
 
@@ -1147,46 +1068,11 @@ function App() {
   };
 
 
-  const imageExportExtension = (format: ImageExportFormat) => {
-    if (format === 'jpeg') return 'jpg';
-    if (format === 'webp') return 'webp';
-    if (format === 'bmp') return 'bmp';
-    if (format === 'tiff') return 'tiff';
-    if (format === 'gif') return 'gif';
-    if (format === 'ppm') return 'ppm';
-    if (format === 'tga') return 'tga';
-    if (format === 'ico') return 'ico';
-    return 'png';
-  };
-
   const defaultImageExportOutput = (format: ImageExportFormat, scope: PngExportScope, start: number, _end: number) => {
     const base = (originalPath || filePath).replace(/\.pdf$/i, '');
     const ext = imageExportExtension(format);
     if (scope === 'current') return `${base}_page_${start + 1}.${ext}`;
     return `${base}_pages`;
-  };
-
-  const imageExportCommand = (format: ImageExportFormat, multi: boolean) => {
-    if (multi) {
-      if (format === 'jpeg') return 'export_pdf_pages_jpeg';
-      if (format === 'webp') return 'export_pdf_pages_webp';
-      if (format === 'bmp') return 'export_pdf_pages_bmp';
-      if (format === 'tiff') return 'export_pdf_pages_tiff';
-      if (format === 'gif') return 'export_pdf_pages_gif';
-      if (format === 'ppm') return 'export_pdf_pages_ppm';
-      if (format === 'tga') return 'export_pdf_pages_tga';
-      if (format === 'ico') return 'export_pdf_pages_ico';
-      return 'export_pdf_pages_png';
-    }
-    if (format === 'jpeg') return 'export_pdf_page_jpeg';
-    if (format === 'webp') return 'export_pdf_page_webp';
-    if (format === 'bmp') return 'export_pdf_page_bmp';
-    if (format === 'tiff') return 'export_pdf_page_tiff';
-    if (format === 'gif') return 'export_pdf_page_gif';
-    if (format === 'ppm') return 'export_pdf_page_ppm';
-    if (format === 'tga') return 'export_pdf_page_tga';
-    if (format === 'ico') return 'export_pdf_page_ico';
-    return 'export_pdf_page_png';
   };
 
   const openExportPngModal = () => {
@@ -1203,7 +1089,7 @@ function App() {
     if (!range) return;
     const { start, end } = range;
     const ext = imageExportExtension(imageExportFormat);
-    const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat === 'bmp' ? 'BMP' : imageExportFormat === 'tiff' ? 'TIFF' : imageExportFormat === 'gif' ? 'GIF' : imageExportFormat === 'ppm' ? 'PPM' : imageExportFormat.toUpperCase();
+    const label = imageExportLabel(imageExportFormat);
     await withLoading(async () => {
       if (pngExportRange.scope === 'current') {
         const written = await invoke<string>(imageExportCommand(imageExportFormat, false), {
@@ -1272,20 +1158,7 @@ function App() {
       setPageSizes([]);
     }
   }, [filePath]);
-
-  const reloadOpenPdf = async (nextPage = currentPage) => {
-    if (!filePath) return;
-    const count = await invoke<number>('get_pdf_page_count', { path: filePath });
-    const page = Math.max(0, Math.min(nextPage, count - 1));
-    setPageCount(count);
-    setCurrentPage(page);
-    setPageInput(String(page + 1));
-    setViewMode('pdf');
-    await renderPage(filePath, page);
-    await loadThumbnails(filePath);
-    void loadPdfBookmarks(filePath);
-    void loadPageSizes(filePath);
-  };
+  loadPageSizesRef.current = (path) => { void loadPageSizes(path); };
 
   const runEdit = useStructuralEdit({
     filePath,
@@ -1662,20 +1535,6 @@ function App() {
     });
   };
 
-  const parityImageExportCommand = (format: ImageExportFormat, odd: boolean): string | null => {
-    const side = odd ? 'odd' : 'even';
-    if (format === 'png') return `export_${side}_pages_png`;
-    if (format === 'jpeg') return `export_${side}_pages_jpeg`;
-    if (format === 'webp') return `export_${side}_pages_webp`;
-    if (format === 'bmp') return `export_${side}_pages_bmp`;
-    if (format === 'tiff') return `export_${side}_pages_tiff`;
-    if (format === 'gif') return `export_${side}_pages_gif`;
-    if (format === 'ppm') return `export_${side}_pages_ppm`;
-    if (format === 'tga') return `export_${side}_pages_tga`;
-    if (format === 'ico') return `export_${side}_pages_ico`;
-    return null;
-  };
-
   const isParityDocModCommand = (command: string) => {
     if (command.includes('_in_range')) return false;
     return /_mod3_[0-2]_/.test(command)
@@ -1822,13 +1681,8 @@ function App() {
   const handleExportOddPagesImage = async () => {
     const outputDir = pngExportOutputPath.trim();
     if (!filePath || !outputDir) return;
-    const command = parityImageExportCommand(imageExportFormat, true);
-    if (!command) {
-      showToast('Unsupported image format', 'error');
-      return;
-    }
     await withLoading(async () => {
-      const written = await invoke<string[]>(command, { path: filePath, outputDir });
+      const written = await invoke<string[]>(parityImageExportCommand(imageExportFormat, true), { path: filePath, outputDir });
       setShowExportPngModal(false);
       showToast(`Exported ${written.length} odd page image${written.length === 1 ? '' : 's'} to ${outputDir}`);
     });
@@ -1837,13 +1691,8 @@ function App() {
   const handleExportEvenPagesImage = async () => {
     const outputDir = pngExportOutputPath.trim();
     if (!filePath || !outputDir) return;
-    const command = parityImageExportCommand(imageExportFormat, false);
-    if (!command) {
-      showToast('Unsupported image format', 'error');
-      return;
-    }
     await withLoading(async () => {
-      const written = await invoke<string[]>(command, { path: filePath, outputDir });
+      const written = await invoke<string[]>(parityImageExportCommand(imageExportFormat, false), { path: filePath, outputDir });
       setShowExportPngModal(false);
       showToast(`Exported ${written.length} even page image${written.length === 1 ? '' : 's'} to ${outputDir}`);
     });
@@ -2937,6 +2786,7 @@ function App() {
       setPdfBookmarks([]);
     }
   }, [filePath]);
+  loadPdfBookmarksRef.current = (path) => { void loadPdfBookmarks(path); };
 
   const loadPdfSignatures = useCallback(async (path: string = filePath) => {
     if (!path) {
@@ -2993,6 +2843,7 @@ function App() {
     setInkDraft([]);
     setShapeLineEnd(null);
   };
+  cancelDrawingRef.current = cancelDrawing;
 
   // Highlighting is a two-click gesture: click once to set the start corner,
   // move the mouse to rubber-band the selection, click again to finish.
@@ -3718,8 +3569,7 @@ function App() {
     if (!filePath || !originalPath) return;
     await withLoading(async () => {
       await invoke('save_working_copy', { working: filePath, target: originalPath });
-      savedIdxRef.current = histIdxRef.current;
-      refreshUndoRedoState();
+      markSaved();
       showToast('Saved');
     });
   };
@@ -3753,8 +3603,7 @@ function App() {
       await invoke('save_working_copy', { working: filePath, target });
       setOriginalPath(target);
       rememberOpenedPdf(target);
-      savedIdxRef.current = histIdxRef.current;
-      refreshUndoRedoState();
+      markSaved();
       setShowSaveAsModal(false);
       showToast(`Saved to ${target}`);
     });
@@ -3769,8 +3618,7 @@ function App() {
       await invoke('save_working_copy', { working: filePath, target });
       setOriginalPath(target);
       rememberOpenedPdf(target);
-      savedIdxRef.current = histIdxRef.current;
-      refreshUndoRedoState();
+      markSaved();
       setShowSaveAsModal(false);
       showToast(`Saved to ${target}`);
     });
@@ -3873,48 +3721,6 @@ function App() {
     setShowAbout(false);
     setShowTesseractModal(false);
   }, [showUnsavedModal]);
-
-  const refreshAfterWorkingChange = async () => {
-    const working = filePath;
-    const count = await invoke<number>('get_pdf_page_count', { path: working });
-    setPageCount(count);
-    const page = Math.max(0, Math.min(currentPage, count - 1));
-    setCurrentPage(page);
-    setViewMode('pdf');
-    setMarkdownRevision(null);
-    setPdfRevision((r) => r + 1);
-    cancelDrawing();
-    await renderPage(working, page);
-    await loadThumbnails(working);
-  };
-
-  const undo = async () => {
-    if (histIdxRef.current <= 0) return;
-    await withLoading(async () => {
-      histIdxRef.current -= 1;
-      await invoke('restore_history_entry', {
-        history: historyRef.current,
-        index: histIdxRef.current,
-        target: filePath,
-      });
-      await refreshAfterWorkingChange();
-      refreshUndoRedoState();
-    });
-  };
-
-  const redo = async () => {
-    if (histIdxRef.current >= historyRef.current.length - 1) return;
-    await withLoading(async () => {
-      histIdxRef.current += 1;
-      await invoke('restore_history_entry', {
-        history: historyRef.current,
-        index: histIdxRef.current,
-        target: filePath,
-      });
-      await refreshAfterWorkingChange();
-      refreshUndoRedoState();
-    });
-  };
 
   const undoRedoRef = useRef({ undo, redo });
   undoRedoRef.current = { undo, redo };
@@ -4340,12 +4146,7 @@ function App() {
 
   const closePdf = () => {
     if (filePath) void invoke('discard_working_copy', { working: filePath }).catch(() => {});
-    historyRef.current.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
-    historyRef.current = [];
-    histIdxRef.current = 0;
-    savedIdxRef.current = 0;
-    setCanUndo(false);
-    setCanRedo(false);
+    discardHistory();
     cancelDrawing();
     setFilePath('');
     setOriginalPath('');
@@ -4383,16 +4184,8 @@ function App() {
     setNewFormRadioGroup('');
     setNewFormRadioOption('');
     setNewFormCheckboxChecked(false);
-    setAnnotations([]);
     setShowDeleteModal(false);
-    setImageSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return '';
-    });
-    setThumbnails((prev) => {
-      prev.forEach((url) => URL.revokeObjectURL(url));
-      return [];
-    });
+    revokeViewerAssets();
     setPrintPages((prev) => {
       prev.forEach((url) => URL.revokeObjectURL(url));
       return [];
@@ -5438,7 +5231,7 @@ function App() {
                     {/* Freehand ink strokes and line shapes */}
                     <svg
                       className="ink-overlay"
-                      viewBox={`0 0 ${BASE_W} ${BASE_H}`}
+                      viewBox={`0 0 ${PDF_BASE_WIDTH} ${PDF_BASE_HEIGHT}`}
                       aria-hidden={!drawMode && !shapeMode}
                     >
                       {annotations.filter((a) => a.subtype === 'Line' && a.line_endpoints).map((a, i) => {
@@ -5841,57 +5634,42 @@ function App() {
         </Modal>
       )}
 
-      {/* Delete Range Modal */}
       {showDeleteRangeModal && (
-        <Modal onClose={() => setShowDeleteRangeModal(false)}>
-          <h3>Delete Page Range</h3>
-          <p className="modal-help">Remove multiple pages from the working copy. At least one page must remain.</p>
-          <PageRangePairInputs
-            startPage={deleteRange.startPage}
-            endPage={deleteRange.endPage}
-            onStartChange={deleteRange.setStartPage}
-            onEndChange={deleteRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowDeleteRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleDeletePageRange()} className="btn btn-danger">Delete range</button>
-          </div>
-        </Modal>
+        <DeleteRangeModal
+          startPage={deleteRange.startPage}
+          endPage={deleteRange.endPage}
+          pageCount={pageCount}
+          onStartChange={deleteRange.setStartPage}
+          onEndChange={deleteRange.setEndPage}
+          onClose={() => setShowDeleteRangeModal(false)}
+          onDelete={handleDeletePageRange}
+        />
       )}
 
-      {/* Page Numbers Modal */}
       {showPageNumbersModal && (
-        <Modal onClose={() => setShowPageNumbersModal(false)}>
-          <h3>Page Numbers</h3>
-          <p className="modal-help">Stamp footer page numbers onto the working copy.</p>
-          <PageRangeFields range={pageNumbersRange} pageCount={pageCount} />
-          <label>Prefix (e.g. &quot;Page &quot;):</label>
-          <input type="text" value={pageNumbersPrefix} onChange={(e) => setPageNumbersPrefix(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowPageNumbersModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleAddPageNumbersOddPages()} className="btn">Apply Odd</button>
-            <button onClick={() => void handleAddPageNumbersEvenPages()} className="btn">Apply Even</button>
-            <button onClick={() => void handleAddPageNumbers()} className="btn">Apply</button>
-          </div>
-        </Modal>
+        <PageNumbersModal
+          range={pageNumbersRange}
+          pageCount={pageCount}
+          prefix={pageNumbersPrefix}
+          onPrefixChange={setPageNumbersPrefix}
+          onClose={() => setShowPageNumbersModal(false)}
+          onApply={handleAddPageNumbers}
+          onApplyOdd={handleAddPageNumbersOddPages}
+          onApplyEven={handleAddPageNumbersEvenPages}
+        />
       )}
 
-      {/* Watermark Modal */}
       {showWatermarkModal && (
-        <Modal onClose={() => setShowWatermarkModal(false)}>
-          <h3>Text Watermark</h3>
-          <p className="modal-help">Add a diagonal watermark to the working copy.</p>
-          <label>Watermark text:</label>
-          <input type="text" value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} className="modal-input" />
-          <PageRangeFields range={watermarkRange} pageCount={pageCount} />
-          <div className="modal-actions">
-            <button onClick={() => setShowWatermarkModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleAddWatermarkOddPages()} className="btn" disabled={!watermarkText.trim()}>Apply Odd</button>
-            <button onClick={() => void handleAddWatermarkEvenPages()} className="btn" disabled={!watermarkText.trim()}>Apply Even</button>
-            <button onClick={() => void handleAddWatermark()} className="btn" disabled={!watermarkText.trim()}>Apply</button>
-          </div>
-        </Modal>
+        <WatermarkModal
+          range={watermarkRange}
+          pageCount={pageCount}
+          text={watermarkText}
+          onTextChange={setWatermarkText}
+          onClose={() => setShowWatermarkModal(false)}
+          onApply={handleAddWatermark}
+          onApplyOdd={handleAddWatermarkOddPages}
+          onApplyEven={handleAddWatermarkEvenPages}
+        />
       )}
 
       {/* Crop Modal */}
@@ -5945,17 +5723,13 @@ function App() {
         </Modal>
       )}
 
-      {/* Flatten Modal */}
       {showFlattenModal && (
-        <Modal onClose={() => setShowFlattenModal(false)}>
-          <h3>Flatten Annotations</h3>
-          <p className="modal-help">Remove highlight, note, and other annotation objects from selected pages.</p>
-          <PageRangeFields range={flattenRange} pageCount={pageCount} />
-          <div className="modal-actions">
-            <button onClick={() => setShowFlattenModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleFlattenAnnotations()} className="btn">Flatten</button>
-          </div>
-        </Modal>
+        <FlattenModal
+          range={flattenRange}
+          pageCount={pageCount}
+          onClose={() => setShowFlattenModal(false)}
+          onFlatten={handleFlattenAnnotations}
+        />
       )}
 
       {/* Add Bookmark Modal */}
@@ -5972,38 +5746,30 @@ function App() {
         </Modal>
       )}
 
-      {/* Page Header Modal */}
       {showPageHeaderModal && (
-        <Modal onClose={() => setShowPageHeaderModal(false)}>
-          <h3>Page Header</h3>
-          <p className="modal-help">Stamp header text near the top of selected pages.</p>
-          <label>Header text:</label>
-          <input type="text" value={pageHeaderText} onChange={(e) => setPageHeaderText(e.target.value)} className="modal-input" />
-          <PageRangeFields range={pageHeaderRange} pageCount={pageCount} />
-          <div className="modal-actions">
-            <button onClick={() => setShowPageHeaderModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleAddPageHeaderOddPages()} className="btn" disabled={!pageHeaderText.trim()}>Apply Odd</button>
-            <button onClick={() => void handleAddPageHeaderEvenPages()} className="btn" disabled={!pageHeaderText.trim()}>Apply Even</button>
-            <button onClick={() => void handleAddPageHeader()} className="btn" disabled={!pageHeaderText.trim()}>Apply</button>
-          </div>
-        </Modal>
+        <PageHeaderModal
+          range={pageHeaderRange}
+          pageCount={pageCount}
+          text={pageHeaderText}
+          onTextChange={setPageHeaderText}
+          onClose={() => setShowPageHeaderModal(false)}
+          onApply={handleAddPageHeader}
+          onApplyOdd={handleAddPageHeaderOddPages}
+          onApplyEven={handleAddPageHeaderEvenPages}
+        />
       )}
 
-      {/* Page Footer Modal */}
       {showPageFooterModal && (
-        <Modal onClose={() => setShowPageFooterModal(false)}>
-          <h3>Page Footer</h3>
-          <p className="modal-help">Stamp footer text near the bottom of selected pages.</p>
-          <label>Footer text:</label>
-          <input type="text" value={pageFooterText} onChange={(e) => setPageFooterText(e.target.value)} className="modal-input" />
-          <PageRangeFields range={pageFooterRange} pageCount={pageCount} />
-          <div className="modal-actions">
-            <button onClick={() => setShowPageFooterModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleAddPageFooterOddPages()} className="btn" disabled={!pageFooterText.trim()}>Apply Odd</button>
-            <button onClick={() => void handleAddPageFooterEvenPages()} className="btn" disabled={!pageFooterText.trim()}>Apply Even</button>
-            <button onClick={() => void handleAddPageFooter()} className="btn" disabled={!pageFooterText.trim()}>Apply</button>
-          </div>
-        </Modal>
+        <PageFooterModal
+          range={pageFooterRange}
+          pageCount={pageCount}
+          text={pageFooterText}
+          onTextChange={setPageFooterText}
+          onClose={() => setShowPageFooterModal(false)}
+          onApply={handleAddPageFooter}
+          onApplyOdd={handleAddPageFooterOddPages}
+          onApplyEven={handleAddPageFooterEvenPages}
+        />
       )}
 
       {/* Swap Pages Modal */}

@@ -67,9 +67,7 @@ mod tests {
         let before = fs::read(&path).unwrap();
         let err = mutate_pdf::<(), _>(&path, |doc| {
             let page_id = *doc.get_pages().get(&1).unwrap();
-            doc.get_dictionary_mut(page_id)
-                .unwrap()
-                .set("Rotate", Object::Integer(90));
+            doc.get_dictionary_mut(page_id).unwrap().set("Rotate", Object::Integer(90));
             Err("intentional failure".into())
         })
         .unwrap_err();

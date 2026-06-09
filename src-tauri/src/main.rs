@@ -3,6 +3,8 @@
 mod licenses;
 mod pdf;
 
+use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
+
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -814,68 +816,8 @@ fn search_pdf_text(
     Ok(results)
 }
 
-const EXPORT_PNG_W: i32 = 1600;
-const EXPORT_PNG_H: i32 = 2264;
-
-fn validate_page_range(path: &Path, start_page: u32, end_page: u32) -> Result<(), String> {
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    Ok(())
-}
-
-fn write_png_output(output_path: &Path, png: &[u8]) -> Result<(), String> {
-    if let Some(parent) = output_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-    }
-    fs::write(output_path, png).map_err(|e| e.to_string())
-}
-
-/// Render one PDF page to a PNG file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_png(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-
-    let png = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Png)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &png)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.png` files.
-#[tauri::command]
-fn export_pdf_pages_png(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let png = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Png)?;
-        let file_name = format!("page-{:03}.png", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &png)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
+const EXPORT_PNG_W: i32 = pdf::export::EXPORT_RENDER_W;
+const EXPORT_PNG_H: i32 = pdf::export::EXPORT_RENDER_H;
 
 #[tauri::command]
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
@@ -1502,49 +1444,6 @@ fn delete_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32
     })
 }
 
-/// Render one PDF page to a JPEG file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_jpeg(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-
-    let jpeg = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Jpeg)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &jpeg)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.jpg` files.
-#[tauri::command]
-fn export_pdf_pages_jpeg(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let jpeg = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Jpeg)?;
-        let file_name = format!("page-{:03}.jpg", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &jpeg)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
 fn append_outline_item(doc: &mut Document, title: &str, page_id: ObjectId) -> Result<(), String> {
     let catalog_id = doc.trailer.get(b"Root").map_err(|e| e.to_string())?.as_reference().map_err(|_| "Bad Root")?;
     let existing_outlines = doc
@@ -2019,46 +1918,6 @@ fn crop_all_pages(
     }
     doc.save(&path).map_err(|e| e.to_string())?;
     Ok(page_ids.len() as u32)
-}
-
-/// Render one PDF page to a WebP file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_webp(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let webp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::WebP)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &webp)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.webp` files.
-#[tauri::command]
-fn export_pdf_pages_webp(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let webp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::WebP)?;
-        let file_name = format!("page-{:03}.webp", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &webp)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
 }
 
 /// Rotate `page_index` 180°.
@@ -4237,104 +4096,6 @@ fn export_even_pages_as_pdf(path: String, output_dir: String) -> Result<Vec<Stri
     export_pages_by_parity_as_pdf(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
 }
 
-fn export_pages_by_parity_png(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let png = render_page_image(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Png)?;
-        let file_name = format!("page-{:03}.png", page_index + 1);
-        let output_path = output_dir.join(file_name);
-        write_png_output(&output_path, &png)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render odd-indexed pages to `output_dir/page-NNN.png` files.
-#[tauri::command]
-fn export_odd_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_png(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
-}
-
-/// Render even-indexed pages to `output_dir/page-NNN.png` files.
-#[tauri::command]
-fn export_even_pages_png(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_png(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
-}
-
-fn export_pages_by_parity_jpeg(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let jpeg = render_page_image(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Jpeg)?;
-        let file_name = format!("page-{:03}.jpg", page_index + 1);
-        let output_path = output_dir.join(file_name);
-        write_png_output(&output_path, &jpeg)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render odd-indexed pages to `output_dir/page-NNN.jpg` files.
-#[tauri::command]
-fn export_odd_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_jpeg(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
-}
-
-/// Render even-indexed pages to `output_dir/page-NNN.jpg` files.
-#[tauri::command]
-fn export_even_pages_jpeg(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_jpeg(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
-}
-
-fn export_pages_by_parity_webp(path: &Path, output_dir: &Path, odd: bool) -> Result<Vec<String>, String> {
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let webp = render_page_image(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::WebP)?;
-        let file_name = format!("page-{:03}.webp", page_index + 1);
-        let output_path = output_dir.join(file_name);
-        write_png_output(&output_path, &webp)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render odd-indexed pages to `output_dir/page-NNN.webp` files.
-#[tauri::command]
-fn export_odd_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_webp(&PathBuf::from(&path), &PathBuf::from(&output_dir), true)
-}
-
-/// Render even-indexed pages to `output_dir/page-NNN.webp` files.
-#[tauri::command]
-fn export_even_pages_webp(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_webp(&PathBuf::from(&path), &PathBuf::from(&output_dir), false)
-}
-
-type ParityPageRenderFn = fn(&Path, u32, i32, i32) -> Result<Vec<u8>, String>;
-
 fn export_pages_by_parity_rendered(
     path: &Path,
     output_dir: &Path,
@@ -4342,84 +4103,120 @@ fn export_pages_by_parity_rendered(
     ext: &str,
     render: ParityPageRenderFn,
 ) -> Result<Vec<String>, String> {
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
+    let kind = match ext {
+        "png" => ExportImageKind::Png,
+        "jpg" | "jpeg" => ExportImageKind::Jpeg,
+        "webp" => ExportImageKind::Webp,
+        "bmp" => ExportImageKind::Bmp,
+        "tiff" => ExportImageKind::Tiff,
+        "gif" => ExportImageKind::Gif,
+        "ppm" => ExportImageKind::Ppm,
+        "tga" => ExportImageKind::Tga,
+        "ico" => ExportImageKind::Ico,
+        other => return Err(format!("Unsupported export extension: {other}")),
+    };
+    pdf::export::export_pages_by_parity_rendered(
+        path,
+        output_dir,
+        odd,
+        kind,
+        render,
+        pdf::export::EXPORT_RENDER_W,
+        pdf::export::EXPORT_RENDER_H,
+    )
+}
+
+macro_rules! impl_export_page_cmd {
+    ($cmd:ident, $render:expr) => {
+        #[tauri::command]
+        fn $cmd(path: String, page_index: u32, output_path: String) -> Result<String, String> {
+            pdf::export::export_pdf_page(
+                &PathBuf::from(&path),
+                page_index,
+                &PathBuf::from(&output_path),
+                $render,
+                pdf::export::EXPORT_RENDER_W,
+                pdf::export::EXPORT_RENDER_H,
+            )
         }
-        let bytes = render(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
-        let file_name = format!("page-{:03}.{ext}", page_index + 1);
-        let output_path = output_dir.join(file_name);
-        write_png_output(&output_path, &bytes)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
+    };
 }
 
-/// Render odd-indexed pages to `output_dir/page-NNN.bmp` files.
-#[tauri::command]
-fn export_odd_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "bmp", render_page_bmp)
+macro_rules! impl_export_pages_cmd {
+    ($cmd:ident, $kind:expr, $render:expr) => {
+        #[tauri::command]
+        fn $cmd(path: String, start_page: u32, end_page: u32, output_dir: String) -> Result<Vec<String>, String> {
+            pdf::export::export_pdf_pages(
+                &PathBuf::from(&path),
+                start_page,
+                end_page,
+                &PathBuf::from(&output_dir),
+                $kind,
+                $render,
+                pdf::export::EXPORT_RENDER_W,
+                pdf::export::EXPORT_RENDER_H,
+            )
+        }
+    };
 }
 
-/// Render even-indexed pages to `output_dir/page-NNN.bmp` files.
-#[tauri::command]
-fn export_even_pages_bmp(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "bmp", render_page_bmp)
+macro_rules! impl_parity_image_export_cmds {
+    ($odd:ident, $even:ident, $kind:expr, $render:expr) => {
+        #[tauri::command]
+        fn $odd(path: String, output_dir: String) -> Result<Vec<String>, String> {
+            pdf::export::export_pages_by_parity_rendered(
+                &PathBuf::from(&path),
+                &PathBuf::from(&output_dir),
+                true,
+                $kind,
+                $render,
+                pdf::export::EXPORT_RENDER_W,
+                pdf::export::EXPORT_RENDER_H,
+            )
+        }
+        #[tauri::command]
+        fn $even(path: String, output_dir: String) -> Result<Vec<String>, String> {
+            pdf::export::export_pages_by_parity_rendered(
+                &PathBuf::from(&path),
+                &PathBuf::from(&output_dir),
+                false,
+                $kind,
+                $render,
+                pdf::export::EXPORT_RENDER_W,
+                pdf::export::EXPORT_RENDER_H,
+            )
+        }
+    };
 }
 
-/// Render odd-indexed pages to `output_dir/page-NNN.tiff` files.
-#[tauri::command]
-fn export_odd_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "tiff", render_page_tiff)
-}
+impl_export_page_cmd!(export_pdf_page_png, render_page_png);
+impl_export_page_cmd!(export_pdf_page_jpeg, render_page_jpeg);
+impl_export_page_cmd!(export_pdf_page_webp, render_page_webp);
+impl_export_page_cmd!(export_pdf_page_bmp, render_page_bmp);
+impl_export_page_cmd!(export_pdf_page_tiff, render_page_tiff);
+impl_export_page_cmd!(export_pdf_page_gif, render_page_gif);
+impl_export_page_cmd!(export_pdf_page_ppm, render_page_ppm);
+impl_export_page_cmd!(export_pdf_page_tga, render_page_tga);
+impl_export_page_cmd!(export_pdf_page_ico, render_page_ico);
 
-/// Render even-indexed pages to `output_dir/page-NNN.tiff` files.
-#[tauri::command]
-fn export_even_pages_tiff(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "tiff", render_page_tiff)
-}
+impl_export_pages_cmd!(export_pdf_pages_png, ExportImageKind::Png, render_page_png);
+impl_export_pages_cmd!(export_pdf_pages_jpeg, ExportImageKind::Jpeg, render_page_jpeg);
+impl_export_pages_cmd!(export_pdf_pages_webp, ExportImageKind::Webp, render_page_webp);
+impl_export_pages_cmd!(export_pdf_pages_bmp, ExportImageKind::Bmp, render_page_bmp);
+impl_export_pages_cmd!(export_pdf_pages_tiff, ExportImageKind::Tiff, render_page_tiff);
+impl_export_pages_cmd!(export_pdf_pages_gif, ExportImageKind::Gif, render_page_gif);
+impl_export_pages_cmd!(export_pdf_pages_ppm, ExportImageKind::Ppm, render_page_ppm);
+impl_export_pages_cmd!(export_pdf_pages_tga, ExportImageKind::Tga, render_page_tga);
+impl_export_pages_cmd!(export_pdf_pages_ico, ExportImageKind::Ico, render_page_ico);
 
-/// Render odd-indexed pages to `output_dir/page-NNN.gif` files.
-#[tauri::command]
-fn export_odd_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "gif", render_page_gif)
-}
-
-/// Render even-indexed pages to `output_dir/page-NNN.gif` files.
-#[tauri::command]
-fn export_even_pages_gif(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "gif", render_page_gif)
-}
-
-/// Render odd-indexed pages to `output_dir/page-NNN.ppm` files.
-#[tauri::command]
-fn export_odd_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "ppm", render_page_ppm)
-}
-
-/// Render even-indexed pages to `output_dir/page-NNN.ppm` files.
-#[tauri::command]
-fn export_even_pages_ppm(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "ppm", render_page_ppm)
-}
-
-/// Render odd-indexed pages to `output_dir/page-NNN.tga` files.
-#[tauri::command]
-fn export_odd_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), true, "tga", render_page_tga)
-}
-
-/// Render even-indexed pages to `output_dir/page-NNN.tga` files.
-#[tauri::command]
-fn export_even_pages_tga(path: String, output_dir: String) -> Result<Vec<String>, String> {
-    export_pages_by_parity_rendered(&PathBuf::from(&path), &PathBuf::from(&output_dir), false, "tga", render_page_tga)
-}
+impl_parity_image_export_cmds!(export_odd_pages_png, export_even_pages_png, ExportImageKind::Png, render_page_png);
+impl_parity_image_export_cmds!(export_odd_pages_jpeg, export_even_pages_jpeg, ExportImageKind::Jpeg, render_page_jpeg);
+impl_parity_image_export_cmds!(export_odd_pages_webp, export_even_pages_webp, ExportImageKind::Webp, render_page_webp);
+impl_parity_image_export_cmds!(export_odd_pages_bmp, export_even_pages_bmp, ExportImageKind::Bmp, render_page_bmp);
+impl_parity_image_export_cmds!(export_odd_pages_tiff, export_even_pages_tiff, ExportImageKind::Tiff, render_page_tiff);
+impl_parity_image_export_cmds!(export_odd_pages_gif, export_even_pages_gif, ExportImageKind::Gif, render_page_gif);
+impl_parity_image_export_cmds!(export_odd_pages_ppm, export_even_pages_ppm, ExportImageKind::Ppm, render_page_ppm);
+impl_parity_image_export_cmds!(export_odd_pages_tga, export_even_pages_tga, ExportImageKind::Tga, render_page_tga);
 
 // PARITY_DOCMOD_INCLUDE
 include!("parity_docmod_generated.inc.rs");
@@ -4527,246 +4324,6 @@ fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<
 #[tauri::command]
 fn export_page_as_pdf(path: String, page_index: u32, output_path: String) -> Result<String, String> {
     extract_pdf_pages(path, output_path, page_index, page_index)
-}
-
-/// Render one PDF page to a BMP file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_bmp(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let bmp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Bmp)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &bmp)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.bmp` files.
-#[tauri::command]
-fn export_pdf_pages_bmp(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let bmp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Bmp)?;
-        let file_name = format!("page-{:03}.bmp", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &bmp)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render one PDF page to a TIFF file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_tiff(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let tiff = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tiff)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &tiff)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.tiff` files.
-#[tauri::command]
-fn export_pdf_pages_tiff(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let tiff = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tiff)?;
-        let file_name = format!("page-{:03}.tiff", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &tiff)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render one PDF page to a GIF file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_gif(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let gif = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Gif)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &gif)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.gif` files.
-#[tauri::command]
-fn export_pdf_pages_gif(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let gif = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Gif)?;
-        let file_name = format!("page-{:03}.gif", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &gif)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render one PDF page to a PPM file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_ppm(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let ppm = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Pnm)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &ppm)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.ppm` files.
-#[tauri::command]
-fn export_pdf_pages_ppm(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let ppm = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Pnm)?;
-        let file_name = format!("page-{:03}.ppm", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &ppm)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render one PDF page to a TGA file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_tga(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let tga = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tga)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &tga)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.tga` files.
-#[tauri::command]
-fn export_pdf_pages_tga(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let tga = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tga)?;
-        let file_name = format!("page-{:03}.tga", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &tga)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
-}
-
-/// Render one PDF page to an ICO file (2× viewer resolution by default).
-#[tauri::command]
-fn export_pdf_page_ico(path: String, page_index: u32, output_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, page_index, page_index)?;
-    let ico = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Ico)?;
-    let output_path = PathBuf::from(&output_path);
-    write_png_output(&output_path, &ico)?;
-    Ok(output_path.to_string_lossy().into_owned())
-}
-
-/// Render a page range to `output_dir/page-NNN.ico` files.
-#[tauri::command]
-fn export_pdf_pages_ico(
-    path: String,
-    start_page: u32,
-    end_page: u32,
-    output_dir: String,
-) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-    validate_page_range(&path, start_page, end_page)?;
-    let output_dir = PathBuf::from(&output_dir);
-    fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
-    let mut written = Vec::new();
-    for page_index in start_page..=end_page {
-        let ico = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Ico)?;
-        let file_name = format!("page-{:03}.ico", page_index + 1);
-        let output_path = output_dir.join(&file_name);
-        write_png_output(&output_path, &ico)?;
-        written.push(output_path.to_string_lossy().into_owned());
-    }
-    Ok(written)
 }
 
 // Viewer render size — must stay aligned with `BASE_W` / `BASE_H` in `App.tsx`.
