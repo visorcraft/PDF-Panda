@@ -1,5 +1,5 @@
 tauri::generate_handler![
-list_pdf_browser_entries,
+            list_pdf_browser_entries,
             get_pdf_page_count,
             get_pdf_bookmarks,
             get_pdf_metadata,
@@ -168,6 +168,7 @@ list_pdf_browser_entries,
             export_even_pages_ppm,
             export_odd_pages_tga,
             export_even_pages_tga,
+            // PARITY_DOCMOD_HANDLERS_START
             rotate_mod3_0_pages,
             rotate_mod3_0_pages_ccw,
             rotate_180_mod3_0_pages,
@@ -888,7 +889,9 @@ list_pdf_browser_entries,
             export_mod6_5_pages_ppm,
             export_mod6_5_pages_tga,
             export_mod6_5_pages_ico,
+            // PARITY_DOCMOD_HANDLERS_END
             duplicate_page_range_to_start,
+            // PARITY_BATCH_HANDLERS_START
             rotate_odd_pages_in_range,
             rotate_even_pages_in_range,
             rotate_odd_pages_in_range_ccw,
@@ -989,6 +992,8 @@ list_pdf_browser_entries,
             flatten_range_local_even_pages,
             export_odd_pages_ico,
             export_even_pages_ico,
+            // PARITY_BATCH_HANDLERS_END
+            // PARITY_BATCH2_HANDLERS_START
             reverse_range_local_odd_pages,
             reverse_range_local_even_pages,
             move_odd_range_local_pages_to_start,
@@ -1003,9 +1008,8 @@ list_pdf_browser_entries,
             duplicate_range_local_even_pages_to_start,
             duplicate_range_local_odd_pages_to_end,
             duplicate_range_local_even_pages_to_end,
-            crop_range_local_odd_pages
-,
-crop_range_local_even_pages,
+            crop_range_local_odd_pages,
+            crop_range_local_even_pages,
             expand_range_local_odd_pages,
             expand_range_local_even_pages,
             shrink_range_local_odd_pages,
@@ -1090,6 +1094,8 @@ crop_range_local_even_pages,
             export_mod3_1_pages_in_range_mod3_png,
             export_mod3_2_pages_in_range_mod3_png,
             export_mod3_0_pages_in_range_mod3_jpeg,
+            // PARITY_BATCH2_HANDLERS_END
+            // PARITY_BATCH3_HANDLERS_START
             duplicate_mod3_0_pages_in_range_before_mod3,
             duplicate_mod3_1_pages_in_range_before_mod3,
             duplicate_mod3_2_pages_in_range_before_mod3,
@@ -1190,6 +1196,8 @@ crop_range_local_even_pages,
             add_page_numbers_second_half_pages_in_range,
             add_text_watermark_first_half_pages_in_range,
             add_text_watermark_second_half_pages_in_range,
+            // PARITY_BATCH3_HANDLERS_END
+            // PARITY_BATCH4_HANDLERS_START
             duplicate_first_half_pages_in_range_before,
             duplicate_second_half_pages_in_range_before,
             duplicate_first_half_pages_in_range_to_start,
@@ -1290,6 +1298,8 @@ crop_range_local_even_pages,
             export_mod4_1_pages_in_range_mod4_jpeg,
             export_mod4_2_pages_in_range_mod4_jpeg,
             export_mod4_3_pages_in_range_mod4_jpeg,
+            // PARITY_BATCH4_HANDLERS_END
+            // PARITY_BATCH5_HANDLERS_START
             duplicate_mod4_0_pages_in_range_before_mod4,
             duplicate_mod4_1_pages_in_range_before_mod4,
             duplicate_mod4_2_pages_in_range_before_mod4,
@@ -1378,6 +1388,8 @@ crop_range_local_even_pages,
             export_mod4_1_pages_in_range_mod4_ico,
             export_mod4_2_pages_in_range_mod4_ico,
             export_mod4_3_pages_in_range_mod4_ico,
+            // PARITY_BATCH5_HANDLERS_END
+            // PARITY_BATCH6_HANDLERS_START
             rotate_mod5_0_pages_in_range_mod5,
             rotate_mod5_1_pages_in_range_mod5,
             rotate_mod5_2_pages_in_range_mod5,
@@ -1774,6 +1786,8 @@ crop_range_local_even_pages,
             export_mod6_3_pages_in_range_mod6_ico,
             export_mod6_4_pages_in_range_mod6_ico,
             export_mod6_5_pages_in_range_mod6_ico,
+            // PARITY_BATCH6_HANDLERS_END
+            // PARITY_BATCH7_HANDLERS_START
             rotate_first_third_pages_in_range,
             rotate_second_third_pages_in_range,
             rotate_third_third_pages_in_range,
@@ -1888,6 +1902,8 @@ crop_range_local_even_pages,
             sort_first_third_pages_in_range_by_size,
             sort_second_third_pages_in_range_by_size,
             sort_third_third_pages_in_range_by_size,
+            // PARITY_BATCH7_HANDLERS_END
+            // PARITY_BATCH8_HANDLERS_START
             sort_odd_pages_in_range_by_rotation_desc,
             sort_even_pages_in_range_by_rotation_desc,
             sort_range_local_odd_pages_by_rotation_desc,
@@ -1936,6 +1952,7 @@ crop_range_local_even_pages,
             sort_mod6_4_pages_in_range_mod6_by_size_desc,
             sort_mod6_5_pages_in_range_mod6_by_rotation_desc,
             sort_mod6_5_pages_in_range_mod6_by_size_desc,
+            // PARITY_BATCH8_HANDLERS_END
             add_text_watermark,
             flatten_annotations,
             crop_page,

@@ -2,7 +2,7 @@ import { usePdfRecents } from './usePdfRecents';
 import { usePdfDocument } from '../pdf/usePdfDocument';
 import { useUndoHistory } from '../pdf/useUndoHistory';
 import { usePdfOpen } from './usePdfOpen';
-import type { UseAppLifecycleDocumentInput } from './useAppLifecycleDocument';
+import type { UseAppLifecycleDocumentInput } from './appLifecycleTypes';
 
 export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentInput) {
   const { doc, modal, security, refs, showToast, withLoading, filePathRef, cancelDrawing } = input;

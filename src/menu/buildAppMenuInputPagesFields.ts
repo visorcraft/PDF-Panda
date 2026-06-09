@@ -1,5 +1,5 @@
 import type { BuildAppMenuSourceInput } from './buildAppMenuSource';
-import type { BuildAppMenuInputArgs } from './buildAppMenuInput';
+import type { BuildAppMenuInputArgs } from './buildAppMenuInputArgs';
 
 export function menuInputPagesFields(args: BuildAppMenuInputArgs): Pick<
   BuildAppMenuSourceInput,

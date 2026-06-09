@@ -83,25 +83,26 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
   const modalOpeners = call(usePdfModalOpeners, input);
   const imageExport = call(useImageExportActions, input);
   const runEdit = call(useStructuralEdit, input);
-  const singlePage = call(useSinglePageEditActions, { ...input, runEdit });
-  const duplicateRange = call(useDuplicateRangeActions, { ...input, runEdit });
-  const headerFooter = call(usePageHeaderFooterActions, { ...input, runEdit });
-  const swapReplace = call(useSwapReplaceInterleaveActions, { ...input, runEdit });
-  const pageSize = call(usePageSizeActions, { ...input, runEdit });
+  const withRunEdit = { ...input, runEdit };
+  const singlePage = call(useSinglePageEditActions, withRunEdit);
+  const duplicateRange = call(useDuplicateRangeActions, withRunEdit);
+  const headerFooter = call(usePageHeaderFooterActions, withRunEdit);
+  const swapReplace = call(useSwapReplaceInterleaveActions, withRunEdit);
+  const pageSize = call(usePageSizeActions, withRunEdit);
   const exportPages = call(useExportPagesActions, input);
-  const parityExport = call(useParityExportActions, { ...input, runEdit });
-  const rangeModals = call(useRangeModalActions, { ...input, runEdit });
-  const oddEven = call(useOddEvenPageActions, { ...input, runEdit });
-  const oddEvenExt = call(useOddEvenExtendedActions, { ...input, runEdit });
-  const splitExtract = call(useSplitExtractPrependActions, { ...input, runEdit });
-  const pageDecor = call(usePageDecorActions, { ...input, runEdit });
-  const bookmarkActions = call(useBookmarkActions, { ...input, runEdit });
+  const parityExport = call(useParityExportActions, withRunEdit);
+  const rangeModals = call(useRangeModalActions, withRunEdit);
+  const oddEven = call(useOddEvenPageActions, withRunEdit);
+  const oddEvenExt = call(useOddEvenExtendedActions, withRunEdit);
+  const splitExtract = call(useSplitExtractPrependActions, withRunEdit);
+  const pageDecor = call(usePageDecorActions, withRunEdit);
+  const bookmarkActions = call(useBookmarkActions, withRunEdit);
   const fileOps = call(usePdfFileOpsActions, input);
-  const pageDuplicate = call(usePageDuplicateActions, { ...input, runEdit });
+  const pageDuplicate = call(usePageDuplicateActions, withRunEdit);
   const formField = call(useFormFieldActions, input);
   call(usePdfRevisionSync, input);
   input.cancelDrawingRef.current = input.cancelDrawing;
-  const pageInteraction = call(usePageInteraction, { ...input, runEdit });
+  const pageInteraction = call(usePageInteraction, withRunEdit);
   const annotationModes = call(useAnnotationModes, input);
   const pageTextEdits = call(usePageTextEdits, input);
   const nativePickers = call(useNativeFilePickers, {
@@ -118,7 +119,7 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
   input.handleSaveRef.current = saveActions.handleSave;
   const markdownFlow = call(useMarkdownFlow, input);
   input.handleMarkdownViewRef.current = markdownFlow.handleMarkdownView;
-  const securityDocs = call(useSecurityDocumentActions, { ...input, runEdit });
+  const securityDocs = call(useSecurityDocumentActions, withRunEdit);
 
   return {
     runEdit,

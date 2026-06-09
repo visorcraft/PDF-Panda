@@ -342,51 +342,6 @@ def build_specs() -> list[tuple[str, str, str]]:
     return specs
 
 
-def patch_main(main_text: str, handlers: list[str], tests: list[str]) -> str:
-    inc_marker = "// PARITY_BATCH4_INCLUDE"
-    if inc_marker not in main_text:
-        main_text = main_text.replace(
-            "// END_PARITY_BATCH3_INCLUDE",
-            "// END_PARITY_BATCH3_INCLUDE\n"
-            f"{inc_marker}\n"
-            'include!("parity_batch4_generated.inc.rs");\n'
-            "// END_PARITY_BATCH4_INCLUDE",
-        )
-
-    hstart = "// PARITY_BATCH4_HANDLERS_START"
-    hend = "// PARITY_BATCH4_HANDLERS_END"
-    block = f"            {hstart}\n" + "\n".join(handlers) + f"\n            {hend}"
-    if hstart not in main_text:
-        main_text = main_text.replace(
-            "// PARITY_BATCH3_HANDLERS_END",
-            "// PARITY_BATCH3_HANDLERS_END\n" + block,
-        )
-    else:
-        main_text = re.sub(
-            rf"{re.escape(hstart)}.*?{re.escape(hend)}",
-            block,
-            main_text,
-            flags=re.DOTALL,
-        )
-
-    tstart = "// PARITY_BATCH4_TESTS_START"
-    tend = "// PARITY_BATCH4_TESTS_END"
-    test_block = f"    {tstart}\n" + "\n".join(tests) + f"\n    {tend}"
-    if tstart not in main_text:
-        main_text = main_text.replace(
-            "    // PARITY_BATCH3_TESTS_END",
-            "    // PARITY_BATCH3_TESTS_END\n" + test_block,
-        )
-    else:
-        main_text = re.sub(
-            rf"    {re.escape(tstart)}.*?    {re.escape(tend)}",
-            test_block,
-            main_text,
-            flags=re.DOTALL,
-        )
-    return main_text
-
-
 def load_prior_command_names() -> list[str]:
     import importlib.util
 
@@ -426,9 +381,12 @@ def main() -> None:
     INC4.write_text("\n".join(lines))
     print(f"Wrote {INC4} ({len(specs)} commands)")
 
-    main_text = patch_main(MAIN.read_text(), handlers, tests)
-    MAIN.write_text(main_text)
-    print(f"Patched {MAIN}")
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from parity_patch import patch_sources
+
+    patch_sources("BATCH4", handlers, tests)
 
     merged = load_prior_command_names() + [s[0] for s in specs]
     UI_JSON.write_text(json.dumps(merged, indent=2))

@@ -1,11 +1,11 @@
 import type { UseAppPdfActionsInput } from './useAppPdfActions';
-import type { useAppModalState } from './useAppModalState';
-import type { useSecurityFormState } from './useSecurityFormState';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppPageRanges } from './useAppPageRanges';
-import type { useAppRefs } from './useAppRefs';
+import type { ModalState } from './useAppModalState';
+import type { SecurityState } from './useSecurityFormState';
+import type { PanelsState } from './useDocumentPanelsState';
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { DocumentState } from './useAppDocumentState';
+import type { PageRangesState } from './useAppPageRanges';
+import type { RefsState } from './useAppRefs';
 import { modalPdfActionFields, marginPdfActionFields } from './buildAppPdfActionsModalFields';
 import {
   securityPdfActionFields,
@@ -21,14 +21,6 @@ import {
 } from './buildAppPdfActionsAnnotFields';
 
 export type { DrawingGestureSlice };
-
-type ModalState = ReturnType<typeof useAppModalState>;
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type PageRangesState = ReturnType<typeof useAppPageRanges>;
-type RefsState = ReturnType<typeof useAppRefs>;
 
 export type AppPdfActionsRuntime = Pick<
   UseAppPdfActionsInput,

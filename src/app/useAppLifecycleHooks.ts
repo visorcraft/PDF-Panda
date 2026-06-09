@@ -1,43 +1,6 @@
 import { useAppLifecycleLoaders } from './useAppLifecycleLoaders';
 import { useAppLifecycleDocument } from './useAppLifecycleDocument';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppModalState } from './useAppModalState';
-import type { useSecurityFormState } from './useSecurityFormState';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppRefs } from './useAppRefs';
-import type { useHelpChromeState } from './useHelpChromeState';
-import type { useAppPageRanges } from './useAppPageRanges';
-
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type ModalState = ReturnType<typeof useAppModalState>;
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type RefsState = ReturnType<typeof useAppRefs>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
-type PageRangesState = ReturnType<typeof useAppPageRanges>;
-
-export type UseAppLifecycleHooksInput = {
-  doc: DocumentState;
-  modal: ModalState;
-  security: SecurityState;
-  panels: PanelsState;
-  annotation: AnnotationState;
-  refs: RefsState;
-  pageRanges: PageRangesState;
-  ocrAvailable: boolean;
-  tesseractReminderSource: HelpState['tesseractReminderSource'];
-  setTesseractReminderSource: HelpState['setTesseractReminderSource'];
-  tesseractDoNotRemind: boolean;
-  setTesseractDoNotRemind: HelpState['setTesseractDoNotRemind'];
-  setShowTesseractModal: HelpState['setShowTesseractModal'];
-  showToast: (message: string, type?: 'success' | 'error') => void;
-  withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  isDirtyRef: DocumentState['isDirtyRef'];
-  filePathRef: RefsState['filePathRef'];
-  cancelDrawing: () => void;
-};
+import type { UseAppLifecycleHooksInput } from './appLifecycleTypes';
 
 export function useAppLifecycleHooks(input: UseAppLifecycleHooksInput) {
   const loaders = useAppLifecycleLoaders({

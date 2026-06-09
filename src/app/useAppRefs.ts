@@ -22,3 +22,6 @@ export function useAppRefs() {
     handleSaveRef,
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type RefsState = ReturnType<typeof useAppRefs>;

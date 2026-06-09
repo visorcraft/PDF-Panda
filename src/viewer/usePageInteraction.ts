@@ -9,8 +9,6 @@ type UsePageInteractionOptions = {
   currentPage: number;
   zoom: number;
   imgRef: React.RefObject<HTMLImageElement | null>;
-  withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  markPdfEdited: () => void;
   renderPage: (path: string, page: number) => Promise<void>;
   loadFormFields: (path: string) => Promise<void>;
   runEdit: ReturnType<typeof createStructuralEditRunner>;
@@ -58,7 +56,6 @@ type UsePageInteractionOptions = {
   setNewFormFieldName: (name: string) => void;
   setNewFormRadioGroup: (group: string) => void;
   setNewFormRadioOption: (option: string) => void;
-  showToast: (msg: string, kind?: 'error') => void;
 };
 
 export function usePageInteraction(opts: UsePageInteractionOptions) {

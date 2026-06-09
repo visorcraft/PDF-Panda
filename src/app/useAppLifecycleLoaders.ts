@@ -4,19 +4,12 @@ import { useTesseractReminder } from './useTesseractReminder';
 import { useRememberBrowserDirectory } from './useRememberBrowserDirectory';
 import { useUnsavedGuard } from './useUnsavedGuard';
 import { useWindowCloseGuard } from './useWindowCloseGuard';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppModalState } from './useAppModalState';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
-import type { useHelpChromeState } from './useHelpChromeState';
-import type { useAppRefs } from './useAppRefs';
-
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type ModalState = ReturnType<typeof useAppModalState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
-type RefsState = ReturnType<typeof useAppRefs>;
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { DocumentState } from './useAppDocumentState';
+import type { ModalState } from './useAppModalState';
+import type { PanelsState } from './useDocumentPanelsState';
+import type { HelpState } from './useHelpChromeState';
+import type { RefsState } from './useAppRefs';
 
 export type UseAppLifecycleLoadersInput = {
   doc: Pick<DocumentState, 'filePath' | 'isDirty' | 'setIsDirty' | 'isDirtyRef'>;
@@ -35,7 +28,7 @@ export type UseAppLifecycleLoadersInput = {
     | 'setTesseractDoNotRemind'
     | 'setShowTesseractModal'
   >;
-  ocrAvailable: boolean;
+  ocrAvailable: boolean | null;
 };
 
 export function useAppLifecycleLoaders(input: UseAppLifecycleLoadersInput) {

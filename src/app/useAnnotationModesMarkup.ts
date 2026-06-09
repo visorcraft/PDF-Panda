@@ -14,6 +14,8 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
     setShapeMode,
     setStampMode,
     setRedactMode,
+    setImageInsertMode,
+    setFormAddMode,
     setTextEditMode,
     setVectorEditMode,
     setShowNoteModal,
@@ -21,12 +23,29 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
     setNoteDraft,
   } = opts;
 
-  const modes: ModeSetters = opts;
+  // Only stable setters: callbacks below intentionally omit `modes` from their
+  // dependency arrays so they stay referentially stable across renders.
+  const modes: ModeSetters = {
+    cancelDrawing,
+    setHighlightMode,
+    setNoteMode,
+    setDrawMode,
+    setShapeMode,
+    setStampMode,
+    setRedactMode,
+    setImageInsertMode,
+    setFormAddMode,
+    setTextEditMode,
+    setVectorEditMode,
+    setShowNoteModal,
+    setPendingNotePos,
+    setNoteDraft,
+  };
 
   const toggleHighlightMode = useCallback(() => {
     clearOtherModes(modes, 'highlight');
     setHighlightMode((m) => !m);
-  }, [setHighlightMode, modes]);
+  }, [setHighlightMode]);
 
   const exitHighlightMode = useCallback(() => {
     cancelDrawing();
@@ -36,12 +55,12 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleNoteMode = useCallback(() => {
     clearOtherModes(modes, 'note');
     setNoteMode((m) => !m);
-  }, [setNoteMode, modes]);
+  }, [setNoteMode]);
 
   const toggleDrawMode = useCallback(() => {
     clearOtherModes(modes, 'draw');
     setDrawMode((m) => !m);
-  }, [setDrawMode, modes]);
+  }, [setDrawMode]);
 
   const exitDrawMode = useCallback(() => {
     cancelDrawing();
@@ -51,7 +70,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleShapeMode = useCallback(() => {
     clearOtherModes(modes, 'shape');
     setShapeMode((m) => !m);
-  }, [setShapeMode, modes]);
+  }, [setShapeMode]);
 
   const exitShapeMode = useCallback(() => {
     cancelDrawing();
@@ -61,7 +80,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleStampMode = useCallback(() => {
     clearOtherModes(modes, 'stamp');
     setStampMode((m) => !m);
-  }, [setStampMode, modes]);
+  }, [setStampMode]);
 
   const exitStampMode = useCallback(() => {
     setStampMode(false);
@@ -70,17 +89,17 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleTextEditMode = useCallback(() => {
     clearOtherModes(modes, 'text');
     setTextEditMode((mode) => !mode);
-  }, [setTextEditMode, modes]);
+  }, [setTextEditMode]);
 
   const toggleVectorEditMode = useCallback(() => {
     clearOtherModes(modes, 'vector');
     setVectorEditMode((mode) => !mode);
-  }, [setVectorEditMode, modes]);
+  }, [setVectorEditMode]);
 
   const toggleRedactMode = useCallback(() => {
     clearOtherModes(modes, 'redact');
     setRedactMode((m) => !m);
-  }, [setRedactMode, modes]);
+  }, [setRedactMode]);
 
   const exitRedactMode = useCallback(() => {
     cancelDrawing();

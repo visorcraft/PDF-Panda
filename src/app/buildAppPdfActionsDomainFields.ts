@@ -1,12 +1,7 @@
-import type { useSecurityFormState } from './useSecurityFormState';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppPageRanges } from './useAppPageRanges';
-
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type PageRangesState = ReturnType<typeof useAppPageRanges>;
+import type { SecurityState } from './useSecurityFormState';
+import type { PanelsState } from './useDocumentPanelsState';
+import type { DocumentState } from './useAppDocumentState';
+import type { PageRangesState } from './useAppPageRanges';
 
 export function securityPdfActionFields(s: SecurityState) {
   return {

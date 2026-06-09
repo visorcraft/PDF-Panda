@@ -5,21 +5,13 @@ import { buildModalDismissInput } from './buildModalDismissInput';
 import { useAppKeyboardBinding } from './useAppKeyboardBinding';
 import { useModalDismiss, type UseModalDismissOptions } from './useModalDismiss';
 import type { AppPdfActions } from './useAppPdfActions';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppModalState } from './useAppModalState';
-import type { useAppRefs } from './useAppRefs';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
-import type { useHelpChromeState } from './useHelpChromeState';
-import type { useSecurityFormState } from './useSecurityFormState';
-
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type ModalState = ReturnType<typeof useAppModalState>;
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
-type RefsState = ReturnType<typeof useAppRefs>;
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { DocumentState } from './useAppDocumentState';
+import type { ModalState } from './useAppModalState';
+import type { RefsState } from './useAppRefs';
+import type { PanelsState } from './useDocumentPanelsState';
+import type { HelpState } from './useHelpChromeState';
+import type { SecurityState } from './useSecurityFormState';
 
 export type UseAppChromeBindingsInput = {
   doc: DocumentState;

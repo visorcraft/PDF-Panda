@@ -1,9 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppRefs } from './useAppRefs';
-
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type RefsState = ReturnType<typeof useAppRefs>;
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { RefsState } from './useAppRefs';
 
 export type DrawingGestureSlice = {
   cancelDrawing: () => void;

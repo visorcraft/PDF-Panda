@@ -1,7 +1,6 @@
-import type { BuildAppModalCtxSourceInput } from './buildAppModalCtxSource';
-import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxInput';
+import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxArgs';
 
-export function modalCtxAnnotFields(args: BuildAppModalCtxInputArgs): Pick<BuildAppModalCtxSourceInput, never> {
+export function modalCtxAnnotFields(args: BuildAppModalCtxInputArgs) {
   return {
     closePageTextModal: args.pdfActions.closePageTextModal,
     confirmAddFormField: args.pdfActions.confirmAddFormField,

@@ -11,3 +11,6 @@ export function useAppModalState() {
     ...useAppModalStateMergeInsert(),
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type ModalState = ReturnType<typeof useAppModalState>;

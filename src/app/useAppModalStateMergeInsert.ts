@@ -19,7 +19,6 @@ export function useAppModalStateMergeInsert() {
   const [interleaveSourcePageCount, setInterleaveSourcePageCount] = useState<number | null>(null);
   const [showPageSizeModal, setShowPageSizeModal] = useState(false);
   const [pageSizePreset, setPageSizePreset] = useState<PageSizePreset>('letter');
-  const [showDecryptModal, setShowDecryptModal] = useState(false);
   const [showPrependModal, setShowPrependModal] = useState(false);
   const [prependFilePath, setPrependFilePath] = useState('');
   const [prependSourcePageCount, setPrependSourcePageCount] = useState<number | null>(null);
@@ -60,7 +59,6 @@ export function useAppModalStateMergeInsert() {
     interleaveSourcePageCount, setInterleaveSourcePageCount,
     showPageSizeModal, setShowPageSizeModal,
     pageSizePreset, setPageSizePreset,
-    showDecryptModal, setShowDecryptModal,
     showPrependModal, setShowPrependModal,
     prependFilePath, setPrependFilePath,
     prependSourcePageCount, setPrependSourcePageCount,

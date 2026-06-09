@@ -22,3 +22,6 @@ export function useDocumentPanelsState() {
     formDrafts, setFormDrafts,
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type PanelsState = ReturnType<typeof useDocumentPanelsState>;

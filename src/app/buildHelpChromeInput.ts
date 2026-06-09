@@ -1,6 +1,4 @@
-import type { useHelpChromeState } from './useHelpChromeState';
-
-type HelpState = ReturnType<typeof useHelpChromeState>;
+import type { HelpState } from './useHelpChromeState';
 
 export type HelpChromeInput = Pick<
   HelpState,

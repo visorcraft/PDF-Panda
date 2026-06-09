@@ -1,9 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { MenuChrome } from '../menu/MenuChrome';
-import type { buildAppMenus } from '../menu/buildAppMenus';
+import type { AppMenus } from '../menu/types';
 import { PageControls } from '../viewer/PageControls';
-
-type AppMenus = ReturnType<typeof buildAppMenus>;
 
 type AppChromeProps = {
   menus: AppMenus;

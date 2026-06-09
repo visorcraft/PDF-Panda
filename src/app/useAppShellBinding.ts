@@ -1,28 +1,21 @@
 import { buildAppShellRenderInput } from '../chrome/buildAppShellRenderInput';
 import type { AppPdfActions } from './useAppPdfActions';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppModalState } from './useAppModalState';
-import type { useAppRefs } from './useAppRefs';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { DocumentState } from './useAppDocumentState';
+import type { ModalState } from './useAppModalState';
+import type { RefsState } from './useAppRefs';
+import type { PanelsState } from './useDocumentPanelsState';
 import type { useDrawingGesture } from '../viewer/useDrawingGesture';
-import type { useHelpChromeState } from './useHelpChromeState';
+import type { HelpState } from './useHelpChromeState';
 import type { useAppViewerWorkflow } from './useAppViewerWorkflow';
 import type { useAppLifecycleSlices } from './useAppLifecycleSlices';
-import type { buildAppMenus } from '../menu/buildAppMenus';
-import type { BuildAppModalCtxSourceInput } from '../modals/buildAppModalCtxSource';
+import type { AppMenus } from '../menu/types';
+import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from '../chrome/buildAppChromeSource';
 
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type ModalState = ReturnType<typeof useAppModalState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
 type DrawingState = ReturnType<typeof useDrawingGesture>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
-type RefsState = ReturnType<typeof useAppRefs>;
 type ViewerWorkflow = ReturnType<typeof useAppViewerWorkflow>;
 type Slices = ReturnType<typeof useAppLifecycleSlices>;
-type AppMenus = ReturnType<typeof buildAppMenus>;
 
 export type UseAppShellBindingInput = {
   doc: DocumentState;
@@ -36,7 +29,7 @@ export type UseAppShellBindingInput = {
   windowTitle: string;
   appMenus: AppMenus;
   modeToolbarExtras: BuildAppChromeSourceInput['modeExtras'];
-  modalCtx: BuildAppModalCtxSourceInput;
+  modalCtx: AppModalsRuntime;
   slices: Slices;
   viewerWorkflow: ViewerWorkflow;
 };

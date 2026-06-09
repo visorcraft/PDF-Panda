@@ -1,7 +1,6 @@
-import type { BuildAppModalCtxSourceInput } from './buildAppModalCtxSource';
-import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxInput';
+import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxArgs';
 
-export function modalCtxSecurityFields(args: BuildAppModalCtxInputArgs): Pick<BuildAppModalCtxSourceInput, never> {
+export function modalCtxSecurityFields(args: BuildAppModalCtxInputArgs) {
   return {
     chooseSignCertNative: args.pdfActions.chooseSignCertNative,
     closePasswordModal: args.pdfActions.closePasswordModal,

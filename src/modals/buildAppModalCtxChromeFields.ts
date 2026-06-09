@@ -1,7 +1,6 @@
-import type { BuildAppModalCtxSourceInput } from './buildAppModalCtxSource';
-import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxInput';
+import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxArgs';
 
-export function modalCtxChromeFields(args: BuildAppModalCtxInputArgs): Pick<BuildAppModalCtxSourceInput, never> {
+export function modalCtxChromeFields(args: BuildAppModalCtxInputArgs) {
   return {
     closeSearchModal: args.search.closeSearchModal,
     closeTesseractReminderModal: args.tesseract.closeTesseractReminderModal,

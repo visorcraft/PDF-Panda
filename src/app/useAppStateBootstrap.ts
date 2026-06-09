@@ -35,7 +35,7 @@ export function useAppStateBootstrap() {
       annotation,
       refs,
       pageRanges,
-      ocrAvailable: !!doc.ocrAvailable,
+      ocrAvailable: doc.ocrAvailable,
       tesseractReminderSource: help.tesseractReminderSource,
       setTesseractReminderSource: help.setTesseractReminderSource,
       tesseractDoNotRemind: help.tesseractDoNotRemind,

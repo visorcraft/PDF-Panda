@@ -1,7 +1,4 @@
-import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
-
-type VoidHandler = () => void | Promise<void>;
-type SortHandler = (desc: boolean) => void | Promise<void>;
+import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot, SortHandler, VoidHandler } from './types';
 
 export const voidRun = (fn: VoidHandler): (() => void) => () => { void fn(); };
 export const voidSort = (fn: SortHandler): ((desc: boolean) => void) => (desc) => { void fn(desc); };

@@ -14,3 +14,6 @@ export function useHelpChromeState() {
   const [tesseractReminderSource, setTesseractReminderSource] = useState<'launch' | 'markdown' | null>(null);
   return { showCommandPalette, showShortcutsHelp, showLicenses, showCredits, showAbout, showTesseractModal, tesseractInstallGuide, tesseractDoNotRemind, tesseractReminderSource, setShowCommandPalette, setShowShortcutsHelp, setShowLicenses, setShowCredits, setShowAbout, setShowTesseractModal, setTesseractInstallGuide, setTesseractDoNotRemind, setTesseractReminderSource };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type HelpState = ReturnType<typeof useHelpChromeState>;

@@ -6,9 +6,9 @@ import type { AnnotationState } from './useAnnotationDraftState';
 import type { RefsState } from './useAppRefs';
 import type { HelpState } from './useHelpChromeState';
 import type { PageRangesState } from './useAppPageRanges';
-import type { UseAppLifecycleHooksInput } from './appLifecycleTypes';
+import type { useAppLifecycleLoaders } from './useAppLifecycleLoaders';
 
-export type BuildAppLifecycleInputArgs = {
+export type UseAppLifecycleHooksInput = {
   doc: DocumentState;
   modal: ModalState;
   security: SecurityState;
@@ -24,27 +24,11 @@ export type BuildAppLifecycleInputArgs = {
   setShowTesseractModal: HelpState['setShowTesseractModal'];
   showToast: (message: string, type?: 'success' | 'error') => void;
   withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
+  filePathRef: RefsState['filePathRef'];
   cancelDrawing: () => void;
 };
 
-export function buildAppLifecycleInput(args: BuildAppLifecycleInputArgs): UseAppLifecycleHooksInput {
-  return {
-    doc: args.doc,
-    modal: args.modal,
-    security: args.security,
-    panels: args.panels,
-    annotation: args.annotation,
-    refs: args.refs,
-    pageRanges: args.pageRanges,
-    ocrAvailable: args.ocrAvailable,
-    tesseractReminderSource: args.tesseractReminderSource,
-    setTesseractReminderSource: args.setTesseractReminderSource,
-    tesseractDoNotRemind: args.tesseractDoNotRemind,
-    setTesseractDoNotRemind: args.setTesseractDoNotRemind,
-    setShowTesseractModal: args.setShowTesseractModal,
-    showToast: args.showToast,
-    withLoading: args.withLoading,
-    filePathRef: args.refs.filePathRef,
-    cancelDrawing: args.cancelDrawing,
-  };
-}
+export type UseAppLifecycleDocumentInput = {
+  input: UseAppLifecycleHooksInput;
+  loaders: ReturnType<typeof useAppLifecycleLoaders>;
+};

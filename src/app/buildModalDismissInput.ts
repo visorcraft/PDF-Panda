@@ -1,14 +1,9 @@
 import type { UseModalDismissOptions } from './useModalDismiss';
 import { buildModalDismissSource } from './buildModalDismissSource';
-import type { useAppModalState } from './useAppModalState';
-import type { useSecurityFormState } from './useSecurityFormState';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useHelpChromeState } from './useHelpChromeState';
-
-type ModalState = ReturnType<typeof useAppModalState>;
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
+import type { ModalState } from './useAppModalState';
+import type { SecurityState } from './useSecurityFormState';
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { HelpState } from './useHelpChromeState';
 
 export type BuildModalDismissInputArgs = {
   modal: ModalState;

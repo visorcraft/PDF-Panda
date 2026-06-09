@@ -1,9 +1,7 @@
 import type { BuildChromeContextInput } from './buildChromeContext';
-import type { buildAppMenus } from '../menu/buildAppMenus';
+import type { AppMenus } from '../menu/types';
 import type { ComponentProps } from 'react';
 import type { PageControls } from '../viewer/PageControls';
-
-type AppMenus = ReturnType<typeof buildAppMenus>;
 
 export type BuildAppChromeSourceInput = {
   menus: AppMenus;

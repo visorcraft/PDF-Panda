@@ -136,38 +136,35 @@ pub fn sort_pages_by_size(path: &Path, descending: bool) -> Result<(), String> {
     Ok(())
 }
 
-pub fn rotate_odd_pages(path: &Path) -> Result<u32, String> {
+/// Set rotation on every odd (0-based even index) or even page: add `Some(delta)`
+/// to the current rotation, or clear it with `None`.
+pub fn rotate_pages_by_parity(path: &Path, odd: bool, delta: Option<i64>) -> Result<u32, String> {
     let mut doc = Document::load(path).map_err(|e| e.to_string())?;
     let total = doc.get_pages().len() as u32;
-    let mut rotated = 0u32;
+    let target_rem = if odd { 0 } else { 1 };
+    let mut changed = 0u32;
     for page_index in 0..total {
-        if page_index % 2 != 0 {
+        if page_index % 2 != target_rem {
             continue;
         }
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let current = page_rotation(&doc, page_id);
-        set_page_rotation(&mut doc, page_id, current + 90)?;
-        rotated += 1;
+        let rotation = match delta {
+            Some(delta) => page_rotation(&doc, page_id) + delta,
+            None => 0,
+        };
+        set_page_rotation(&mut doc, page_id, rotation)?;
+        changed += 1;
     }
     doc.save(path).map_err(|e| e.to_string())?;
-    Ok(rotated)
+    Ok(changed)
+}
+
+pub fn rotate_odd_pages(path: &Path) -> Result<u32, String> {
+    rotate_pages_by_parity(path, true, Some(90))
 }
 
 pub fn rotate_even_pages(path: &Path) -> Result<u32, String> {
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut rotated = 0u32;
-    for page_index in 0..total {
-        if page_index % 2 != 1 {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let current = page_rotation(&doc, page_id);
-        set_page_rotation(&mut doc, page_id, current + 90)?;
-        rotated += 1;
-    }
-    doc.save(path).map_err(|e| e.to_string())?;
-    Ok(rotated)
+    rotate_pages_by_parity(path, false, Some(90))
 }
 
 pub fn delete_every_nth_page(path: &Path, nth: u32) -> Result<u32, String> {

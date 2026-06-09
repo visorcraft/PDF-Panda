@@ -1,23 +1,14 @@
 import { buildAppPdfActionsInput, type AppPdfActionsRuntime } from './buildAppPdfActionsInput';
 import { useAppPdfActions } from './useAppPdfActions';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAppModalState } from './useAppModalState';
-import type { useAppPageRanges } from './useAppPageRanges';
-import type { useAppRefs } from './useAppRefs';
-import type { useDocumentPanelsState } from './useDocumentPanelsState';
-import type { useHelpChromeState } from './useHelpChromeState';
-import type { useSecurityFormState } from './useSecurityFormState';
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { DocumentState } from './useAppDocumentState';
+import type { ModalState } from './useAppModalState';
+import type { PageRangesState } from './useAppPageRanges';
+import type { RefsState } from './useAppRefs';
+import type { PanelsState } from './useDocumentPanelsState';
+import type { HelpState } from './useHelpChromeState';
+import type { SecurityState } from './useSecurityFormState';
 import type { DrawingGestureSlice } from './buildAppPdfActionsInput';
-
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type ModalState = ReturnType<typeof useAppModalState>;
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type PageRangesState = ReturnType<typeof useAppPageRanges>;
-type RefsState = ReturnType<typeof useAppRefs>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
 
 export type AppPdfActionsRuntimeSlice = Omit<AppPdfActionsRuntime, 'setShowTesseractModal' | 'setTesseractReminderSource'>;
 

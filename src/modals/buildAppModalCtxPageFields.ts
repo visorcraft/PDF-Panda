@@ -1,7 +1,6 @@
-import type { BuildAppModalCtxSourceInput } from './buildAppModalCtxSource';
-import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxInput';
+import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxArgs';
 
-export function modalCtxPageFields(args: BuildAppModalCtxInputArgs): Pick<BuildAppModalCtxSourceInput, never> {
+export function modalCtxPageFields(args: BuildAppModalCtxInputArgs) {
   return {
     bookmarkAllPrefix: args.modal.bookmarkAllPrefix,
     bookmarkTitle: args.modal.bookmarkTitle,

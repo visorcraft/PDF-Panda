@@ -1,9 +1,7 @@
 import type { BuildAppKeyboardActionsInput } from './buildAppKeyboardActions';
 import type { AppPdfActions } from './useAppPdfActions';
-import type { useAppDocumentState } from './useAppDocumentState';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
+import type { DocumentState } from './useAppDocumentState';
+import type { AnnotationState } from './useAnnotationDraftState';
 
 export type BuildAppKeyboardSourceArgs = {
   doc: Pick<DocumentState, 'isDirty' | 'filePath' | 'pageCount' | 'currentPage' | 'viewMode'>;

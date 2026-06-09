@@ -1,8 +1,7 @@
-import type { BuildAppModalCtxSourceInput } from './buildAppModalCtxSource';
-import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxInput';
+import type { BuildAppModalCtxInputArgs } from './buildAppModalCtxArgs';
 import { fileNameFromPath } from '../app/utils';
 
-export function modalCtxFileFields(args: BuildAppModalCtxInputArgs): Pick<BuildAppModalCtxSourceInput, never> {
+export function modalCtxFileFields(args: BuildAppModalCtxInputArgs) {
   return {
     browserListing: args.browser.browserListing,
     browserPathInput: args.browser.browserPathInput,

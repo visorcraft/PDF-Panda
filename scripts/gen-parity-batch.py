@@ -868,51 +868,12 @@ def main() -> None:
     INC.write_text("\n".join(lines))
     print(f"Wrote {INC} ({len(specs)} commands)")
 
-    main_text = MAIN.read_text()
-    start_marker = "// PARITY_BATCH_INCLUDE"
-    end_marker = "// END_PARITY_BATCH_INCLUDE"
-    if start_marker not in main_text:
-        anchor = "/// Deep-copy `start_page`..=`end_page` and insert the copies at the document start."
-        main_text = main_text.replace(
-            anchor,
-            f"{start_marker}\n#[allow(clippy::too_many_arguments, clippy::collapsible_if)]\ninclude!(\"parity_batch_generated.inc.rs\");\n{end_marker}\n\n{anchor}",
-        )
+    import sys
 
-    hstart = "// PARITY_BATCH_HANDLERS_START"
-    hend = "// PARITY_BATCH_HANDLERS_END"
-    if hstart not in main_text:
-        main_text = main_text.replace(
-            "            duplicate_page_range_to_start,",
-            f"            duplicate_page_range_to_start,\n{hstart}\n" + "\n".join(handlers) + f"\n{hend}",
-        )
-    else:
-        import re
-        main_text = re.sub(
-            rf"{re.escape(hstart)}.*?{re.escape(hend)}",
-            f"{hstart}\n" + "\n".join(handlers) + f"\n{hend}",
-            main_text,
-            flags=re.DOTALL,
-        )
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from parity_patch import patch_sources
 
-    tstart = "// PARITY_BATCH_TESTS_START"
-    tend = "// PARITY_BATCH_TESTS_END"
-    test_block = f"{tstart}\n" + "\n".join(tests) + f"\n    {tend}"
-    import re
-    if tstart not in main_text:
-        main_text = main_text.replace(
-            "    #[test]\n    fn duplicate_page_range_to_start_inserts_copies()",
-            test_block + "\n\n    #[test]\n    fn duplicate_page_range_to_start_inserts_copies()",
-        )
-    else:
-        main_text = re.sub(
-            rf"{re.escape(tstart)}.*?{re.escape(tend)}",
-            test_block,
-            main_text,
-            flags=re.DOTALL,
-        )
-
-    MAIN.write_text(main_text)
-    print(f"Patched {MAIN}")
+    patch_sources("BATCH", handlers, tests)
 
     ui_path = ROOT / "src" / "parity_batch_commands.json"
     # Keep UI list in sync for App.tsx import

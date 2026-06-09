@@ -1,5 +1,5 @@
 import type { AppMenuContext } from './types';
-import type { AppMenuContextSource } from './buildAppMenuContext';
+import type { AppMenuContextSource } from './types';
 import { voidRun } from './menuBuilders';
 
 export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<

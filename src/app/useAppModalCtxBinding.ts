@@ -1,17 +1,12 @@
 import { buildAppModalCtxInput } from '../modals/buildAppModalCtxInput';
 import type { AppPdfActions } from './useAppPdfActions';
-import type { useAnnotationDraftState } from './useAnnotationDraftState';
-import type { useAppModalState } from './useAppModalState';
-import type { useAppPageRanges } from './useAppPageRanges';
-import type { useHelpChromeState } from './useHelpChromeState';
-import type { useSecurityFormState } from './useSecurityFormState';
+import type { AnnotationState } from './useAnnotationDraftState';
+import type { ModalState } from './useAppModalState';
+import type { PageRangesState } from './useAppPageRanges';
+import type { HelpState } from './useHelpChromeState';
+import type { SecurityState } from './useSecurityFormState';
 import type { useAppLifecycleSlices } from './useAppLifecycleSlices';
 
-type ModalState = ReturnType<typeof useAppModalState>;
-type SecurityState = ReturnType<typeof useSecurityFormState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
-type PageRangesState = ReturnType<typeof useAppPageRanges>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
 type Slices = ReturnType<typeof useAppLifecycleSlices>;
 
 export type UseAppModalCtxBindingInput = {

@@ -805,50 +805,6 @@ def build_specs() -> list[tuple[str, str, int, int]]:
     return specs
 
 
-def patch_main(main_text: str, handlers: list[str], tests: list[str]) -> str:
-    inc_marker = "// PARITY_DOCMOD_INCLUDE"
-    if inc_marker not in main_text:
-        main_text = main_text.replace(
-            "// PARITY_BATCH_INCLUDE",
-            f"{inc_marker}\ninclude!(\"parity_docmod_generated.inc.rs\");\n"
-            "// END_PARITY_DOCMOD_INCLUDE\n"
-            "// PARITY_BATCH_INCLUDE",
-        )
-
-    hstart = "// PARITY_DOCMOD_HANDLERS_START"
-    hend = "// PARITY_DOCMOD_HANDLERS_END"
-    block = f"            {hstart}\n" + "\n".join(handlers) + f"\n            {hend}"
-    if hstart not in main_text:
-        main_text = main_text.replace(
-            "            export_even_pages_tga,",
-            "            export_even_pages_tga,\n" + block,
-        )
-    else:
-        main_text = re.sub(
-            rf"{re.escape(hstart)}.*?{re.escape(hend)}",
-            block,
-            main_text,
-            flags=re.DOTALL,
-        )
-
-    tstart = "// PARITY_DOCMOD_TESTS_START"
-    tend = "// PARITY_DOCMOD_TESTS_END"
-    test_block = f"    {tstart}\n" + "\n".join(tests) + f"\n    {tend}"
-    if tstart not in main_text:
-        main_text = main_text.replace(
-            "    // PARITY_BATCH_TESTS_START",
-            test_block + "\n    // PARITY_BATCH_TESTS_START",
-        )
-    else:
-        main_text = re.sub(
-            rf"    {re.escape(tstart)}.*?    {re.escape(tend)}",
-            test_block,
-            main_text,
-            flags=re.DOTALL,
-        )
-    return main_text
-
-
 def load_prior_command_names() -> list[str]:
     import importlib.util
 
@@ -892,9 +848,12 @@ def main() -> None:
     INC.write_text("\n".join(lines))
     print(f"Wrote {INC} ({len(specs)} commands)")
 
-    main_text = patch_main(MAIN.read_text(), handlers, tests)
-    MAIN.write_text(main_text)
-    print(f"Patched {MAIN}")
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from parity_patch import patch_sources
+
+    patch_sources("DOCMOD", handlers, tests)
 
     merged = load_prior_command_names() + [s[0] for s in specs]
     UI_JSON.write_text(json.dumps(merged, indent=2))

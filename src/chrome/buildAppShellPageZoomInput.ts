@@ -1,7 +1,5 @@
-import type { useAppDocumentState } from '../app/useAppDocumentState';
+import type { DocumentState } from '../app/useAppDocumentState';
 import type { BuildAppShellChromeInputArgs } from './buildAppShellChromeInput';
-
-type DocumentState = ReturnType<typeof useAppDocumentState>;
 
 export type BuildAppShellPageZoomInputArgs = {
   doc: Pick<

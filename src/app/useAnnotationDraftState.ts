@@ -76,3 +76,6 @@ export function useAnnotationDraftState() {
     pendingNotePos, setPendingNotePos,
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type AnnotationState = ReturnType<typeof useAnnotationDraftState>;

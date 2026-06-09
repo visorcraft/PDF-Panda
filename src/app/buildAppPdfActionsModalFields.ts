@@ -1,6 +1,4 @@
-import type { useAppModalState } from './useAppModalState';
-
-type ModalState = ReturnType<typeof useAppModalState>;
+import type { ModalState } from './useAppModalState';
 
 export function modalPdfActionFields(m: ModalState) {
   return {

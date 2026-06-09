@@ -1,7 +1,5 @@
 import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
-import type { buildAppMenus } from '../menu/buildAppMenus';
-
-type AppMenus = ReturnType<typeof buildAppMenus>;
+import type { AppMenus } from '../menu/types';
 
 export type BuildAppShellChromeInputArgs = {
   menus: AppMenus;

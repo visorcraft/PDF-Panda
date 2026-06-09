@@ -44,3 +44,6 @@ export function useAppDocumentState() {
     zoomInput, setZoomInput,
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type DocumentState = ReturnType<typeof useAppDocumentState>;

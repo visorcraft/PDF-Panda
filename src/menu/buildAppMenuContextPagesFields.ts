@@ -1,5 +1,5 @@
 import type { AppMenuContext } from './types';
-import type { AppMenuContextSource } from './buildAppMenuContext';
+import type { AppMenuContextSource } from './types';
 import { voidRun, voidSort } from './menuBuilders';
 
 export function menuContextPagesFields(source: AppMenuContextSource): Pick<

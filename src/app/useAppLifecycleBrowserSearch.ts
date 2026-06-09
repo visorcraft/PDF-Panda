@@ -3,7 +3,7 @@ import { usePdfSearch } from '../pdf/usePdfSearch';
 import { usePrintJobs } from '../pdf/usePrintJobs';
 import { useClosePdf } from './usePdfLifecycle';
 import type { useAppLifecycleLoaders } from './useAppLifecycleLoaders';
-import type { UseAppLifecycleDocumentInput } from './useAppLifecycleDocument';
+import type { UseAppLifecycleDocumentInput } from './appLifecycleTypes';
 import type { useAppLifecycleOpen } from './useAppLifecycleOpen';
 
 type Loaders = ReturnType<typeof useAppLifecycleLoaders>;

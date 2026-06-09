@@ -4,24 +4,18 @@ import { buildAppShellSource } from './buildAppShellSource';
 import { buildHelpChromeInput } from '../app/buildHelpChromeInput';
 import { buildAppShellViewerInput } from '../viewer/buildAppShellViewerInput';
 import type { AppPdfActions } from '../app/useAppPdfActions';
-import type { useAnnotationDraftState } from '../app/useAnnotationDraftState';
-import type { useAppDocumentState } from '../app/useAppDocumentState';
-import type { useAppRefs } from '../app/useAppRefs';
-import type { useDocumentPanelsState } from '../app/useDocumentPanelsState';
+import type { AnnotationState } from '../app/useAnnotationDraftState';
+import type { DocumentState } from '../app/useAppDocumentState';
+import type { RefsState } from '../app/useAppRefs';
+import type { PanelsState } from '../app/useDocumentPanelsState';
 import type { useDrawingGesture } from '../viewer/useDrawingGesture';
-import type { useHelpChromeState } from '../app/useHelpChromeState';
-import type { buildAppMenus } from '../menu/buildAppMenus';
-import type { BuildAppModalCtxSourceInput } from '../modals/buildAppModalCtxSource';
+import type { HelpState } from '../app/useHelpChromeState';
+import type { AppMenus } from '../menu/types';
+import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
 
-type DocumentState = ReturnType<typeof useAppDocumentState>;
-type PanelsState = ReturnType<typeof useDocumentPanelsState>;
-type AnnotationState = ReturnType<typeof useAnnotationDraftState>;
 type DrawingState = ReturnType<typeof useDrawingGesture>;
-type HelpState = ReturnType<typeof useHelpChromeState>;
-type RefsState = ReturnType<typeof useAppRefs>;
-type AppMenus = ReturnType<typeof buildAppMenus>;
 
 export type BuildAppShellRenderInputArgs = {
   doc: DocumentState;
@@ -35,7 +29,7 @@ export type BuildAppShellRenderInputArgs = {
   windowTitle: string;
   appMenus: AppMenus;
   modeExtras: BuildAppChromeSourceInput['modeExtras'];
-  modalCtx: BuildAppModalCtxSourceInput;
+  modalCtx: AppModalsRuntime;
   printPages: string[];
   viewer: Pick<
     BuildAppViewerSourceInput,

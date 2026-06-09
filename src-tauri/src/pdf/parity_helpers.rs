@@ -43,54 +43,54 @@ pub fn extract_pages_by_parity(path: &Path, output_path: &Path, odd: bool) -> Re
     Ok(output_path.to_string_lossy().into_owned())
 }
 
-pub fn keep_pages_by_parity(path: &Path, keep_odd: bool) -> Result<u32, String> {
+/// Drop every page whose 0-based index parity is `remove_rem`, then save.
+/// `validate` sees (kept, total) before any mutation and can reject; a no-op
+/// removal returns `Ok(0)` without rewriting the file.
+fn remove_pages_by_index_parity(
+    path: &Path,
+    remove_rem: usize,
+    validate: impl Fn(usize, usize) -> Result<(), String>,
+) -> Result<u32, String> {
     let mut doc = Document::load(path).map_err(|e| e.to_string())?;
     let pages_ref = flatten_pages(&mut doc)?;
     let (kids, _) = get_pages_kids(&doc)?;
-    let kept: Vec<Object> = kids
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| if keep_odd { i % 2 == 0 } else { i % 2 == 1 })
-        .map(|(_, kid)| kid.clone())
-        .collect();
-    if kept.is_empty() {
-        return Err(if keep_odd {
-            "Document has no odd-indexed pages".to_string()
-        } else {
-            "Document has no even-indexed pages".to_string()
-        });
+    let total = kids.len();
+    let kept: Vec<Object> =
+        kids.iter().enumerate().filter(|(i, _)| i % 2 != remove_rem).map(|(_, kid)| kid.clone()).collect();
+    validate(kept.len(), total)?;
+    let deleted = (total - kept.len()) as u32;
+    if deleted == 0 {
+        return Ok(0);
     }
-    if kept.len() == kids.len() {
-        return Err("Nothing to delete — all pages match the keep filter".to_string());
-    }
-    let deleted = kids.len() - kept.len();
     set_pages_kids(&mut doc, pages_ref, kept)?;
     doc.prune_objects();
     doc.save(path).map_err(|e| e.to_string())?;
-    Ok(deleted as u32)
+    Ok(deleted)
+}
+
+pub fn keep_pages_by_parity(path: &Path, keep_odd: bool) -> Result<u32, String> {
+    remove_pages_by_index_parity(path, if keep_odd { 1 } else { 0 }, |kept, total| {
+        if kept == 0 {
+            return Err(if keep_odd {
+                "Document has no odd-indexed pages".to_string()
+            } else {
+                "Document has no even-indexed pages".to_string()
+            });
+        }
+        if kept == total {
+            return Err("Nothing to delete — all pages match the keep filter".to_string());
+        }
+        Ok(())
+    })
 }
 
 pub fn delete_pages_by_parity(path: &Path, delete_odd: bool) -> Result<u32, String> {
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut kids, _) = get_pages_kids(&doc)?;
-    let total = kids.len();
-    let mut to_delete: Vec<usize> = (0..total).filter(|i| if delete_odd { i % 2 == 0 } else { i % 2 == 1 }).collect();
-    if to_delete.is_empty() {
-        return Ok(0);
-    }
-    if to_delete.len() >= total {
-        return Err("Cannot delete every page in the document".to_string());
-    }
-    to_delete.sort_by(|a, b| b.cmp(a));
-    let deleted = to_delete.len() as u32;
-    for idx in to_delete {
-        kids.remove(idx);
-    }
-    set_pages_kids(&mut doc, pages_ref, kids)?;
-    doc.prune_objects();
-    doc.save(path).map_err(|e| e.to_string())?;
-    Ok(deleted)
+    remove_pages_by_index_parity(path, if delete_odd { 0 } else { 1 }, |kept, total| {
+        if kept == 0 && total > 0 {
+            return Err("Cannot delete every page in the document".to_string());
+        }
+        Ok(())
+    })
 }
 
 pub fn flatten_annotations_by_parity(path: &Path, odd: bool) -> Result<u32, String> {

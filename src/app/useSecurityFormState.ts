@@ -51,3 +51,6 @@ export function useSecurityFormState() {
     decryptPassword, setDecryptPassword,
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type SecurityState = ReturnType<typeof useSecurityFormState>;

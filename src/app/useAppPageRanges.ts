@@ -61,3 +61,6 @@ export function useAppPageRanges({ pageCount, currentPage, showToast }: UseAppPa
     mergeRange,
   };
 }
+
+/** Canonical alias for this hook's state shape. */
+export type PageRangesState = ReturnType<typeof useAppPageRanges>;

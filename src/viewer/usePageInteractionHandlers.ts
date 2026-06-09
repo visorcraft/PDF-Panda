@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { useCallback } from 'react';
 import type { FormFieldKind } from '../modals/AddFormFieldModal';
 import type { ShapeKind, StampKind } from '../app/constants';
@@ -12,8 +11,6 @@ export type PageInteractionHandlerOptions = {
   currentPage: number;
   zoom: number;
   imgRef: React.RefObject<HTMLImageElement | null>;
-  withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  markPdfEdited: () => void;
   renderPage: (path: string, page: number) => Promise<void>;
   loadFormFields: (path: string) => Promise<void>;
   runEdit: ReturnType<typeof createStructuralEditRunner>;
@@ -60,7 +57,6 @@ export type PageInteractionHandlerOptions = {
   setNewFormFieldName: (name: string) => void;
   setNewFormRadioGroup: (group: string) => void;
   setNewFormRadioOption: (option: string) => void;
-  showToast: (msg: string, kind?: 'error') => void;
   refreshAnnotations: () => Promise<void>;
   commitInkStroke: (points: number[]) => void;
 };
@@ -115,67 +111,46 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
         h: Math.abs(coords.y - start.y),
       };
       if (rect.w < 4 || rect.h < 4) return;
-      void opts.withLoading(async () => {
-        await invoke('add_page_vector_rect', {
-          path: opts.filePath,
-          pageIndex: opts.currentPage,
-          x: rect.x,
-          y: rect.y,
-          width: rect.w,
-          height: rect.h,
-        });
-        opts.markPdfEdited();
-        await opts.renderPage(opts.filePath, opts.currentPage);
-        opts.showToast('Vector shape added');
+      void opts.runEdit({
+        command: 'add_page_vector_rect',
+        args: { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h },
+        afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
+        toast: 'Vector shape added',
       });
       return;
     }
     if (opts.formAddMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       const placeFormField = (rect: { x: number; y: number; w: number; h: number }) => {
-        void opts.withLoading(async () => {
-          const base = {
-            path: opts.filePath,
-            pageIndex: opts.currentPage,
-            x: rect.x,
-            y: rect.y,
-            width: rect.w,
-            height: rect.h,
-          };
-          if (opts.newFormFieldKind === 'checkbox') {
-            await invoke('add_checkbox_form_field', {
-              ...base,
-              name: opts.newFormFieldName.trim(),
-              checked: opts.newFormCheckboxChecked,
-            });
-          } else if (opts.newFormFieldKind === 'choice') {
-            const options = opts.newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
-            await invoke('add_choice_form_field', {
-              ...base,
-              name: opts.newFormFieldName.trim(),
-              options,
-              combo: true,
-            });
-          } else if (opts.newFormFieldKind === 'radio') {
-            await invoke('add_radio_form_field', {
-              ...base,
-              groupName: opts.newFormRadioGroup.trim(),
-              optionName: opts.newFormRadioOption.trim(),
-            });
-          } else {
-            await invoke('add_text_form_field', {
-              ...base,
-              name: opts.newFormFieldName.trim(),
-            });
-          }
-          opts.markPdfEdited();
-          opts.setFormAddMode(false);
-          opts.setShowAddFormFieldModal(false);
-          opts.setNewFormFieldName('');
-          opts.setNewFormRadioGroup('');
-          opts.setNewFormRadioOption('');
-          await opts.loadFormFields(opts.filePath);
-          opts.showToast('Form field added');
+        const base = { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h };
+        let command: string;
+        let args: Record<string, unknown>;
+        if (opts.newFormFieldKind === 'checkbox') {
+          command = 'add_checkbox_form_field';
+          args = { ...base, name: opts.newFormFieldName.trim(), checked: opts.newFormCheckboxChecked };
+        } else if (opts.newFormFieldKind === 'choice') {
+          const options = opts.newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
+          command = 'add_choice_form_field';
+          args = { ...base, name: opts.newFormFieldName.trim(), options, combo: true };
+        } else if (opts.newFormFieldKind === 'radio') {
+          command = 'add_radio_form_field';
+          args = { ...base, groupName: opts.newFormRadioGroup.trim(), optionName: opts.newFormRadioOption.trim() };
+        } else {
+          command = 'add_text_form_field';
+          args = { ...base, name: opts.newFormFieldName.trim() };
+        }
+        void opts.runEdit({
+          command,
+          args,
+          afterEdit: async () => {
+            opts.setFormAddMode(false);
+            opts.setShowAddFormFieldModal(false);
+            opts.setNewFormFieldName('');
+            opts.setNewFormRadioGroup('');
+            opts.setNewFormRadioOption('');
+            await opts.loadFormFields(opts.filePath);
+          },
+          toast: 'Form field added',
         });
       };
 
@@ -223,19 +198,18 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
         h: Math.abs(coords.y - start.y),
       };
       if (rect.w < 5 || rect.h < 5) return;
-      void opts.withLoading(async () => {
-        await invoke('add_page_image', {
-          path: opts.filePath,
+      void opts.runEdit({
+        command: 'add_page_image',
+        args: {
           pageIndex: opts.currentPage,
           x: rect.x,
           y: rect.y,
           width: rect.w,
           height: rect.h,
           imagePath: opts.imageSourcePath,
-        });
-        opts.markPdfEdited();
-        await opts.renderPage(opts.filePath, opts.currentPage);
-        opts.showToast('Image inserted');
+        },
+        afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
+        toast: 'Image inserted',
       });
       return;
     }
@@ -267,27 +241,11 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
     }
     if (opts.stampMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
-      void opts.withLoading(async () => {
-        if (opts.stampKind === 'image') {
-          await invoke('add_image_stamp', {
-            path: opts.filePath,
-            pageIndex: opts.currentPage,
-            x: coords.x,
-            y: coords.y,
-            preset: opts.stampPreset,
-          });
-        } else {
-          await invoke('add_text_stamp', {
-            path: opts.filePath,
-            pageIndex: opts.currentPage,
-            x: coords.x,
-            y: coords.y,
-            preset: opts.stampPreset,
-          });
-        }
-        opts.markPdfEdited();
-        await opts.refreshAnnotations();
-        opts.showToast('Stamp added');
+      void opts.runEdit({
+        command: opts.stampKind === 'image' ? 'add_image_stamp' : 'add_text_stamp',
+        args: { pageIndex: opts.currentPage, x: coords.x, y: coords.y, preset: opts.stampPreset },
+        afterEdit: async () => { await opts.refreshAnnotations(); },
+        toast: 'Stamp added',
       });
       return;
     }
@@ -321,20 +279,11 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
         h: Math.abs(coords.y - start.y),
       };
       if (rect.w < 5 || rect.h < 5) return;
-      void opts.withLoading(async () => {
-        const args = {
-          path: opts.filePath,
-          pageIndex: opts.currentPage,
-          x1: rect.x,
-          y1: rect.y,
-          x2: rect.x + rect.w,
-          y2: rect.y + rect.h,
-        };
-        if (opts.shapeKind === 'circle') await invoke('add_circle', args);
-        else await invoke('add_square', args);
-        opts.markPdfEdited();
-        await opts.refreshAnnotations();
-        opts.showToast(opts.shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added');
+      void opts.runEdit({
+        command: opts.shapeKind === 'circle' ? 'add_circle' : 'add_square',
+        args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+        afterEdit: async () => { await opts.refreshAnnotations(); },
+        toast: opts.shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added',
       });
       return;
     }

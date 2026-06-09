@@ -57,7 +57,7 @@ import { SwapPagesModal } from './SwapPagesModal';
 import { TesseractReminderModal } from './TesseractReminderModal';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
 import { WatermarkModal } from './WatermarkModal';
-import type { AppModalsContext, AppModalsRuntime } from './appModalsContext';
+import type { AppModalsContext } from './appModalsContext';
 
 type AppModalsProps = {
   ctx: AppModalsContext;
@@ -65,7 +65,7 @@ type AppModalsProps = {
 
 export function AppModals({ ctx: rawCtx }: AppModalsProps) {
   // Wide context object assembled in App.tsx; modal wiring is mechanical.
-  const ctx = rawCtx as Record<string, unknown> as AppModalsRuntime;
+  const ctx = rawCtx;
   return (
     <>
       {ctx.showOpenModal && (

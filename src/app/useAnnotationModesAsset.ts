@@ -29,8 +29,19 @@ export type UseAnnotationModesAssetOptions = ModeSetters & {
 export function useAnnotationModesAsset(opts: UseAnnotationModesAssetOptions) {
   const {
     cancelDrawing,
+    setHighlightMode,
+    setNoteMode,
+    setDrawMode,
+    setShapeMode,
+    setStampMode,
+    setRedactMode,
     setImageInsertMode,
     setFormAddMode,
+    setTextEditMode,
+    setVectorEditMode,
+    setShowNoteModal,
+    setPendingNotePos,
+    setNoteDraft,
     filePath,
     imageSourcePath,
     imageSourceDraft,
@@ -52,7 +63,24 @@ export function useAnnotationModesAsset(opts: UseAnnotationModesAssetOptions) {
     setNewFormCheckboxChecked,
   } = opts;
 
-  const modes: ModeSetters = opts;
+  // Only stable setters: callbacks below intentionally omit `modes` from their
+  // dependency arrays so they stay referentially stable across renders.
+  const modes: ModeSetters = {
+    cancelDrawing,
+    setHighlightMode,
+    setNoteMode,
+    setDrawMode,
+    setShapeMode,
+    setStampMode,
+    setRedactMode,
+    setImageInsertMode,
+    setFormAddMode,
+    setTextEditMode,
+    setVectorEditMode,
+    setShowNoteModal,
+    setPendingNotePos,
+    setNoteDraft,
+  };
 
   const openImageInsertModal = useCallback(() => {
     if (!filePath) return;
@@ -76,7 +104,7 @@ export function useAnnotationModesAsset(opts: UseAnnotationModesAssetOptions) {
     } catch (err) {
       showToast(String(err), 'error');
     }
-  }, [imageSourceDraft, showToast, setImageSourcePath, setShowImageInsertModal, setImageInsertMode, modes]);
+  }, [imageSourceDraft, showToast, setImageSourcePath, setShowImageInsertModal, setImageInsertMode]);
 
   const toggleImageInsertMode = useCallback(() => {
     if (!imageSourcePath) {
@@ -85,7 +113,7 @@ export function useAnnotationModesAsset(opts: UseAnnotationModesAssetOptions) {
     }
     clearOtherModes(modes);
     setImageInsertMode((m) => !m);
-  }, [imageSourcePath, openImageInsertModal, setImageInsertMode, modes]);
+  }, [imageSourcePath, openImageInsertModal, setImageInsertMode]);
 
   const exitImageInsertMode = useCallback(() => {
     cancelDrawing();
@@ -146,7 +174,6 @@ export function useAnnotationModesAsset(opts: UseAnnotationModesAssetOptions) {
     showToast,
     setShowAddFormFieldModal,
     setFormAddMode,
-    modes,
   ]);
 
   const exitFormAddMode = useCallback(() => {

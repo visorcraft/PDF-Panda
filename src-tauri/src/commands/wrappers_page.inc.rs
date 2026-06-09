@@ -110,76 +110,22 @@ fn split_pdf_at_page(path: String, at_page: u32) -> Result<Vec<String>, String> 
 /// Rotate pages 1, 3, 5, … by 90° counter-clockwise.
 #[tauri::command]
 fn rotate_odd_pages_ccw(path: String) -> Result<u32, String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut rotated = 0u32;
-    for page_index in 0..total {
-        if page_index % 2 != 0 {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let current = page_rotation(&doc, page_id);
-        set_page_rotation(&mut doc, page_id, current - 90)?;
-        rotated += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(rotated)
+    pdf::page_range::rotate_pages_by_parity(&PathBuf::from(&path), true, Some(-90))
 }
 /// Rotate pages 2, 4, 6, … by 90° counter-clockwise.
 #[tauri::command]
 fn rotate_even_pages_ccw(path: String) -> Result<u32, String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut rotated = 0u32;
-    for page_index in 0..total {
-        if page_index % 2 != 1 {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let current = page_rotation(&doc, page_id);
-        set_page_rotation(&mut doc, page_id, current - 90)?;
-        rotated += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(rotated)
+    pdf::page_range::rotate_pages_by_parity(&PathBuf::from(&path), false, Some(-90))
 }
 /// Clear `/Rotate` on pages 1, 3, 5, ….
 #[tauri::command]
 fn reset_rotation_odd_pages(path: String) -> Result<u32, String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut reset = 0u32;
-    for page_index in 0..total {
-        if page_index % 2 != 0 {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        set_page_rotation(&mut doc, page_id, 0)?;
-        reset += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(reset)
+    pdf::page_range::rotate_pages_by_parity(&PathBuf::from(&path), true, None)
 }
 /// Clear `/Rotate` on pages 2, 4, 6, ….
 #[tauri::command]
 fn reset_rotation_even_pages(path: String) -> Result<u32, String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut reset = 0u32;
-    for page_index in 0..total {
-        if page_index % 2 != 1 {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        set_page_rotation(&mut doc, page_id, 0)?;
-        reset += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(reset)
+    pdf::page_range::rotate_pages_by_parity(&PathBuf::from(&path), false, None)
 }
 /// Delete even-indexed pages; keep pages 1, 3, 5, … only.
 #[tauri::command]
