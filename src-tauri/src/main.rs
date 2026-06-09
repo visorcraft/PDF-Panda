@@ -8,22 +8,22 @@ use pdf::bookmarks::{collect_outline_items, flat_outline_ids, remove_outline_ite
 use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
 use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
+use pdf::fonts::dedup_fonts_after_insert;
+use pdf::form_merge::merge_acroform_after_insert;
 use pdf::forms::field_type_label_for;
 use pdf::forms::{
-    append_field_kid, choice_options_object, collect_form_fields, field_partial_name, find_form_field_id_by_name,
-    find_radio_group_by_name, mark_acroform_need_appearances, push_acroform_field, resolve_field_dict,
-    set_btn_widget_checked, set_radio_group_checked, viewer_widget_rect, FormFieldData,
+    append_field_kid, choice_options_object, collect_form_fields, find_form_field_id_by_name, find_radio_group_by_name,
+    mark_acroform_need_appearances, push_acroform_field, set_btn_widget_checked, set_radio_group_checked,
+    viewer_widget_rect, FormFieldData,
 };
+use pdf::import::{import_dict, import_object};
 use pdf::metadata::{current_pdf_mod_date, ensure_info_dict_id, read_info_string, write_info_text_field};
 use pdf::ocr::{
     build_tesseract_install_guide, ocr_language, ocr_page_segmentation_mode, os_release_value, resolve_tesseract,
     OcrExportStats, OcrStatus, TesseractInstallGuide, OCR_RENDER_H, OCR_RENDER_W,
 };
 use pdf::page_text::{ensure_helvetica_font, escape_pdf_literal_string, viewer_point_to_pdf};
-use pdf::page_tree::{
-    delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict, set_pages_kids,
-    INHERITABLE_PAGE_KEYS,
-};
+use pdf::page_tree::{delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, set_pages_kids};
 use pdf::pdfium_bind::{
     get_pdfium, render_page_bmp, render_page_gif, render_page_ico, render_page_image, render_page_jpeg,
     render_page_png, render_page_ppm, render_page_tga, render_page_tiff, render_page_webp, set_bundled_pdfium_dir,
@@ -220,330 +220,6 @@ fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u
 /// resources and terminates reference cycles. Page dicts encountered anywhere are
 /// detached from the source tree (see `import_page_dict`) so we never drag the
 /// whole page tree across.
-fn import_object(
-    dst: &mut Document,
-    src: &Document,
-    id: ObjectId,
-    dst_root: ObjectId,
-    remap: &mut BTreeMap<ObjectId, ObjectId>,
-) -> ObjectId {
-    if let Some(&new) = remap.get(&id) {
-        return new;
-    }
-    let new_id = dst.new_object_id();
-    remap.insert(id, new_id);
-    let cloned = match src.get_object(id) {
-        Ok(Object::Dictionary(d)) if is_page_dict(d) => {
-            Object::Dictionary(import_page_dict(dst, src, id, d, dst_root, remap))
-        }
-        Ok(obj) => import_value(dst, src, obj, dst_root, remap),
-        Err(_) => Object::Null,
-    };
-    dst.objects.insert(new_id, cloned);
-    new_id
-}
-
-fn import_value(
-    dst: &mut Document,
-    src: &Document,
-    value: &Object,
-    dst_root: ObjectId,
-    remap: &mut BTreeMap<ObjectId, ObjectId>,
-) -> Object {
-    match value {
-        Object::Reference(rid) => Object::Reference(import_object(dst, src, *rid, dst_root, remap)),
-        Object::Array(items) => {
-            Object::Array(items.iter().map(|v| import_value(dst, src, v, dst_root, remap)).collect())
-        }
-        Object::Dictionary(d) => Object::Dictionary(import_dict(dst, src, d, dst_root, remap)),
-        Object::Stream(s) => {
-            Object::Stream(Stream::new(import_dict(dst, src, &s.dict, dst_root, remap), s.content.clone()))
-        }
-        other => other.clone(),
-    }
-}
-
-fn import_dict(
-    dst: &mut Document,
-    src: &Document,
-    dict: &Dictionary,
-    dst_root: ObjectId,
-    remap: &mut BTreeMap<ObjectId, ObjectId>,
-) -> Dictionary {
-    let mut out = Dictionary::new();
-    for (key, val) in dict.iter() {
-        out.set(key.clone(), import_value(dst, src, val, dst_root, remap));
-    }
-    out
-}
-
-/// Import a page detached from its source tree: resolve inherited attributes,
-/// drop the upward /Parent link, deep-copy the remaining entries (Contents,
-/// Resources, …), then point /Parent at the destination root.
-fn import_page_dict(
-    dst: &mut Document,
-    src: &Document,
-    src_page: ObjectId,
-    dict: &Dictionary,
-    dst_root: ObjectId,
-    remap: &mut BTreeMap<ObjectId, ObjectId>,
-) -> Dictionary {
-    let mut page = dict.clone();
-    page.remove(b"Parent");
-    for key in INHERITABLE_PAGE_KEYS {
-        if page.get(key).is_err() {
-            if let Some(val) = inherited_page_attr(src, src_page, key) {
-                page.set(key.to_vec(), val);
-            }
-        }
-    }
-    let mut out = import_dict(dst, src, &page, dst_root, remap);
-    out.set("Parent", Object::Reference(dst_root));
-    out
-}
-
-fn form_field_root_id(doc: &Document, mut id: ObjectId) -> Option<ObjectId> {
-    for _ in 0..32 {
-        let dict = resolve_field_dict(doc, id)?;
-        if let Ok(Object::Reference(parent)) = dict.get(b"Parent") {
-            id = *parent;
-            continue;
-        }
-        return Some(id);
-    }
-    None
-}
-
-fn form_roots_on_pages(doc: &Document, page_ids: &[ObjectId]) -> Vec<ObjectId> {
-    let mut roots = BTreeMap::new();
-    for &page_id in page_ids {
-        let Ok(page) = doc.get_dictionary(page_id) else { continue };
-        let Ok(Object::Array(annots)) = page.get(b"Annots") else { continue };
-        for annot in annots {
-            let Object::Reference(id) = annot else { continue };
-            let Some(dict) = resolve_field_dict(doc, *id) else { continue };
-            let is_widget = dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok()) == Some(b"Widget");
-            if dict.get(b"FT").is_ok() || (is_widget && dict.get(b"Parent").is_ok()) {
-                if let Some(root) = form_field_root_id(doc, *id) {
-                    roots.insert(root, ());
-                }
-            }
-        }
-    }
-    roots.keys().copied().collect()
-}
-
-fn acroform_tree_contains(doc: &Document, field: &Object, target: ObjectId) -> bool {
-    match field {
-        Object::Reference(id) => {
-            if *id == target {
-                return true;
-            }
-            if let Some(dict) = resolve_field_dict(doc, *id) {
-                if let Some(arr) = dict.get(b"Kids").ok().and_then(|o| o.as_array().ok()) {
-                    return arr.iter().any(|kid| acroform_tree_contains(doc, kid, target));
-                }
-            }
-            false
-        }
-        _ => false,
-    }
-}
-
-fn acroform_already_has_field(doc: &Document, field_id: ObjectId) -> bool {
-    let Ok(catalog) = doc.catalog() else { return false };
-    let Ok(Object::Reference(af_id)) = catalog.get(b"AcroForm") else { return false };
-    let Ok(af) = doc.get_dictionary(*af_id) else { return false };
-    let Ok(Object::Array(fields)) = af.get(b"Fields") else { return false };
-    fields.iter().any(|entry| acroform_tree_contains(doc, entry, field_id))
-}
-
-fn rename_form_field_title(doc: &mut Document, field_id: ObjectId, new_name: &str) -> Result<(), String> {
-    doc.get_dictionary_mut(field_id)
-        .map_err(|e| e.to_string())?
-        .set(b"T", Object::String(new_name.as_bytes().to_vec(), lopdf::StringFormat::Literal));
-    Ok(())
-}
-
-fn resolve_imported_form_name_conflict(doc: &mut Document, field_id: ObjectId) -> Result<(), String> {
-    let Some(root) = form_field_root_id(doc, field_id) else {
-        return Ok(());
-    };
-    let Some(name) = resolve_field_dict(doc, root).and_then(field_partial_name) else {
-        return Ok(());
-    };
-    let mut clash = false;
-    for &page_id in doc.get_pages().values() {
-        let Ok(page) = doc.get_dictionary(page_id) else { continue };
-        let Ok(Object::Array(annots)) = page.get(b"Annots") else { continue };
-        for annot in annots {
-            let Object::Reference(id) = annot else { continue };
-            let Some(other_root) = form_field_root_id(doc, *id) else { continue };
-            if other_root == root {
-                continue;
-            }
-            if resolve_field_dict(doc, other_root).and_then(field_partial_name).as_deref() == Some(name.as_str()) {
-                clash = true;
-                break;
-            }
-        }
-        if clash {
-            break;
-        }
-    }
-    if !clash {
-        return Ok(());
-    }
-    let mut candidate = format!("imported_{name}");
-    let mut suffix = 1u32;
-    loop {
-        let mut available = true;
-        for &page_id in doc.get_pages().values() {
-            let Ok(page) = doc.get_dictionary(page_id) else { continue };
-            let Ok(Object::Array(annots)) = page.get(b"Annots") else { continue };
-            for annot in annots {
-                let Object::Reference(id) = annot else { continue };
-                let Some(other_root) = form_field_root_id(doc, *id) else { continue };
-                if other_root == root {
-                    continue;
-                }
-                if resolve_field_dict(doc, other_root).and_then(field_partial_name).as_deref()
-                    == Some(candidate.as_str())
-                {
-                    available = false;
-                    break;
-                }
-            }
-            if !available {
-                break;
-            }
-        }
-        if available {
-            break;
-        }
-        candidate = format!("imported_{name}_{suffix}");
-        suffix += 1;
-    }
-    rename_form_field_title(doc, root, &candidate)
-}
-
-fn register_acroform_field(doc: &mut Document, field_id: ObjectId) -> Result<(), String> {
-    if acroform_already_has_field(doc, field_id) {
-        return Ok(());
-    }
-    resolve_imported_form_name_conflict(doc, field_id)?;
-    push_acroform_field(doc, field_id)
-}
-
-fn merge_acroform_after_insert(
-    doc: &mut Document,
-    insert_doc: &Document,
-    inserted_page_ids: &[ObjectId],
-    remap: &BTreeMap<ObjectId, ObjectId>,
-) -> Result<(), String> {
-    let mut roots = BTreeMap::<ObjectId, ()>::new();
-    for root in form_roots_on_pages(doc, inserted_page_ids) {
-        roots.insert(root, ());
-    }
-    if let Ok(catalog) = insert_doc.catalog() {
-        if let Ok(Object::Reference(af_id)) = catalog.get(b"AcroForm") {
-            if let Ok(af) = insert_doc.get_dictionary(*af_id) {
-                if let Ok(Object::Array(fields)) = af.get(b"Fields") {
-                    for field in fields {
-                        let Object::Reference(src_id) = field else { continue };
-                        if let Some(&dst_id) = remap.get(src_id) {
-                            roots.insert(dst_id, ());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    for root in roots.keys().copied() {
-        register_acroform_field(doc, root)?;
-    }
-    if !roots.is_empty() {
-        mark_acroform_need_appearances(doc)?;
-    }
-    Ok(())
-}
-
-fn page_font_entries(doc: &Document, page_id: ObjectId) -> Vec<(Vec<u8>, ObjectId)> {
-    let mut out = Vec::new();
-    let Ok(page) = doc.get_dictionary(page_id) else { return out };
-    let Ok(resources) = page.get(b"Resources").and_then(|o| o.as_dict()) else { return out };
-    let Ok(fonts) = resources.get(b"Font").and_then(|o| o.as_dict()) else { return out };
-    for (name, obj) in fonts.iter() {
-        let id = match obj {
-            Object::Reference(id) => *id,
-            _ => continue,
-        };
-        out.push((name.clone(), id));
-    }
-    out
-}
-
-fn font_signature(doc: &Document, font_id: ObjectId) -> Option<String> {
-    let dict = doc.get_dictionary(font_id).ok()?;
-    let base = dict.get(b"BaseFont").ok()?.as_name().ok()?;
-    let subtype = dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok()).unwrap_or(b"");
-    let mut sig = format!("{}:{}", String::from_utf8_lossy(subtype), String::from_utf8_lossy(base));
-    if let Ok(Object::Reference(desc_id)) = dict.get(b"FontDescriptor") {
-        if let Ok(Object::Dictionary(desc)) = doc.get_object(*desc_id) {
-            if let Some(len) = desc.get(b"Length").ok().and_then(|o| o.as_i64().ok()) {
-                sig.push_str(&format!(":len={len}"));
-            }
-            if let Some(name) = desc.get(b"FontName").ok().and_then(|o| o.as_name().ok()) {
-                sig.push_str(&format!(":fn={}", String::from_utf8_lossy(name)));
-            }
-        }
-    }
-    Some(sig)
-}
-
-fn dedup_fonts_after_insert(doc: &mut Document, inserted_page_ids: &[ObjectId]) -> Result<u32, String> {
-    let inserted: BTreeMap<ObjectId, ()> = inserted_page_ids.iter().copied().map(|id| (id, ())).collect();
-    let mut known: BTreeMap<String, ObjectId> = BTreeMap::new();
-
-    for &page_id in doc.get_pages().values() {
-        if inserted.contains_key(&page_id) {
-            continue;
-        }
-        for (_name, font_id) in page_font_entries(doc, page_id) {
-            if let Some(sig) = font_signature(doc, font_id) {
-                known.entry(sig).or_insert(font_id);
-            }
-        }
-    }
-
-    let mut deduped = 0u32;
-    for &page_id in inserted_page_ids {
-        let entries = page_font_entries(doc, page_id);
-        for (res_name, font_id) in entries {
-            let Some(sig) = font_signature(doc, font_id) else { continue };
-            if let Some(&existing_id) = known.get(&sig) {
-                if existing_id != font_id {
-                    let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-                    let resources = page_dict
-                        .get_mut(b"Resources")
-                        .map_err(|e| e.to_string())?
-                        .as_dict_mut()
-                        .map_err(|_| "Bad Resources".to_string())?;
-                    let fonts = resources
-                        .get_mut(b"Font")
-                        .map_err(|e| e.to_string())?
-                        .as_dict_mut()
-                        .map_err(|_| "Bad Font dict".to_string())?;
-                    fonts.set(res_name, Object::Reference(existing_id));
-                    deduped += 1;
-                }
-            } else {
-                known.insert(sig, font_id);
-            }
-        }
-    }
-    Ok(deduped)
-}
 
 #[tauri::command]
 fn delete_page(path: String, page_index: u32) -> Result<(), String> {
@@ -27798,9 +27474,9 @@ mod tests {
         let doc = Document::load(&dest_path).unwrap();
         let pages: Vec<_> = doc.get_pages().into_values().collect();
         let dest_entry =
-            page_font_entries(&doc, pages[0]).into_iter().find(|(name, _)| name == b"F1").map(|(_, id)| id);
+            pdf::fonts::page_font_entries(&doc, pages[0]).into_iter().find(|(name, _)| name == b"F1").map(|(_, id)| id);
         let inserted_entry =
-            page_font_entries(&doc, pages[1]).into_iter().find(|(name, _)| name == b"F1").map(|(_, id)| id);
+            pdf::fonts::page_font_entries(&doc, pages[1]).into_iter().find(|(name, _)| name == b"F1").map(|(_, id)| id);
         assert_eq!(dest_entry, Some(dest_font));
         assert_eq!(inserted_entry, Some(dest_font));
         let _ = std::fs::remove_file(&dest_path);

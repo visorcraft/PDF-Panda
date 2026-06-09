@@ -1,8 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { AppShell } from './chrome/AppShell';
-import { buildAppMenus } from './menu/buildAppMenus';
-import { buildAppMenuContext } from './menu/buildAppMenuContext';
-import { buildAppMenuSource } from './menu/buildAppMenuSource';
+import { buildAppMenusFromSource } from './menu/buildAppMenusFromSource';
 import { useAppBootstrap } from './app/useAppBootstrap';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { usePdfSearch } from './pdf/usePdfSearch';
@@ -14,12 +12,15 @@ import { usePdfDocument } from './pdf/usePdfDocument';
 import { type FormFieldKind } from './modals/AddFormFieldModal';
 import { type PageSizePreset } from './modals/PageSizeModal';
 import { type TesseractInstallGuide } from './modals/TesseractReminderModal';
-import { buildAppModalsContext } from './modals/appModalsContext';
-import { buildViewerContext } from './viewer/buildViewerContext';
-import { buildChromeContext } from './chrome/buildChromeContext';
+import { buildAppModalsSource } from './modals/buildAppModalsSource';
+import { buildAppViewerSource } from './viewer/buildAppViewerSource';
+import { buildAppChromeSource } from './chrome/buildAppChromeSource';
 import { useUnsavedGuard } from './app/useUnsavedGuard';
 import { useModalDismiss } from './app/useModalDismiss';
-import { useAppKeyboard, type AppKeyboardActions } from './app/useAppKeyboard';
+import { buildModalDismissSource } from './app/buildModalDismissSource';
+import { useAppKeyboardBinding } from './app/useAppKeyboardBinding';
+import { useAppRefs } from './app/useAppRefs';
+import { useRememberBrowserDirectory } from './app/useRememberBrowserDirectory';
 import { usePanelLoaders } from './app/usePanelLoaders';
 import { useClosePdf } from './app/usePdfLifecycle';
 import { usePdfRecents } from './app/usePdfRecents';
@@ -56,7 +57,6 @@ import { useNotePasswordActions } from './pdf/useNotePasswordActions';
 import { usePdfRevisionSync } from './app/usePdfRevisionSync';
 import { useSourcePdfPageCounts } from './app/useSourcePdfPageCounts';
 import { usePageEditsLoader } from './app/usePageEditsLoader';
-import { buildAppKeyboardActions } from './app/buildAppKeyboardActions';
 import { useWindowTitle } from './app/useWindowTitle';
 import { useTesseractReminder } from './app/useTesseractReminder';
 import { useWindowCloseGuard } from './app/useWindowCloseGuard';
@@ -86,11 +86,9 @@ import {
   type ViewMode,
 } from './app/types';
 import {
-  directoryFromPath,
   fileNameFromPath,
   readStoredString,
   readStoredStringArray,
-  writeStoredString,
 } from './app/utils';
 
 function App() {
@@ -131,8 +129,16 @@ function App() {
   const [nativeDialogs, setNativeDialogs] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [pdfSummary, setPdfSummary] = useState<PdfSummaryResult | null>(null);
-  const filePathRef = useRef('');
-  const handleMarkdownViewRef = useRef(async () => {});
+  const {
+    filePathRef,
+    handleMarkdownViewRef,
+    loadPdfBookmarksRef,
+    loadPageSizesRef,
+    cancelDrawingRef,
+    keyboardActionsRef,
+    imgRef,
+    handleSaveRef,
+  } = useAppRefs();
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -213,11 +219,6 @@ function App() {
     setDrawing,
     cancelDrawing,
   } = useDrawingGesture();
-  const imgRef = useRef<HTMLImageElement>(null);
-  const cancelDrawingRef = useRef<() => void>(() => {});
-  const loadPdfBookmarksRef = useRef<(path: string) => void>(() => {});
-  const loadPageSizesRef = useRef<(path: string) => void>(() => {});
-
   // Modals
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [openFilePath, setOpenFilePath] = useState<string>('');
@@ -399,16 +400,9 @@ function App() {
     onShowTesseractReminder: showLaunchTesseractReminder,
   });
 
-  useWindowTitle({ filePath, originalPath, isDirty, isDirtyRef, filePathRef });
+  const { windowTitle } = useWindowTitle({ filePath, originalPath, isDirty, isDirtyRef, filePathRef });
 
-  const rememberBrowserDirectory = useCallback((path: string) => {
-    const dir = directoryFromPath(path);
-    if (!dir) return;
-    setLastBrowserDir(dir);
-    writeStoredString(LAST_BROWSER_DIR_KEY, dir);
-  }, []);
-
-  const handleSaveRef = useRef<() => void | Promise<void>>(async () => {});
+  const rememberBrowserDirectory = useRememberBrowserDirectory({ setLastBrowserDir });
 
   const {
     showUnsavedModal,
@@ -1560,7 +1554,7 @@ function App() {
     goToPage,
   });
 
-  const { dismissModals, anyModalOpen } = useModalDismiss({
+  const { dismissModals, anyModalOpen } = useModalDismiss(buildModalDismissSource({
     showUnsavedModal,
     showSaveAsModal,
     showMarkdownSaveAsModal,
@@ -1686,10 +1680,9 @@ function App() {
     setShowCredits,
     setShowAbout,
     setShowTesseractModal,
-  });
+  }));
 
-  const keyboardActionsRef = useRef<AppKeyboardActions>({} as AppKeyboardActions);
-  keyboardActionsRef.current = buildAppKeyboardActions({
+  useAppKeyboardBinding(keyboardActionsRef, {
     isDirty,
     canUndo,
     canRedo,
@@ -1758,9 +1751,8 @@ function App() {
     undo,
     redo,
   });
-  useAppKeyboard(keyboardActionsRef);
 
-  const appMenus = buildAppMenus(buildAppMenuContext(buildAppMenuSource({
+  const appMenus = buildAppMenusFromSource({
     filePath,
     isDirty,
     canUndo,
@@ -1916,7 +1908,7 @@ function App() {
     toggleTextEditMode,
     toggleVectorEditMode,
     toggleFormsPanel,
-  })));
+  });
 
   const modeToolbarExtras = buildModeToolbarExtras({
     filePath,
@@ -1933,11 +1925,7 @@ function App() {
     onShapeKindChange: setShapeKind,
   });
 
-  const windowTitle = originalPath
-    ? `${isDirty ? '• ' : ''}${originalPath.split('/').pop() ?? ''} — PDF Panda`
-    : 'PDF Panda';
-
-  const modalCtx = buildAppModalsContext({
+  const modalCtx = buildAppModalsSource({
     bookmarkAllPrefix, bookmarkTitle, browserListing, browserPathInput,
     chooseExportPngOutputNative, chooseExtractOutputNative, chooseInsertPdfNative, chooseMarkdownSaveAsNative,
     chooseMergePdfNative, chooseOpenPdfNative, chooseSaveAsNative, chooseSignCertNative,
@@ -2057,116 +2045,104 @@ function App() {
       windowTitle={windowTitle}
       toast={toast}
       loading={loading}
-      chrome={buildChromeContext({
+      chrome={buildAppChromeSource({
         menus: appMenus,
         showCommandPalette,
         showShortcutsHelp,
         showLicenses,
         showCredits,
         showAbout,
-        onCloseCommandPalette: () => setShowCommandPalette(false),
-        onCloseShortcutsHelp: () => setShowShortcutsHelp(false),
-        onCloseLicenses: () => setShowLicenses(false),
-        onCloseCredits: () => setShowCredits(false),
-        onCloseAbout: () => setShowAbout(false),
+        setShowCommandPalette,
+        setShowShortcutsHelp,
+        setShowLicenses,
+        setShowCredits,
+        setShowAbout,
         modeExtras: modeToolbarExtras,
-        showPageControls: pageCount !== null && viewMode === 'pdf',
-        pageControls: pageCount !== null && viewMode === 'pdf' ? {
-          pageCount,
-          currentPage,
-          pageInput,
-          pageSizes,
-          onPageInputChange: setPageInput,
-          onCommitPage: commitPage,
-          onGoToPage: goToPage,
-          zoom,
-          zoomInput,
-          onZoomInputChange: setZoomInput,
-          onCommitZoom: commitZoom,
-          onZoomIn: zoomIn,
-          onZoomOut: zoomOut,
-          onResetZoom: resetZoom,
-        } : null,
+        pageCount,
+        viewMode,
+        currentPage,
+        pageInput,
+        pageSizes,
+        setPageInput,
+        commitPage,
+        goToPage,
+        zoom,
+        zoomInput,
+        setZoomInput,
+        commitZoom,
+        zoomIn,
+        zoomOut,
+        resetZoom,
       })}
-      body={buildViewerContext({
+      body={buildAppViewerSource({
         filePath,
-        sidebar: {
-          filePath,
-          thumbnails,
-          currentPage,
-          draggedIndex,
-          onDragStart: handleDragStart,
-          onDragOver: handleDragOver,
-          onDrop: handleDrop,
-          onGoToPage: goToPage,
-          showBookmarksPanel,
-          pdfBookmarks,
-          onOpenAddBookmarkModal: openAddBookmarkModal,
-          onOpenBookmarkAllModal: openBookmarkAllModal,
-          onClearAllBookmarks: handleClearAllBookmarks,
-          onReloadBookmarks: loadPdfBookmarks,
-          onOpenRenameBookmarkModal: openRenameBookmarkModal,
-          onRemoveBookmark: handleRemoveBookmark,
-          showSignaturesPanel,
-          pdfSignatures,
-          signatureVerification,
-          onReloadSignatures: loadPdfSignatures,
-          showFormsPanel,
-          formFields,
-          formDrafts,
-          onFormDraftsChange: setFormDrafts,
-          onOpenAddFormFieldModal: openAddFormFieldModal,
-          onApplyFormField: applyFormField,
-        },
-        viewer: {
-          viewMode,
-          scrollRef,
-          onWheel: handleWheel,
-          onOpenPdf: openPdf,
-          markdownOcrNotice,
-          markdownPath,
-          markdownText,
-          onOpenMarkdownSaveAs: openMarkdownSaveAs,
-          pdfPage: {
-            zoom,
-            imageSrc,
-            imgRef,
-            onImageLoad: handleImageLoad,
-            highlightMode,
-            noteMode,
-            drawMode,
-            shapeMode,
-            stampMode,
-            redactMode,
-            imageInsertMode,
-            textEditMode,
-            vectorEditMode,
-            formAddMode,
-            onPageClick: handlePageClick,
-            onMouseDown: handleDrawMouseDown,
-            onMouseMove: handlePageMouseMove,
-            onMouseUp: handleDrawMouseUp,
-            activeSearchRect,
-            annotations,
-            shapeKind,
-            drawing,
-            highlightStart,
-            highlightRect,
-            shapeLineEnd,
-            inkDraft,
-            pageTextEdits,
-            pageVectorEdits,
-            showFormsPanel,
-            formFields,
-            currentPage,
-            onRemoveHighlight: removeHighlight,
-            onRemoveRedaction: removeRedaction,
-            onRemoveStamp: removeStamp,
-            onRemoveShape: removeShape,
-            onRemoveInkStroke: removeInkStroke,
-            onRemoveTextNote: removeTextNote,
-          },
-        },
+        thumbnails,
+        currentPage,
+        draggedIndex,
+        handleDragStart,
+        handleDragOver,
+        handleDrop,
+        goToPage,
+        showBookmarksPanel,
+        pdfBookmarks,
+        openAddBookmarkModal,
+        openBookmarkAllModal,
+        handleClearAllBookmarks,
+        loadPdfBookmarks,
+        openRenameBookmarkModal,
+        handleRemoveBookmark,
+        showSignaturesPanel,
+        pdfSignatures,
+        signatureVerification,
+        loadPdfSignatures,
+        showFormsPanel,
+        formFields,
+        formDrafts,
+        setFormDrafts,
+        openAddFormFieldModal,
+        applyFormField,
+        viewMode,
+        scrollRef,
+        handleWheel,
+        openPdf,
+        markdownOcrNotice,
+        markdownPath,
+        markdownText,
+        openMarkdownSaveAs,
+        zoom,
+        imageSrc,
+        imgRef,
+        handleImageLoad,
+        highlightMode,
+        noteMode,
+        drawMode,
+        shapeMode,
+        stampMode,
+        redactMode,
+        imageInsertMode,
+        textEditMode,
+        vectorEditMode,
+        formAddMode,
+        handlePageClick,
+        handleDrawMouseDown,
+        handlePageMouseMove,
+        handleDrawMouseUp,
+        activeSearchRect,
+        annotations,
+        shapeKind,
+        drawing,
+        highlightStart,
+        highlightRect,
+        shapeLineEnd,
+        inkDraft,
+        pageTextEdits,
+        pageVectorEdits,
+        removeHighlight,
+        removeRedaction,
+        removeStamp,
+        removeShape,
+        removeInkStroke,
+        removeTextNote,
       })}
       modals={{ ctx: modalCtx }}
       printPages={printPages}

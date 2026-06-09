@@ -130,7 +130,7 @@ type ModalDismissFlags = {
   showTesseractModal: boolean;
 };
 
-type UseModalDismissOptions = ModalDismissSetters & ModalDismissFlags & {
+export type UseModalDismissOptions = ModalDismissSetters & ModalDismissFlags & {
   closeSearchModal: () => void;
   resolveUnsaved: (choice: UnsavedChoice) => void | Promise<void>;
 };

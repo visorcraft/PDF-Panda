@@ -1,5 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useEffect, type MutableRefObject } from 'react';
+import { useEffect, useMemo, type MutableRefObject } from 'react';
 
 type UseWindowTitleOptions = {
   filePath: string;
@@ -10,14 +10,19 @@ type UseWindowTitleOptions = {
 };
 
 export function useWindowTitle(opts: UseWindowTitleOptions) {
+  const windowTitle = useMemo(() => {
+    const name = opts.originalPath ? (opts.originalPath.split('/').pop() ?? '') : '';
+    return name ? `${opts.isDirty ? '• ' : ''}${name} — PDF Panda` : 'PDF Panda';
+  }, [opts.isDirty, opts.originalPath]);
+
   useEffect(() => {
     opts.filePathRef.current = opts.filePath;
   }, [opts.filePath, opts.filePathRef]);
 
   useEffect(() => {
     opts.isDirtyRef.current = opts.isDirty;
-    const name = opts.originalPath ? (opts.originalPath.split('/').pop() ?? '') : '';
-    const title = name ? `${opts.isDirty ? '• ' : ''}${name} — PDF Panda` : 'PDF Panda';
-    void getCurrentWindow().setTitle(title);
-  }, [opts.isDirty, opts.originalPath, opts.isDirtyRef]);
+    void getCurrentWindow().setTitle(windowTitle);
+  }, [opts.isDirty, opts.isDirtyRef, windowTitle]);
+
+  return { windowTitle };
 }
