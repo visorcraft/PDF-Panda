@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
-import { invoke } from '@tauri-apps/api/core';
 import { useEscapeClose } from '../legal/useEscapeClose';
+import { openExternalUrl } from '../legal/openExternalUrl';
 
 const REPO_URL = 'https://github.com/visorcraft/PDF-Panda';
 
@@ -25,9 +25,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   const openRepo = () => {
-    void invoke('open_external_url', { url: REPO_URL }).catch(() => {
-      window.open(REPO_URL, '_blank', 'noopener,noreferrer');
-    });
+    openExternalUrl(REPO_URL);
   };
 
   return (

@@ -13,6 +13,9 @@ type ScopedPageActionModalProps = {
   onApplyOdd?: () => void;
   onApplyEven?: () => void;
   applyLabel?: string;
+  oddLabel?: string;
+  evenLabel?: string;
+  rangeApplyLabel?: string;
   applyDisabled?: boolean;
   rangeFirst?: boolean;
   children?: ReactNode;
@@ -28,12 +31,17 @@ export function ScopedPageActionModal({
   onApplyOdd,
   onApplyEven,
   applyLabel = 'Apply',
+  oddLabel = 'Apply Odd',
+  evenLabel = 'Apply Even',
+  rangeApplyLabel,
   applyDisabled = false,
   rangeFirst = false,
   children,
 }: ScopedPageActionModalProps) {
   const hasParity = onApplyOdd !== undefined && onApplyEven !== undefined;
-  const rangeFields = <PageRangeFields range={range} pageCount={pageCount} />;
+  const rangeFields = (
+    <PageRangeFields range={range} pageCount={pageCount} applyLabel={rangeApplyLabel} />
+  );
 
   return (
     <Modal onClose={onClose}>
@@ -46,8 +54,8 @@ export function ScopedPageActionModal({
         <button onClick={onClose} className="btn btn-secondary">Cancel</button>
         {hasParity && (
           <>
-            <button onClick={() => void onApplyOdd()} className="btn" disabled={applyDisabled}>Apply Odd</button>
-            <button onClick={() => void onApplyEven()} className="btn" disabled={applyDisabled}>Apply Even</button>
+            <button onClick={() => void onApplyOdd()} className="btn" disabled={applyDisabled}>{oddLabel}</button>
+            <button onClick={() => void onApplyEven()} className="btn" disabled={applyDisabled}>{evenLabel}</button>
           </>
         )}
         <button onClick={() => void onApply()} className="btn" disabled={applyDisabled}>{applyLabel}</button>

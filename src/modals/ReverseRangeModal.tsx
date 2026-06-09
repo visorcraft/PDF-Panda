@@ -1,35 +1,35 @@
 import { PageRangePairModal } from './PageRangePairModal';
 
-type DeleteRangeModalProps = {
+type ReverseRangeModalProps = {
   startPage: number;
   endPage: number;
   pageCount: number | null;
   onStartChange: (page: number) => void;
   onEndChange: (page: number) => void;
   onClose: () => void;
-  onDelete: () => void;
+  onReverse: () => void;
 };
 
-export function DeleteRangeModal({
+export function ReverseRangeModal({
   startPage,
   endPage,
   pageCount,
   onStartChange,
   onEndChange,
   onClose,
-  onDelete,
-}: DeleteRangeModalProps) {
+  onReverse,
+}: ReverseRangeModalProps) {
   return (
     <PageRangePairModal
-      title="Delete Page Range"
-      help="Remove multiple pages from the working copy. At least one page must remain."
+      title="Reverse Page Range"
+      help="Reverse order within the selected page range only."
       startPage={startPage}
       endPage={endPage}
       pageCount={pageCount}
       onStartChange={onStartChange}
       onEndChange={onEndChange}
       onClose={onClose}
-      actions={<button onClick={() => void onDelete()} className="btn btn-danger">Delete range</button>}
+      actions={<button onClick={() => void onReverse()} className="btn">Reverse</button>}
     />
   );
 }

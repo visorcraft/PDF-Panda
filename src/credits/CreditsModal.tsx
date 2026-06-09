@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useEscapeClose } from '../legal/useEscapeClose';
+import { LegalModalShell } from '../legal/LegalModalShell';
+import { openExternalUrl } from '../legal/openExternalUrl';
 import { LicenseTextDialog } from '../licenses/LicenseTextDialog';
 
 type ThirdPartyCreditRow = {
@@ -87,11 +88,6 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
   const [npmFilter, setNpmFilter] = useState('');
   const [licenseDialog, setLicenseDialog] = useState<LicenseDialogState | null>(null);
 
-  useEscapeClose(() => {
-    if (licenseDialog) setLicenseDialog(null);
-    else onClose();
-  }, true);
-
   useEffect(() => {
     let cancelled = false;
     void invoke<CreditsCatalog>('credits_catalog')
@@ -129,10 +125,7 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
   );
 
   const openUrl = useCallback((url: string) => {
-    if (!url) return;
-    void invoke('open_external_url', { url }).catch(() => {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    });
+    openExternalUrl(url);
   }, []);
 
   const openComponentLicense = useCallback(async (component: RuntimeComponentRow) => {
@@ -158,33 +151,25 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div
-        className="modal-backdrop legal-backdrop credits-backdrop"
-        onClick={() => {
-          if (!licenseDialog) onClose();
+      <LegalModalShell
+        onClose={onClose}
+        onEscape={() => {
+          if (licenseDialog) setLicenseDialog(null);
+          else onClose();
         }}
+        allowBackdropClose={!licenseDialog}
+        title="Credits"
+        tagline={loadError
+          ? 'Unable to load credits catalog.'
+          : `${crateCount} Cargo crates · ${npmCount} npm packages · ${runtimeCount} runtime components`}
+        backdropClassName="credits-backdrop"
+        panelClassName="credits-panel"
+        headerClassName="credits-header"
+        taglineClassName="credits-tagline"
+        bodyClassName="credits-body"
+        testId="credits-panel"
       >
-        <div
-          className="legal-page credits-panel"
-          onClick={(e) => e.stopPropagation()}
-          data-testid="credits-panel"
-        >
-          <header className="legal-header credits-header">
-            <div>
-              <h2>Credits</h2>
-              <p className="legal-tagline credits-tagline">
-                {loadError
-                  ? 'Unable to load credits catalog.'
-                  : `${crateCount} Cargo crates · ${npmCount} npm packages · ${runtimeCount} runtime components`}
-              </p>
-            </div>
-            <button type="button" className="btn btn-secondary legal-close-btn" onClick={onClose} aria-label="Close credits">
-              Close
-            </button>
-          </header>
-
-          <div className="legal-body credits-body">
-            {loadError ? (
+        {loadError ? (
               <p className="legal-load-error credits-load-error">{loadError}</p>
             ) : !catalog ? (
               <p className="legal-loading credits-loading">Loading credits catalog…</p>
@@ -268,9 +253,7 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
                 />
               </>
             )}
-          </div>
-        </div>
-      </div>
+      </LegalModalShell>
 
       {licenseDialog && (
         <LicenseTextDialog

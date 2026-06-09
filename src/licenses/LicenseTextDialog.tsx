@@ -1,3 +1,5 @@
+import { useEscapeClose } from '../legal/useEscapeClose';
+
 type LicenseTextDialogProps = {
   title: string;
   detail: string;
@@ -6,6 +8,8 @@ type LicenseTextDialogProps = {
 };
 
 export function LicenseTextDialog({ title, detail, body, onClose }: LicenseTextDialogProps) {
+  useEscapeClose(onClose);
+
   return (
     <div className="modal-backdrop licenses-gpl-backdrop" onClick={onClose}>
       <div className="modal licenses-gpl-dialog" onClick={(e) => e.stopPropagation()}>

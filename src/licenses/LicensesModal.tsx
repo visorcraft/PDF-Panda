@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useEscapeClose } from '../legal/useEscapeClose';
+import { LegalModalShell } from '../legal/LegalModalShell';
 import { LicenseTextDialog } from './LicenseTextDialog';
 
 type LicenseTab = 'gpl' | 'third-party' | 'acknowledgments' | 'runtime';
@@ -67,11 +67,6 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
   const [wrapText, setWrapText] = useState(false);
   const [showGplDialog, setShowGplDialog] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
-
-  useEscapeClose(() => {
-    if (showGplDialog) setShowGplDialog(false);
-    else onClose();
-  }, true);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,27 +146,23 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div
-        className="modal-backdrop legal-backdrop licenses-backdrop"
-        onClick={() => {
-          if (!showGplDialog) onClose();
+      <LegalModalShell
+        onClose={onClose}
+        onEscape={() => {
+          if (showGplDialog) setShowGplDialog(false);
+          else onClose();
         }}
+        allowBackdropClose={!showGplDialog}
+        title="Licenses"
+        tagline="Bundled license and attribution documents, available without opening a browser."
+        backdropClassName="licenses-backdrop"
+        panelClassName="licenses-panel"
+        headerClassName="licenses-header"
+        taglineClassName="licenses-tagline"
+        bodyClassName="licenses-body"
+        testId="licenses-panel"
       >
-        <div className="legal-page licenses-panel" onClick={(e) => e.stopPropagation()} data-testid="licenses-panel">
-          <header className="legal-header licenses-header">
-            <div>
-              <h2>Licenses</h2>
-              <p className="legal-tagline licenses-tagline">
-                Bundled license and attribution documents, available without opening a browser.
-              </p>
-            </div>
-            <button type="button" className="btn btn-secondary legal-close-btn" onClick={onClose} aria-label="Close licenses">
-              Close
-            </button>
-          </header>
-
-          <div className="legal-body licenses-body">
-            <div className="licenses-toolbar">
+        <div className="licenses-toolbar">
               <div className="licenses-tabs" role="tablist" aria-label="License documents">
                 {TAB_ORDER.map((tabId) => {
                   const tab = tabs.find((entry) => entry.id === tabId);
@@ -277,9 +268,7 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
                 />
               )}
             </div>
-          </div>
-        </div>
-      </div>
+      </LegalModalShell>
 
       {showGplDialog && documents?.gpl && (
         <LicenseTextDialog

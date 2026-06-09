@@ -35,8 +35,14 @@ import { PageFooterModal } from './modals/PageFooterModal';
 import { PageHeaderModal } from './modals/PageHeaderModal';
 import { PageNumbersModal } from './modals/PageNumbersModal';
 import { WatermarkModal } from './modals/WatermarkModal';
+import { DuplicateRangeModal } from './modals/DuplicateRangeModal';
+import { ExportPagesPdfModal } from './modals/ExportPagesPdfModal';
+import { KeepRangeModal } from './modals/KeepRangeModal';
+import { MoveRangeModal } from './modals/MoveRangeModal';
 import { PageBorderModal } from './modals/PageBorderModal';
 import { type PageSizePreset, PageSizeModal } from './modals/PageSizeModal';
+import { ReverseRangeModal } from './modals/ReverseRangeModal';
+import { RotateRangeModal } from './modals/RotateRangeModal';
 import { runAnnotationRemove } from './pdf/runAnnotationEdit';
 
 const MIN_ZOOM = 0.25; // 25%
@@ -5625,26 +5631,19 @@ function App() {
         </Modal>
       )}
 
-      {/* Duplicate Range Modal */}
       {showDuplicateRangeModal && (
-        <Modal onClose={() => setShowDuplicateRangeModal(false)}>
-          <h3>Duplicate Page Range</h3>
-          <p className="modal-help">Deep-copy a page range and insert the copies immediately after the range.</p>
-          <PageRangePairInputs
-            startPage={duplicateRange.startPage}
-            endPage={duplicateRange.endPage}
-            onStartChange={duplicateRange.setStartPage}
-            onEndChange={duplicateRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowDuplicateRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleDuplicatePageRange()} className="btn">Duplicate</button>
-            <button onClick={() => void handleDuplicatePageRangeBefore()} className="btn">Before</button>
-            <button onClick={() => void handleDuplicatePageRangeToStart()} className="btn">To Start</button>
-            <button onClick={() => void handleDuplicatePageRangeToEnd()} className="btn">To End</button>
-          </div>
-        </Modal>
+        <DuplicateRangeModal
+          startPage={duplicateRange.startPage}
+          endPage={duplicateRange.endPage}
+          pageCount={pageCount}
+          onStartChange={duplicateRange.setStartPage}
+          onEndChange={duplicateRange.setEndPage}
+          onClose={() => setShowDuplicateRangeModal(false)}
+          onDuplicate={handleDuplicatePageRange}
+          onDuplicateBefore={handleDuplicatePageRangeBefore}
+          onDuplicateToStart={handleDuplicatePageRangeToStart}
+          onDuplicateToEnd={handleDuplicatePageRangeToEnd}
+        />
       )}
 
       {showFlattenModal && (
@@ -5771,85 +5770,60 @@ function App() {
         />
       )}
 
-      {/* Export Pages as PDF Modal */}
       {showExportPagesPdfModal && (
-        <Modal onClose={() => setShowExportPagesPdfModal(false)}>
-          <h3>Export Pages as PDF</h3>
-          <p className="modal-help">Write each page as a separate single-page PDF. The open document is not modified.</p>
-          <PageRangeFields range={exportPagesPdfRange} pageCount={pageCount} applyLabel="Pages to export:" />
-          <label>Output directory:</label>
-          <input type="text" value={exportPagesPdfOutputDir} onChange={(e) => setExportPagesPdfOutputDir(e.target.value)} className="modal-input" placeholder="/path/to/output_dir" />
-          <p className="modal-help">Files are written as page-001.pdf, page-002.pdf, … inside the directory.</p>
-          <div className="modal-actions">
-            <button onClick={() => setShowExportPagesPdfModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleExportOddPagesAsPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export Odd</button>
-            <button onClick={() => void handleExportEvenPagesAsPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export Even</button>
-            <button onClick={() => void handleExportPagesPdf()} className="btn" disabled={!exportPagesPdfOutputDir.trim()}>Export</button>
-          </div>
-        </Modal>
+        <ExportPagesPdfModal
+          range={exportPagesPdfRange}
+          pageCount={pageCount}
+          outputDir={exportPagesPdfOutputDir}
+          onOutputDirChange={setExportPagesPdfOutputDir}
+          onClose={() => setShowExportPagesPdfModal(false)}
+          onExport={handleExportPagesPdf}
+          onExportOdd={handleExportOddPagesAsPdf}
+          onExportEven={handleExportEvenPagesAsPdf}
+        />
       )}
 
-      {/* Rotate Range Modal */}
       {showRotateRangeModal && (
-        <Modal onClose={() => setShowRotateRangeModal(false)}>
-          <h3>Rotate Page Range</h3>
-          <p className="modal-help">Rotate every page in the range 90° clockwise or counter-clockwise.</p>
-          <PageRangePairInputs
-            startPage={rotateRange.startPage}
-            endPage={rotateRange.endPage}
-            onStartChange={rotateRange.setStartPage}
-            onEndChange={rotateRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowRotateRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleRotatePageRange(false)} className="btn">Rotate CW</button>
-            <button onClick={() => void handleRotatePageRange(true)} className="btn">Rotate CCW</button>
-            <button onClick={() => void handleRotatePage180Range()} className="btn">Rotate 180°</button>
-            <button onClick={() => void handleResetRotationRange()} className="btn">Reset Rot.</button>
-          </div>
-        </Modal>
+        <RotateRangeModal
+          startPage={rotateRange.startPage}
+          endPage={rotateRange.endPage}
+          pageCount={pageCount}
+          onStartChange={rotateRange.setStartPage}
+          onEndChange={rotateRange.setEndPage}
+          onClose={() => setShowRotateRangeModal(false)}
+          onRotateCw={() => handleRotatePageRange(false)}
+          onRotateCcw={() => handleRotatePageRange(true)}
+          onRotate180={handleRotatePage180Range}
+          onResetRotation={handleResetRotationRange}
+        />
       )}
 
-      {/* Keep Range Modal */}
       {showKeepRangeModal && (
-        <Modal onClose={() => setShowKeepRangeModal(false)}>
-          <h3>Keep Page Range</h3>
-          <p className="modal-help">Delete every page outside the selected range.</p>
-          <PageRangePairInputs
-            startPage={keepRange.startPage}
-            endPage={keepRange.endPage}
-            onStartChange={keepRange.setStartPage}
-            onEndChange={keepRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowKeepRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleKeepPageRange()} className="btn btn-danger">Keep range</button>
-          </div>
-        </Modal>
+        <KeepRangeModal
+          startPage={keepRange.startPage}
+          endPage={keepRange.endPage}
+          pageCount={pageCount}
+          onStartChange={keepRange.setStartPage}
+          onEndChange={keepRange.setEndPage}
+          onClose={() => setShowKeepRangeModal(false)}
+          onKeep={handleKeepPageRange}
+        />
       )}
 
-      {/* Move Range Modal */}
       {showMoveRangeModal && (
-        <Modal onClose={() => setShowMoveRangeModal(false)}>
-          <h3>Move Page Range</h3>
-          <p className="modal-help">Move a contiguous block so its first page lands at the target index (0 = first).</p>
-          <PageRangePairInputs
-            startPage={moveRange.startPage}
-            endPage={moveRange.endPage}
-            onStartChange={moveRange.setStartPage}
-            onEndChange={moveRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <label>Target index (1-{((pageCount ?? 0) + 1)}): <input type="number" value={moveRangeToIndex + 1} onChange={(e) => setMoveRangeToIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" /></label>
-          <div className="modal-actions">
-            <button onClick={() => setShowMoveRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleMovePageRangeToStart()} className="btn">To Start</button>
-            <button onClick={() => void handleMovePageRangeToEnd()} className="btn">To End</button>
-            <button onClick={() => void handleMovePageRange()} className="btn">Move</button>
-          </div>
-        </Modal>
+        <MoveRangeModal
+          startPage={moveRange.startPage}
+          endPage={moveRange.endPage}
+          targetIndex={moveRangeToIndex}
+          pageCount={pageCount}
+          onStartChange={moveRange.setStartPage}
+          onEndChange={moveRange.setEndPage}
+          onTargetChange={setMoveRangeToIndex}
+          onClose={() => setShowMoveRangeModal(false)}
+          onMoveToStart={handleMovePageRangeToStart}
+          onMoveToEnd={handleMovePageRangeToEnd}
+          onMove={handleMovePageRange}
+        />
       )}
 
       {/* Prepend Modal */}
@@ -6017,23 +5991,16 @@ function App() {
         </Modal>
       )}
 
-      {/* Reverse Range Modal */}
       {showReverseRangeModal && (
-        <Modal onClose={() => setShowReverseRangeModal(false)}>
-          <h3>Reverse Page Range</h3>
-          <p className="modal-help">Reverse order within the selected page range only.</p>
-          <PageRangePairInputs
-            startPage={reverseRange.startPage}
-            endPage={reverseRange.endPage}
-            onStartChange={reverseRange.setStartPage}
-            onEndChange={reverseRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowReverseRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleReversePageRange()} className="btn">Reverse</button>
-          </div>
-        </Modal>
+        <ReverseRangeModal
+          startPage={reverseRange.startPage}
+          endPage={reverseRange.endPage}
+          pageCount={pageCount}
+          onStartChange={reverseRange.setStartPage}
+          onEndChange={reverseRange.setEndPage}
+          onClose={() => setShowReverseRangeModal(false)}
+          onReverse={handleReversePageRange}
+        />
       )}
 
       {/* Insert Blank Pages Modal */}

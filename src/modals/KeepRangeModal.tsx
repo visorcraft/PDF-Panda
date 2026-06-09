@@ -1,35 +1,35 @@
 import { PageRangePairModal } from './PageRangePairModal';
 
-type DeleteRangeModalProps = {
+type KeepRangeModalProps = {
   startPage: number;
   endPage: number;
   pageCount: number | null;
   onStartChange: (page: number) => void;
   onEndChange: (page: number) => void;
   onClose: () => void;
-  onDelete: () => void;
+  onKeep: () => void;
 };
 
-export function DeleteRangeModal({
+export function KeepRangeModal({
   startPage,
   endPage,
   pageCount,
   onStartChange,
   onEndChange,
   onClose,
-  onDelete,
-}: DeleteRangeModalProps) {
+  onKeep,
+}: KeepRangeModalProps) {
   return (
     <PageRangePairModal
-      title="Delete Page Range"
-      help="Remove multiple pages from the working copy. At least one page must remain."
+      title="Keep Page Range"
+      help="Delete every page outside the selected range."
       startPage={startPage}
       endPage={endPage}
       pageCount={pageCount}
       onStartChange={onStartChange}
       onEndChange={onEndChange}
       onClose={onClose}
-      actions={<button onClick={() => void onDelete()} className="btn btn-danger">Delete range</button>}
+      actions={<button onClick={() => void onKeep()} className="btn btn-danger">Keep range</button>}
     />
   );
 }
