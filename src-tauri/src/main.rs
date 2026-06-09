@@ -3,15 +3,15 @@
 mod licenses;
 mod pdf;
 
+use pdf::bookmarks::{flat_outline_ids, remove_outline_item};
+use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
+use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
 use pdf::page_tree::{
-    delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict,
-    set_pages_kids, INHERITABLE_PAGE_KEYS,
+    delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict, set_pages_kids,
+    INHERITABLE_PAGE_KEYS,
 };
-use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
-use pdf::rotation::{
-    page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation,
-};
+use pdf::rotation::{page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation};
 
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
@@ -848,7 +848,6 @@ fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u
     Ok(thumbnails)
 }
 
-
 /// Deep-copy object `id` (and everything it transitively references) from `src`
 /// into `dst` with a fresh id, remapping references. `remap` dedupes shared
 /// resources and terminates reference cycles. Page dicts encountered anywhere are
@@ -1523,7 +1522,6 @@ fn crop_page(
     Ok(())
 }
 
-
 /// Rotate `page_index` 90° counter-clockwise.
 #[tauri::command]
 fn rotate_page_ccw(path: String, page_index: u32) -> Result<(), String> {
@@ -1562,94 +1560,6 @@ fn duplicate_page_range(path: String, start_page: u32, end_page: u32) -> Result<
     let count = end_page - start_page + 1;
     insert_pdf(path.clone(), path, end_page + 1, start_page, end_page)?;
     Ok(count)
-}
-
-fn collect_outline_ids(doc: &Document, item_id: ObjectId, ids: &mut Vec<ObjectId>) {
-    let mut current = Some(item_id);
-    while let Some(id) = current {
-        ids.push(id);
-        if let Ok(dict) = doc.get_dictionary(id) {
-            if let Ok(first) = dict.get(b"First") {
-                if let Ok(child_id) = first.as_reference() {
-                    collect_outline_ids(doc, child_id, ids);
-                }
-            }
-            current = dict.get(b"Next").ok().and_then(|value| value.as_reference().ok());
-        } else {
-            break;
-        }
-    }
-}
-
-fn flat_outline_ids(doc: &Document) -> Result<Vec<ObjectId>, String> {
-    let catalog = doc.catalog().map_err(|e| e.to_string())?;
-    let outlines_id = match catalog.get(b"Outlines") {
-        Ok(Object::Reference(id)) => *id,
-        _ => return Ok(Vec::new()),
-    };
-    let outlines = doc.get_dictionary(outlines_id).map_err(|e| e.to_string())?;
-    let first_id = match outlines.get(b"First") {
-        Ok(Object::Reference(id)) => *id,
-        _ => return Ok(Vec::new()),
-    };
-    let mut ids = Vec::new();
-    collect_outline_ids(doc, first_id, &mut ids);
-    Ok(ids)
-}
-
-fn remove_outline_item(doc: &mut Document, outlines_id: ObjectId, item_id: ObjectId) -> Result<(), String> {
-    let dict = doc.get_dictionary(item_id).map_err(|e| e.to_string())?;
-    if dict.get(b"First").ok().and_then(|o| o.as_reference().ok()).is_some() {
-        return Err("Remove child bookmarks first".to_string());
-    }
-    let prev_id = dict.get(b"Prev").ok().and_then(|o| o.as_reference().ok());
-    let next_id = dict.get(b"Next").ok().and_then(|o| o.as_reference().ok());
-    if let Some(prev_id) = prev_id {
-        if let Ok(Object::Dictionary(prev)) = doc.get_object_mut(prev_id) {
-            if let Some(next_id) = next_id {
-                prev.set("Next", Object::Reference(next_id));
-            } else {
-                prev.remove(b"Next");
-            }
-        }
-    }
-    if let Some(next_id) = next_id {
-        if let Ok(Object::Dictionary(next)) = doc.get_object_mut(next_id) {
-            if let Some(prev_id) = prev_id {
-                next.set("Prev", Object::Reference(prev_id));
-            } else {
-                next.remove(b"Prev");
-            }
-        }
-    }
-    let outlines = doc.get_dictionary_mut(outlines_id).map_err(|e| e.to_string())?;
-    let first_id = outlines.get(b"First").ok().and_then(|o| o.as_reference().ok());
-    let last_id = outlines.get(b"Last").ok().and_then(|o| o.as_reference().ok());
-    if first_id == Some(item_id) {
-        if let Some(next_id) = next_id {
-            outlines.set("First", Object::Reference(next_id));
-        } else {
-            outlines.remove(b"First");
-            outlines.remove(b"Last");
-        }
-    }
-    if last_id == Some(item_id) {
-        if let Some(prev_id) = prev_id {
-            outlines.set("Last", Object::Reference(prev_id));
-        }
-    }
-    let count = outlines.get(b"Count").ok().and_then(|o| o.as_i64().ok()).unwrap_or(1);
-    if count <= 1 {
-        outlines.remove(b"Count");
-        outlines.remove(b"First");
-        outlines.remove(b"Last");
-        let catalog_id = doc.trailer.get(b"Root").map_err(|e| e.to_string())?.as_reference().map_err(|_| "Bad Root")?;
-        doc.get_dictionary_mut(catalog_id).map_err(|e| e.to_string())?.remove(b"Outlines");
-    } else {
-        outlines.set("Count", Object::Integer(count - 1));
-    }
-    doc.objects.remove(&item_id);
-    Ok(())
 }
 
 /// Remove a bookmark by flat index (same order as `get_pdf_bookmarks`).
@@ -4179,58 +4089,6 @@ fn insert_image_page(path: String, at_index: u32, image_path: String) -> Result<
 #[tauri::command]
 fn export_page_as_pdf(path: String, page_index: u32, output_path: String) -> Result<String, String> {
     extract_pdf_pages(path, output_path, page_index, page_index)
-}
-
-
-fn next_image_xobject_name(xobjects: &Dictionary) -> String {
-    for n in 1..=9999 {
-        let name = format!("Im{n}");
-        if xobjects.get(name.as_bytes()).is_err() {
-            return name;
-        }
-    }
-    "Im9999".to_string()
-}
-
-fn append_page_content(doc: &mut Document, page_id: ObjectId, ops: &[u8]) -> Result<(), String> {
-    let contents = doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Contents").ok().cloned();
-    match contents {
-        Some(Object::Reference(id)) => {
-            let obj = doc.get_object_mut(id).map_err(|e| e.to_string())?;
-            if let Object::Stream(stream) = obj {
-                let mut body = stream.get_plain_content().map_err(|e| e.to_string())?;
-                body.extend_from_slice(ops);
-                stream.set_plain_content(body);
-            } else {
-                return Err("Bad page Contents".to_string());
-            }
-        }
-        Some(Object::Array(mut arr)) => {
-            let new_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.to_vec())));
-            arr.push(Object::Reference(new_id));
-            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Contents", Object::Array(arr));
-        }
-        _ => {
-            let stream_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.to_vec())));
-            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Contents", Object::Reference(stream_id));
-        }
-    }
-    Ok(())
-}
-
-fn embed_jpeg_xobject(doc: &mut Document, jpeg: Vec<u8>, width: u32, height: u32) -> ObjectId {
-    doc.add_object(Object::Stream(Stream::new(
-        Dictionary::from_iter(vec![
-            (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
-            (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
-            (b"Width".to_vec(), Object::Integer(width as i64)),
-            (b"Height".to_vec(), Object::Integer(height as i64)),
-            (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
-            (b"BitsPerComponent".to_vec(), Object::Integer(8)),
-            (b"Filter".to_vec(), Object::Name(b"DCTDecode".to_vec())),
-        ]),
-        jpeg,
-    )))
 }
 
 #[tauri::command]
@@ -9540,7 +9398,6 @@ fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
         _ => None,
     })
 }
-
 
 #[tauri::command]
 fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>, String> {
@@ -30552,7 +30409,7 @@ mod tests {
         let path = save(&mut build_pdf(1), "append_content");
         let mut doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
-        append_page_content(&mut doc, page_id, b"PP_IMAGE_MARKER\n").unwrap();
+        pdf::content::append_page_content(&mut doc, page_id, b"PP_IMAGE_MARKER\n").unwrap();
         doc.save(&path).unwrap();
         let doc = Document::load(&path).unwrap();
         let marked = doc.objects.iter().any(|(_, obj)| {

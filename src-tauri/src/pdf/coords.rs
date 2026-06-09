@@ -15,11 +15,7 @@ pub fn obj_to_f64(o: &Object) -> f64 {
 
 pub fn page_media_box(doc: &Document, page_id: ObjectId) -> Result<[f64; 4], String> {
     let page = doc.get_dictionary(page_id).map_err(|e| e.to_string())?;
-    let arr = page
-        .get(b"MediaBox")
-        .map_err(|e| e.to_string())?
-        .as_array()
-        .map_err(|_| "Bad MediaBox")?;
+    let arr = page.get(b"MediaBox").map_err(|e| e.to_string())?.as_array().map_err(|_| "Bad MediaBox")?;
     let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
     Ok([get(0), get(1), get(2), get(3)])
 }

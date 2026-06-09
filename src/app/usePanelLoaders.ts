@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import type {
   FormFieldData,
   PdfBookmarkEntry,
+  PdfPageSize,
   PdfSignatureInfo,
   PdfSignatureVerificationSummary,
 } from './types';
@@ -14,6 +15,7 @@ type UsePanelLoadersOptions = {
   setPdfBookmarks: (bookmarks: PdfBookmarkEntry[]) => void;
   setPdfSignatures: (signatures: PdfSignatureInfo[]) => void;
   setSignatureVerification: (summary: PdfSignatureVerificationSummary | null) => void;
+  setPageSizes: (sizes: PdfPageSize[]) => void;
 };
 
 export function usePanelLoaders({
@@ -23,6 +25,7 @@ export function usePanelLoaders({
   setPdfBookmarks,
   setPdfSignatures,
   setSignatureVerification,
+  setPageSizes,
 }: UsePanelLoadersOptions) {
   const loadFormFields = useCallback(async (path: string = filePath) => {
     if (!path) {
@@ -80,5 +83,18 @@ export function usePanelLoaders({
     }
   }, [filePath, setPdfSignatures, setSignatureVerification]);
 
-  return { loadFormFields, loadPdfBookmarks, loadPdfSignatures };
+  const loadPageSizes = useCallback(async (path: string = filePath) => {
+    if (!path) {
+      setPageSizes([]);
+      return;
+    }
+    try {
+      const sizes = await invoke<PdfPageSize[]>('get_pdf_page_sizes', { path });
+      setPageSizes(sizes);
+    } catch {
+      setPageSizes([]);
+    }
+  }, [filePath, setPageSizes]);
+
+  return { loadFormFields, loadPdfBookmarks, loadPdfSignatures, loadPageSizes };
 }

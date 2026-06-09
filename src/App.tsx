@@ -1,7 +1,6 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { open as openNativeDialog } from '@tauri-apps/plugin-dialog';
 import { AppShell } from './chrome/AppShell';
 import { buildAppMenus } from './menu/buildAppMenus';
 import { buildAppMenuContext } from './menu/buildAppMenuContext';
@@ -37,34 +36,28 @@ import { useAppKeyboard, type AppKeyboardActions } from './app/useAppKeyboard';
 import { usePanelLoaders } from './app/usePanelLoaders';
 import { useClosePdf } from './app/usePdfLifecycle';
 import { usePdfRecents } from './app/usePdfRecents';
+import { usePdfOpen } from './app/usePdfOpen';
+import { useThumbnailReorder } from './app/useThumbnailReorder';
+import { useAnnotationModes } from './app/useAnnotationModes';
+import { useMarkdownFlow } from './app/useMarkdownFlow';
+import { useNativeFilePickers } from './app/useNativeFilePickers';
+import { usePageTextEdits } from './app/usePageTextEdits';
 import { usePageZoom } from './viewer/usePageZoom';
 import { useDrawingGesture } from './viewer/useDrawingGesture';
-import { getImageCoords as imageCoordsFromClick } from './viewer/getImageCoords';
+import { usePageInteraction } from './viewer/usePageInteraction';
 import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
-  BMP_DIALOG_FILTER,
-  CERT_DIALOG_FILTER,
   DEFAULT_TESSERACT_GUIDE,
-  GIF_DIALOG_FILTER,
-  JPEG_DIALOG_FILTER,
-  MARKDOWN_DIALOG_FILTER,
-  PDF_DIALOG_FILTER,
-  PNG_DIALOG_FILTER,
-  PPM_DIALOG_FILTER,
   RECENT_PDFS_KEY,
   LAST_BROWSER_DIR_KEY,
-  TIFF_DIALOG_FILTER,
-  WEBP_DIALOG_FILTER,
   type ShapeKind,
   type StampKind,
   STAMP_PRESETS,
 } from './app/constants';
 import {
-  type AnnotationData,
   type FormFieldData,
   type MarkdownOcrNotice,
-  type MarkdownSaveResult,
   type PageTextEdit,
   type PageVectorEdit,
   type PdfBookmarkEntry,
@@ -74,7 +67,6 @@ import {
   type PdfSignatureVerificationSummary,
   type PdfSummaryResult,
   type PngExportScope,
-  type SummarySaveResult,
   type ViewMode,
 } from './app/types';
 import {
@@ -82,18 +74,11 @@ import {
   dismissTesseractReminder,
   ensureExtension,
   fileNameFromPath,
-  formatSummaryMarkdown,
   isTesseractReminderDismissed,
-  markdownOcrNoticeFromResult,
-  markdownSaveToastMessage,
-  pickPdfWithNativeDialog,
-  pickSaveWithNativeDialog,
   readStoredString,
   readStoredStringArray,
-  siblingMarkdownPath,
   writeStoredString,
 } from './app/utils';
-import { runAnnotationRemoveViaEdit, type AnnotationRemoveCommand } from './pdf/runAnnotationEdit';
 
 function App() {
   const [filePath, setFilePath] = useState<string>(''); // working-copy path; all backend ops target this
@@ -370,15 +355,17 @@ function App() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const { loadFormFields, loadPdfBookmarks, loadPdfSignatures } = usePanelLoaders({
+  const { loadFormFields, loadPdfBookmarks, loadPdfSignatures, loadPageSizes } = usePanelLoaders({
     filePath,
     setFormFields,
     setFormDrafts,
     setPdfBookmarks,
     setPdfSignatures,
     setSignatureVerification,
+    setPageSizes,
   });
   loadPdfBookmarksRef.current = (path) => { void loadPdfBookmarks(path); };
+  loadPageSizesRef.current = (path) => { void loadPageSizes(path); };
 
 
   const pageNumbersRange = usePageRange({ pageCount, currentPage, showToast });
@@ -567,42 +554,44 @@ function App() {
   useEffect(() => setPageInput(String(currentPage + 1)), [currentPage]);
   useEffect(() => setZoomInput(String(Math.round(zoom * 100))), [zoom]);
 
-  const loadPdfFromPath = async (path: string, password?: string) => {
-    const loaded = await withLoading(async () => {
-      const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
-      if (encrypted && !password) {
-        setPendingEncryptedPath(path);
-        setPdfPasswordDraft('');
-        setShowPasswordModal(true);
-        return false;
-      }
-      const previousWorking = filePath;
-      const working = password
-        ? await invoke<string>('open_working_copy_with_password', { original: path, password })
-        : await invoke<string>('open_working_copy', { original: path });
-      const count = await invoke<number>('get_pdf_page_count', { path: working });
-      setOriginalPath(path);
-      setFilePath(working);
-      await resetHistoryForOpen(working);
-      setViewMode('pdf');
-      setMarkdownText('');
-      setMarkdownPath('');
-      setMarkdownOcrNotice(null);
-      setPdfRevision(0);
-      setMarkdownRevision(null);
-      cancelDrawing();
-      setPageCount(count);
-      setCurrentPage(0);
-      setZoom(1);
-      await renderPage(working, 0);
-      await loadThumbnails(working);
-      await loadFormFields(working);
-      rememberOpenedPdf(path);
-      if (previousWorking) void invoke('discard_working_copy', { working: previousWorking }).catch(() => {});
-      return true;
-    });
-    return loaded === true;
-  };
+  const {
+    loadPdfFromPath,
+    openPdf,
+    handleOpenPdfPath,
+    handleOpenEncryptedPdf,
+    handleOpenRecentPdf,
+  } = usePdfOpen({
+    filePath,
+    originalPath,
+    openFilePath,
+    pendingEncryptedPath,
+    pdfPasswordDraft,
+    withLoading,
+    resetHistoryForOpen,
+    renderPage,
+    loadThumbnails,
+    loadFormFields,
+    rememberOpenedPdf,
+    cancelDrawing,
+    guardUnsaved,
+    showToast,
+    setOriginalPath,
+    setFilePath,
+    setViewMode,
+    setMarkdownText,
+    setMarkdownPath,
+    setMarkdownOcrNotice,
+    setPdfRevision,
+    setMarkdownRevision,
+    setPageCount,
+    setCurrentPage,
+    setZoom,
+    setOpenFilePath,
+    setShowOpenModal,
+    setPendingEncryptedPath,
+    setPdfPasswordDraft,
+    setShowPasswordModal,
+  });
 
   const {
     showBrowserModal,
@@ -722,59 +711,16 @@ function App() {
     goToPage,
   });
 
-  const openPdf = () => guardUnsaved(() => {
-    setOpenFilePath(originalPath);
-    setShowOpenModal(true);
+  const { handleDragStart, handleDragOver, handleDrop } = useThumbnailReorder({
+    filePath,
+    draggedIndex,
+    withLoading,
+    markPdfEdited,
+    loadThumbnails,
+    renderPage,
+    setDraggedIndex,
+    setCurrentPage,
   });
-
-  const handleOpenPdfPath = async () => {
-    const path = openFilePath.trim();
-    if (!path) return;
-    const loaded = await loadPdfFromPath(path);
-    if (loaded) setShowOpenModal(false);
-  };
-
-  const handleOpenEncryptedPdf = async () => {
-    const path = pendingEncryptedPath.trim();
-    const password = pdfPasswordDraft;
-    if (!path || !password) return;
-    try {
-      await invoke('verify_pdf_password', { path, password });
-    } catch {
-      showToast('Incorrect password', 'error');
-      return;
-    }
-    const loaded = await loadPdfFromPath(path, password);
-    if (loaded) {
-      setShowPasswordModal(false);
-      setShowOpenModal(false);
-      setPendingEncryptedPath('');
-      setPdfPasswordDraft('');
-    }
-  };
-
-  const handleOpenRecentPdf = async (path: string) => {
-    setOpenFilePath(path);
-    const loaded = await loadPdfFromPath(path);
-    if (loaded) setShowOpenModal(false);
-  };
-
-  const handleDragStart = (idx: number) => setDraggedIndex(idx);
-  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
-
-  const handleDrop = async (e: React.DragEvent, targetIdx: number) => {
-    e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== targetIdx) {
-      await withLoading(async () => {
-        await invoke('move_page', { path: filePath, fromIndex: draggedIndex, toIndex: targetIdx });
-        markPdfEdited();
-        await loadThumbnails(filePath);
-        setDraggedIndex(null);
-        setCurrentPage(targetIdx);
-        await renderPage(filePath, targetIdx);
-      });
-    }
-  };
 
   const openDeleteModal = () => {
     if (!filePath || pageCount === null) return;
@@ -847,55 +793,6 @@ function App() {
       setShowExportPngModal(false);
     });
   };
-
-  const chooseExportPngOutputNative = async () => {
-    const ext = imageExportExtension(imageExportFormat);
-    const filters = imageExportFormat === 'jpeg'
-      ? JPEG_DIALOG_FILTER
-      : imageExportFormat === 'webp'
-        ? WEBP_DIALOG_FILTER
-        : imageExportFormat === 'bmp'
-          ? BMP_DIALOG_FILTER
-          : imageExportFormat === 'tiff'
-            ? TIFF_DIALOG_FILTER
-            : imageExportFormat === 'gif'
-              ? GIF_DIALOG_FILTER
-              : imageExportFormat === 'ppm'
-                ? PPM_DIALOG_FILTER
-                : PNG_DIALOG_FILTER;
-    if (pngExportRange.scope === 'current') {
-      const picked = await pickSaveWithNativeDialog(
-        ensureExtension(
-          pngExportOutputPath || defaultImageExportOutput(imageExportFormat, 'current', currentPage, currentPage),
-          ext,
-        ),
-        filters,
-      );
-      if (!picked) return;
-      setPngExportOutputPath(ensureExtension(picked, ext));
-      return;
-    }
-    const picked = await pickSaveWithNativeDialog(
-      pngExportOutputPath || defaultImageExportOutput(imageExportFormat, pngExportRange.scope, pngExportRange.startPage, pngExportRange.endPage),
-      filters,
-    );
-    if (!picked) return;
-    setPngExportOutputPath(picked.replace(/\.(png|jpe?g|webp|bmp)$/i, ''));
-  };
-
-  const loadPageSizes = useCallback(async (path: string = filePath) => {
-    if (!path) {
-      setPageSizes([]);
-      return;
-    }
-    try {
-      const sizes = await invoke<PdfPageSize[]>('get_pdf_page_sizes', { path });
-      setPageSizes(sizes);
-    } catch {
-      setPageSizes([]);
-    }
-  }, [filePath]);
-  loadPageSizesRef.current = (path) => { void loadPageSizes(path); };
 
   const runEdit = useStructuralEdit({
     filePath,
@@ -2283,19 +2180,6 @@ function App() {
     });
   };
 
-
-  const getImageCoords = (clientX: number, clientY: number) =>
-    imageCoordsFromClick(imgRef, zoom, clientX, clientY);
-
-  const refreshAnnotations = async () => {
-    const annots = await invoke<AnnotationData[]>('get_annotations', {
-      path: filePath, pageIndex: currentPage,
-    });
-    setAnnotations(annots);
-  };
-
-
-
   const applyFormField = (name: string) => {
     const field = formFields.find((entry) => entry.name === name);
     if (!field || !filePath) return;
@@ -2326,706 +2210,170 @@ function App() {
 
   cancelDrawingRef.current = cancelDrawing;
 
-  // Highlighting is a two-click gesture: click once to set the start corner,
-  // move the mouse to rubber-band the selection, click again to finish.
-  const handlePageClick = (e: React.MouseEvent) => {
-    if (drawMode) return;
-    if (textEditMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      setPendingTextPos(coords);
-      setPageTextDraft('');
-      setEditingTextIndex(null);
-      setShowPageTextModal(true);
-      return;
-    }
-    if (vectorEditMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!drawing) {
-        setHighlightStart(coords);
-        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        setDrawing(true);
-        return;
-      }
-      const start = highlightStart;
-      cancelDrawing();
-      if (!start) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 4 || rect.h < 4) return;
-      void withLoading(async () => {
-        await invoke('add_page_vector_rect', {
-          path: filePath,
-          pageIndex: currentPage,
-          x: rect.x,
-          y: rect.y,
-          width: rect.w,
-          height: rect.h,
-        });
-        markPdfEdited();
-        await renderPage(filePath, currentPage);
-        showToast('Vector shape added');
-      });
-      return;
-    }
-    if (formAddMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      const placeFormField = (rect: { x: number; y: number; w: number; h: number }) => {
-        void withLoading(async () => {
-          const base = {
-            path: filePath,
-            pageIndex: currentPage,
-            x: rect.x,
-            y: rect.y,
-            width: rect.w,
-            height: rect.h,
-          };
-          if (newFormFieldKind === 'checkbox') {
-            await invoke('add_checkbox_form_field', {
-              ...base,
-              name: newFormFieldName.trim(),
-              checked: newFormCheckboxChecked,
-            });
-          } else if (newFormFieldKind === 'choice') {
-            const options = newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
-            await invoke('add_choice_form_field', {
-              ...base,
-              name: newFormFieldName.trim(),
-              options,
-              combo: true,
-            });
-          } else if (newFormFieldKind === 'radio') {
-            await invoke('add_radio_form_field', {
-              ...base,
-              groupName: newFormRadioGroup.trim(),
-              optionName: newFormRadioOption.trim(),
-            });
-          } else {
-            await invoke('add_text_form_field', {
-              ...base,
-              name: newFormFieldName.trim(),
-            });
-          }
-          markPdfEdited();
-          setFormAddMode(false);
-          setShowAddFormFieldModal(false);
-          setNewFormFieldName('');
-          setNewFormRadioGroup('');
-          setNewFormRadioOption('');
-          await loadFormFields(filePath);
-          showToast('Form field added');
-        });
-      };
+  const {
+    refreshAnnotations,
+    handlePageClick,
+    handlePageMouseMove,
+    handleDrawMouseDown,
+    handleDrawMouseUp,
+    removeRedaction,
+    removeStamp,
+    removeShape,
+    removeInkStroke,
+    removeHighlight,
+    removeTextNote,
+  } = usePageInteraction({
+    filePath,
+    currentPage,
+    zoom,
+    imgRef,
+    withLoading,
+    markPdfEdited,
+    renderPage,
+    loadFormFields,
+    runEdit,
+    setAnnotations,
+    drawMode,
+    textEditMode,
+    vectorEditMode,
+    formAddMode,
+    imageInsertMode,
+    redactMode,
+    stampMode,
+    shapeMode,
+    noteMode,
+    highlightMode,
+    drawing,
+    highlightStart,
+    inkDrawing,
+    inkDraft,
+    shapeKind,
+    stampKind,
+    stampPreset,
+    imageSourcePath,
+    newFormFieldKind,
+    newFormFieldName,
+    newFormFieldOptions,
+    newFormRadioGroup,
+    newFormRadioOption,
+    newFormCheckboxChecked,
+    cancelDrawing,
+    setHighlightStart,
+    setHighlightRect,
+    setDrawing,
+    setShapeLineEnd,
+    setInkDrawing,
+    setInkDraft,
+    setPendingTextPos,
+    setPageTextDraft,
+    setEditingTextIndex,
+    setShowPageTextModal,
+    setPendingNotePos,
+    setNoteDraft,
+    setShowNoteModal,
+    setFormAddMode,
+    setShowAddFormFieldModal,
+    setNewFormFieldName,
+    setNewFormRadioGroup,
+    setNewFormRadioOption,
+    showToast,
+  });
 
-      if (newFormFieldKind === 'checkbox' || newFormFieldKind === 'radio') {
-        const size = 18;
-        placeFormField({ x: coords.x, y: coords.y, w: size, h: size });
-        cancelDrawing();
-        return;
-      }
+  const {
+    openImageInsertModal,
+    confirmImageSource,
+    toggleImageInsertMode,
+    exitImageInsertMode,
+    openAddFormFieldModal,
+    confirmAddFormField,
+    exitFormAddMode,
+    toggleHighlightMode,
+    exitHighlightMode,
+    toggleNoteMode,
+    toggleDrawMode,
+    exitDrawMode,
+    toggleShapeMode,
+    exitShapeMode,
+    toggleStampMode,
+    exitStampMode,
+    toggleTextEditMode,
+    toggleVectorEditMode,
+    toggleRedactMode,
+    exitRedactMode,
+    exitNoteMode,
+    toggleFormsPanel,
+  } = useAnnotationModes({
+    cancelDrawing,
+    setHighlightMode,
+    setNoteMode,
+    setDrawMode,
+    setShapeMode,
+    setStampMode,
+    setRedactMode,
+    setImageInsertMode,
+    setFormAddMode,
+    setTextEditMode,
+    setVectorEditMode,
+    setShowNoteModal,
+    setPendingNotePos,
+    setNoteDraft,
+    filePath,
+    imageSourcePath,
+    imageSourceDraft,
+    newFormFieldKind,
+    newFormFieldName,
+    newFormFieldOptions,
+    newFormRadioGroup,
+    newFormRadioOption,
+    newFormCheckboxChecked,
+    showToast,
+    setImageSourceDraft,
+    setImageSourcePath,
+    setShowImageInsertModal,
+    setShowAddFormFieldModal,
+    setNewFormFieldKind,
+    setNewFormFieldName,
+    setNewFormFieldOptions,
+    setNewFormRadioGroup,
+    setNewFormRadioOption,
+    setNewFormCheckboxChecked,
+    setShowFormsPanel,
+  });
 
-      if (!drawing) {
-        setHighlightStart(coords);
-        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        setDrawing(true);
-        return;
-      }
-      const start = highlightStart;
-      cancelDrawing();
-      if (!start || !newFormFieldName.trim()) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 20 || rect.h < 10) return;
-      placeFormField(rect);
-      return;
-    }
-    if (imageInsertMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!drawing) {
-        setHighlightStart(coords);
-        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        setDrawing(true);
-        return;
-      }
-      const start = highlightStart;
-      cancelDrawing();
-      if (!start || !imageSourcePath) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 5 || rect.h < 5) return;
-      void withLoading(async () => {
-        await invoke('add_page_image', {
-          path: filePath,
-          pageIndex: currentPage,
-          x: rect.x,
-          y: rect.y,
-          width: rect.w,
-          height: rect.h,
-          imagePath: imageSourcePath,
-        });
-        markPdfEdited();
-        await renderPage(filePath, currentPage);
-        showToast('Image inserted');
-      });
-      return;
-    }
-    if (redactMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!drawing) {
-        setHighlightStart(coords);
-        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        setDrawing(true);
-        return;
-      }
-      const start = highlightStart;
-      cancelDrawing();
-      if (!start) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 5 || rect.h < 5) return;
-      void runEdit({ command: 'add_redaction', args: { pageIndex: currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Redaction added' });
-      return;
-    }
-    if (stampMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      void withLoading(async () => {
-        if (stampKind === 'image') {
-          await invoke('add_image_stamp', {
-            path: filePath,
-            pageIndex: currentPage,
-            x: coords.x,
-            y: coords.y,
-            preset: stampPreset,
-          });
-        } else {
-          await invoke('add_text_stamp', {
-            path: filePath,
-            pageIndex: currentPage,
-            x: coords.x,
-            y: coords.y,
-            preset: stampPreset,
-          });
-        }
-        markPdfEdited();
-        await refreshAnnotations();
-        showToast('Stamp added');
-      });
-      return;
-    }
-    if (shapeMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!drawing) {
-        setHighlightStart(coords);
-        setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        setShapeLineEnd(coords);
-        setDrawing(true);
-        return;
-      }
-      const start = highlightStart;
-      cancelDrawing();
-      if (!start) return;
-      if (shapeKind === 'line') {
-        const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
-        if (dist < 5) return;
-        void runEdit({ command: 'add_line', args: { pageIndex: currentPage, x1: start.x, y1: start.y, x2: coords.x, y2: coords.y }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Line added' });
-        return;
-      }
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 5 || rect.h < 5) return;
-      void withLoading(async () => {
-        const args = {
-          path: filePath,
-          pageIndex: currentPage,
-          x1: rect.x,
-          y1: rect.y,
-          x2: rect.x + rect.w,
-          y2: rect.y + rect.h,
-        };
-        if (shapeKind === 'circle') await invoke('add_circle', args);
-        else await invoke('add_square', args);
-        markPdfEdited();
-        await refreshAnnotations();
-        showToast(shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added');
-      });
-      return;
-    }
-    if (noteMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      setPendingNotePos(coords);
-      setNoteDraft('');
-      setShowNoteModal(true);
-      return;
-    }
-    if (!highlightMode) return;
-    const coords = getImageCoords(e.clientX, e.clientY);
-    if (!drawing) {
-      setHighlightStart(coords);
-      setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-      setDrawing(true);
-      return;
-    }
-    const start = highlightStart;
-    cancelDrawing();
-    if (!start) return;
-    const rect = {
-      x: Math.min(start.x, coords.x),
-      y: Math.min(start.y, coords.y),
-      w: Math.abs(coords.x - start.x),
-      h: Math.abs(coords.y - start.y),
-    };
-    if (rect.w < 5 || rect.h < 5) return;
-    void runEdit({ command: 'add_highlight', args: { pageIndex: currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Highlight added' });
-  };
-
-  const handlePageMouseMove = (e: React.MouseEvent) => {
-    if (drawMode && inkDrawing) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      setInkDraft((prev) => {
-        if (prev.length < 2) return [...prev, coords.x, coords.y];
-        const lx = prev[prev.length - 2];
-        const ly = prev[prev.length - 1];
-        if (Math.hypot(coords.x - lx, coords.y - ly) < 2) return prev;
-        return [...prev, coords.x, coords.y];
-      });
-      return;
-    }
-    if ((shapeMode || redactMode || imageInsertMode || vectorEditMode || formAddMode) && drawing && highlightStart) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (shapeMode && shapeKind === 'line') {
-        setShapeLineEnd(coords);
-        return;
-      }
-      setHighlightRect({
-        x: Math.min(highlightStart.x, coords.x),
-        y: Math.min(highlightStart.y, coords.y),
-        w: Math.abs(coords.x - highlightStart.x),
-        h: Math.abs(coords.y - highlightStart.y),
-      });
-      return;
-    }
-    if (!highlightMode || !drawing || !highlightStart) return;
-    const coords = getImageCoords(e.clientX, e.clientY);
-    setHighlightRect({
-      x: Math.min(highlightStart.x, coords.x),
-      y: Math.min(highlightStart.y, coords.y),
-      w: Math.abs(coords.x - highlightStart.x),
-      h: Math.abs(coords.y - highlightStart.y),
-    });
-  };
-
-  const removeAnnotation = (command: AnnotationRemoveCommand, index: number, toast: string) => {
-    runAnnotationRemoveViaEdit(runEdit, refreshAnnotations, command, currentPage, index, toast);
-  };
-
-  const removeRedaction = (index: number) => {
-    removeAnnotation('remove_redaction', index, 'Redaction removed');
-  };
-
-  const removeStamp = (kind: StampKind, index: number) => {
-    const command = kind === 'text' ? 'remove_text_stamp' : 'remove_image_stamp';
-    removeAnnotation(command, index, 'Stamp removed');
-  };
-
-  const removeShape = (subtype: 'Square' | 'Circle' | 'Line', index: number) => {
-    const command = subtype === 'Square' ? 'remove_square' : subtype === 'Circle' ? 'remove_circle' : 'remove_line';
-    removeAnnotation(command, index, 'Shape removed');
-  };
-
-  const commitInkStroke = (points: number[]) => {
-    if (points.length < 4) return;
-    void runEdit({ command: 'add_ink_stroke', args: { pageIndex: currentPage, points }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Drawing added' });
-  };
-
-  const handleDrawMouseDown = (e: React.MouseEvent) => {
-    if (!drawMode) return;
-    e.preventDefault();
-    const coords = getImageCoords(e.clientX, e.clientY);
-    setInkDrawing(true);
-    setInkDraft([coords.x, coords.y]);
-  };
-
-  const handleDrawMouseUp = () => {
-    if (!drawMode || !inkDrawing) return;
-    setInkDrawing(false);
-    const points = inkDraft;
-    setInkDraft([]);
-    commitInkStroke(points);
-  };
-
-  const removeInkStroke = (inkIndex: number) => {
-    removeAnnotation('remove_ink_stroke', inkIndex, 'Drawing removed');
-  };
-
-  // Click an existing highlight (while in highlight mode) to remove it.
-  const removeHighlight = (highlightIndex: number) => {
-    removeAnnotation('remove_highlight', highlightIndex, 'Highlight removed');
-  };
-
-  const openImageInsertModal = () => {
-    if (!filePath) return;
-    setImageSourceDraft(imageSourcePath);
-    setShowImageInsertModal(true);
-  };
-
-  const confirmImageSource = async () => {
-    const path = imageSourceDraft.trim();
-    if (!path) {
-      showToast('Enter an image path', 'error');
-      return;
-    }
-    try {
-      await invoke<[number, number]>('get_image_dimensions', { path });
-      setImageSourcePath(path);
-      setShowImageInsertModal(false);
-      cancelDrawing();
-      setHighlightMode(false);
-      setNoteMode(false);
-      setDrawMode(false);
-      setShapeMode(false);
-      setStampMode(false);
-      setRedactMode(false);
-      setImageInsertMode(true);
-      showToast('Click twice on the page to place the image');
-    } catch (err) {
-      showToast(String(err), 'error');
-    }
-  };
-
-  const toggleImageInsertMode = () => {
-    if (!imageSourcePath) {
-      openImageInsertModal();
-      return;
-    }
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setImageInsertMode((m) => !m);
-  };
-
-  const exitImageInsertMode = () => {
-    cancelDrawing();
-    setImageInsertMode(false);
-    setFormAddMode(false);
-  };
-
-  const toggleFormsPanel = () => {
-    setShowFormsPanel((open) => !open);
-  };
-
-  const openAddFormFieldModal = () => {
-    if (!filePath) return;
-    setNewFormFieldKind('text');
-    setNewFormFieldName('');
-    setNewFormFieldOptions('Option A, Option B');
-    setNewFormRadioGroup('');
-    setNewFormRadioOption('');
-    setNewFormCheckboxChecked(false);
-    setShowAddFormFieldModal(true);
-  };
-
-  const confirmAddFormField = () => {
-    if (newFormFieldKind === 'radio') {
-      if (!newFormRadioGroup.trim() || !newFormRadioOption.trim()) {
-        showToast('Enter group and option names', 'error');
-        return;
-      }
-    } else if (!newFormFieldName.trim()) {
-      showToast('Enter a field name', 'error');
-      return;
-    }
-    if (newFormFieldKind === 'choice') {
-      const options = newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
-      if (options.length === 0) {
-        showToast('Enter at least one option', 'error');
-        return;
-      }
-    }
-    setShowAddFormFieldModal(false);
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(true);
-    const placementHint = newFormFieldKind === 'text' || newFormFieldKind === 'choice'
-      ? 'Click twice on the page to draw the field box'
-      : 'Click on the page to place the field';
-    showToast(placementHint);
-  };
-
-  const exitFormAddMode = () => {
-    cancelDrawing();
-    setFormAddMode(false);
-  };
-
-  const toggleHighlightMode = () => {
-    cancelDrawing();
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setHighlightMode((m) => !m);
-  };
-
-  const exitHighlightMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-  };
-
-  const toggleNoteMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setNoteMode((m) => !m);
-  };
-
-  const toggleDrawMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setDrawMode((m) => !m);
-  };
-
-  const exitDrawMode = () => {
-    cancelDrawing();
-    setDrawMode(false);
-  };
-
-  const toggleShapeMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setShapeMode((m) => !m);
-  };
-
-  const exitShapeMode = () => {
-    cancelDrawing();
-    setShapeMode(false);
-  };
-
-  const toggleStampMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setStampMode((m) => !m);
-  };
-
-  const exitStampMode = () => {
-    setStampMode(false);
-  };
-
-  const toggleTextEditMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setVectorEditMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setTextEditMode((mode) => !mode);
-  };
-
-  const exitTextEditMode = () => {
-    setTextEditMode(false);
-    setShowPageTextModal(false);
-    setPendingTextPos(null);
-    setEditingTextIndex(null);
-  };
-
-  const toggleVectorEditMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setRedactMode(false);
-    setImageInsertMode(false);
-    setTextEditMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setVectorEditMode((mode) => !mode);
-  };
-
-  const exitVectorEditMode = () => {
-    cancelDrawing();
-    setVectorEditMode(false);
-  };
-
-  const submitPageText = async () => {
-    const text = pageTextDraft.trim();
-    const fontSize = Number.parseFloat(pageTextFontSize);
-    if (!filePath || !text || Number.isNaN(fontSize)) return;
-    const pos = pendingTextPos;
-    if (editingTextIndex === null && !pos) return;
-    await withLoading(async () => {
-      const wasEdit = editingTextIndex !== null;
-      if (wasEdit) {
-        await invoke('update_page_text', {
-          path: filePath,
-          pageIndex: currentPage,
-          index: editingTextIndex,
-          text,
-          x: pos?.x ?? null,
-          y: pos?.y ?? null,
-          fontSize,
-        });
-      } else if (pos) {
-        await invoke('add_page_text', {
-          path: filePath,
-          pageIndex: currentPage,
-          x: pos.x,
-          y: pos.y,
-          fontSize,
-          text,
-        });
-      }
-      markPdfEdited();
-      setShowPageTextModal(false);
-      setPendingTextPos(null);
-      setEditingTextIndex(null);
-      await renderPage(filePath, currentPage);
-      showToast(wasEdit ? 'Text updated' : 'Text added to page');
-    });
-  };
-
-  const startEditPageText = (edit: PageTextEdit) => {
-    setEditingTextIndex(edit.index);
-    setPendingTextPos({ x: edit.x, y: edit.y });
-    setPageTextDraft(edit.text);
-    setPageTextFontSize(String(edit.font_size));
-    setShowPageEditsModal(false);
-    setShowPageTextModal(true);
-  };
-
-  const closePageTextModal = () => {
-    setShowPageTextModal(false);
-    setEditingTextIndex(null);
-    setPendingTextPos(null);
-  };
+  const {
+    submitPageText,
+    startEditPageText,
+    closePageTextModal,
+    exitTextEditMode,
+    exitVectorEditMode,
+    removePageTextEdit,
+    removePageVectorEdit,
+  } = usePageTextEdits({
+    filePath,
+    currentPage,
+    pageTextDraft,
+    pageTextFontSize,
+    pendingTextPos,
+    editingTextIndex,
+    withLoading,
+    markPdfEdited,
+    renderPage,
+    showToast,
+    setShowPageTextModal,
+    setShowPageEditsModal,
+    setPendingTextPos,
+    setEditingTextIndex,
+    setPageTextDraft,
+    setPageTextFontSize,
+    setTextEditMode,
+    setVectorEditMode,
+    cancelDrawing,
+  });
 
   const closePasswordModal = () => {
     setShowPasswordModal(false);
     setPendingEncryptedPath('');
     setPdfPasswordDraft('');
-  };
-
-  const removePageTextEdit = async (index: number) => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('remove_page_text', { path: filePath, pageIndex: currentPage, index });
-      markPdfEdited();
-      await renderPage(filePath, currentPage);
-      showToast('Text removed');
-    });
-  };
-
-  const removePageVectorEdit = async (index: number) => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('remove_page_vector', { path: filePath, pageIndex: currentPage, index });
-      markPdfEdited();
-      await renderPage(filePath, currentPage);
-      showToast('Vector shape removed');
-    });
-  };
-
-  const toggleRedactMode = () => {
-    cancelDrawing();
-    setHighlightMode(false);
-    setNoteMode(false);
-    setDrawMode(false);
-    setShapeMode(false);
-    setStampMode(false);
-    setImageInsertMode(false);
-    setFormAddMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setRedactMode((m) => !m);
-  };
-
-  const exitRedactMode = () => {
-    cancelDrawing();
-    setRedactMode(false);
-  };
-
-  const exitNoteMode = () => {
-    setNoteMode(false);
-    setShowNoteModal(false);
-    setPendingNotePos(null);
-    setNoteDraft('');
-  };
-
-  const removeTextNote = (noteIndex: number) => {
-    removeAnnotation('remove_text_note', noteIndex, 'Note removed');
   };
 
   const submitTextNote = () => {
@@ -3057,61 +2405,53 @@ function App() {
   };
   handleSaveRef.current = handleSave;
 
-  const chooseOpenPdfNative = async () => {
-    const path = await pickPdfWithNativeDialog(openFilePath || lastBrowserDir || originalPath);
-    if (!path) return;
-    setOpenFilePath(path);
-    const loaded = await loadPdfFromPath(path);
-    if (loaded) setShowOpenModal(false);
-  };
-
-  const chooseInsertPdfNative = async () => {
-    const path = await pickPdfWithNativeDialog(insertFilePath || lastBrowserDir || originalPath);
-    if (!path) return;
-    setInsertFilePath(path);
-    rememberBrowserDirectory(path);
-  };
-
-  const chooseMergePdfNative = async () => {
-    const path = await pickPdfWithNativeDialog(mergeFilePath || lastBrowserDir || originalPath);
-    if (!path) return;
-    setMergeFilePath(path);
-    rememberBrowserDirectory(path);
-  };
-
-  const handleSaveAs = async () => {
-    const target = saveAsPath.trim();
-    if (!filePath || !target) return;
-    await withLoading(async () => {
-      await invoke('save_working_copy', { working: filePath, target });
-      setOriginalPath(target);
-      rememberOpenedPdf(target);
-      markSaved();
-      setShowSaveAsModal(false);
-      showToast(`Saved to ${target}`);
-    });
-  };
-
-  const saveAsViaNativeDialog = async () => {
-    if (!filePath || !originalPath) return;
-    const picked = await pickSaveWithNativeDialog(saveAsPath || originalPath, PDF_DIALOG_FILTER);
-    if (!picked) return;
-    const target = ensureExtension(picked, 'pdf');
-    await withLoading(async () => {
-      await invoke('save_working_copy', { working: filePath, target });
-      setOriginalPath(target);
-      rememberOpenedPdf(target);
-      markSaved();
-      setShowSaveAsModal(false);
-      showToast(`Saved to ${target}`);
-    });
-  };
-
-  const chooseSaveAsNative = async () => {
-    const picked = await pickSaveWithNativeDialog(saveAsPath || originalPath, PDF_DIALOG_FILTER);
-    if (!picked) return;
-    setSaveAsPath(ensureExtension(picked, 'pdf'));
-  };
+  const {
+    chooseOpenPdfNative,
+    chooseInsertPdfNative,
+    chooseMergePdfNative,
+    handleSaveAs,
+    saveAsViaNativeDialog,
+    chooseSaveAsNative,
+    chooseExtractOutputNative,
+    chooseExportPngOutputNative,
+    chooseSignCertNative,
+  } = useNativeFilePickers({
+    filePath,
+    originalPath,
+    openFilePath,
+    insertFilePath,
+    mergeFilePath,
+    saveAsPath,
+    extractOutputPath,
+    pngExportOutputPath,
+    signCertPath,
+    lastBrowserDir,
+    imageExportFormat,
+    pngExportScope: pngExportRange.scope,
+    pngExportStartPage: pngExportRange.startPage,
+    pngExportEndPage: pngExportRange.endPage,
+    extractStartPage: extractRange.startPage,
+    extractEndPage: extractRange.endPage,
+    currentPage,
+    withLoading,
+    loadPdfFromPath,
+    rememberOpenedPdf,
+    rememberBrowserDirectory,
+    markSaved,
+    defaultExtractOutputPath,
+    defaultImageExportOutput,
+    setOpenFilePath,
+    setShowOpenModal,
+    setInsertFilePath,
+    setMergeFilePath,
+    setSaveAsPath,
+    setShowSaveAsModal,
+    setOriginalPath,
+    setExtractOutputPath,
+    setPngExportOutputPath,
+    setSignCertPath,
+    showToast,
+  });
 
   const openSaveAs = () => {
     if (nativeDialogs) {
@@ -3123,126 +2463,42 @@ function App() {
   };
 
 
-  const saveMarkdownToPath = async (target: string, switchToMarkdown: boolean) => {
-    if (!filePath || !target) return;
-    let result = await invoke<MarkdownSaveResult>('save_pdf_markdown', {
-      path: filePath,
-      overwrite: false,
-      outputPath: target,
-    });
-    if (result.conflict) {
-      const overwrite = window.confirm('Overwrite Markdown File?');
-      if (!overwrite) return;
-      result = await invoke<MarkdownSaveResult>('save_pdf_markdown', {
-        path: filePath,
-        overwrite: true,
-        outputPath: target,
-      });
-    }
-    setMarkdownText(result.markdown);
-    setMarkdownPath(result.markdownPath);
-    setMarkdownRevision(pdfRevision);
-    setMarkdownOcrNotice(markdownOcrNoticeFromResult(result));
-    if (switchToMarkdown) setViewMode('markdown');
-    showToast(markdownSaveToastMessage(result));
-  };
-
-  const handleMarkdownView = async () => {
-    if (!filePath) return;
-    if (markdownText && markdownRevision === pdfRevision) {
-      setViewMode('markdown');
-      return;
-    }
-    await withLoading(async () => {
-      await saveMarkdownToPath(siblingMarkdownPath(originalPath || filePath), true);
-    });
-  };
-
-  const toggleMarkdownView = async () => {
-    if (!filePath) return;
-    if (viewMode === 'markdown') {
-      setViewMode('pdf');
-      return;
-    }
-    if (shouldShowTesseractReminder()) {
-      setTesseractReminderSource('markdown');
-      setShowTesseractModal(true);
-      return;
-    }
-    await handleMarkdownView();
-  };
+  const {
+    handleMarkdownView,
+    toggleMarkdownView,
+    handleMarkdownSaveAs,
+    chooseMarkdownSaveAsNative,
+    openMarkdownSaveAs,
+    handleSummarizePdf,
+    handleCopySummary,
+    handleSaveSummary,
+  } = useMarkdownFlow({
+    filePath,
+    originalPath,
+    viewMode,
+    markdownText,
+    markdownPath,
+    markdownSaveAsPath,
+    pdfRevision,
+    markdownRevision,
+    nativeDialogs,
+    pdfSummary,
+    withLoading,
+    shouldShowTesseractReminder,
+    setViewMode,
+    setMarkdownText,
+    setMarkdownPath,
+    setMarkdownRevision,
+    setMarkdownOcrNotice,
+    setShowMarkdownSaveAsModal,
+    setMarkdownSaveAsPath,
+    setTesseractReminderSource,
+    setShowTesseractModal,
+    setPdfSummary,
+    setShowSummaryModal,
+    showToast,
+  });
   handleMarkdownViewRef.current = handleMarkdownView;
-
-  const handleMarkdownSaveAs = async () => {
-    const target = markdownSaveAsPath.trim();
-    if (!filePath || !target) return;
-    await withLoading(async () => {
-      await saveMarkdownToPath(target, viewMode === 'markdown');
-      setShowMarkdownSaveAsModal(false);
-    });
-  };
-
-  const markdownSaveAsViaNativeDialog = async () => {
-    if (!filePath) return;
-    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
-    const picked = await pickSaveWithNativeDialog(markdownSaveAsPath || defaultPath, MARKDOWN_DIALOG_FILTER);
-    if (!picked) return;
-    const target = ensureExtension(picked, 'md');
-    await withLoading(async () => {
-      await saveMarkdownToPath(target, viewMode === 'markdown');
-      setShowMarkdownSaveAsModal(false);
-    });
-  };
-
-  const chooseMarkdownSaveAsNative = async () => {
-    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
-    const picked = await pickSaveWithNativeDialog(markdownSaveAsPath || defaultPath, MARKDOWN_DIALOG_FILTER);
-    if (!picked) return;
-    setMarkdownSaveAsPath(ensureExtension(picked, 'md'));
-  };
-
-  const openMarkdownSaveAs = () => {
-    if (nativeDialogs) {
-      void markdownSaveAsViaNativeDialog();
-      return;
-    }
-    const defaultPath = markdownPath || siblingMarkdownPath(originalPath || filePath);
-    setMarkdownSaveAsPath(defaultPath);
-    setShowMarkdownSaveAsModal(true);
-  };
-
-  const handleSummarizePdf = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const summary = await invoke<PdfSummaryResult>('summarize_pdf', { path: filePath });
-      setPdfSummary(summary);
-      setShowSummaryModal(true);
-    });
-  };
-
-  const handleCopySummary = async () => {
-    if (!pdfSummary) return;
-    try {
-      await navigator.clipboard.writeText(formatSummaryMarkdown(pdfSummary));
-      showToast('Summary copied');
-    } catch {
-      showToast('Could not copy summary', 'error');
-    }
-  };
-
-  const handleSaveSummary = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      let result = await invoke<SummarySaveResult>('save_pdf_summary', { path: filePath, overwrite: false });
-      if (result.conflict) {
-        const overwrite = window.confirm('Overwrite existing summary file?');
-        if (!overwrite) return;
-        result = await invoke<SummarySaveResult>('save_pdf_summary', { path: filePath, overwrite: true });
-      }
-      setPdfSummary(result.summary);
-      showToast(result.written ? `Summary saved to ${result.summaryPath}` : 'Summary already saved');
-    });
-  };
 
   const handleSplitPdf = async () => {
     if (!filePath || !splitRanges) return;
@@ -3273,15 +2529,6 @@ function App() {
       showToast(`Extracted pages to ${written}`);
       setShowExtractModal(false);
     });
-  };
-
-  const chooseExtractOutputNative = async () => {
-    const picked = await pickSaveWithNativeDialog(
-      extractOutputPath || defaultExtractOutputPath(extractRange.startPage, extractRange.endPage),
-      PDF_DIALOG_FILTER,
-    );
-    if (!picked) return;
-    setExtractOutputPath(ensureExtension(picked, 'pdf'));
   };
 
   const handleInsertPdf = async () => {
@@ -3406,17 +2653,6 @@ function App() {
     setSignReason('');
     setSignLocation('');
     setShowSignModal(true);
-  };
-
-  const chooseSignCertNative = async () => {
-    const selected = await openNativeDialog({
-      multiple: false,
-      directory: false,
-      filters: CERT_DIALOG_FILTER,
-    });
-    if (selected === null) return;
-    const path = typeof selected === 'string' ? selected : selected[0] ?? '';
-    if (path) setSignCertPath(path);
   };
 
   const handleSignPdf = async () => {
