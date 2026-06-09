@@ -1,0 +1,108 @@
+import { useAppDocumentState } from './useAppDocumentState';
+import { useAppModalState } from './useAppModalState';
+import { useSecurityFormState } from './useSecurityFormState';
+import { useDocumentPanelsState } from './useDocumentPanelsState';
+import { useAnnotationDraftState } from './useAnnotationDraftState';
+import { useHelpChromeState } from './useHelpChromeState';
+import { useAppRefs } from './useAppRefs';
+import { useDrawingGesture } from '../viewer/useDrawingGesture';
+import { useAppLoading } from './useAppLoading';
+import { useAppPageRanges } from './useAppPageRanges';
+import { useAppLifecycleHooks } from './useAppLifecycleHooks';
+import { useAppLifecycleSlices } from './useAppLifecycleSlices';
+import { useAppSetupHooks } from './useAppSetupHooks';
+import { useAppViewerWorkflow } from './useAppViewerWorkflow';
+
+export function useAppStateBootstrap() {
+  const doc = useAppDocumentState();
+  const modal = useAppModalState();
+  const security = useSecurityFormState();
+  const panels = useDocumentPanelsState();
+  const help = useHelpChromeState();
+  const annotation = useAnnotationDraftState();
+  const drawingGesture = useDrawingGesture();
+  const refs = useAppRefs();
+  const { showToast, withLoading } = useAppLoading({ setToast: doc.setToast, setLoading: doc.setLoading });
+  const pageRanges = useAppPageRanges({ pageCount: doc.pageCount, currentPage: doc.currentPage, showToast });
+
+  const lifecycle = useAppLifecycleHooks({
+    doc,
+    modal,
+    security,
+    panels,
+    annotation,
+    refs: {
+      filePathRef: refs.filePathRef,
+      handleMarkdownViewRef: refs.handleMarkdownViewRef,
+      loadPdfBookmarksRef: refs.loadPdfBookmarksRef,
+      loadPageSizesRef: refs.loadPageSizesRef,
+      cancelDrawingRef: refs.cancelDrawingRef,
+      keyboardActionsRef: refs.keyboardActionsRef,
+      imgRef: refs.imgRef,
+      handleSaveRef: refs.handleSaveRef,
+    },
+    pageRanges,
+    ocrAvailable: !!doc.ocrAvailable,
+    tesseractReminderSource: help.tesseractReminderSource,
+    setTesseractReminderSource: help.setTesseractReminderSource,
+    tesseractDoNotRemind: help.tesseractDoNotRemind,
+    setTesseractDoNotRemind: help.setTesseractDoNotRemind,
+    setShowTesseractModal: help.setShowTesseractModal,
+    showToast,
+    withLoading,
+    isDirtyRef: doc.isDirtyRef,
+    filePathRef: refs.filePathRef,
+    cancelDrawing: () => refs.cancelDrawingRef.current(),
+  });
+
+  const slices = useAppLifecycleSlices(lifecycle);
+  const { loaders, history, tesseract } = slices;
+
+  const { windowTitle } = useAppSetupHooks({
+    doc,
+    modal,
+    help,
+    pageRanges,
+    refs: { filePathRef: refs.filePathRef },
+    onShowTesseractReminder: tesseract.showLaunchTesseractReminder,
+  });
+
+  const viewerWorkflow = useAppViewerWorkflow({
+    pageCount: doc.pageCount,
+    viewMode: doc.viewMode,
+    currentPage: doc.currentPage,
+    filePath: doc.filePath,
+    draggedIndex: doc.draggedIndex,
+    zoom: doc.zoom,
+    zoomInput: doc.zoomInput,
+    pageInput: doc.pageInput,
+    setDraggedIndex: doc.setDraggedIndex,
+    setCurrentPage: doc.setCurrentPage,
+    setZoom: doc.setZoom,
+    setZoomInput: doc.setZoomInput,
+    setPageInput: doc.setPageInput,
+    goToPage: slices.viewer.goToPage,
+    withLoading,
+    markPdfEdited: history.markPdfEdited,
+    loadThumbnails: loaders.loadThumbnails,
+    renderPage: loaders.renderPage,
+  });
+
+  return {
+    doc,
+    modal,
+    security,
+    panels,
+    help,
+    annotation,
+    drawingGesture,
+    refs,
+    pageRanges,
+    showToast,
+    withLoading,
+    lifecycle,
+    slices,
+    windowTitle,
+    viewerWorkflow,
+  };
+}

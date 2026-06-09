@@ -1,8 +1,10 @@
 import { AppShell } from './chrome/AppShell';
-import { useAppOrchestrator } from './app/useAppOrchestrator';
+import { useAppStateBootstrap } from './app/useAppStateBootstrap';
+import { useAppRuntimeWiring } from './app/useAppRuntimeWiring';
 
 function App() {
-  const shell = useAppOrchestrator();
+  const bootstrap = useAppStateBootstrap();
+  const shell = useAppRuntimeWiring(bootstrap);
   return <AppShell {...shell} />;
 }
 
