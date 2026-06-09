@@ -9,7 +9,6 @@ import { buildAppMenus } from './menu/buildAppMenus';
 import { buildAppMenuContext } from './menu/buildAppMenuContext';
 import { MenuChrome } from './menu/MenuChrome';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
-import { Modal } from './ui/Modal';
 import { Toast } from './ui/Toast';
 import type { PageRangeScope } from './pageRange/types';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
@@ -71,6 +70,23 @@ import { ParityRangeModal } from './modals/ParityRangeModal';
 import { RenameBookmarkModal } from './modals/RenameBookmarkModal';
 import { SplitPdfModal } from './modals/SplitPdfModal';
 import { StickyNoteModal } from './modals/StickyNoteModal';
+import { AddFormFieldModal, type FormFieldKind } from './modals/AddFormFieldModal';
+import { DocumentSummaryModal } from './modals/DocumentSummaryModal';
+import { MarkdownSaveAsModal } from './modals/MarkdownSaveAsModal';
+import { MetadataModal } from './modals/MetadataModal';
+import { PageEditsModal } from './modals/PageEditsModal';
+import { PageTextModal } from './modals/PageTextModal';
+import { PasswordModal } from './modals/PasswordModal';
+import { PdfBrowserModal } from './modals/PdfBrowserModal';
+import { ProtectPdfModal } from './modals/ProtectPdfModal';
+import { SaveAsModal } from './modals/SaveAsModal';
+import { SearchModal } from './modals/SearchModal';
+import { SignPdfModal } from './modals/SignPdfModal';
+import { TesseractReminderModal, type TesseractInstallGuide } from './modals/TesseractReminderModal';
+import { UnsavedChangesModal, type UnsavedChoice } from './modals/UnsavedChangesModal';
+import { type PageTextEditItem } from './modals/PageEditsModal';
+import { type PdfBrowserEntry, type PdfBrowserListing } from './modals/PdfBrowserModal';
+import { type PdfTextSearchMatch } from './modals/SearchModal';
 import { runAnnotationRemoveViaEdit, type AnnotationRemoveCommand } from './pdf/runAnnotationEdit';
 
 const MIN_ZOOM = 0.25; // 25%
@@ -88,8 +104,6 @@ const RECENT_PDF_LIMIT = 8;
 
 type ShapeKind = 'square' | 'circle' | 'line';
 type StampKind = 'text' | 'image';
-type FormFieldKind = 'text' | 'checkbox' | 'choice' | 'radio';
-
 const STAMP_PRESETS = [
   { id: 'approved', label: 'APPROVED', color: '#228b22' },
   { id: 'draft', label: 'DRAFT', color: '#787878' },
@@ -173,12 +187,6 @@ const markdownSaveToastMessage = (result: MarkdownSaveResult): string => {
   return `${base}. Text was read from scanned pages.`;
 };
 
-interface PdfTextSearchMatch {
-  page_index: number;
-  match_index: number;
-  rect: [number, number, number, number];
-}
-
 interface PdfIntelligentExtraction {
   headings: string[];
   emails: string[];
@@ -203,13 +211,7 @@ interface SummarySaveResult {
   conflict: boolean;
 }
 
-interface PageTextEdit {
-  index: number;
-  x: number;
-  y: number;
-  font_size: number;
-  text: string;
-}
+type PageTextEdit = PageTextEditItem;
 
 interface PageVectorEdit {
   index: number;
@@ -275,18 +277,6 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
 type PngExportScope = PageRangeScope;
-
-interface PdfBrowserEntry {
-  name: string;
-  path: string;
-  isDir: boolean;
-}
-
-interface PdfBrowserListing {
-  currentDir: string;
-  parentDir: string | null;
-  entries: PdfBrowserEntry[];
-}
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
@@ -358,15 +348,6 @@ const writeStoredStringArray = (key: string, value: string[]) => {
 const isTesseractReminderDismissed = () => readStoredString(TESSERACT_REMIND_DISMISSED_KEY) === '1';
 
 const dismissTesseractReminder = () => writeStoredString(TESSERACT_REMIND_DISMISSED_KEY, '1');
-
-interface TesseractInstallGuide {
-  platform: string;
-  summary: string;
-  steps: string[];
-  installCommand: string | null;
-  downloadUrl: string | null;
-  licenseNote: string;
-}
 
 const DEFAULT_TESSERACT_GUIDE: TesseractInstallGuide = {
   platform: 'unknown',
@@ -3444,6 +3425,18 @@ function App() {
     setShowPageTextModal(true);
   };
 
+  const closePageTextModal = () => {
+    setShowPageTextModal(false);
+    setEditingTextIndex(null);
+    setPendingTextPos(null);
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPendingEncryptedPath('');
+    setPdfPasswordDraft('');
+  };
+
   const removePageTextEdit = async (index: number) => {
     if (!filePath) return;
     await withLoading(async () => {
@@ -3597,7 +3590,7 @@ function App() {
     }
   };
 
-  const resolveUnsaved = async (choice: 'save' | 'discard' | 'cancel') => {
+  const resolveUnsaved = async (choice: UnsavedChoice) => {
     if (choice === 'cancel') { pendingNavRef.current = null; setShowUnsavedModal(false); return; }
     if (choice === 'save') await handleSave();
     else setIsDirty(false);
@@ -3618,6 +3611,8 @@ function App() {
     setShowSignModal(false);
     setShowMetadataModal(false);
     setShowPasswordModal(false);
+    setPendingEncryptedPath('');
+    setPdfPasswordDraft('');
     setShowOpenModal(false);
     setShowBrowserModal(false);
     setShowDeleteModal(false);
@@ -3663,6 +3658,8 @@ function App() {
     setShowAddFormFieldModal(false);
     setShowSummaryModal(false);
     setShowPageTextModal(false);
+    setEditingTextIndex(null);
+    setPendingTextPos(null);
     setShowPageEditsModal(false);
     setShowCommandPalette(false);
     setShowShortcutsHelp(false);
@@ -5971,88 +5968,22 @@ function App() {
       )}
 
       {showAddFormFieldModal && (
-        <Modal onClose={() => setShowAddFormFieldModal(false)}>
-          <h3>Add Form Field</h3>
-          <p className="modal-help">Choose a field type, then place it on the current page.</p>
-          <label>Field type:</label>
-          <select
-            className="modal-input"
-            value={newFormFieldKind}
-            onChange={(e) => setNewFormFieldKind(e.target.value as FormFieldKind)}
-          >
-            <option value="text">Text</option>
-            <option value="checkbox">Checkbox</option>
-            <option value="choice">Choice list</option>
-            <option value="radio">Radio button</option>
-          </select>
-          {newFormFieldKind === 'radio' ? (
-            <>
-              <label>Group name:</label>
-              <input
-                type="text"
-                value={newFormRadioGroup}
-                onChange={(e) => setNewFormRadioGroup(e.target.value)}
-                className="modal-input"
-                placeholder="Color"
-              />
-              <label>Option name:</label>
-              <input
-                type="text"
-                value={newFormRadioOption}
-                onChange={(e) => setNewFormRadioOption(e.target.value)}
-                className="modal-input"
-                placeholder="Red"
-              />
-            </>
-          ) : (
-            <>
-              <label>Field name:</label>
-              <input
-                type="text"
-                value={newFormFieldName}
-                onChange={(e) => setNewFormFieldName(e.target.value)}
-                className="modal-input"
-                placeholder="Email"
-              />
-              {newFormFieldKind === 'choice' && (
-                <>
-                  <label>Options (comma-separated):</label>
-                  <input
-                    type="text"
-                    value={newFormFieldOptions}
-                    onChange={(e) => setNewFormFieldOptions(e.target.value)}
-                    className="modal-input"
-                    placeholder="US, CA, MX"
-                  />
-                </>
-              )}
-              {newFormFieldKind === 'checkbox' && (
-                <label className="form-checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={newFormCheckboxChecked}
-                    onChange={(e) => setNewFormCheckboxChecked(e.target.checked)}
-                  />
-                  <span>Checked by default</span>
-                </label>
-              )}
-            </>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowAddFormFieldModal(false)} className="btn btn-secondary">Cancel</button>
-            <button
-              onClick={confirmAddFormField}
-              className="btn"
-              disabled={
-                newFormFieldKind === 'radio'
-                  ? !newFormRadioGroup.trim() || !newFormRadioOption.trim()
-                  : !newFormFieldName.trim()
-              }
-            >
-              Place on page
-            </button>
-          </div>
-        </Modal>
+        <AddFormFieldModal
+          fieldKind={newFormFieldKind}
+          fieldName={newFormFieldName}
+          fieldOptions={newFormFieldOptions}
+          checkboxChecked={newFormCheckboxChecked}
+          radioGroup={newFormRadioGroup}
+          radioOption={newFormRadioOption}
+          onFieldKindChange={setNewFormFieldKind}
+          onFieldNameChange={setNewFormFieldName}
+          onFieldOptionsChange={setNewFormFieldOptions}
+          onCheckboxCheckedChange={setNewFormCheckboxChecked}
+          onRadioGroupChange={setNewFormRadioGroup}
+          onRadioOptionChange={setNewFormRadioOption}
+          onClose={() => setShowAddFormFieldModal(false)}
+          onConfirm={confirmAddFormField}
+        />
       )}
 
       {showImageInsertModal && (
@@ -6064,71 +5995,21 @@ function App() {
         />
       )}
 
-      {/* Search Modal */}
       {showSearchModal && (
-        <Modal onClose={closeSearchModal}>
-          <h3>Find in PDF</h3>
-          <label>Search for:</label>
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="modal-input"
-            placeholder="Text to find"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (e.shiftKey) stepSearchMatch(-1);
-                else if (searchResults.length > 0) stepSearchMatch(1);
-                else void runPdfSearch();
-              }
-            }}
-          />
-          <div className="search-options">
-            <label className="form-checkbox-row">
-              <input
-                type="checkbox"
-                checked={searchMatchCase}
-                onChange={(e) => setSearchMatchCase(e.target.checked)}
-              />
-              <span>Match case</span>
-            </label>
-            <label className="form-checkbox-row">
-              <input
-                type="checkbox"
-                checked={searchWholeWord}
-                onChange={(e) => setSearchWholeWord(e.target.checked)}
-              />
-              <span>Whole words</span>
-            </label>
-          </div>
-          {searchResults.length > 0 && (
-            <p className="modal-help">
-              Match {searchResultIndex + 1} of {searchResults.length} (page {searchResults[searchResultIndex].page_index + 1})
-            </p>
-          )}
-          <div className="modal-actions">
-            <button onClick={closeSearchModal} className="btn btn-secondary">Close</button>
-            <button
-              type="button"
-              onClick={() => stepSearchMatch(-1)}
-              className="btn"
-              disabled={searchResults.length === 0}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => stepSearchMatch(1)}
-              className="btn"
-              disabled={searchResults.length === 0}
-            >
-              Next
-            </button>
-            <button onClick={() => void runPdfSearch()} className="btn" disabled={!searchQuery.trim()}>Find</button>
-          </div>
-        </Modal>
+        <SearchModal
+          inputRef={searchInputRef}
+          query={searchQuery}
+          matchCase={searchMatchCase}
+          wholeWord={searchWholeWord}
+          results={searchResults}
+          resultIndex={searchResultIndex}
+          onQueryChange={setSearchQuery}
+          onMatchCaseChange={setSearchMatchCase}
+          onWholeWordChange={setSearchWholeWord}
+          onClose={closeSearchModal}
+          onFind={runPdfSearch}
+          onStepMatch={stepSearchMatch}
+        />
       )}
 
       {showMergeModal && (
@@ -6170,420 +6051,151 @@ function App() {
       )}
 
       {showPageTextModal && (
-        <Modal onClose={() => { setShowPageTextModal(false); setEditingTextIndex(null); setPendingTextPos(null); }}>
-          <h3>{editingTextIndex !== null ? 'Edit Page Text' : 'Add Page Text'}</h3>
-          <label>Text:</label>
-          <input
-            type="text"
-            value={pageTextDraft}
-            onChange={(e) => setPageTextDraft(e.target.value)}
-            className="modal-input"
-            autoFocus
-          />
-          <label>Font size (8–72):</label>
-          <input
-            type="number"
-            min="8"
-            max="72"
-            value={pageTextFontSize}
-            onChange={(e) => setPageTextFontSize(e.target.value)}
-            className="modal-input"
-          />
-          <div className="modal-actions">
-            <button onClick={() => { setShowPageTextModal(false); setEditingTextIndex(null); setPendingTextPos(null); }} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void submitPageText()} className="btn" disabled={!pageTextDraft.trim()}>Save</button>
-          </div>
-        </Modal>
+        <PageTextModal
+          editing={editingTextIndex !== null}
+          text={pageTextDraft}
+          fontSize={pageTextFontSize}
+          onTextChange={setPageTextDraft}
+          onFontSizeChange={setPageTextFontSize}
+          onClose={closePageTextModal}
+          onSave={submitPageText}
+        />
       )}
 
       {showPageEditsModal && (
-        <Modal onClose={() => setShowPageEditsModal(false)}>
-          <h3>Page Edits — page {currentPage + 1}</h3>
-          <p className="modal-help">Text and vector shapes embedded in the PDF content stream for this page.</p>
-          <h4>Text blocks</h4>
-          {pageTextEdits.length === 0 ? (
-            <p className="muted">No page text on this page.</p>
-          ) : (
-            <ul className="summary-list">
-              {pageTextEdits.map((edit) => (
-                <li key={`manage-text-${edit.index}`} className="page-edit-row">
-                  <span>{edit.text}</span>
-                  <span className="page-edit-actions">
-                    <button type="button" className="btn btn-secondary" onClick={() => startEditPageText(edit)}>Edit</button>
-                    <button type="button" className="btn btn-secondary" onClick={() => void removePageTextEdit(edit.index)}>Delete</button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <h4>Vector shapes</h4>
-          {pageVectorEdits.length === 0 ? (
-            <p className="muted">No vector shapes on this page.</p>
-          ) : (
-            <ul className="summary-list">
-              {pageVectorEdits.map((edit) => (
-                <li key={`manage-vector-${edit.index}`} className="page-edit-row">
-                  <span>{edit.kind} {Math.round(edit.width)}×{Math.round(edit.height)}</span>
-                  <button type="button" className="btn btn-secondary" onClick={() => void removePageVectorEdit(edit.index)}>Delete</button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowPageEditsModal(false)} className="btn">Close</button>
-          </div>
-        </Modal>
+        <PageEditsModal
+          currentPage={currentPage}
+          textEdits={pageTextEdits}
+          vectorEdits={pageVectorEdits}
+          onClose={() => setShowPageEditsModal(false)}
+          onEditText={startEditPageText}
+          onRemoveText={removePageTextEdit}
+          onRemoveVector={removePageVectorEdit}
+        />
       )}
 
       {showSummaryModal && pdfSummary && (
-        <Modal onClose={() => setShowSummaryModal(false)}>
-          <h3>Document Summary</h3>
-          <p className="modal-help">
-            {pdfSummary.titleGuess ? (
-              <>
-                <strong>{pdfSummary.titleGuess}</strong>
-                {' · '}
-              </>
-            ) : null}
-            {pdfSummary.pageCount} pages · {pdfSummary.wordCount} words
-            {pdfSummary.scannedPages > 0 ? ` · ${pdfSummary.scannedPages} scanned/image-only` : ''}
-          </p>
-          <div className="summary-panel">
-            <h4>Overview</h4>
-            <p>{pdfSummary.overview}</p>
-            {pdfSummary.keyPoints.length > 0 && (
-              <>
-                <h4>Key points</h4>
-                <ul className="summary-list">
-                  {pdfSummary.keyPoints.map((point) => <li key={point}>{point}</li>)}
-                </ul>
-              </>
-            )}
-            {pdfSummary.extraction.headings.length > 0 && (
-              <>
-                <h4>Headings</h4>
-                <ul className="summary-list">
-                  {pdfSummary.extraction.headings.map((heading) => <li key={heading}>{heading}</li>)}
-                </ul>
-              </>
-            )}
-            {(pdfSummary.extraction.emails.length > 0
-              || pdfSummary.extraction.urls.length > 0
-              || pdfSummary.extraction.dates.length > 0) && (
-              <>
-                <h4>Extracted contacts &amp; dates</h4>
-                <ul className="summary-list">
-                  {pdfSummary.extraction.emails.map((email) => <li key={`email-${email}`}>{email}</li>)}
-                  {pdfSummary.extraction.urls.map((url) => <li key={`url-${url}`}>{url}</li>)}
-                  {pdfSummary.extraction.dates.map((date) => <li key={`date-${date}`}>{date}</li>)}
-                </ul>
-              </>
-            )}
-          </div>
-          <div className="modal-actions">
-            <button onClick={() => setShowSummaryModal(false)} className="btn btn-secondary">Close</button>
-            <button onClick={() => void handleCopySummary()} className="btn">Copy</button>
-            <button onClick={() => void handleSaveSummary()} className="btn btn-active">Save summary</button>
-          </div>
-        </Modal>
+        <DocumentSummaryModal
+          summary={pdfSummary}
+          onClose={() => setShowSummaryModal(false)}
+          onCopy={handleCopySummary}
+          onSave={handleSaveSummary}
+        />
       )}
 
       {showTesseractModal && (
-        <Modal onClose={closeTesseractReminderModal}>
-          <h3>Read text from scanned PDFs (optional)</h3>
-          <p className="modal-help">{tesseractInstallGuide.summary}</p>
-          <p className="modal-help">{tesseractInstallGuide.licenseNote}</p>
-          <ol className="modal-steps">
-            {tesseractInstallGuide.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-          {tesseractInstallGuide.installCommand && (
-            <>
-              <label htmlFor="tesseract-install-command">Install command</label>
-              <div className="modal-path-row">
-                <input
-                  id="tesseract-install-command"
-                  type="text"
-                  readOnly
-                  value={tesseractInstallGuide.installCommand}
-                  className="modal-input"
-                />
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(tesseractInstallGuide.installCommand ?? '');
-                    showToast('Install command copied');
-                  }}
-                >
-                  Copy
-                </button>
-              </div>
-            </>
-          )}
-          {tesseractInstallGuide.downloadUrl && (
-            <p className="modal-help">
-              <a href={tesseractInstallGuide.downloadUrl} target="_blank" rel="noreferrer">
-                {tesseractInstallGuide.platform === 'windows'
-                  ? 'Download Tesseract for Windows'
-                  : 'Tesseract project page'}
-              </a>
-            </p>
-          )}
-          <div className="modal-actions modal-actions-split">
-            <label className="modal-checkbox-row">
-              <input
-                type="checkbox"
-                checked={tesseractDoNotRemind}
-                onChange={(e) => setTesseractDoNotRemind(e.target.checked)}
-              />
-              <span>Do not remind me again</span>
-            </label>
-            <button type="button" onClick={closeTesseractReminderModal} className="btn btn-active">
-              Close
-            </button>
-          </div>
-        </Modal>
+        <TesseractReminderModal
+          guide={tesseractInstallGuide}
+          doNotRemind={tesseractDoNotRemind}
+          onDoNotRemindChange={setTesseractDoNotRemind}
+          onClose={closeTesseractReminderModal}
+          onCopyInstallCommand={() => {
+            void navigator.clipboard.writeText(tesseractInstallGuide.installCommand ?? '');
+            showToast('Install command copied');
+          }}
+        />
       )}
 
       {showMarkdownSaveAsModal && (
-        <Modal onClose={() => setShowMarkdownSaveAsModal(false)}>
-          <h3>Save Markdown As</h3>
-          <label>Save to path:</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={markdownSaveAsPath}
-              onChange={(e) => setMarkdownSaveAsPath(e.target.value)}
-              className="modal-input"
-              placeholder="/path/to/output.md"
-            />
-            {nativeDialogs && (
-              <button onClick={() => void chooseMarkdownSaveAsNative()} className="btn">Choose location…</button>
-            )}
-          </div>
-          <div className="modal-actions">
-            <button onClick={() => setShowMarkdownSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleMarkdownSaveAs} className="btn" disabled={!markdownSaveAsPath.trim()}>Save</button>
-          </div>
-        </Modal>
+        <MarkdownSaveAsModal
+          outputPath={markdownSaveAsPath}
+          nativeDialogs={nativeDialogs}
+          onOutputPathChange={setMarkdownSaveAsPath}
+          onClose={() => setShowMarkdownSaveAsModal(false)}
+          onChooseNative={chooseMarkdownSaveAsNative}
+          onSave={handleMarkdownSaveAs}
+        />
       )}
 
       {showPasswordModal && (
-        <Modal onClose={() => { setShowPasswordModal(false); setPendingEncryptedPath(''); }}>
-          <h3>Password required</h3>
-          <p className="modal-help">This PDF is encrypted. Enter the user password to open it.</p>
-          <label>Password:</label>
-          <input
-            type="password"
-            value={pdfPasswordDraft}
-            onChange={(e) => setPdfPasswordDraft(e.target.value)}
-            className="modal-input"
-            onKeyDown={(e) => { if (e.key === 'Enter') void handleOpenEncryptedPdf(); }}
-          />
-          <div className="modal-actions">
-            <button onClick={() => { setShowPasswordModal(false); setPendingEncryptedPath(''); }} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleOpenEncryptedPdf()} className="btn" disabled={!pdfPasswordDraft}>Open</button>
-          </div>
-        </Modal>
+        <PasswordModal
+          password={pdfPasswordDraft}
+          onPasswordChange={setPdfPasswordDraft}
+          onClose={closePasswordModal}
+          onOpen={handleOpenEncryptedPdf}
+        />
       )}
 
       {showMetadataModal && (
-        <Modal onClose={() => setShowMetadataModal(false)}>
-          <h3>Document metadata</h3>
-          <p className="modal-help">Edits the PDF Info dictionary in the working copy. Save the document to write changes to your file.</p>
-          <label>Title:</label>
-          <input type="text" value={metadataTitle} onChange={(e) => setMetadataTitle(e.target.value)} className="modal-input" />
-          <label>Author:</label>
-          <input type="text" value={metadataAuthor} onChange={(e) => setMetadataAuthor(e.target.value)} className="modal-input" />
-          <label>Subject:</label>
-          <input type="text" value={metadataSubject} onChange={(e) => setMetadataSubject(e.target.value)} className="modal-input" />
-          <label>Keywords:</label>
-          <input type="text" value={metadataKeywords} onChange={(e) => setMetadataKeywords(e.target.value)} className="modal-input" />
-          <label>Creator:</label>
-          <input type="text" value={metadataCreator} onChange={(e) => setMetadataCreator(e.target.value)} className="modal-input" />
-          <label>Producer:</label>
-          <input type="text" value={metadataProducer} onChange={(e) => setMetadataProducer(e.target.value)} className="modal-input" />
-          {metadataCreationDate && (
-            <p className="modal-help">Creation date: <code>{metadataCreationDate}</code></p>
-          )}
-          {metadataModDate && (
-            <p className="modal-help">Modified date: <code>{metadataModDate}</code></p>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowMetadataModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleClearPdfMetadata()} className="btn btn-secondary">Clear all</button>
-            <button onClick={() => void handleSaveMetadata()} className="btn">Apply</button>
-          </div>
-        </Modal>
+        <MetadataModal
+          title={metadataTitle}
+          author={metadataAuthor}
+          subject={metadataSubject}
+          keywords={metadataKeywords}
+          creator={metadataCreator}
+          producer={metadataProducer}
+          creationDate={metadataCreationDate}
+          modDate={metadataModDate}
+          onTitleChange={setMetadataTitle}
+          onAuthorChange={setMetadataAuthor}
+          onSubjectChange={setMetadataSubject}
+          onKeywordsChange={setMetadataKeywords}
+          onCreatorChange={setMetadataCreator}
+          onProducerChange={setMetadataProducer}
+          onClose={() => setShowMetadataModal(false)}
+          onClear={handleClearPdfMetadata}
+          onApply={handleSaveMetadata}
+        />
       )}
 
       {showSignModal && (
-        <Modal onClose={() => setShowSignModal(false)}>
-          <h3>Digital signature</h3>
-          <p className="modal-help">
-            Sign the open document with a PKCS#12 identity (.p12/.pfx). The signature is embedded in the working copy; use Save to write it to your file.
-          </p>
-          <label>Certificate (.p12 / .pfx):</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={signCertPath}
-              onChange={(e) => setSignCertPath(e.target.value)}
-              className="modal-input"
-              placeholder="/path/to/identity.p12"
-            />
-            {nativeDialogs && (
-              <button type="button" onClick={() => void chooseSignCertNative()} className="btn">Choose file…</button>
-            )}
-          </div>
-          <label>Certificate password:</label>
-          <input
-            type="password"
-            value={signCertPassword}
-            onChange={(e) => setSignCertPassword(e.target.value)}
-            className="modal-input"
-          />
-          <label>Reason (optional):</label>
-          <input
-            type="text"
-            value={signReason}
-            onChange={(e) => setSignReason(e.target.value)}
-            className="modal-input"
-            placeholder="Approved"
-          />
-          <label>Location (optional):</label>
-          <input
-            type="text"
-            value={signLocation}
-            onChange={(e) => setSignLocation(e.target.value)}
-            className="modal-input"
-            placeholder="Office"
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowSignModal(false)} className="btn btn-secondary">Cancel</button>
-            <button
-              onClick={() => void handleSignPdf()}
-              className="btn"
-              disabled={!signCertPath.trim() || !signCertPassword}
-            >
-              Sign PDF
-            </button>
-          </div>
-        </Modal>
+        <SignPdfModal
+          certPath={signCertPath}
+          certPassword={signCertPassword}
+          reason={signReason}
+          location={signLocation}
+          nativeDialogs={nativeDialogs}
+          onCertPathChange={setSignCertPath}
+          onCertPasswordChange={setSignCertPassword}
+          onReasonChange={setSignReason}
+          onLocationChange={setSignLocation}
+          onClose={() => setShowSignModal(false)}
+          onChooseCertNative={chooseSignCertNative}
+          onSign={handleSignPdf}
+        />
       )}
 
       {showProtectModal && (
-        <Modal onClose={() => setShowProtectModal(false)}>
-          <h3>Password protect</h3>
-          <p className="modal-help">Writes an encrypted copy as <code>&lt;name&gt;_protected.pdf</code> beside the working file. The open document stays editable.</p>
-          <label>User password:</label>
-          <input
-            type="password"
-            value={protectUserPassword}
-            onChange={(e) => setProtectUserPassword(e.target.value)}
-            className="modal-input"
-          />
-          <label>Confirm user password:</label>
-          <input
-            type="password"
-            value={protectUserPasswordConfirm}
-            onChange={(e) => setProtectUserPasswordConfirm(e.target.value)}
-            className="modal-input"
-          />
-          <label>Owner password (optional):</label>
-          <input
-            type="password"
-            value={protectOwnerPassword}
-            onChange={(e) => setProtectOwnerPassword(e.target.value)}
-            className="modal-input"
-            placeholder="Defaults to user password"
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowProtectModal(false)} className="btn btn-secondary">Cancel</button>
-            <button
-              onClick={() => void handleProtectPdf()}
-              className="btn"
-              disabled={!protectUserPassword || !protectUserPasswordConfirm}
-            >
-              Protect
-            </button>
-          </div>
-        </Modal>
+        <ProtectPdfModal
+          userPassword={protectUserPassword}
+          userPasswordConfirm={protectUserPasswordConfirm}
+          ownerPassword={protectOwnerPassword}
+          onUserPasswordChange={setProtectUserPassword}
+          onUserPasswordConfirmChange={setProtectUserPasswordConfirm}
+          onOwnerPasswordChange={setProtectOwnerPassword}
+          onClose={() => setShowProtectModal(false)}
+          onProtect={handleProtectPdf}
+        />
       )}
 
       {showSaveAsModal && (
-        <Modal onClose={() => setShowSaveAsModal(false)}>
-          <h3>Save As</h3>
-          <label>Save to path:</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={saveAsPath}
-              onChange={(e) => setSaveAsPath(e.target.value)}
-              className="modal-input"
-              placeholder="/path/to/output.pdf"
-            />
-            {nativeDialogs && (
-              <button onClick={() => void chooseSaveAsNative()} className="btn">Choose location…</button>
-            )}
-          </div>
-          <div className="modal-actions">
-            <button onClick={() => setShowSaveAsModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleSaveAs} className="btn" disabled={!saveAsPath.trim()}>Save</button>
-          </div>
-        </Modal>
+        <SaveAsModal
+          outputPath={saveAsPath}
+          nativeDialogs={nativeDialogs}
+          onOutputPathChange={setSaveAsPath}
+          onClose={() => setShowSaveAsModal(false)}
+          onChooseNative={chooseSaveAsNative}
+          onSave={handleSaveAs}
+        />
       )}
 
       {showUnsavedModal && (
-        <Modal onClose={() => resolveUnsaved('cancel')}>
-          <h3>Unsaved changes</h3>
-          <p className="modal-help">You have unsaved edits to this document. Save them before continuing?</p>
-          <div className="modal-actions">
-            <button onClick={() => resolveUnsaved('cancel')} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => resolveUnsaved('discard')} className="btn">Discard</button>
-            <button onClick={() => resolveUnsaved('save')} className="btn btn-active">Save</button>
-          </div>
-        </Modal>
+        <UnsavedChangesModal
+          onClose={() => resolveUnsaved('cancel')}
+          onChoose={resolveUnsaved}
+        />
       )}
 
-      {/* PDF Browser Modal */}
       {showBrowserModal && (
-        <Modal onClose={() => setShowBrowserModal(false)}>
-          <h3>Browse PDF</h3>
-          <label>Folder:</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={browserPathInput}
-              onChange={(e) => setBrowserPathInput(e.target.value)}
-              onKeyDown={(e) => onFieldKeyDown(e, commitBrowserPath)}
-              className="modal-input"
-            />
-            <button onClick={commitBrowserPath} className="btn">Go</button>
-          </div>
-          <div className="file-browser-list">
-            {browserListing?.parentDir && (
-              <button className="file-browser-row" onClick={() => loadPdfBrowser(browserListing.parentDir ?? undefined)}>
-                <span className="file-browser-kind">Folder</span>
-                <span className="file-browser-name">..</span>
-              </button>
-            )}
-            {browserListing?.entries.map((entry) => (
-              <button key={entry.path} className="file-browser-row" onClick={() => handleBrowserEntryClick(entry)}>
-                <span className="file-browser-kind">{entry.isDir ? 'Folder' : 'PDF'}</span>
-                <span className="file-browser-name">{entry.name}</span>
-              </button>
-            ))}
-            {browserListing && browserListing.entries.length === 0 && (
-              <p className="muted browser-empty">No folders or PDF files here</p>
-            )}
-          </div>
-          <div className="modal-actions">
-            <button onClick={() => setShowBrowserModal(false)} className="btn btn-secondary">Cancel</button>
-          </div>
-        </Modal>
+        <PdfBrowserModal
+          pathInput={browserPathInput}
+          listing={browserListing}
+          onPathInputChange={setBrowserPathInput}
+          onClose={() => setShowBrowserModal(false)}
+          onCommitPath={commitBrowserPath}
+          onNavigateParent={(parentDir) => void loadPdfBrowser(parentDir)}
+          onEntryClick={(entry) => void handleBrowserEntryClick(entry)}
+        />
       )}
 
       {/* Print surface — hidden on screen, shown only by the print stylesheet */}
