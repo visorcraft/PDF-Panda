@@ -1,3 +1,4 @@
+pub mod annotation_markup;
 pub mod annotations;
 pub mod bookmarks;
 pub mod browser;
@@ -17,6 +18,7 @@ pub mod metadata;
 pub mod ocr;
 pub mod optimize;
 pub mod page_decor;
+pub mod page_margins;
 pub mod page_ops;
 pub mod page_sizes;
 pub mod page_text;

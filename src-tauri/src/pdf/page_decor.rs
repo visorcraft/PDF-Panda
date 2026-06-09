@@ -1,4 +1,5 @@
 use crate::pdf::content::append_page_content;
+use crate::pdf::coords::{page_media_box, VIEWER_PAGE_H, VIEWER_PAGE_W};
 use crate::pdf::page_text::{ensure_helvetica_font, escape_pdf_literal_string, viewer_point_to_pdf};
 use lopdf::{Dictionary, Document, Object, ObjectId, Stream};
 use std::path::Path;
@@ -163,4 +164,155 @@ pub fn flatten_annotations(path: &Path, start_page: u32, end_page: u32) -> Resul
     }
     doc.save(path).map_err(|e| e.to_string())?;
     Ok(removed)
+}
+
+pub fn add_page_header(path: &Path, start_page: u32, end_page: u32, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Header text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut stamped = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+pub fn add_page_footer(path: &Path, start_page: u32, end_page: u32, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Footer text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut stamped = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+pub fn build_page_border_ops(doc: &Document, page_id: ObjectId, inset: f64) -> Result<String, String> {
+    let media = page_media_box(doc, page_id)?;
+    let mw = media[2] - media[0];
+    let mh = media[3] - media[1];
+    if mw <= 0.0 || mh <= 0.0 {
+        return Err("Invalid page size".to_string());
+    }
+    let pad_x = inset * mw / VIEWER_PAGE_W;
+    let pad_y = inset * mh / VIEWER_PAGE_H;
+    let x = media[0] + pad_x;
+    let y = media[1] + pad_y;
+    let w = mw - 2.0 * pad_x;
+    let h = mh - 2.0 * pad_y;
+    if w <= 0.0 || h <= 0.0 {
+        return Err("Border inset is too large".to_string());
+    }
+    Ok(format!("\nq 1 w 0 0 0 RG {x} {y} {w} {h} re S Q\n", x = x, y = y, w = w, h = h))
+}
+
+pub fn add_page_border(path: &Path, start_page: u32, end_page: u32, inset: f64) -> Result<u32, String> {
+    if inset < 0.0 {
+        return Err("Inset must be non-negative".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let mut bordered = 0u32;
+    for page_index in start_page..=end_page {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let ops = build_page_border_ops(&doc, page_id, inset)?;
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        bordered += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(bordered)
+}
+
+pub fn add_page_header_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Header text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut stamped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+pub fn add_page_footer_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Footer text cannot be empty".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut stamped = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
+        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        stamped += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(stamped)
+}
+
+pub fn add_page_border_by_parity(path: &Path, odd: bool, inset: f64) -> Result<u32, String> {
+    if inset < 0.0 {
+        return Err("Inset must be non-negative".to_string());
+    }
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let total = doc.get_pages().len() as u32;
+    let mut bordered = 0u32;
+    for page_index in 0..total {
+        if (page_index % 2 == 0) != odd {
+            continue;
+        }
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let ops = build_page_border_ops(&doc, page_id, inset)?;
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        bordered += 1;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(bordered)
 }

@@ -3,10 +3,10 @@
 mod licenses;
 mod pdf;
 
-use pdf::annotations::{annot_is_redaction, annot_panda_stamp_kind, append_page_annotation};
+use pdf::annotations::append_page_annotation;
 use pdf::bookmarks::{collect_outline_items, flat_outline_ids, remove_outline_item, PdfBookmarkEntry};
 use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
-use pdf::coords::{page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
+use pdf::coords::{page_media_box, viewer_rect_to_pdf};
 use pdf::crop::apply_crop_margins;
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
 use pdf::fonts::dedup_fonts_after_insert;
@@ -28,6 +28,8 @@ use pdf::ocr::{
 #[cfg(test)]
 use pdf::ocr::{ocr_page_segmentation_mode, os_release_value};
 use pdf::page_decor::{append_outline_item, build_page_number_ops, build_watermark_ops, create_blank_page};
+use pdf::page_margins::{apply_expand_margins, apply_shrink_margins, page_size_preset_dims};
+use pdf::page_decor::build_page_border_ops;
 use pdf::page_sizes::PdfPageSize;
 use pdf::page_text::{ensure_helvetica_font, viewer_point_to_pdf};
 use pdf::page_tree::{flatten_pages, get_pages_kids, inherited_page_attr, set_pages_kids};
@@ -484,53 +486,13 @@ fn clear_pdf_bookmarks(path: String) -> Result<u32, String> {
 /// Stamp header text near the top of each page in the range.
 #[tauri::command]
 fn add_page_header(path: String, start_page: u32, end_page: u32, text: String) -> Result<u32, String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Header text cannot be empty".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut stamped = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
-        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(stamped)
+    pdf::page_decor::add_page_header(&PathBuf::from(path), start_page, end_page, &text)
 }
 
 /// Stamp footer text near the bottom of each page in the range.
 #[tauri::command]
 fn add_page_footer(path: String, start_page: u32, end_page: u32, text: String) -> Result<u32, String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Footer text cannot be empty".to_string());
-    }
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut stamped = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
-        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(stamped)
+    pdf::page_decor::add_page_footer(&PathBuf::from(&path), start_page, end_page, &text)
 }
 
 /// Swap two pages by 0-based index.
@@ -685,38 +647,10 @@ fn duplicate_all_pages(path: String) -> Result<u32, String> {
     duplicate_page_range(path, 0, total - 1)
 }
 
-fn page_size_preset_dims(preset: &str) -> Result<(f64, f64), String> {
-    match preset.to_ascii_lowercase().as_str() {
-        "letter" => Ok((612.0, 792.0)),
-        "a4" => Ok((595.28, 841.89)),
-        "legal" => Ok((612.0, 1008.0)),
-        _ => Err(format!("Unknown page size preset: {preset} (use letter, a4, or legal)")),
-    }
-}
-
 /// Set `/MediaBox` on each page in the range to a standard paper size (points).
 #[tauri::command]
 fn set_page_size(path: String, start_page: u32, end_page: u32, preset: String) -> Result<u32, String> {
-    let (w, h) = page_size_preset_dims(&preset)?;
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut resized = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let page = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-        page.set(
-            "MediaBox",
-            Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(w as f32), Object::Real(h as f32)]),
-        );
-        page.remove(b"CropBox");
-        resized += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(resized)
+    pdf::page_margins::set_page_size(&PathBuf::from(&path), start_page, end_page, &preset)
 }
 
 /// Write a decrypted sibling `<stem>_decrypted.pdf` next to an encrypted `path`.
@@ -883,46 +817,10 @@ fn split_every_n_pages(path: String, pages_per_file: u32) -> Result<Vec<String>,
     split_pdf(path, ranges)
 }
 
-fn build_page_border_ops(doc: &Document, page_id: ObjectId, inset: f64) -> Result<String, String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 {
-        return Err("Invalid page size".to_string());
-    }
-    let pad_x = inset * mw / VIEWER_PAGE_W;
-    let pad_y = inset * mh / VIEWER_PAGE_H;
-    let x = media[0] + pad_x;
-    let y = media[1] + pad_y;
-    let w = mw - 2.0 * pad_x;
-    let h = mh - 2.0 * pad_y;
-    if w <= 0.0 || h <= 0.0 {
-        return Err("Border inset is too large".to_string());
-    }
-    Ok(format!("\nq 1 w 0 0 0 RG {x} {y} {w} {h} re S Q\n", x = x, y = y, w = w, h = h))
-}
-
 /// Draw a rectangular border inset on each page in the range (viewer pixels).
 #[tauri::command]
 fn add_page_border(path: String, start_page: u32, end_page: u32, inset: f64) -> Result<u32, String> {
-    if inset < 0.0 {
-        return Err("Inset must be non-negative".to_string());
-    }
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut bordered = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let ops = build_page_border_ops(&doc, page_id, inset)?;
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        bordered += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(bordered)
+    pdf::page_decor::add_page_border(&PathBuf::from(path), start_page, end_page, inset)
 }
 
 /// Append a bookmark for every page using `prefix` + page number.
@@ -949,40 +847,6 @@ fn duplicate_page_to_end(path: String, page_index: u32) -> Result<u32, String> {
     Ok(Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32 - 1)
 }
 
-fn apply_expand_margins(
-    doc: &mut Document,
-    page_id: ObjectId,
-    margin_top: f64,
-    margin_right: f64,
-    margin_bottom: f64,
-    margin_left: f64,
-) -> Result<(), String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 {
-        return Err("Invalid page size".to_string());
-    }
-    let left = media[0] - margin_left * mw / VIEWER_PAGE_W;
-    let bottom = media[1] - margin_bottom * mh / VIEWER_PAGE_H;
-    let right = media[2] + margin_right * mw / VIEWER_PAGE_W;
-    let top = media[3] + margin_top * mh / VIEWER_PAGE_H;
-    if right <= left || top <= bottom {
-        return Err("Expand margins are too large".to_string());
-    }
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(
-        b"MediaBox",
-        Object::Array(vec![
-            Object::Real(left as f32),
-            Object::Real(bottom as f32),
-            Object::Real(right as f32),
-            Object::Real(top as f32),
-        ]),
-    );
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
-    Ok(())
-}
-
 /// Expand `/MediaBox` outward by viewer-pixel margins on each page in the range.
 #[tauri::command]
 fn expand_page_margins(
@@ -994,23 +858,15 @@ fn expand_page_margins(
     margin_bottom: f64,
     margin_left: f64,
 ) -> Result<u32, String> {
-    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
-        return Err("Margins must be non-negative".to_string());
-    }
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut expanded = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        apply_expand_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
-        expanded += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(expanded)
+    pdf::page_margins::expand_page_margins(
+        &PathBuf::from(path),
+        start_page,
+        end_page,
+        margin_top,
+        margin_right,
+        margin_bottom,
+        margin_left,
+    )
 }
 
 /// Clear `/Rotate` on every page in `start_page`..=`end_page`.
@@ -1203,40 +1059,6 @@ fn sort_pages_by_size(path: String, descending: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn apply_shrink_margins(
-    doc: &mut Document,
-    page_id: ObjectId,
-    margin_top: f64,
-    margin_right: f64,
-    margin_bottom: f64,
-    margin_left: f64,
-) -> Result<(), String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 {
-        return Err("Invalid page size".to_string());
-    }
-    let left = media[0] + margin_left * mw / VIEWER_PAGE_W;
-    let bottom = media[1] + margin_bottom * mh / VIEWER_PAGE_H;
-    let right = media[2] - margin_right * mw / VIEWER_PAGE_W;
-    let top = media[3] - margin_top * mh / VIEWER_PAGE_H;
-    if right <= left || top <= bottom {
-        return Err("Shrink margins are too large".to_string());
-    }
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(
-        b"MediaBox",
-        Object::Array(vec![
-            Object::Real(left as f32),
-            Object::Real(bottom as f32),
-            Object::Real(right as f32),
-            Object::Real(top as f32),
-        ]),
-    );
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
-    Ok(())
-}
-
 /// Deep-copy `start_page`..=`end_page` and insert the copies immediately before the range.
 #[tauri::command]
 fn duplicate_page_range_before(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
@@ -1262,23 +1084,15 @@ fn shrink_page_margins(
     margin_bottom: f64,
     margin_left: f64,
 ) -> Result<u32, String> {
-    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
-        return Err("Margins must be non-negative".to_string());
-    }
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut shrunk = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        apply_shrink_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
-        shrunk += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(shrunk)
+    pdf::page_margins::shrink_page_margins(
+        &PathBuf::from(path),
+        start_page,
+        end_page,
+        margin_top,
+        margin_right,
+        margin_bottom,
+        margin_left,
+    )
 }
 
 /// Rotate pages 1, 3, 5, … by 90° clockwise.
@@ -2259,106 +2073,40 @@ fn add_text_watermark_even_pages(path: String, text: String) -> Result<u32, Stri
     add_text_watermark_by_parity(&PathBuf::from(&path), false, &text)
 }
 
-fn add_page_header_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Header text cannot be empty".to_string());
-    }
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut stamped = 0u32;
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
-        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
-    doc.save(path).map_err(|e| e.to_string())?;
-    Ok(stamped)
-}
-
 /// Stamp header text on odd-indexed pages only.
 #[tauri::command]
 fn add_page_header_odd_pages(path: String, text: String) -> Result<u32, String> {
-    add_page_header_by_parity(&PathBuf::from(&path), true, &text)
+    pdf::page_decor::add_page_header_by_parity(&PathBuf::from(&path), true, &text)
 }
 
 /// Stamp header text on even-indexed pages only.
 #[tauri::command]
 fn add_page_header_even_pages(path: String, text: String) -> Result<u32, String> {
-    add_page_header_by_parity(&PathBuf::from(&path), false, &text)
-}
-
-fn add_page_footer_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Footer text cannot be empty".to_string());
-    }
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut stamped = 0u32;
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
-        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
-    doc.save(path).map_err(|e| e.to_string())?;
-    Ok(stamped)
+    pdf::page_decor::add_page_header_by_parity(&PathBuf::from(&path), false, &text)
 }
 
 /// Stamp footer text on odd-indexed pages only.
 #[tauri::command]
 fn add_page_footer_odd_pages(path: String, text: String) -> Result<u32, String> {
-    add_page_footer_by_parity(&PathBuf::from(&path), true, &text)
+    pdf::page_decor::add_page_footer_by_parity(&PathBuf::from(&path), true, &text)
 }
 
 /// Stamp footer text on even-indexed pages only.
 #[tauri::command]
 fn add_page_footer_even_pages(path: String, text: String) -> Result<u32, String> {
-    add_page_footer_by_parity(&PathBuf::from(&path), false, &text)
-}
-
-fn add_page_border_by_parity(path: &Path, odd: bool, inset: f64) -> Result<u32, String> {
-    if inset < 0.0 {
-        return Err("Inset must be non-negative".to_string());
-    }
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut bordered = 0u32;
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let ops = build_page_border_ops(&doc, page_id, inset)?;
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        bordered += 1;
-    }
-    doc.save(path).map_err(|e| e.to_string())?;
-    Ok(bordered)
+    pdf::page_decor::add_page_footer_by_parity(&PathBuf::from(&path), false, &text)
 }
 
 /// Draw a page border on odd-indexed pages only.
 #[tauri::command]
 fn add_page_border_odd_pages(path: String, inset: f64) -> Result<u32, String> {
-    add_page_border_by_parity(&PathBuf::from(&path), true, inset)
+    pdf::page_decor::add_page_border_by_parity(&PathBuf::from(&path), true, inset)
 }
 
 /// Draw a page border on even-indexed pages only.
 #[tauri::command]
 fn add_page_border_even_pages(path: String, inset: f64) -> Result<u32, String> {
-    add_page_border_by_parity(&PathBuf::from(&path), false, inset)
+    pdf::page_decor::add_page_border_by_parity(&PathBuf::from(&path), false, inset)
 }
 
 fn bookmark_pages_by_parity(path: &Path, odd: bool, prefix: Option<String>) -> Result<u32, String> {
@@ -2390,38 +2138,16 @@ fn bookmark_even_pages(path: String, prefix: Option<String>) -> Result<u32, Stri
     bookmark_pages_by_parity(&PathBuf::from(&path), false, prefix)
 }
 
-fn set_page_size_by_parity(path: &Path, odd: bool, preset: &str) -> Result<u32, String> {
-    let (w, h) = page_size_preset_dims(preset)?;
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    let mut resized = 0u32;
-    for page_index in 0..total {
-        if (page_index % 2 == 0) != odd {
-            continue;
-        }
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let page = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-        page.set(
-            "MediaBox",
-            Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(w as f32), Object::Real(h as f32)]),
-        );
-        page.remove(b"CropBox");
-        resized += 1;
-    }
-    doc.save(path).map_err(|e| e.to_string())?;
-    Ok(resized)
-}
-
 /// Set MediaBox preset on odd-indexed pages only.
 #[tauri::command]
 fn set_page_size_odd_pages(path: String, preset: String) -> Result<u32, String> {
-    set_page_size_by_parity(&PathBuf::from(&path), true, &preset)
+    pdf::page_margins::set_page_size_by_parity(&PathBuf::from(&path), true, &preset)
 }
 
 /// Set MediaBox preset on even-indexed pages only.
 #[tauri::command]
 fn set_page_size_even_pages(path: String, preset: String) -> Result<u32, String> {
-    set_page_size_by_parity(&PathBuf::from(&path), false, &preset)
+    pdf::page_margins::set_page_size_by_parity(&PathBuf::from(&path), false, &preset)
 }
 
 fn insert_blank_by_parity(path: &Path, odd: bool, after: bool) -> Result<u32, String> {
@@ -5870,564 +5596,79 @@ fn remove_text_note(path: String, page_index: u32, index: u32) -> Result<(), Str
     pdf::annotations::remove_text_note(&PathBuf::from(path), page_index, index)
 }
 
-fn ink_bbox(points: &[f64]) -> [f64; 4] {
-    let mut min_x = f64::INFINITY;
-    let mut min_y = f64::INFINITY;
-    let mut max_x = f64::NEG_INFINITY;
-    let mut max_y = f64::NEG_INFINITY;
-    for chunk in points.chunks(2) {
-        if chunk.len() == 2 {
-            min_x = min_x.min(chunk[0]);
-            min_y = min_y.min(chunk[1]);
-            max_x = max_x.max(chunk[0]);
-            max_y = max_y.max(chunk[1]);
-        }
-    }
-    [min_x, min_y, max_x, max_y]
-}
-
 #[tauri::command]
 fn add_ink_stroke(path: String, page_index: u32, points: Vec<f64>) -> Result<(), String> {
-    if points.len() < 4 || !points.len().is_multiple_of(2) {
-        return Err("Ink stroke needs at least two points".to_string());
-    }
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let bbox = ink_bbox(&points);
-    let ink_coords: Vec<Object> = points.iter().map(|p| Object::Real(*p as f32)).collect();
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Ink".to_vec())),
-        (
-            b"Rect".to_vec(),
-            Object::Array(vec![
-                Object::Real(bbox[0] as f32),
-                Object::Real(bbox[1] as f32),
-                Object::Real(bbox[2] as f32),
-                Object::Real(bbox[3] as f32),
-            ]),
-        ),
-        (b"InkList".to_vec(), Object::Array(vec![Object::Array(ink_coords)])),
-        (b"C".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(1.0)])),
-    ])));
-
-    let annots = doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
-
-    match annots {
-        Ok(Object::Array(ref mut arr)) => {
-            arr.push(Object::Reference(annot));
-        }
-        _ => {
-            doc.get_dictionary_mut(*page_id)
-                .map_err(|e| e.to_string())?
-                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
-        }
-    }
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::add_ink_stroke(&PathBuf::from(path), page_index, points)
 }
 
-/// Remove the `index`-th ink annotation (0-based among `Ink` subtypes).
 #[tauri::command]
 fn remove_ink_stroke(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
-        Ok(Object::Array(arr)) => arr.clone(),
-        _ => return Err("No annotations on this page".to_string()),
-    };
-
-    let mut ink_count = 0u32;
-    let mut target_pos: Option<usize> = None;
-    for (pos, annot_ref) in annots.iter().enumerate() {
-        let Object::Reference(id) = annot_ref else {
-            continue;
-        };
-        let is_ink = doc
-            .get_object(*id)
-            .ok()
-            .and_then(|o| o.as_dict().ok())
-            .and_then(|d| d.get(b"Subtype").ok())
-            .and_then(|o| o.as_name().ok())
-            .map(|n| String::from_utf8_lossy(n) == "Ink")
-            .unwrap_or(false);
-        if is_ink {
-            if ink_count == index {
-                target_pos = Some(pos);
-                break;
-            }
-            ink_count += 1;
-        }
-    }
-
-    let pos = target_pos.ok_or("Ink stroke not found".to_string())?;
-    let mut new_annots = annots;
-    new_annots.remove(pos);
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-fn shape_rect_object(x1: f64, y1: f64, x2: f64, y2: f64) -> Object {
-    Object::Array(vec![
-        Object::Real(x1 as f32),
-        Object::Real(y1 as f32),
-        Object::Real(x2 as f32),
-        Object::Real(y2 as f32),
-    ])
-}
-
-fn shape_outline_fields(x1: f64, y1: f64, x2: f64, y2: f64) -> Vec<(Vec<u8>, Object)> {
-    vec![
-        (b"Rect".to_vec(), shape_rect_object(x1.min(x2), y1.min(y2), x1.max(x2), y1.max(y2))),
-        (b"C".to_vec(), Object::Array(vec![Object::Real(1.0), Object::Real(0.0), Object::Real(0.0)])),
-        (b"Border".to_vec(), Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(2.0)])),
-    ]
-}
-
-fn push_page_annotation(doc: &mut Document, page_id: ObjectId, annot: ObjectId) -> Result<(), String> {
-    let annots = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
-    match annots {
-        Ok(Object::Array(ref mut arr)) => arr.push(Object::Reference(annot)),
-        _ => {
-            doc.get_dictionary_mut(page_id)
-                .map_err(|e| e.to_string())?
-                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
-        }
-    }
-    Ok(())
-}
-
-fn remove_annotation_by_subtype(
-    doc: &mut Document,
-    page_id: ObjectId,
-    subtype: &str,
-    index: u32,
-    not_found_msg: &str,
-) -> Result<(), String> {
-    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
-        Ok(Object::Array(arr)) => arr.clone(),
-        _ => return Err("No annotations on this page".to_string()),
-    };
-
-    let mut match_count = 0u32;
-    let mut target_pos: Option<usize> = None;
-    for (pos, annot_ref) in annots.iter().enumerate() {
-        let Object::Reference(id) = annot_ref else {
-            continue;
-        };
-        let matches = doc
-            .get_object(*id)
-            .ok()
-            .and_then(|o| o.as_dict().ok())
-            .and_then(|d| d.get(b"Subtype").ok())
-            .and_then(|o| o.as_name().ok())
-            .map(|n| String::from_utf8_lossy(n) == subtype)
-            .unwrap_or(false);
-        if matches {
-            if match_count == index {
-                target_pos = Some(pos);
-                break;
-            }
-            match_count += 1;
-        }
-    }
-
-    let pos = target_pos.ok_or_else(|| not_found_msg.to_string())?;
-    let mut new_annots = annots;
-    new_annots.remove(pos);
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
-    Ok(())
+    pdf::annotation_markup::remove_ink_stroke(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
 fn add_square(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let mut fields = vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Square".to_vec())),
-    ];
-    fields.extend(shape_outline_fields(x1, y1, x2, y2));
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(fields)));
-    push_page_annotation(&mut doc, page_id, annot)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::add_square(&PathBuf::from(path), page_index, x1, y1, x2, y2)
 }
 
 #[tauri::command]
 fn add_circle(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let mut fields = vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Circle".to_vec())),
-    ];
-    fields.extend(shape_outline_fields(x1, y1, x2, y2));
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(fields)));
-    push_page_annotation(&mut doc, page_id, annot)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::add_circle(&PathBuf::from(path), page_index, x1, y1, x2, y2)
 }
 
 #[tauri::command]
 fn add_line(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
-    if (x2 - x1).hypot(y2 - y1) < 5.0 {
-        return Err("Line is too short".to_string());
-    }
-
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let mut fields = vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Line".to_vec())),
-        (
-            b"L".to_vec(),
-            Object::Array(vec![
-                Object::Real(x1 as f32),
-                Object::Real(y1 as f32),
-                Object::Real(x2 as f32),
-                Object::Real(y2 as f32),
-            ]),
-        ),
-    ];
-    fields.extend(shape_outline_fields(x1, y1, x2, y2));
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(fields)));
-    push_page_annotation(&mut doc, page_id, annot)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::add_line(&PathBuf::from(path), page_index, x1, y1, x2, y2)
 }
 
 #[tauri::command]
 fn remove_square(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    remove_annotation_by_subtype(&mut doc, page_id, "Square", index, "Square shape not found")?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::remove_square(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
 fn remove_circle(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    remove_annotation_by_subtype(&mut doc, page_id, "Circle", index, "Circle shape not found")?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::remove_circle(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
 fn remove_line(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    remove_annotation_by_subtype(&mut doc, page_id, "Line", index, "Line shape not found")?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-const STAMP_PRESETS: &[(&str, &str)] =
-    &[("approved", "APPROVED"), ("draft", "DRAFT"), ("confidential", "CONFIDENTIAL"), ("reviewed", "REVIEWED")];
-
-const TEXT_STAMP_WIDTH: f64 = 132.0;
-const TEXT_STAMP_HEIGHT: f64 = 32.0;
-const IMAGE_STAMP_SIZE: f64 = 72.0;
-
-#[derive(serde::Serialize)]
-struct StampPresetInfo {
-    id: String,
-    label: String,
-    color: [u8; 3],
-}
-
-fn stamp_preset_label(preset: &str) -> Result<&'static str, String> {
-    STAMP_PRESETS
-        .iter()
-        .find(|(id, _)| *id == preset)
-        .map(|(_, label)| *label)
-        .ok_or_else(|| format!("Unknown stamp preset: {preset}"))
-}
-
-fn stamp_preset_color(preset: &str) -> [u8; 3] {
-    match preset {
-        "approved" => [34, 139, 34],
-        "draft" => [120, 120, 120],
-        "confidential" => [178, 34, 34],
-        "reviewed" => [30, 90, 160],
-        _ => [100, 100, 100],
-    }
-}
-
-fn stamp_text_default_appearance(preset: &str) -> &'static str {
-    match preset {
-        "approved" => "/Helvetica-Bold 14 Tf 0.0 0.55 0.0 rg",
-        "draft" => "/Helvetica-Bold 14 Tf 0.35 0.35 0.35 rg",
-        "confidential" => "/Helvetica-Bold 14 Tf 0.7 0.1 0.1 rg",
-        "reviewed" => "/Helvetica-Bold 14 Tf 0.12 0.35 0.63 rg",
-        _ => "/Helvetica-Bold 14 Tf 0.0 0.0 0.0 rg",
-    }
-}
-
-fn remove_panda_stamp(doc: &mut Document, page_id: ObjectId, kind: &str, index: u32) -> Result<(), String> {
-    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
-        Ok(Object::Array(arr)) => arr.clone(),
-        _ => return Err("No annotations on this page".to_string()),
-    };
-
-    let mut match_count = 0u32;
-    let mut target_pos: Option<usize> = None;
-    for (pos, annot_ref) in annots.iter().enumerate() {
-        let Object::Reference(id) = annot_ref else {
-            continue;
-        };
-        let is_match = doc
-            .get_object(*id)
-            .ok()
-            .and_then(|o| o.as_dict().ok())
-            .and_then(annot_panda_stamp_kind)
-            .map(|k| k == kind)
-            .unwrap_or(false);
-        if is_match {
-            if match_count == index {
-                target_pos = Some(pos);
-                break;
-            }
-            match_count += 1;
-        }
-    }
-
-    let pos = target_pos.ok_or_else(|| format!("{kind} stamp not found"))?;
-    let mut new_annots = annots;
-    new_annots.remove(pos);
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
-    Ok(())
+    pdf::annotation_markup::remove_line(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
-fn list_stamp_presets() -> Vec<StampPresetInfo> {
-    STAMP_PRESETS
-        .iter()
-        .map(|(id, label)| StampPresetInfo {
-            id: (*id).to_string(),
-            label: (*label).to_string(),
-            color: stamp_preset_color(id),
-        })
-        .collect()
+fn list_stamp_presets() -> Vec<pdf::annotation_markup::StampPresetInfo> {
+    pdf::annotation_markup::list_stamp_presets()
 }
 
 #[tauri::command]
 fn add_text_stamp(path: String, page_index: u32, x: f64, y: f64, preset: String) -> Result<(), String> {
-    let label = stamp_preset_label(&preset)?;
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let x2 = x + TEXT_STAMP_WIDTH;
-    let y2 = y + TEXT_STAMP_HEIGHT;
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"FreeText".to_vec())),
-        (b"Rect".to_vec(), shape_rect_object(x, y, x2, y2)),
-        (b"Contents".to_vec(), Object::String(label.as_bytes().to_vec(), lopdf::StringFormat::Literal)),
-        (
-            b"DA".to_vec(),
-            Object::String(stamp_text_default_appearance(&preset).as_bytes().to_vec(), lopdf::StringFormat::Literal),
-        ),
-        (b"F".to_vec(), Object::Integer(4)),
-        (b"PandaStamp".to_vec(), Object::Name(preset.as_bytes().to_vec())),
-        (b"PandaStampKind".to_vec(), Object::Name(b"text".to_vec())),
-    ])));
-    push_page_annotation(&mut doc, page_id, annot)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-fn embed_stamp_image_xobject(doc: &mut Document, preset: &str) -> Result<ObjectId, String> {
-    let (r, g, b) = {
-        let c = stamp_preset_color(preset);
-        (c[0], c[1], c[2])
-    };
-    let width = 72u32;
-    let height = 72u32;
-    let mut rgb = Vec::with_capacity((width * height * 3) as usize);
-    for py in 0..height {
-        for px in 0..width {
-            let edge = px < 2 || py < 2 || px >= width - 2 || py >= height - 2;
-            let (pr, pg, pb) =
-                if edge { (r.saturating_sub(40), g.saturating_sub(40), b.saturating_sub(40)) } else { (r, g, b) };
-            rgb.extend_from_slice(&[pr, pg, pb]);
-        }
-    }
-    let img_id = doc.add_object(Object::Stream(Stream::new(
-        Dictionary::from_iter(vec![
-            (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
-            (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
-            (b"Width".to_vec(), Object::Integer(width as i64)),
-            (b"Height".to_vec(), Object::Integer(height as i64)),
-            (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
-            (b"BitsPerComponent".to_vec(), Object::Integer(8)),
-        ]),
-        rgb,
-    )));
-    Ok(img_id)
+    pdf::annotation_markup::add_text_stamp(&PathBuf::from(path), page_index, x, y, preset)
 }
 
 #[tauri::command]
 fn add_image_stamp(path: String, page_index: u32, x: f64, y: f64, preset: String) -> Result<(), String> {
-    stamp_preset_label(&preset)?;
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let img_id = embed_stamp_image_xobject(&mut doc, &preset)?;
-    let width = IMAGE_STAMP_SIZE;
-    let height = IMAGE_STAMP_SIZE;
-    let mut xobject_dict = Dictionary::new();
-    xobject_dict.set(b"Im1", Object::Reference(img_id));
-    let mut resources = Dictionary::new();
-    resources.set(b"XObject", Object::Dictionary(xobject_dict));
-    let form_id = doc.add_object(Object::Stream(Stream::new(
-        Dictionary::from_iter(vec![
-            (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
-            (b"Subtype".to_vec(), Object::Name(b"Form".to_vec())),
-            (
-                b"BBox".to_vec(),
-                Object::Array(vec![
-                    Object::Integer(0),
-                    Object::Integer(0),
-                    Object::Real(width as f32),
-                    Object::Real(height as f32),
-                ]),
-            ),
-            (b"Resources".to_vec(), Object::Dictionary(resources)),
-        ]),
-        format!("q {width} 0 0 {height} 0 0 cm /Im1 Do Q\n").into_bytes(),
-    )));
-    let ap = Dictionary::from_iter(vec![(b"N".to_vec(), Object::Reference(form_id))]);
-    let x2 = x + width;
-    let y2 = y + height;
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Stamp".to_vec())),
-        (b"Rect".to_vec(), shape_rect_object(x, y, x2, y2)),
-        (b"AP".to_vec(), Object::Dictionary(ap)),
-        (b"PandaStamp".to_vec(), Object::Name(preset.as_bytes().to_vec())),
-        (b"PandaStampKind".to_vec(), Object::Name(b"image".to_vec())),
-    ])));
-    push_page_annotation(&mut doc, page_id, annot)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::add_image_stamp(&PathBuf::from(path), page_index, x, y, preset)
 }
 
 #[tauri::command]
 fn remove_text_stamp(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    remove_panda_stamp(&mut doc, page_id, "text", index)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::remove_text_stamp(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
 fn remove_image_stamp(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    remove_panda_stamp(&mut doc, page_id, "image", index)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-fn remove_redaction_at_index(doc: &mut Document, page_id: ObjectId, index: u32) -> Result<(), String> {
-    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
-        Ok(Object::Array(arr)) => arr.clone(),
-        _ => return Err("No annotations on this page".to_string()),
-    };
-
-    let mut redaction_count = 0u32;
-    let mut target_pos: Option<usize> = None;
-    for (pos, annot_ref) in annots.iter().enumerate() {
-        let Object::Reference(id) = annot_ref else {
-            continue;
-        };
-        let is_redaction =
-            doc.get_object(*id).ok().and_then(|o| o.as_dict().ok()).map(annot_is_redaction).unwrap_or(false);
-        if is_redaction {
-            if redaction_count == index {
-                target_pos = Some(pos);
-                break;
-            }
-            redaction_count += 1;
-        }
-    }
-
-    let pos = target_pos.ok_or("Redaction not found".to_string())?;
-    let mut new_annots = annots;
-    new_annots.remove(pos);
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
-    Ok(())
+    pdf::annotation_markup::remove_image_stamp(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
 fn add_redaction(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Square".to_vec())),
-        (b"Rect".to_vec(), shape_rect_object(x1, y1, x2, y2)),
-        (b"C".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])),
-        (b"IC".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])),
-        (b"Border".to_vec(), Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(0.0)])),
-        (b"PandaRedact".to_vec(), Object::Boolean(true)),
-    ])));
-    push_page_annotation(&mut doc, page_id, annot)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::add_redaction(&PathBuf::from(path), page_index, x1, y1, x2, y2)
 }
 
 #[tauri::command]
 fn remove_redaction(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    remove_redaction_at_index(&mut doc, page_id, index)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotation_markup::remove_redaction(&PathBuf::from(path), page_index, index)
 }
 
 #[tauri::command]
