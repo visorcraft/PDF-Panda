@@ -1,4 +1,3 @@
-
 use super::*;
 use lopdf::{Dictionary, Stream};
 use pdf::markdown_heuristic::{
