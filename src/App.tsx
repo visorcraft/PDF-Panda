@@ -21,6 +21,11 @@ import {
   imageExportLabel,
   parityImageExportCommand,
 } from './pdf/imageExportCommands';
+import {
+  buildParityBatchPayload,
+  parityBatchMutatesPdf,
+  parityBatchNeedsRange,
+} from './pdf/parityPayload';
 import { useUndoHistory } from './pdf/useUndoHistory';
 import { type PdfAnnotation, PDF_BASE_HEIGHT, PDF_BASE_WIDTH, usePdfDocument } from './pdf/usePdfDocument';
 import { DeleteRangeModal } from './modals/DeleteRangeModal';
@@ -1535,105 +1540,22 @@ function App() {
     });
   };
 
-  const isParityDocModCommand = (command: string) => {
-    if (command.includes('_in_range')) return false;
-    return /_mod3_[0-2]_/.test(command)
-      || /_mod4_[0-3]_/.test(command)
-      || /_mod5_[0-4]_/.test(command)
-      || /_mod6_[0-5]_/.test(command);
-  };
-
-  const parityBatchNeedsRange = (command: string) =>
-    !isParityDocModCommand(command)
-    && command !== 'export_odd_pages_ico'
-    && command !== 'export_even_pages_ico';
-
-  const parityBatchMutatesPdf = (command: string) => !command.startsWith('export_') && !command.startsWith('extract_');
-
-  const buildParityBatchPayload = (command: string): Record<string, unknown> => {
-    const docWide = isParityDocModCommand(command)
-      || command === 'export_odd_pages_ico'
-      || command === 'export_even_pages_ico';
-    if (docWide) {
-      const pathOnly = { path: filePath };
-      if (command.startsWith('extract_')) {
-        return { ...pathOnly, outputPath: parityRangeOutputPath.trim() };
-      }
-      if (command.startsWith('export_')) {
-        return { ...pathOnly, outputDir: parityRangeOutputPath.trim() };
-      }
-      if (command.includes('crop_') || command.includes('expand_') || command.includes('shrink_')) {
-        return {
-          ...pathOnly,
-          marginTop: cropMarginTop,
-          marginRight: cropMarginRight,
-          marginBottom: cropMarginBottom,
-          marginLeft: cropMarginLeft,
-        };
-      }
-      if (command.includes('watermark')) {
-        return { ...pathOnly, text: watermarkText.trim() };
-      }
-      if (command.includes('header')) {
-        return { ...pathOnly, text: pageHeaderText.trim() };
-      }
-      if (command.includes('footer')) {
-        return { ...pathOnly, text: pageFooterText.trim() };
-      }
-      if (command.includes('border')) {
-        return { ...pathOnly, inset: pageBorderInset };
-      }
-      if (command.includes('page_size')) {
-        return { ...pathOnly, preset: pageSizePreset };
-      }
-      if (command.includes('bookmark') || command.includes('page_numbers')) {
-        return { ...pathOnly, prefix: pageNumbersPrefix.trim() || null };
-      }
-      if (command.includes('_by_rotation') || command.includes('_by_size')) {
-        return { ...pathOnly, descending: false };
-      }
-      return pathOnly;
-    }
-    const base = {
-      path: filePath,
-      startPage: parityRange.startPage,
-      endPage: parityRange.endPage,
-    };
-    if (command.startsWith('extract_')) {
-      return { ...base, outputPath: parityRangeOutputPath.trim() };
-    }
-    if (command.startsWith('export_')) {
-      return { ...base, outputDir: parityRangeOutputPath.trim() };
-    }
-    if (command.includes('crop_') || command.includes('expand_') || command.includes('shrink_')) {
-      return {
-        ...base,
-        marginTop: cropMarginTop,
-        marginRight: cropMarginRight,
-        marginBottom: cropMarginBottom,
-        marginLeft: cropMarginLeft,
-      };
-    }
-    if (command.includes('watermark')) {
-      return { ...base, text: watermarkText.trim() };
-    }
-    if (command.includes('header')) {
-      return { ...base, text: pageHeaderText.trim() };
-    }
-    if (command.includes('footer')) {
-      return { ...base, text: pageFooterText.trim() };
-    }
-    if (command.includes('border')) {
-      return { ...base, inset: pageBorderInset };
-    }
-    if (command.includes('page_size')) {
-      return { ...base, preset: pageSizePreset };
-    }
-    if (command.includes('bookmark') || command.includes('page_numbers')) {
-      return { ...base, prefix: pageNumbersPrefix.trim() || null };
-    }
-    return base;
-  };
+  const parityBatchContext = () => ({
+    filePath,
+    startPage: parityRange.startPage,
+    endPage: parityRange.endPage,
+    outputPath: parityRangeOutputPath,
+    marginTop: cropMarginTop,
+    marginRight: cropMarginRight,
+    marginBottom: cropMarginBottom,
+    marginLeft: cropMarginLeft,
+    watermarkText,
+    pageHeaderText,
+    pageFooterText,
+    pageBorderInset,
+    pageSizePreset,
+    pageNumbersPrefix,
+  });
 
   const openParityRangeModal = () => {
     if (!filePath || pageCount === null) return;
@@ -1653,13 +1575,13 @@ function App() {
       showToast('Output path or directory is required', 'error');
       return;
     }
+    const payload = buildParityBatchPayload(command, parityBatchContext());
     if ((command.includes('watermark') || command.includes('header') || command.includes('footer'))
-      && !buildParityBatchPayload(command).text) {
+      && !payload.text) {
       showToast('Text is required for this action', 'error');
       return;
     }
     await withLoading(async () => {
-      const payload = buildParityBatchPayload(command);
       const result = await invoke<number | string | string[] | void>(command, payload);
       if (parityBatchMutatesPdf(command)) {
         markPdfEdited();

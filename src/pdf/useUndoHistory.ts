@@ -18,6 +18,10 @@ export type UseUndoHistoryDeps = {
   setIsDirty: (dirty: boolean) => void;
 };
 
+function discardHistoryEntries(entries: HistorySnapshot[]) {
+  entries.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
+}
+
 export function useUndoHistory({
   filePathRef,
   showToast,
@@ -39,6 +43,15 @@ export function useUndoHistory({
     setCanRedo(histIdxRef.current < historyRef.current.length - 1);
     setIsDirty(histIdxRef.current !== savedIdxRef.current);
   }, [setIsDirty]);
+
+  const clearHistoryState = useCallback(() => {
+    historyRef.current = [];
+    histIdxRef.current = 0;
+    savedIdxRef.current = 0;
+    deltaSnapshotNotifiedRef.current = false;
+    setCanUndo(false);
+    setCanRedo(false);
+  }, []);
 
   const pruneUndoHistory = useCallback(async () => {
     while (historyRef.current.length > MAX_UNDO_HISTORY) {
@@ -71,16 +84,15 @@ export function useUndoHistory({
         deltaSnapshotNotifiedRef.current = true;
         showToast('Large file: using compact undo snapshots', 'success');
       }
-      historyRef.current.slice(histIdxRef.current + 1).forEach((entry) => {
-        void invoke('discard_history_entry', { entry }).catch(() => {});
-      });
+      const redoBranch = historyRef.current.slice(histIdxRef.current + 1);
+      discardHistoryEntries(redoBranch);
       historyRef.current = historyRef.current.slice(0, histIdxRef.current + 1);
       historyRef.current.push(snapshot);
       histIdxRef.current = historyRef.current.length - 1;
       await pruneUndoHistory();
       refreshUndoRedoState();
-    } catch {
-      /* history is best-effort */
+    } catch (err) {
+      showToast(`Undo snapshot failed: ${String(err)}`, 'error');
     }
   }, [filePathRef, pruneUndoHistory, refreshUndoRedoState, showToast]);
 
@@ -92,16 +104,24 @@ export function useUndoHistory({
   }, [recordHistory, setIsDirty, setPdfRevision, setViewMode]);
 
   const resetHistoryForOpen = useCallback(async (working: string) => {
-    historyRef.current.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
-    const baseline = await invoke<HistorySnapshot>('snapshot_pdf_entry', { history: [], source: working });
-    historyRef.current = [baseline];
-    histIdxRef.current = 0;
-    savedIdxRef.current = 0;
-    deltaSnapshotNotifiedRef.current = false;
-    setCanUndo(false);
-    setCanRedo(false);
-    setIsDirty(false);
-  }, [setIsDirty]);
+    const oldHistory = historyRef.current;
+    try {
+      const baseline = await invoke<HistorySnapshot>('snapshot_pdf_entry', { history: [], source: working });
+      discardHistoryEntries(oldHistory);
+      historyRef.current = [baseline];
+      histIdxRef.current = 0;
+      savedIdxRef.current = 0;
+      deltaSnapshotNotifiedRef.current = false;
+      setCanUndo(false);
+      setCanRedo(false);
+      setIsDirty(false);
+    } catch (err) {
+      discardHistoryEntries(oldHistory);
+      clearHistoryState();
+      setIsDirty(false);
+      showToast(`Undo history unavailable: ${String(err)}`, 'error');
+    }
+  }, [clearHistoryState, setIsDirty, showToast]);
 
   const markSaved = useCallback(() => {
     savedIdxRef.current = histIdxRef.current;
@@ -109,37 +129,45 @@ export function useUndoHistory({
   }, [refreshUndoRedoState]);
 
   const discardHistory = useCallback(() => {
-    historyRef.current.forEach((entry) => void invoke('discard_history_entry', { entry }).catch(() => {}));
-    historyRef.current = [];
-    histIdxRef.current = 0;
-    savedIdxRef.current = 0;
-    setCanUndo(false);
-    setCanRedo(false);
-  }, []);
+    discardHistoryEntries(historyRef.current);
+    clearHistoryState();
+  }, [clearHistoryState]);
 
   const undo = useCallback(async (filePath: string) => {
-    if (histIdxRef.current <= 0) return;
+    if (!filePath || histIdxRef.current <= 0) return;
     await withLoading(async () => {
+      const prevIdx = histIdxRef.current;
       histIdxRef.current -= 1;
-      await invoke('restore_history_entry', {
-        history: historyRef.current,
-        index: histIdxRef.current,
-        target: filePath,
-      });
+      try {
+        await invoke('restore_history_entry', {
+          history: historyRef.current,
+          index: histIdxRef.current,
+          target: filePath,
+        });
+      } catch (err) {
+        histIdxRef.current = prevIdx;
+        throw err;
+      }
       await onRestore();
       refreshUndoRedoState();
     });
   }, [onRestore, refreshUndoRedoState, withLoading]);
 
   const redo = useCallback(async (filePath: string) => {
-    if (histIdxRef.current >= historyRef.current.length - 1) return;
+    if (!filePath || histIdxRef.current >= historyRef.current.length - 1) return;
     await withLoading(async () => {
+      const prevIdx = histIdxRef.current;
       histIdxRef.current += 1;
-      await invoke('restore_history_entry', {
-        history: historyRef.current,
-        index: histIdxRef.current,
-        target: filePath,
-      });
+      try {
+        await invoke('restore_history_entry', {
+          history: historyRef.current,
+          index: histIdxRef.current,
+          target: filePath,
+        });
+      } catch (err) {
+        histIdxRef.current = prevIdx;
+        throw err;
+      }
       await onRestore();
       refreshUndoRedoState();
     });
