@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openNativeDialog } from '@tauri-apps/plugin-dialog';
-import pandaWelcome from './assets/panda.png';
 import { TitleBar } from './chrome/TitleBar';
 import { buildAppMenus } from './menu/buildAppMenus';
 import { buildAppMenuContext } from './menu/buildAppMenuContext';
@@ -23,7 +22,7 @@ import {
   parityBatchNeedsRange,
 } from './pdf/parityPayload';
 import { useUndoHistory } from './pdf/useUndoHistory';
-import { PDF_BASE_HEIGHT, PDF_BASE_WIDTH, usePdfDocument } from './pdf/usePdfDocument';
+import { usePdfDocument } from './pdf/usePdfDocument';
 import { type FormFieldKind } from './modals/AddFormFieldModal';
 import { type PdfBrowserEntry, type PdfBrowserListing } from './modals/PdfBrowserModal';
 import { type PageSizePreset } from './modals/PageSizeModal';
@@ -32,6 +31,9 @@ import { type TesseractInstallGuide } from './modals/TesseractReminderModal';
 import { type UnsavedChoice } from './modals/UnsavedChangesModal';
 import { AppModals } from './modals/AppModals';
 import { buildAppModalsContext } from './modals/appModalsContext';
+import { AppBody } from './viewer/AppBody';
+import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
+import { PageControls } from './viewer/PageControls';
 import {
   BMP_DIALOG_FILTER,
   CERT_DIALOG_FILTER,
@@ -39,8 +41,6 @@ import {
   GIF_DIALOG_FILTER,
   JPEG_DIALOG_FILTER,
   MARKDOWN_DIALOG_FILTER,
-  MAX_ZOOM,
-  MIN_ZOOM,
   PDF_DIALOG_FILTER,
   PNG_DIALOG_FILTER,
   PPM_DIALOG_FILTER,
@@ -80,7 +80,6 @@ import {
   ensureExtension,
   fileNameFromPath,
   formatSummaryMarkdown,
-  inkPointsToPolyline,
   isTesseractReminderDismissed,
   markdownOcrNoticeFromResult,
   markdownSaveToastMessage,
@@ -88,10 +87,7 @@ import {
   pickSaveWithNativeDialog,
   readStoredString,
   readStoredStringArray,
-  shapeStrokeColor,
   siblingMarkdownPath,
-  signatureStatusLabel,
-  stampPresetMeta,
   writeStoredString,
   writeStoredStringArray,
 } from './app/utils';
@@ -4173,14 +4169,6 @@ function App() {
     return () => clearTimeout(timer);
   }, [printPages]);
 
-  // Commit-on-Enter helper for the numeric fields (Tab / click-out commit via onBlur).
-  const onFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, commit: () => void) => {
-    if (e.key === 'Enter') {
-      commit();
-      e.currentTarget.blur();
-    }
-  };
-
   const appMenus = buildAppMenus(buildAppMenuContext({
     hasPdf: !!filePath,
     isDirty,
@@ -4342,73 +4330,19 @@ function App() {
   }));
 
   const modeToolbarExtras = filePath ? (
-    <>
-      {imageInsertMode && imageSourcePath && (
-        <button
-          type="button"
-          onClick={openImageInsertModal}
-          className="btn"
-          title="Change source image"
-        >
-          {fileNameFromPath(imageSourcePath)}
-        </button>
-      )}
-      {stampMode && (
-        <div className="stamp-toolbar" role="group" aria-label="Stamp options">
-          <div className="shape-kind-toggle" role="group" aria-label="Stamp kind">
-            <button
-              type="button"
-              className={stampKind === 'text' ? 'active' : ''}
-              onClick={() => setStampKind('text')}
-            >
-              Text
-            </button>
-            <button
-              type="button"
-              className={stampKind === 'image' ? 'active' : ''}
-              onClick={() => setStampKind('image')}
-            >
-              Image
-            </button>
-          </div>
-          <select
-            className="stamp-preset-select"
-            value={stampPreset}
-            onChange={(e) => setStampPreset(e.target.value)}
-            aria-label="Stamp preset"
-          >
-            {STAMP_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>{preset.label}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {shapeMode && (
-        <div className="shape-kind-toggle" role="group" aria-label="Shape kind">
-          <button
-            type="button"
-            className={shapeKind === 'square' ? 'active' : ''}
-            onClick={() => setShapeKind('square')}
-          >
-            Rect
-          </button>
-          <button
-            type="button"
-            className={shapeKind === 'circle' ? 'active' : ''}
-            onClick={() => setShapeKind('circle')}
-          >
-            Ellipse
-          </button>
-          <button
-            type="button"
-            className={shapeKind === 'line' ? 'active' : ''}
-            onClick={() => setShapeKind('line')}
-          >
-            Line
-          </button>
-        </div>
-      )}
-    </>
+    <ModeToolbarExtras
+      imageInsertMode={imageInsertMode}
+      imageSourcePath={imageSourcePath}
+      onOpenImageInsertModal={openImageInsertModal}
+      stampMode={stampMode}
+      stampKind={stampKind}
+      stampPreset={stampPreset}
+      onStampKindChange={setStampKind}
+      onStampPresetChange={setStampPreset}
+      shapeMode={shapeMode}
+      shapeKind={shapeKind}
+      onShapeKindChange={setShapeKind}
+    />
   ) : null;
 
   const windowTitle = originalPath
@@ -4560,640 +4494,105 @@ function App() {
         />
 
         {pageCount !== null && viewMode === 'pdf' && (
-          <div className="page-controls">
-            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 0} className="btn">Prev</button>
-            <span className="field-group">
-              <input
-                className="num-input"
-                type="text"
-                inputMode="numeric"
-                value={pageInput}
-                onChange={(e) => setPageInput(e.target.value)}
-                onKeyDown={(e) => onFieldKeyDown(e, commitPage)}
-                onBlur={commitPage}
-                aria-label="Current page"
-              />
-              <span className="muted" data-testid="page-count">/ {pageCount}</span>
-              {pageSizes[currentPage] && (
-                <span className="muted" title="Page size in PDF points">
-                  {' '}· {Math.round(pageSizes[currentPage].width)}×{Math.round(pageSizes[currentPage].height)}pt
-                  {pageSizes[currentPage].rotation !== 0 ? ` · ${pageSizes[currentPage].rotation}°` : ''}
-                </span>
-              )}
-            </span>
-            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === pageCount - 1} className="btn">Next</button>
-
-            <span className="zoom-divider" />
-
-            <button onClick={zoomOut} disabled={zoom <= MIN_ZOOM} className="btn">−</button>
-            <span className="field-group">
-              <input
-                className="num-input"
-                type="text"
-                inputMode="numeric"
-                value={zoomInput}
-                onChange={(e) => setZoomInput(e.target.value)}
-                onKeyDown={(e) => onFieldKeyDown(e, commitZoom)}
-                onBlur={commitZoom}
-                aria-label="Zoom percent"
-              />
-              <span className="muted">%</span>
-            </span>
-            <button onClick={zoomIn} disabled={zoom >= MAX_ZOOM} className="btn">+</button>
-            <button onClick={resetZoom} className="btn btn-secondary">Reset</button>
-          </div>
+          <PageControls
+            pageCount={pageCount}
+            currentPage={currentPage}
+            pageInput={pageInput}
+            pageSizes={pageSizes}
+            onPageInputChange={setPageInput}
+            onCommitPage={commitPage}
+            onGoToPage={goToPage}
+            zoom={zoom}
+            zoomInput={zoomInput}
+            onZoomInputChange={setZoomInput}
+            onCommitZoom={commitZoom}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onResetZoom={resetZoom}
+          />
         )}
       </div>
 
-      <div className="app-body">
-      {/* Sidebar — only when a PDF is open */}
-      {filePath && (
-      <aside className="sidebar">
-        <h3>Thumbnails</h3>
-        {thumbnails.length > 0 ? (
-          <div className="thumbnail-list">
-            {thumbnails.map((src, idx) => (
-              <img
-                key={idx}
-                src={src}
-                draggable
-                onDragStart={() => handleDragStart(idx)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, idx)}
-                onClick={() => goToPage(idx)}
-                className={`thumbnail ${currentPage === idx ? 'active' : ''} ${draggedIndex === idx ? 'dragging' : ''}`}
-                alt={`Page ${idx + 1}`}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="muted">No thumbnails loaded</p>
-        )}
-        {filePath && showBookmarksPanel && (
-          <div className="bookmarks-panel">
-            <div className="forms-panel-header">
-              <h3>Bookmarks</h3>
-              <button type="button" onClick={openAddBookmarkModal} className="btn" title="Add bookmark at current page">
-                Add
-              </button>
-              <button type="button" onClick={openBookmarkAllModal} className="btn" title="Bookmark every page">
-                All
-              </button>
-              <button type="button" onClick={() => void handleClearAllBookmarks()} className="btn" title="Remove all bookmarks">
-                Clear
-              </button>
-              <button type="button" onClick={() => void loadPdfBookmarks(filePath)} className="btn" title="Reload bookmarks">
-                Refresh
-              </button>
-            </div>
-            {pdfBookmarks.length === 0 ? (
-              <p className="muted">No bookmarks in this PDF.</p>
-            ) : (
-              <div className="bookmark-list">
-                {pdfBookmarks.map((bookmark, index) => (
-                  <div
-                    key={`${bookmark.title}-${index}`}
-                    className={`bookmark-row-wrap ${bookmark.page_index === currentPage ? 'active' : ''}`}
-                    style={{ paddingLeft: `${12 + bookmark.depth * 14}px` }}
-                  >
-                    <button
-                      type="button"
-                      className="bookmark-row"
-                      disabled={bookmark.page_index === null}
-                      onClick={() => {
-                        if (bookmark.page_index !== null) goToPage(bookmark.page_index);
-                      }}
-                    >
-                      <span className="bookmark-title">{bookmark.title}</span>
-                      {bookmark.page_index !== null && (
-                        <span className="muted bookmark-page">p.{bookmark.page_index + 1}</span>
-                      )}
-                    </button>
-                    <button type="button" className="btn btn-secondary" title="Rename bookmark" onClick={() => openRenameBookmarkModal(index, bookmark.title)}>✎</button>
-                    <button type="button" className="btn btn-secondary" title="Remove bookmark" onClick={() => void handleRemoveBookmark(index)}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {filePath && showSignaturesPanel && (
-          <div className="signatures-panel">
-            <div className="forms-panel-header">
-              <h3>Digital Signatures</h3>
-              <button type="button" onClick={() => void loadPdfSignatures(filePath)} className="btn" title="Re-verify signatures">
-                Refresh
-              </button>
-            </div>
-            {pdfSignatures.length === 0 ? (
-              <p className="muted">No digital signatures in this PDF.</p>
-            ) : (
-              <div className="signature-list">
-                {pdfSignatures.map((sig) => {
-                  const verified = signatureVerification?.signatures.find((entry) => entry.field_name === sig.field_name);
-                  const status = verified?.status ?? 'indeterminate';
-                  return (
-                    <div key={sig.field_name} className={`signature-row signature-row--${status}`}>
-                      <div className="signature-row-header">
-                        <strong>{sig.field_name}</strong>
-                        <span className={`signature-status signature-status--${status}`}>
-                          {signatureStatusLabel(status)}
-                        </span>
-                      </div>
-                      {sig.signer_name && <div className="muted">Signer: {sig.signer_name}</div>}
-                      {sig.reason && <div className="muted">Reason: {sig.reason}</div>}
-                      {sig.location && <div className="muted">Location: {sig.location}</div>}
-                      {sig.signing_time && <div className="muted">Signed: {sig.signing_time}</div>}
-                      {sig.signed_percent !== null && (
-                        <div className="muted">Coverage: {sig.signed_percent.toFixed(1)}%</div>
-                      )}
-                      {verified && (
-                        <div className="muted signature-summary">{verified.summary}</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {signatureVerification && signatureVerification.signature_count > 0 && (
-              <p className="muted signature-doc-summary">{signatureVerification.summary}</p>
-            )}
-          </div>
-        )}
-        {filePath && showFormsPanel && (
-          <div className="forms-panel">
-            <div className="forms-panel-header">
-              <h3>Form Fields</h3>
-              <button type="button" onClick={openAddFormFieldModal} className="btn" title="Add text field">
-                + Field
-              </button>
-            </div>
-            {formFields.length === 0 ? (
-              <p className="muted">No fillable fields in this PDF.</p>
-            ) : (
-              <div className="form-field-list">
-                {formFields.map((field) => (
-                  <div key={field.name} className="form-field-row">
-                    <div className="form-field-meta">
-                      <strong>{field.name}</strong>
-                      <span className="muted">{field.field_type}</span>
-                    </div>
-                    {field.field_type === 'checkbox' || field.field_type === 'radio' ? (
-                      <label className="form-checkbox-row">
-                        <input
-                          type="checkbox"
-                          checked={formDrafts[field.name] === 'true'}
-                          onChange={(e) => setFormDrafts((prev) => ({
-                            ...prev,
-                            [field.name]: e.target.checked ? 'true' : 'false',
-                          }))}
-                        />
-                        <span>Checked</span>
-                      </label>
-                    ) : field.field_type === 'choice' && field.options.length > 0 ? (
-                      <select
-                        className="form-field-input"
-                        value={formDrafts[field.name] ?? ''}
-                        onChange={(e) => setFormDrafts((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                      >
-                        {field.options.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        className="form-field-input"
-                        value={formDrafts[field.name] ?? ''}
-                        disabled={field.field_type === 'button' || field.field_type === 'signature'}
-                        onChange={(e) => setFormDrafts((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={field.field_type === 'button' || field.field_type === 'signature'}
-                      onClick={() => applyFormField(field.name)}
-                    >
-                      Apply
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </aside>
-      )}
-
-      {/* Main Content */}
-      <main className="main">
-        {/* Scrollable page area */}
-        <div
-          className={`page-scroll${!filePath ? ' welcome-scroll' : ''}${viewMode === 'markdown' ? ' markdown-scroll' : ''}`}
-          ref={scrollRef}
-          onWheel={handleWheel}
-        >
-          {!filePath ? (
-            <button
-              type="button"
-              className="welcome-splash"
-              onClick={openPdf}
-              data-testid="welcome-open-pdf"
-              aria-label="Click to open a PDF"
-            >
-              <img src={pandaWelcome} alt="" className="welcome-panda" aria-hidden="true" />
-              <span className="welcome-hint">Click to open a PDF</span>
-            </button>
-          ) : viewMode === 'markdown' ? (
-            <div className="markdown-viewer">
-              <div className="markdown-header">
-                <span>Markdown</span>
-                {markdownOcrNotice && (
-                  <span className={`markdown-ocr-badge ${markdownOcrNotice.tone === 'success' ? 'ready' : 'missing'}`}>
-                    {markdownOcrNotice.message}
-                  </span>
-                )}
-                {markdownPath && <span className="markdown-path">{markdownPath}</span>}
-                <button type="button" onClick={openMarkdownSaveAs} className="btn btn-secondary">Save As…</button>
-              </div>
-              <pre className="markdown-preview">{markdownText}</pre>
-            </div>
-          ) : (
-            <div
-              className={`page-container ${highlightMode ? 'highlight-cursor' : ''} ${noteMode ? 'note-cursor' : ''} ${drawMode ? 'draw-cursor' : ''} ${shapeMode ? 'shape-cursor' : ''} ${stampMode ? 'stamp-cursor' : ''} ${redactMode ? 'redact-cursor' : ''} ${imageInsertMode ? 'image-insert-cursor' : ''} ${textEditMode ? 'text-edit-cursor' : ''} ${vectorEditMode ? 'vector-edit-cursor' : ''} ${formAddMode ? 'form-add-cursor' : ''}`}
-              onClick={handlePageClick}
-              onMouseDown={handleDrawMouseDown}
-              onMouseMove={handlePageMouseMove}
-              onMouseUp={handleDrawMouseUp}
-              onMouseLeave={handleDrawMouseUp}
-            >
-              {imageSrc ? (
-                <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={handleImageLoad} />
-                    {/* Active search match highlight (not persisted) */}
-                    {activeSearchRect && (
-                      <div
-                        className="search-highlight-overlay"
-                        style={{
-                          left: activeSearchRect[0],
-                          top: activeSearchRect[1],
-                          width: activeSearchRect[2] - activeSearchRect[0],
-                          height: activeSearchRect[3] - activeSearchRect[1],
-                        }}
-                      />
-                    )}
-                    {/* Existing highlights */}
-                    {annotations.filter((a) => a.subtype === 'Highlight').map((a, i) => (
-                      <div
-                        key={i}
-                        className="highlight-overlay"
-                        title={highlightMode ? 'Click to remove' : undefined}
-                        onClick={highlightMode ? (e) => { e.stopPropagation(); removeHighlight(i); } : undefined}
-                        style={{
-                          left: a.rect[0],
-                          top: a.rect[1],
-                          width: a.rect[2] - a.rect[0],
-                          height: a.rect[3] - a.rect[1],
-                          backgroundColor: a.color
-                            ? `rgba(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255},0.3)`
-                            : 'rgba(255,255,0,0.3)',
-                          pointerEvents: highlightMode ? 'auto' : 'none',
-                          cursor: highlightMode ? 'pointer' : 'default',
-                        }}
-                      />
-                    ))}
-                    {/* Redaction boxes */}
-                    {annotations.filter((a) => a.is_redaction).map((a, i) => (
-                      <div
-                        key={`redact-${i}`}
-                        className="redaction-overlay"
-                        title={redactMode ? 'Click to remove' : undefined}
-                        onClick={redactMode ? (e) => { e.stopPropagation(); removeRedaction(i); } : undefined}
-                        style={{
-                          left: a.rect[0],
-                          top: a.rect[1],
-                          width: a.rect[2] - a.rect[0],
-                          height: a.rect[3] - a.rect[1],
-                          pointerEvents: redactMode ? 'auto' : 'none',
-                          cursor: redactMode ? 'pointer' : 'default',
-                        }}
-                      />
-                    ))}
-                    {/* Text stamps */}
-                    {annotations.filter((a) => a.stamp_kind === 'text').map((a, i) => {
-                      const meta = stampPresetMeta(a.stamp_preset);
-                      return (
-                        <div
-                          key={`text-stamp-${i}`}
-                          className="text-stamp-overlay"
-                          title={stampMode ? 'Click to remove' : undefined}
-                          onClick={stampMode ? (e) => { e.stopPropagation(); removeStamp('text', i); } : undefined}
-                          style={{
-                            left: a.rect[0],
-                            top: a.rect[1],
-                            width: a.rect[2] - a.rect[0],
-                            height: a.rect[3] - a.rect[1],
-                            borderColor: meta?.color ?? '#333',
-                            color: meta?.color ?? '#333',
-                            pointerEvents: stampMode ? 'auto' : 'none',
-                            cursor: stampMode ? 'pointer' : 'default',
-                          }}
-                        >
-                          {a.contents ?? meta?.label}
-                        </div>
-                      );
-                    })}
-                    {/* Image stamps */}
-                    {annotations.filter((a) => a.stamp_kind === 'image').map((a, i) => {
-                      const meta = stampPresetMeta(a.stamp_preset);
-                      return (
-                        <div
-                          key={`image-stamp-${i}`}
-                          className="image-stamp-overlay"
-                          title={stampMode ? 'Click to remove' : undefined}
-                          onClick={stampMode ? (e) => { e.stopPropagation(); removeStamp('image', i); } : undefined}
-                          style={{
-                            left: a.rect[0],
-                            top: a.rect[1],
-                            width: a.rect[2] - a.rect[0],
-                            height: a.rect[3] - a.rect[1],
-                            backgroundColor: meta?.color ?? '#666',
-                            pointerEvents: stampMode ? 'auto' : 'none',
-                            cursor: stampMode ? 'pointer' : 'default',
-                          }}
-                        >
-                          {meta?.label}
-                        </div>
-                      );
-                    })}
-                    {/* Shape outlines */}
-                    {annotations.filter((a) => a.subtype === 'Square' && !a.is_redaction).map((a, i) => (
-                      <div
-                        key={`square-${i}`}
-                        className="shape-overlay shape-square"
-                        title={shapeMode ? 'Click to remove' : undefined}
-                        onClick={shapeMode ? (e) => { e.stopPropagation(); removeShape('Square', i); } : undefined}
-                        style={{
-                          left: a.rect[0],
-                          top: a.rect[1],
-                          width: a.rect[2] - a.rect[0],
-                          height: a.rect[3] - a.rect[1],
-                          borderColor: shapeStrokeColor(a.color),
-                          pointerEvents: shapeMode ? 'auto' : 'none',
-                          cursor: shapeMode ? 'pointer' : 'default',
-                        }}
-                      />
-                    ))}
-                    {annotations.filter((a) => a.subtype === 'Circle').map((a, i) => (
-                      <div
-                        key={`circle-${i}`}
-                        className="shape-overlay shape-circle"
-                        title={shapeMode ? 'Click to remove' : undefined}
-                        onClick={shapeMode ? (e) => { e.stopPropagation(); removeShape('Circle', i); } : undefined}
-                        style={{
-                          left: a.rect[0],
-                          top: a.rect[1],
-                          width: a.rect[2] - a.rect[0],
-                          height: a.rect[3] - a.rect[1],
-                          borderColor: shapeStrokeColor(a.color),
-                          pointerEvents: shapeMode ? 'auto' : 'none',
-                          cursor: shapeMode ? 'pointer' : 'default',
-                        }}
-                      />
-                    ))}
-                    {/* Freehand ink strokes and line shapes */}
-                    <svg
-                      className="ink-overlay"
-                      viewBox={`0 0 ${PDF_BASE_WIDTH} ${PDF_BASE_HEIGHT}`}
-                      aria-hidden={!drawMode && !shapeMode}
-                    >
-                      {annotations.filter((a) => a.subtype === 'Line' && a.line_endpoints).map((a, i) => {
-                        const [x1, y1, x2, y2] = a.line_endpoints!;
-                        const stroke = shapeStrokeColor(a.color);
-                        return (
-                          <g key={`line-${i}`}>
-                            {shapeMode && (
-                              <line
-                                x1={x1}
-                                y1={y1}
-                                x2={x2}
-                                y2={y2}
-                                stroke="transparent"
-                                strokeWidth={12}
-                                strokeLinecap="round"
-                                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClick={(e) => { e.stopPropagation(); removeShape('Line', i); }}
-                              />
-                            )}
-                            <line
-                              x1={x1}
-                              y1={y1}
-                              x2={x2}
-                              y2={y2}
-                              stroke={stroke}
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              style={{ pointerEvents: 'none' }}
-                            />
-                          </g>
-                        );
-                      })}
-                      {annotations.filter((a) => a.subtype === 'Ink').map((a, i) => {
-                        const points = inkPointsToPolyline(a.ink_points);
-                        const stroke = a.color
-                          ? `rgb(${a.color[0] * 255},${a.color[1] * 255},${a.color[2] * 255})`
-                          : 'rgb(0,0,255)';
-                        return (
-                          <g key={`ink-${i}`}>
-                            {drawMode && (
-                              <polyline
-                                points={points}
-                                fill="none"
-                                stroke="transparent"
-                                strokeWidth={12}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClick={(e) => { e.stopPropagation(); removeInkStroke(i); }}
-                              />
-                            )}
-                            <polyline
-                              points={points}
-                              fill="none"
-                              stroke={stroke}
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              style={{ pointerEvents: 'none' }}
-                            />
-                          </g>
-                        );
-                      })}
-                      {inkDraft.length >= 2 && (
-                        <polyline
-                          points={inkPointsToPolyline(inkDraft)}
-                          fill="none"
-                          stroke="rgb(0,0,255)"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ pointerEvents: 'none', opacity: 0.75 }}
-                        />
-                      )}
-                      {shapeMode && drawing && highlightStart && shapeKind === 'line' && shapeLineEnd && (
-                        <line
-                          x1={highlightStart.x}
-                          y1={highlightStart.y}
-                          x2={shapeLineEnd.x}
-                          y2={shapeLineEnd.y}
-                          stroke="rgb(255,0,0)"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          style={{ pointerEvents: 'none', opacity: 0.75 }}
-                        />
-                      )}
-                    </svg>
-                    {/* Sticky text notes */}
-                    {annotations.filter((a) => a.subtype === 'Text').map((a, i) => (
-                      <div
-                        key={`note-${i}`}
-                        className="text-note-overlay"
-                        title={noteMode ? 'Click to remove' : (a.contents ?? undefined)}
-                        onClick={noteMode ? (e) => { e.stopPropagation(); removeTextNote(i); } : undefined}
-                        style={{
-                          left: a.rect[0],
-                          top: a.rect[1],
-                          width: a.rect[2] - a.rect[0],
-                          height: a.rect[3] - a.rect[1],
-                          pointerEvents: noteMode ? 'auto' : 'none',
-                          cursor: noteMode ? 'pointer' : 'default',
-                        }}
-                      >
-                        {a.contents}
-                      </div>
-                    ))}
-                    {pageTextEdits.map((edit) => (
-                      <div
-                        key={`page-text-${edit.index}`}
-                        className="page-text-edit-overlay"
-                        style={{ left: edit.x, top: edit.y }}
-                        title={edit.text}
-                      >
-                        {edit.text}
-                      </div>
-                    ))}
-                    {pageVectorEdits.map((edit) => (
-                      <div
-                        key={`page-vector-${edit.index}`}
-                        className="page-vector-edit-overlay"
-                        style={{
-                          left: edit.x,
-                          top: edit.y,
-                          width: edit.width,
-                          height: edit.height,
-                        }}
-                      />
-                    ))}
-                    {/* Current highlight drag */}
-                    {highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && highlightMode && (
-                      <div
-                        className="highlight-draft"
-                        style={{
-                          left: highlightRect.x,
-                          top: highlightRect.y,
-                          width: highlightRect.w,
-                          height: highlightRect.h,
-                        }}
-                      />
-                    )}
-                    {/* Current shape drag */}
-                    {shapeMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && shapeKind !== 'line' && (
-                      <div
-                        className={`shape-draft ${shapeKind === 'circle' ? 'shape-circle' : 'shape-square'}`}
-                        style={{
-                          left: highlightRect.x,
-                          top: highlightRect.y,
-                          width: highlightRect.w,
-                          height: highlightRect.h,
-                        }}
-                      />
-                    )}
-                    {redactMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                      <div
-                        className="redaction-draft"
-                        style={{
-                          left: highlightRect.x,
-                          top: highlightRect.y,
-                          width: highlightRect.w,
-                          height: highlightRect.h,
-                        }}
-                      />
-                    )}
-                    {imageInsertMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                      <div
-                        className="image-insert-draft"
-                        style={{
-                          left: highlightRect.x,
-                          top: highlightRect.y,
-                          width: highlightRect.w,
-                          height: highlightRect.h,
-                        }}
-                      />
-                    )}
-                    {vectorEditMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                      <div
-                        className="page-vector-edit-overlay page-vector-draft"
-                        style={{
-                          left: highlightRect.x,
-                          top: highlightRect.y,
-                          width: highlightRect.w,
-                          height: highlightRect.h,
-                        }}
-                      />
-                    )}
-                    {formAddMode && highlightRect && highlightRect.w > 0 && highlightRect.h > 0 && (
-                      <div
-                        className="form-field-draft"
-                        style={{
-                          left: highlightRect.x,
-                          top: highlightRect.y,
-                          width: highlightRect.w,
-                          height: highlightRect.h,
-                        }}
-                      />
-                    )}
-                    {showFormsPanel && formFields
-                      .filter((field) => field.page_index === currentPage && field.rect)
-                      .map((field) => {
-                        const rect = field.rect!;
-                        return (
-                          <div
-                            key={field.name}
-                            className="form-field-overlay"
-                            style={{
-                              left: rect[0],
-                              top: rect[1],
-                              width: Math.max(0, rect[2] - rect[0]),
-                              height: Math.max(0, rect[3] - rect[1]),
-                            }}
-                            title={field.name}
-                          />
-                        );
-                      })}
-                  </div>
-                </div>
-              ) : (
-                <p className="muted">No page rendered.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </main>
-      </div>
+      <AppBody
+        filePath={filePath}
+        sidebar={{
+          filePath,
+          thumbnails,
+          currentPage,
+          draggedIndex,
+          onDragStart: handleDragStart,
+          onDragOver: handleDragOver,
+          onDrop: handleDrop,
+          onGoToPage: goToPage,
+          showBookmarksPanel,
+          pdfBookmarks,
+          onOpenAddBookmarkModal: openAddBookmarkModal,
+          onOpenBookmarkAllModal: openBookmarkAllModal,
+          onClearAllBookmarks: handleClearAllBookmarks,
+          onReloadBookmarks: loadPdfBookmarks,
+          onOpenRenameBookmarkModal: openRenameBookmarkModal,
+          onRemoveBookmark: handleRemoveBookmark,
+          showSignaturesPanel,
+          pdfSignatures,
+          signatureVerification,
+          onReloadSignatures: loadPdfSignatures,
+          showFormsPanel,
+          formFields,
+          formDrafts,
+          onFormDraftsChange: setFormDrafts,
+          onOpenAddFormFieldModal: openAddFormFieldModal,
+          onApplyFormField: applyFormField,
+        }}
+        viewer={{
+          viewMode,
+          scrollRef,
+          onWheel: handleWheel,
+          onOpenPdf: openPdf,
+          markdownOcrNotice,
+          markdownPath,
+          markdownText,
+          onOpenMarkdownSaveAs: openMarkdownSaveAs,
+          pdfPage: {
+            zoom,
+            imageSrc,
+            imgRef,
+            onImageLoad: handleImageLoad,
+            highlightMode,
+            noteMode,
+            drawMode,
+            shapeMode,
+            stampMode,
+            redactMode,
+            imageInsertMode,
+            textEditMode,
+            vectorEditMode,
+            formAddMode,
+            onPageClick: handlePageClick,
+            onMouseDown: handleDrawMouseDown,
+            onMouseMove: handlePageMouseMove,
+            onMouseUp: handleDrawMouseUp,
+            activeSearchRect,
+            annotations,
+            shapeKind,
+            drawing,
+            highlightStart,
+            highlightRect,
+            shapeLineEnd,
+            inkDraft,
+            pageTextEdits,
+            pageVectorEdits,
+            showFormsPanel,
+            formFields,
+            currentPage,
+            onRemoveHighlight: removeHighlight,
+            onRemoveRedaction: removeRedaction,
+            onRemoveStamp: removeStamp,
+            onRemoveShape: removeShape,
+            onRemoveInkStroke: removeInkStroke,
+            onRemoveTextNote: removeTextNote,
+          },
+        }}
+      />
 
       <AppModals ctx={modalCtx} />
 
