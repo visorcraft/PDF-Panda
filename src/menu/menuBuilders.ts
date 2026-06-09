@@ -1,5 +1,11 @@
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
 
+type VoidHandler = () => void | Promise<void>;
+type SortHandler = (desc: boolean) => void | Promise<void>;
+
+export const voidRun = (fn: VoidHandler): (() => void) => () => { void fn(); };
+export const voidSort = (fn: SortHandler): ((desc: boolean) => void) => (desc) => { void fn(desc); };
+
 export const sep = (): MenuEntry => ({ separator: true });
 
 export const act = (

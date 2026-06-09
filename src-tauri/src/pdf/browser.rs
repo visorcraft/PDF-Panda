@@ -70,3 +70,54 @@ pub fn list_pdf_entries_for_dir(dir: &Path) -> Result<PdfBrowserListing, String>
         entries,
     })
 }
+
+/// Whether native open/save pickers should be offered on this platform/session.
+pub fn native_file_dialogs_policy(
+    is_macos: bool,
+    is_windows: bool,
+    is_linux: bool,
+    wayland: bool,
+    native_dialogs_env: Option<&str>,
+    disable_env: Option<&str>,
+) -> bool {
+    if disable_env.is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true")) {
+        return false;
+    }
+    if is_macos || is_windows {
+        return true;
+    }
+    if is_linux {
+        if wayland {
+            return native_dialogs_env.is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
+        }
+        return true;
+    }
+    false
+}
+
+#[cfg(test)]
+mod native_dialog_tests {
+    use super::native_file_dialogs_policy;
+
+    #[test]
+    fn native_file_dialogs_policy_enables_macos_and_windows() {
+        assert!(native_file_dialogs_policy(true, false, false, false, None, None));
+        assert!(native_file_dialogs_policy(false, true, false, false, None, None));
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_wayland_requires_opt_in() {
+        assert!(!native_file_dialogs_policy(false, false, true, true, None, None));
+        assert!(native_file_dialogs_policy(false, false, true, true, Some("1"), None));
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_linux_x11_enables_by_default() {
+        assert!(native_file_dialogs_policy(false, false, true, false, None, None));
+    }
+
+    #[test]
+    fn native_file_dialogs_policy_honors_disable_env() {
+        assert!(!native_file_dialogs_policy(true, false, false, false, None, Some("1")));
+    }
+}

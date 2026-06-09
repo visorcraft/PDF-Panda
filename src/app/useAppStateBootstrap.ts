@@ -8,6 +8,7 @@ import { useAppRefs } from './useAppRefs';
 import { useDrawingGesture } from '../viewer/useDrawingGesture';
 import { useAppLoading } from './useAppLoading';
 import { useAppPageRanges } from './useAppPageRanges';
+import { buildAppLifecycleInput } from './buildAppLifecycleInput';
 import { useAppLifecycleHooks } from './useAppLifecycleHooks';
 import { useAppLifecycleSlices } from './useAppLifecycleSlices';
 import { useAppSetupHooks } from './useAppSetupHooks';
@@ -25,35 +26,26 @@ export function useAppStateBootstrap() {
   const { showToast, withLoading } = useAppLoading({ setToast: doc.setToast, setLoading: doc.setLoading });
   const pageRanges = useAppPageRanges({ pageCount: doc.pageCount, currentPage: doc.currentPage, showToast });
 
-  const lifecycle = useAppLifecycleHooks({
-    doc,
-    modal,
-    security,
-    panels,
-    annotation,
-    refs: {
-      filePathRef: refs.filePathRef,
-      handleMarkdownViewRef: refs.handleMarkdownViewRef,
-      loadPdfBookmarksRef: refs.loadPdfBookmarksRef,
-      loadPageSizesRef: refs.loadPageSizesRef,
-      cancelDrawingRef: refs.cancelDrawingRef,
-      keyboardActionsRef: refs.keyboardActionsRef,
-      imgRef: refs.imgRef,
-      handleSaveRef: refs.handleSaveRef,
-    },
-    pageRanges,
-    ocrAvailable: !!doc.ocrAvailable,
-    tesseractReminderSource: help.tesseractReminderSource,
-    setTesseractReminderSource: help.setTesseractReminderSource,
-    tesseractDoNotRemind: help.tesseractDoNotRemind,
-    setTesseractDoNotRemind: help.setTesseractDoNotRemind,
-    setShowTesseractModal: help.setShowTesseractModal,
-    showToast,
-    withLoading,
-    isDirtyRef: doc.isDirtyRef,
-    filePathRef: refs.filePathRef,
-    cancelDrawing: () => refs.cancelDrawingRef.current(),
-  });
+  const lifecycle = useAppLifecycleHooks(
+    buildAppLifecycleInput({
+      doc,
+      modal,
+      security,
+      panels,
+      annotation,
+      refs,
+      pageRanges,
+      ocrAvailable: !!doc.ocrAvailable,
+      tesseractReminderSource: help.tesseractReminderSource,
+      setTesseractReminderSource: help.setTesseractReminderSource,
+      tesseractDoNotRemind: help.tesseractDoNotRemind,
+      setTesseractDoNotRemind: help.setTesseractDoNotRemind,
+      setShowTesseractModal: help.setShowTesseractModal,
+      showToast,
+      withLoading,
+      cancelDrawing: () => refs.cancelDrawingRef.current(),
+    }),
+  );
 
   const slices = useAppLifecycleSlices(lifecycle);
   const { loaders, history, tesseract } = slices;
