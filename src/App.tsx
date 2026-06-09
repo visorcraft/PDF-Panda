@@ -10,6 +10,10 @@ import { MenuChrome } from './menu/MenuChrome';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { Modal } from './ui/Modal';
 import { Toast } from './ui/Toast';
+import type { PageRangeScope } from './pageRange/types';
+import { resolvePageRange } from './pageRange/resolvePageRange';
+import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
+import { PageRangeFields, PageRangePairInputs } from './pageRange/PageRangeFields';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -237,9 +241,8 @@ interface PdfDocumentMetadata {
 }
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
-type PngExportScope = 'current' | 'range' | 'all';
+type PngExportScope = PageRangeScope;
 type ImageExportFormat = 'png' | 'jpeg' | 'webp' | 'bmp' | 'tiff' | 'gif' | 'ppm' | 'tga' | 'ico';
-type PageRangeScope = 'current' | 'range' | 'all';
 type PageSizePreset = 'letter' | 'a4' | 'legal';
 
 interface PdfBrowserEntry {
@@ -555,51 +558,30 @@ function App() {
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [splitRanges, setSplitRanges] = useState<string>('');
   const [showExtractModal, setShowExtractModal] = useState(false);
-  const [extractStartPage, setExtractStartPage] = useState(0);
-  const [extractEndPage, setExtractEndPage] = useState(0);
   const [extractOutputPath, setExtractOutputPath] = useState('');
   const [showExportPngModal, setShowExportPngModal] = useState(false);
-  const [pngExportScope, setPngExportScope] = useState<PngExportScope>('current');
-  const [pngExportStartPage, setPngExportStartPage] = useState(0);
-  const [pngExportEndPage, setPngExportEndPage] = useState(0);
   const [pngExportOutputPath, setPngExportOutputPath] = useState('');
   const [imageExportFormat, setImageExportFormat] = useState<ImageExportFormat>('png');
   const [showDeleteRangeModal, setShowDeleteRangeModal] = useState(false);
-  const [deleteRangeStartPage, setDeleteRangeStartPage] = useState(0);
-  const [deleteRangeEndPage, setDeleteRangeEndPage] = useState(0);
   const [showPageNumbersModal, setShowPageNumbersModal] = useState(false);
-  const [pageNumbersScope, setPageNumbersScope] = useState<PageRangeScope>('all');
-  const [pageNumbersStartPage, setPageNumbersStartPage] = useState(0);
-  const [pageNumbersEndPage, setPageNumbersEndPage] = useState(0);
   const [pageNumbersPrefix, setPageNumbersPrefix] = useState('Page ');
   const [showWatermarkModal, setShowWatermarkModal] = useState(false);
   const [watermarkText, setWatermarkText] = useState('DRAFT');
-  const [watermarkScope, setWatermarkScope] = useState<PageRangeScope>('all');
-  const [watermarkStartPage, setWatermarkStartPage] = useState(0);
-  const [watermarkEndPage, setWatermarkEndPage] = useState(0);
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropMarginTop, setCropMarginTop] = useState(50);
   const [cropMarginRight, setCropMarginRight] = useState(50);
   const [cropMarginBottom, setCropMarginBottom] = useState(50);
   const [cropMarginLeft, setCropMarginLeft] = useState(50);
   const [showFlattenModal, setShowFlattenModal] = useState(false);
-  const [flattenScope, setFlattenScope] = useState<PageRangeScope>('all');
-  const [flattenStartPage, setFlattenStartPage] = useState(0);
-  const [flattenEndPage, setFlattenEndPage] = useState(0);
   const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
   const [bookmarkTitle, setBookmarkTitle] = useState('');
   const [showRenameBookmarkModal, setShowRenameBookmarkModal] = useState(false);
   const [renameBookmarkIndex, setRenameBookmarkIndex] = useState(0);
   const [renameBookmarkTitle, setRenameBookmarkTitle] = useState('');
   const [showDuplicateRangeModal, setShowDuplicateRangeModal] = useState(false);
-  const [duplicateRangeStartPage, setDuplicateRangeStartPage] = useState(0);
-  const [duplicateRangeEndPage, setDuplicateRangeEndPage] = useState(0);
   const [cropApplyAll, setCropApplyAll] = useState(false);
   const [pageSizes, setPageSizes] = useState<PdfPageSize[]>([]);
   const [showPageHeaderModal, setShowPageHeaderModal] = useState(false);
-  const [pageHeaderScope, setPageHeaderScope] = useState<PageRangeScope>('all');
-  const [pageHeaderStartPage, setPageHeaderStartPage] = useState(0);
-  const [pageHeaderEndPage, setPageHeaderEndPage] = useState(0);
   const [pageHeaderText, setPageHeaderText] = useState('DRAFT');
   const [showInsertImagePageModal, setShowInsertImagePageModal] = useState(false);
   const [insertImagePagePath, setInsertImagePagePath] = useState('');
@@ -607,14 +589,8 @@ function App() {
   const [showExportPagePdfModal, setShowExportPagePdfModal] = useState(false);
   const [exportPagePdfPath, setExportPagePdfPath] = useState('');
   const [showExportPagesPdfModal, setShowExportPagesPdfModal] = useState(false);
-  const [exportPagesPdfScope, setExportPagesPdfScope] = useState<PngExportScope>('all');
-  const [exportPagesPdfStartPage, setExportPagesPdfStartPage] = useState(0);
-  const [exportPagesPdfEndPage, setExportPagesPdfEndPage] = useState(0);
   const [exportPagesPdfOutputDir, setExportPagesPdfOutputDir] = useState('');
   const [showPageFooterModal, setShowPageFooterModal] = useState(false);
-  const [pageFooterScope, setPageFooterScope] = useState<PageRangeScope>('all');
-  const [pageFooterStartPage, setPageFooterStartPage] = useState(0);
-  const [pageFooterEndPage, setPageFooterEndPage] = useState(0);
   const [pageFooterText, setPageFooterText] = useState('Confidential');
   const [showSwapPagesModal, setShowSwapPagesModal] = useState(false);
   const [swapPageA, setSwapPageA] = useState(0);
@@ -625,52 +601,30 @@ function App() {
   const [replaceSourcePageCount, setReplaceSourcePageCount] = useState<number | null>(null);
   const [showInterleaveModal, setShowInterleaveModal] = useState(false);
   const [interleaveFilePath, setInterleaveFilePath] = useState('');
-  const [interleaveStartPage, setInterleaveStartPage] = useState(0);
-  const [interleaveEndPage, setInterleaveEndPage] = useState(0);
   const [interleaveSourcePageCount, setInterleaveSourcePageCount] = useState<number | null>(null);
   const [showPageSizeModal, setShowPageSizeModal] = useState(false);
   const [pageSizePreset, setPageSizePreset] = useState<PageSizePreset>('letter');
-  const [pageSizeScope, setPageSizeScope] = useState<PageRangeScope>('all');
-  const [pageSizeStartPage, setPageSizeStartPage] = useState(0);
-  const [pageSizeEndPage, setPageSizeEndPage] = useState(0);
   const [showDecryptModal, setShowDecryptModal] = useState(false);
   const [decryptPassword, setDecryptPassword] = useState('');
   const [showRotateRangeModal, setShowRotateRangeModal] = useState(false);
-  const [rotateRangeStartPage, setRotateRangeStartPage] = useState(0);
-  const [rotateRangeEndPage, setRotateRangeEndPage] = useState(0);
   const [showKeepRangeModal, setShowKeepRangeModal] = useState(false);
-  const [keepRangeStartPage, setKeepRangeStartPage] = useState(0);
-  const [keepRangeEndPage, setKeepRangeEndPage] = useState(0);
   const [showMoveRangeModal, setShowMoveRangeModal] = useState(false);
-  const [moveRangeStartPage, setMoveRangeStartPage] = useState(0);
-  const [moveRangeEndPage, setMoveRangeEndPage] = useState(0);
   const [moveRangeToIndex, setMoveRangeToIndex] = useState(0);
   const [showPrependModal, setShowPrependModal] = useState(false);
   const [prependFilePath, setPrependFilePath] = useState('');
-  const [prependStartPage, setPrependStartPage] = useState(0);
-  const [prependEndPage, setPrependEndPage] = useState(0);
   const [prependSourcePageCount, setPrependSourcePageCount] = useState<number | null>(null);
   const [showSplitEveryModal, setShowSplitEveryModal] = useState(false);
   const [splitEveryN, setSplitEveryN] = useState(2);
   const [showPageBorderModal, setShowPageBorderModal] = useState(false);
-  const [pageBorderScope, setPageBorderScope] = useState<PageRangeScope>('all');
-  const [pageBorderStartPage, setPageBorderStartPage] = useState(0);
-  const [pageBorderEndPage, setPageBorderEndPage] = useState(0);
   const [pageBorderInset, setPageBorderInset] = useState(20);
   const [showBookmarkAllModal, setShowBookmarkAllModal] = useState(false);
   const [bookmarkAllPrefix, setBookmarkAllPrefix] = useState('Page ');
   const [showExpandMarginsModal, setShowExpandMarginsModal] = useState(false);
-  const [expandMarginsScope, setExpandMarginsScope] = useState<PageRangeScope>('all');
-  const [expandMarginsStartPage, setExpandMarginsStartPage] = useState(0);
-  const [expandMarginsEndPage, setExpandMarginsEndPage] = useState(0);
   const [expandMarginTop, setExpandMarginTop] = useState(20);
   const [expandMarginRight, setExpandMarginRight] = useState(20);
   const [expandMarginBottom, setExpandMarginBottom] = useState(20);
   const [expandMarginLeft, setExpandMarginLeft] = useState(20);
   const [showShrinkMarginsModal, setShowShrinkMarginsModal] = useState(false);
-  const [shrinkMarginsScope, setShrinkMarginsScope] = useState<PageRangeScope>('all');
-  const [shrinkMarginsStartPage, setShrinkMarginsStartPage] = useState(0);
-  const [shrinkMarginsEndPage, setShrinkMarginsEndPage] = useState(0);
   const [shrinkMarginTop, setShrinkMarginTop] = useState(20);
   const [shrinkMarginRight, setShrinkMarginRight] = useState(20);
   const [shrinkMarginBottom, setShrinkMarginBottom] = useState(20);
@@ -684,29 +638,19 @@ function App() {
   const [showSplitAtModal, setShowSplitAtModal] = useState(false);
   const [splitAtPage, setSplitAtPage] = useState(1);
   const [showReverseRangeModal, setShowReverseRangeModal] = useState(false);
-  const [reverseRangeStartPage, setReverseRangeStartPage] = useState(0);
-  const [reverseRangeEndPage, setReverseRangeEndPage] = useState(0);
   const [showInsertBlankPagesModal, setShowInsertBlankPagesModal] = useState(false);
   const [insertBlankCount, setInsertBlankCount] = useState(1);
   const [insertBlankAtIndex, setInsertBlankAtIndex] = useState(0);
   const [showCropRangeModal, setShowCropRangeModal] = useState(false);
   const [showParityRangeModal, setShowParityRangeModal] = useState(false);
-  const [parityRangeStartPage, setParityRangeStartPage] = useState(0);
-  const [parityRangeEndPage, setParityRangeEndPage] = useState(0);
   const [parityRangeCommand, setParityRangeCommand] = useState('rotate_odd_pages_in_range');
   const [parityRangeOutputPath, setParityRangeOutputPath] = useState('');
-  const [cropRangeStartPage, setCropRangeStartPage] = useState(0);
-  const [cropRangeEndPage, setCropRangeEndPage] = useState(0);
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [insertFilePath, setInsertFilePath] = useState<string>('');
   const [insertAtPage, setInsertAtPage] = useState<number>(0);
-  const [insertStartPage, setInsertStartPage] = useState<number>(0);
-  const [insertEndPage, setInsertEndPage] = useState<number>(0);
   const [insertSourcePageCount, setInsertSourcePageCount] = useState<number | null>(null);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeFilePath, setMergeFilePath] = useState('');
-  const [mergeStartPage, setMergeStartPage] = useState(0);
-  const [mergeEndPage, setMergeEndPage] = useState(0);
   const [mergeSourcePageCount, setMergeSourcePageCount] = useState<number | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -731,8 +675,7 @@ function App() {
         const count = await invoke<number>('get_pdf_page_count', { path: insertFilePath });
         if (cancelled) return;
         setInsertSourcePageCount(count);
-        setInsertStartPage(0);
-        setInsertEndPage(Math.max(0, count - 1));
+        insertRange.reset(0, Math.max(0, count - 1));
       } catch {
         if (!cancelled) setInsertSourcePageCount(null);
       }
@@ -751,8 +694,7 @@ function App() {
         const count = await invoke<number>('get_pdf_page_count', { path: mergeFilePath });
         if (cancelled) return;
         setMergeSourcePageCount(count);
-        setMergeStartPage(0);
-        setMergeEndPage(Math.max(0, count - 1));
+        mergeRange.reset(0, Math.max(0, count - 1));
       } catch {
         if (!cancelled) setMergeSourcePageCount(null);
       }
@@ -764,6 +706,31 @@ function App() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  const pageNumbersRange = usePageRange({ pageCount, currentPage, showToast });
+  const watermarkRange = usePageRange({ pageCount, currentPage, showToast });
+  const flattenRange = usePageRange({ pageCount, currentPage, showToast });
+  const pageHeaderRange = usePageRange({ pageCount, currentPage, showToast });
+  const pageFooterRange = usePageRange({ pageCount, currentPage, showToast });
+  const pageSizeRange = usePageRange({ pageCount, currentPage, showToast });
+  const pageBorderRange = usePageRange({ pageCount, currentPage, showToast });
+  const expandMarginsRange = usePageRange({ pageCount, currentPage, showToast });
+  const shrinkMarginsRange = usePageRange({ pageCount, currentPage, showToast });
+  const pngExportRange = usePageRange({ pageCount, currentPage, defaultScope: 'current', showToast });
+  const exportPagesPdfRange = usePageRange({ pageCount, currentPage, showToast });
+  const duplicateRange = usePageRangePair({ showToast });
+  const deleteRange = usePageRangePair({ showToast });
+  const extractRange = usePageRangePair({ showToast });
+  const interleaveRange = usePageRangePair({ showToast });
+  const rotateRange = usePageRangePair({ showToast });
+  const keepRange = usePageRangePair({ showToast });
+  const moveRange = usePageRangePair({ showToast });
+  const prependRange = usePageRangePair({ showToast });
+  const reverseRange = usePageRangePair({ showToast });
+  const cropRange = usePageRangePair({ showToast });
+  const parityRange = usePageRangePair({ showToast });
+  const insertRange = usePageRangePair({ showToast });
+  const mergeRange = usePageRangePair({ showToast });
 
   useEffect(() => { filePathRef.current = filePath; }, [filePath]);
 
@@ -1054,16 +1021,14 @@ function App() {
       rememberBrowserDirectory(entry.path);
       void invoke<number>('get_pdf_page_count', { path: entry.path }).then((count) => {
         setInterleaveSourcePageCount(count);
-        setInterleaveStartPage(0);
-        setInterleaveEndPage(Math.max(0, count - 1));
+        interleaveRange.reset(0, Math.max(0, count - 1));
       });
     } else if (browserTarget === 'prepend') {
       setPrependFilePath(entry.path);
       rememberBrowserDirectory(entry.path);
       void invoke<number>('get_pdf_page_count', { path: entry.path }).then((count) => {
         setPrependSourcePageCount(count);
-        setPrependStartPage(0);
-        setPrependEndPage(Math.max(0, count - 1));
+        prependRange.reset(0, Math.max(0, count - 1));
       });
     } else {
       setMergeFilePath(entry.path);
@@ -1176,17 +1141,11 @@ function App() {
 
   const openExtractModal = () => {
     if (!filePath || pageCount === null) return;
-    setExtractStartPage(currentPage);
-    setExtractEndPage(currentPage);
+    extractRange.reset(currentPage, currentPage);
     setExtractOutputPath(defaultExtractOutputPath(currentPage, currentPage));
     setShowExtractModal(true);
   };
 
-  const resolvePageRange = (scope: PageRangeScope, start: number, end: number) => {
-    if (scope === 'current') return { start: currentPage, end: currentPage };
-    if (scope === 'all') return { start: 0, end: (pageCount ?? 1) - 1 };
-    return { start, end };
-  };
 
   const imageExportExtension = (format: ImageExportFormat) => {
     if (format === 'jpeg') return 'jpg';
@@ -1232,9 +1191,7 @@ function App() {
 
   const openExportPngModal = () => {
     if (!filePath || pageCount === null) return;
-    setPngExportScope('current');
-    setPngExportStartPage(currentPage);
-    setPngExportEndPage(currentPage);
+    pngExportRange.reset({ scope: 'current', start: currentPage, end: currentPage });
     setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'current', currentPage, currentPage));
     setShowExportPngModal(true);
   };
@@ -1242,16 +1199,13 @@ function App() {
   const handleExportPng = async () => {
     const output = pngExportOutputPath.trim();
     if (!filePath || !output) return;
-    const start = pngExportScope === 'current' ? currentPage : pngExportStartPage;
-    const end = pngExportScope === 'all' ? (pageCount ?? 1) - 1 : pngExportScope === 'current' ? currentPage : pngExportEndPage;
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = pngExportRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     const ext = imageExportExtension(imageExportFormat);
     const label = imageExportFormat === 'webp' ? 'WebP' : imageExportFormat === 'bmp' ? 'BMP' : imageExportFormat === 'tiff' ? 'TIFF' : imageExportFormat === 'gif' ? 'GIF' : imageExportFormat === 'ppm' ? 'PPM' : imageExportFormat.toUpperCase();
     await withLoading(async () => {
-      if (pngExportScope === 'current') {
+      if (pngExportRange.scope === 'current') {
         const written = await invoke<string>(imageExportCommand(imageExportFormat, false), {
           path: filePath,
           pageIndex: currentPage,
@@ -1286,7 +1240,7 @@ function App() {
               : imageExportFormat === 'ppm'
                 ? PPM_DIALOG_FILTER
                 : PNG_DIALOG_FILTER;
-    if (pngExportScope === 'current') {
+    if (pngExportRange.scope === 'current') {
       const picked = await pickSaveWithNativeDialog(
         ensureExtension(
           pngExportOutputPath || defaultImageExportOutput(imageExportFormat, 'current', currentPage, currentPage),
@@ -1299,7 +1253,7 @@ function App() {
       return;
     }
     const picked = await pickSaveWithNativeDialog(
-      pngExportOutputPath || defaultImageExportOutput(imageExportFormat, pngExportScope, pngExportStartPage, pngExportEndPage),
+      pngExportOutputPath || defaultImageExportOutput(imageExportFormat, pngExportRange.scope, pngExportRange.startPage, pngExportRange.endPage),
       filters,
     );
     if (!picked) return;
@@ -1356,29 +1310,24 @@ function App() {
 
   const openDuplicateRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setDuplicateRangeStartPage(currentPage);
-    setDuplicateRangeEndPage(currentPage);
+    duplicateRange.reset(currentPage, currentPage);
     setShowDuplicateRangeModal(true);
   };
 
   const handleDuplicatePageRange = async () => {
     if (!filePath) return;
-    if (duplicateRangeStartPage > duplicateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'duplicate_page_range', args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage }, reloadAt: duplicateRangeEndPage + 1, toast: (n) => `Duplicated ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowDuplicateRangeModal(false) });
+    const range = duplicateRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'duplicate_page_range', args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage }, reloadAt: duplicateRange.endPage + 1, toast: (n) => `Duplicated ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowDuplicateRangeModal(false) });
   };
 
   const handleDuplicatePageRangeToEnd = async () => {
     if (!filePath || pageCount === null) return;
-    if (duplicateRangeStartPage > duplicateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = duplicateRange.validate();
+    if (!range) return;
     await runEdit<number>({
       command: 'duplicate_page_range_to_end',
-      args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage },
+      args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage },
       reloadAt: (count) => pageCount + count - 1,
       toast: (count) => `Appended ${count} page${count === 1 ? '' : 's'} to end`,
       onSuccess: () => setShowDuplicateRangeModal(false),
@@ -1387,20 +1336,16 @@ function App() {
 
   const handleDuplicatePageRangeToStart = async () => {
     if (!filePath) return;
-    if (duplicateRangeStartPage > duplicateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'duplicate_page_range_to_start', args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage }, reloadAt: 0, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} at start`, onSuccess: () => setShowDuplicateRangeModal(false) });
+    const range = duplicateRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'duplicate_page_range_to_start', args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage }, reloadAt: 0, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} at start`, onSuccess: () => setShowDuplicateRangeModal(false) });
   };
 
   const handleDuplicatePageRangeBefore = async () => {
     if (!filePath) return;
-    if (duplicateRangeStartPage > duplicateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'duplicate_page_range_before', args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage }, reloadAt: duplicateRangeStartPage, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} before range`, onSuccess: () => setShowDuplicateRangeModal(false) });
+    const range = duplicateRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'duplicate_page_range_before', args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage }, reloadAt: duplicateRange.startPage, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} before range`, onSuccess: () => setShowDuplicateRangeModal(false) });
   };
 
   const handleReversePages = async () => {
@@ -1467,20 +1412,16 @@ function App() {
 
   const openPageHeaderModal = () => {
     if (!filePath || pageCount === null) return;
-    setPageHeaderScope('all');
+    pageHeaderRange.reset();
     setPageHeaderText('DRAFT');
-    setPageHeaderStartPage(0);
-    setPageHeaderEndPage((pageCount ?? 1) - 1);
     setShowPageHeaderModal(true);
   };
 
   const handleAddPageHeader = async () => {
     if (!filePath || !pageHeaderText.trim()) return;
-    const { start, end } = resolvePageRange(pageHeaderScope, pageHeaderStartPage, pageHeaderEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = pageHeaderRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'add_page_header', args: { startPage: start, endPage: end, text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
   };
 
@@ -1496,20 +1437,16 @@ function App() {
 
   const openPageFooterModal = () => {
     if (!filePath || pageCount === null) return;
-    setPageFooterScope('all');
+    pageFooterRange.reset();
     setPageFooterText('Confidential');
-    setPageFooterStartPage(0);
-    setPageFooterEndPage((pageCount ?? 1) - 1);
     setShowPageFooterModal(true);
   };
 
   const handleAddPageFooter = async () => {
     if (!filePath || !pageFooterText.trim()) return;
-    const { start, end } = resolvePageRange(pageFooterScope, pageFooterStartPage, pageFooterEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = pageFooterRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'add_page_footer', args: { startPage: start, endPage: end, text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
   };
 
@@ -1588,8 +1525,7 @@ function App() {
   const openInterleaveModal = () => {
     if (!filePath) return;
     setInterleaveFilePath('');
-    setInterleaveStartPage(0);
-    setInterleaveEndPage(0);
+    interleaveRange.reset(0, 0);
     setInterleaveSourcePageCount(null);
     setShowInterleaveModal(true);
   };
@@ -1604,8 +1540,7 @@ function App() {
     try {
       const count = await invoke<number>('get_pdf_page_count', { path: trimmed });
       setInterleaveSourcePageCount(count);
-      setInterleaveStartPage(0);
-      setInterleaveEndPage(Math.max(0, count - 1));
+      interleaveRange.reset(0, Math.max(0, count - 1));
     } catch {
       setInterleaveSourcePageCount(null);
     }
@@ -1614,11 +1549,9 @@ function App() {
   const handleInterleavePdf = async () => {
     const source = interleaveFilePath.trim();
     if (!filePath || !source) return;
-    if (interleaveStartPage > interleaveEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'interleave_pdf', args: { otherPath: source, otherStart: interleaveStartPage, otherEnd: interleaveEndPage }, toast: (n) => `Interleaved ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowInterleaveModal(false) });
+    const range = interleaveRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'interleave_pdf', args: { otherPath: source, otherStart: interleaveRange.startPage, otherEnd: interleaveRange.endPage }, toast: (n) => `Interleaved ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowInterleaveModal(false) });
   };
 
   const handleSplitOddEven = async () => {
@@ -1639,20 +1572,16 @@ function App() {
 
   const openPageSizeModal = () => {
     if (!filePath || pageCount === null) return;
+    pageSizeRange.reset();
     setPageSizePreset('letter');
-    setPageSizeScope('all');
-    setPageSizeStartPage(0);
-    setPageSizeEndPage((pageCount ?? 1) - 1);
     setShowPageSizeModal(true);
   };
 
   const handleSetPageSize = async () => {
     if (!filePath) return;
-    const { start, end } = resolvePageRange(pageSizeScope, pageSizeStartPage, pageSizeEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = pageSizeRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'set_page_size', args: { startPage: start, endPage: end, preset: pageSizePreset }, toast: (n) => `Resized ${n} page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
   };
 
@@ -1690,9 +1619,7 @@ function App() {
 
   const openExportPagesPdfModal = () => {
     if (!filePath || pageCount === null) return;
-    setExportPagesPdfScope('all');
-    setExportPagesPdfStartPage(0);
-    setExportPagesPdfEndPage((pageCount ?? 1) - 1);
+    exportPagesPdfRange.reset();
     setExportPagesPdfOutputDir(defaultExportPagesPdfDir());
     setShowExportPagesPdfModal(true);
   };
@@ -1700,12 +1627,9 @@ function App() {
   const handleExportPagesPdf = async () => {
     const outputDir = exportPagesPdfOutputDir.trim();
     if (!filePath || !outputDir) return;
-    const start = exportPagesPdfScope === 'current' ? currentPage : exportPagesPdfStartPage;
-    const end = exportPagesPdfScope === 'all' ? (pageCount ?? 1) - 1 : exportPagesPdfScope === 'current' ? currentPage : exportPagesPdfEndPage;
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = exportPagesPdfRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await withLoading(async () => {
       const written = await invoke<string[]>('export_pdf_pages_as_pdf', {
         path: filePath,
@@ -1813,8 +1737,8 @@ function App() {
     }
     const base = {
       path: filePath,
-      startPage: parityRangeStartPage,
-      endPage: parityRangeEndPage,
+      startPage: parityRange.startPage,
+      endPage: parityRange.endPage,
     };
     if (command.startsWith('extract_')) {
       return { ...base, outputPath: parityRangeOutputPath.trim() };
@@ -1854,8 +1778,7 @@ function App() {
 
   const openParityRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setParityRangeStartPage(currentPage);
-    setParityRangeEndPage(currentPage);
+    parityRange.reset(currentPage, currentPage);
     setParityRangeCommand('rotate_odd_pages_in_range');
     setShowParityRangeModal(true);
   };
@@ -1863,9 +1786,9 @@ function App() {
   const handleParityRangeAction = async () => {
     if (!filePath) return;
     const command = parityRangeCommand;
-    if (parityBatchNeedsRange(command) && parityRangeStartPage > parityRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
+    if (parityBatchNeedsRange(command)) {
+      const range = parityRange.validate();
+      if (!range) return;
     }
     if ((command.startsWith('export_') || command.startsWith('extract_')) && !parityRangeOutputPath.trim()) {
       showToast('Output path or directory is required', 'error');
@@ -1928,23 +1851,20 @@ function App() {
 
   const openRotateRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setRotateRangeStartPage(currentPage);
-    setRotateRangeEndPage(currentPage);
+    rotateRange.reset(currentPage, currentPage);
     setShowRotateRangeModal(true);
   };
 
   const handleRotatePageRange = async (ccw: boolean) => {
     if (!filePath) return;
-    if (rotateRangeStartPage > rotateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = rotateRange.validate();
+    if (!range) return;
     await withLoading(async () => {
       const cmd = ccw ? 'rotate_page_range_ccw' : 'rotate_page_range';
       const rotated = await invoke<number>(cmd, {
         path: filePath,
-        startPage: rotateRangeStartPage,
-        endPage: rotateRangeEndPage,
+        startPage: rotateRange.startPage,
+        endPage: rotateRange.endPage,
       });
       markPdfEdited();
       await reloadOpenPdf(currentPage);
@@ -1955,36 +1875,29 @@ function App() {
 
   const handleResetRotationRange = async () => {
     if (!filePath) return;
-    if (rotateRangeStartPage > rotateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'reset_rotation_range', args: { startPage: rotateRangeStartPage, endPage: rotateRangeEndPage }, toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowRotateRangeModal(false) });
+    const range = rotateRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'reset_rotation_range', args: { startPage: rotateRange.startPage, endPage: rotateRange.endPage }, toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowRotateRangeModal(false) });
   };
 
   const handleRotatePage180Range = async () => {
     if (!filePath) return;
-    if (rotateRangeStartPage > rotateRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'rotate_page_180_range', args: { startPage: rotateRangeStartPage, endPage: rotateRangeEndPage }, toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 180°`, onSuccess: () => setShowRotateRangeModal(false) });
+    const range = rotateRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'rotate_page_180_range', args: { startPage: rotateRange.startPage, endPage: rotateRange.endPage }, toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 180°`, onSuccess: () => setShowRotateRangeModal(false) });
   };
 
   const openReverseRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setReverseRangeStartPage(currentPage);
-    setReverseRangeEndPage(currentPage);
+    reverseRange.reset(currentPage, currentPage);
     setShowReverseRangeModal(true);
   };
 
   const handleReversePageRange = async () => {
     if (!filePath) return;
-    if (reverseRangeStartPage > reverseRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'reverse_page_range', args: { startPage: reverseRangeStartPage, endPage: reverseRangeEndPage }, toast: `Reversed pages ${reverseRangeStartPage + 1}–${reverseRangeEndPage + 1}`, onSuccess: () => setShowReverseRangeModal(false) });
+    const range = reverseRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'reverse_page_range', args: { startPage: reverseRange.startPage, endPage: reverseRange.endPage }, toast: `Reversed pages ${reverseRange.startPage + 1}–${reverseRange.endPage + 1}`, onSuccess: () => setShowReverseRangeModal(false) });
   };
 
   const openInsertBlankPagesModal = () => {
@@ -2001,8 +1914,7 @@ function App() {
 
   const openCropRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setCropRangeStartPage(currentPage);
-    setCropRangeEndPage(currentPage);
+    cropRange.reset(currentPage, currentPage);
     setCropMarginTop(50);
     setCropMarginRight(50);
     setCropMarginBottom(50);
@@ -2012,11 +1924,9 @@ function App() {
 
   const handleCropPageRange = async () => {
     if (!filePath) return;
-    if (cropRangeStartPage > cropRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'crop_page_range', args: { startPage: cropRangeStartPage, endPage: cropRangeEndPage, marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
+    const range = cropRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'crop_page_range', args: { startPage: cropRange.startPage, endPage: cropRange.endPage, marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
   };
 
   const handleFlattenAllAnnotations = async () => {
@@ -2047,26 +1957,23 @@ function App() {
 
   const openKeepRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setKeepRangeStartPage(currentPage);
-    setKeepRangeEndPage(currentPage);
+    keepRange.reset(currentPage, currentPage);
     setShowKeepRangeModal(true);
   };
 
   const handleKeepPageRange = async () => {
     if (!filePath || pageCount === null) return;
-    if (keepRangeStartPage > keepRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    const keepCount = keepRangeEndPage - keepRangeStartPage + 1;
+    const range = keepRange.validate();
+    if (!range) return;
+    const keepCount = keepRange.endPage - keepRange.startPage + 1;
     if (keepCount >= pageCount) {
       showToast('Range already includes every page', 'error');
       return;
     }
     await runEdit<number>({
       command: 'keep_page_range',
-      args: { startPage: keepRangeStartPage, endPage: keepRangeEndPage },
-      reloadAt: Math.min(keepRangeStartPage, keepCount - 1),
+      args: { startPage: keepRange.startPage, endPage: keepRange.endPage },
+      reloadAt: Math.min(keepRange.startPage, keepCount - 1),
       toast: (deleted) => `Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`,
       onSuccess: () => setShowKeepRangeModal(false),
     });
@@ -2074,45 +1981,38 @@ function App() {
 
   const openMoveRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setMoveRangeStartPage(currentPage);
-    setMoveRangeEndPage(currentPage);
+    moveRange.reset(currentPage, currentPage);
     setMoveRangeToIndex(currentPage);
     setShowMoveRangeModal(true);
   };
 
   const handleMovePageRange = async () => {
     if (!filePath || pageCount === null) return;
-    if (moveRangeStartPage > moveRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = moveRange.validate();
+    if (!range) return;
     if (moveRangeToIndex > pageCount) {
       showToast('Target index out of bounds', 'error');
       return;
     }
-    await runEdit({ command: 'move_page_range', args: { startPage: moveRangeStartPage, endPage: moveRangeEndPage, toIndex: moveRangeToIndex }, reloadAt: moveRangeToIndex, toast: `Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to index ${moveRangeToIndex + 1}`, onSuccess: () => setShowMoveRangeModal(false) });
+    await runEdit({ command: 'move_page_range', args: { startPage: moveRange.startPage, endPage: moveRange.endPage, toIndex: moveRangeToIndex }, reloadAt: moveRangeToIndex, toast: `Moved pages ${moveRange.startPage + 1}–${moveRange.endPage + 1} to index ${moveRangeToIndex + 1}`, onSuccess: () => setShowMoveRangeModal(false) });
   };
 
   const handleMovePageRangeToStart = async () => {
     if (!filePath) return;
-    if (moveRangeStartPage > moveRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    await runEdit({ command: 'move_page_range_to_start', args: { startPage: moveRangeStartPage, endPage: moveRangeEndPage }, reloadAt: 0, toast: `Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to start`, onSuccess: () => setShowMoveRangeModal(false) });
+    const range = moveRange.validate();
+    if (!range) return;
+    await runEdit({ command: 'move_page_range_to_start', args: { startPage: moveRange.startPage, endPage: moveRange.endPage }, reloadAt: 0, toast: `Moved pages ${moveRange.startPage + 1}–${moveRange.endPage + 1} to start`, onSuccess: () => setShowMoveRangeModal(false) });
   };
 
   const handleMovePageRangeToEnd = async () => {
     if (!filePath || pageCount === null) return;
-    if (moveRangeStartPage > moveRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = moveRange.validate();
+    if (!range) return;
     await runEdit({
       command: 'move_page_range_to_end',
-      args: { startPage: moveRangeStartPage, endPage: moveRangeEndPage },
-      reloadAt: pageCount - (moveRangeEndPage - moveRangeStartPage + 1),
-      toast: `Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to end`,
+      args: { startPage: moveRange.startPage, endPage: moveRange.endPage },
+      reloadAt: pageCount - (moveRange.endPage - moveRange.startPage + 1),
+      toast: `Moved pages ${moveRange.startPage + 1}–${moveRange.endPage + 1} to end`,
       onSuccess: () => setShowMoveRangeModal(false),
     });
   };
@@ -2430,8 +2330,7 @@ function App() {
   const openPrependModal = () => {
     if (!filePath) return;
     setPrependFilePath('');
-    setPrependStartPage(0);
-    setPrependEndPage(0);
+    prependRange.reset(0, 0);
     setPrependSourcePageCount(null);
     setShowPrependModal(true);
   };
@@ -2446,8 +2345,7 @@ function App() {
     try {
       const count = await invoke<number>('get_pdf_page_count', { path: trimmed });
       setPrependSourcePageCount(count);
-      setPrependStartPage(0);
-      setPrependEndPage(Math.max(0, count - 1));
+      prependRange.reset(0, Math.max(0, count - 1));
     } catch {
       setPrependSourcePageCount(null);
     }
@@ -2456,13 +2354,11 @@ function App() {
   const handlePrependPdf = async () => {
     const source = prependFilePath.trim();
     if (!filePath || !source) return;
-    if (prependStartPage > prependEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = prependRange.validate();
+    if (!range) return;
     await runEdit<number>({
       command: 'prepend_pdf',
-      args: { sourcePath: source, sourceStart: prependStartPage, sourceEnd: prependEndPage },
+      args: { sourcePath: source, sourceStart: prependRange.startPage, sourceEnd: prependRange.endPage },
       reloadAt: (added) => currentPage + added,
       toast: (added) => `Prepended ${added} page${added === 1 ? '' : 's'}`,
       onSuccess: () => setShowPrependModal(false),
@@ -2489,20 +2385,16 @@ function App() {
 
   const openPageBorderModal = () => {
     if (!filePath || pageCount === null) return;
-    setPageBorderScope('all');
-    setPageBorderStartPage(0);
-    setPageBorderEndPage((pageCount ?? 1) - 1);
+    pageBorderRange.reset();
     setPageBorderInset(20);
     setShowPageBorderModal(true);
   };
 
   const handleAddPageBorder = async () => {
     if (!filePath) return;
-    const { start, end } = resolvePageRange(pageBorderScope, pageBorderStartPage, pageBorderEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = pageBorderRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'add_page_border', args: { startPage: start, endPage: end, inset: pageBorderInset }, toast: (n) => `Added border to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
   };
 
@@ -2575,9 +2467,7 @@ function App() {
 
   const openExpandMarginsModal = () => {
     if (!filePath || pageCount === null) return;
-    setExpandMarginsScope('all');
-    setExpandMarginsStartPage(0);
-    setExpandMarginsEndPage((pageCount ?? 1) - 1);
+    expandMarginsRange.reset();
     setExpandMarginTop(20);
     setExpandMarginRight(20);
     setExpandMarginBottom(20);
@@ -2587,9 +2477,7 @@ function App() {
 
   const openShrinkMarginsModal = () => {
     if (!filePath || pageCount === null) return;
-    setShrinkMarginsScope('all');
-    setShrinkMarginsStartPage(0);
-    setShrinkMarginsEndPage((pageCount ?? 1) - 1);
+    shrinkMarginsRange.reset();
     setShrinkMarginTop(20);
     setShrinkMarginRight(20);
     setShrinkMarginBottom(20);
@@ -2599,21 +2487,17 @@ function App() {
 
   const handleShrinkPageMargins = async () => {
     if (!filePath) return;
-    const { start, end } = resolvePageRange(shrinkMarginsScope, shrinkMarginsStartPage, shrinkMarginsEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = shrinkMarginsRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'shrink_page_margins', args: { startPage: start, endPage: end, marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
   };
 
   const handleExpandPageMargins = async () => {
     if (!filePath) return;
-    const { start, end } = resolvePageRange(expandMarginsScope, expandMarginsStartPage, expandMarginsEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = expandMarginsRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'expand_page_margins', args: { startPage: start, endPage: end, marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
   };
 
@@ -2663,18 +2547,15 @@ function App() {
 
   const openDeleteRangeModal = () => {
     if (!filePath || pageCount === null) return;
-    setDeleteRangeStartPage(currentPage);
-    setDeleteRangeEndPage(currentPage);
+    deleteRange.reset(currentPage, currentPage);
     setShowDeleteRangeModal(true);
   };
 
   const handleDeletePageRange = async () => {
     if (!filePath || pageCount === null) return;
-    if (deleteRangeStartPage > deleteRangeEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
-    const deleteCount = deleteRangeEndPage - deleteRangeStartPage + 1;
+    const range = deleteRange.validate();
+    if (!range) return;
+    const deleteCount = deleteRange.endPage - deleteRange.startPage + 1;
     if (deleteCount >= pageCount) {
       showToast('Cannot delete every page', 'error');
       return;
@@ -2682,13 +2563,13 @@ function App() {
     await withLoading(async () => {
       await invoke<number>('delete_page_range', {
         path: filePath,
-        startPage: deleteRangeStartPage,
-        endPage: deleteRangeEndPage,
+        startPage: deleteRange.startPage,
+        endPage: deleteRange.endPage,
       });
       markPdfEdited();
-      const nextPage = deleteRangeStartPage >= pageCount - deleteCount
+      const nextPage = deleteRange.startPage >= pageCount - deleteCount
         ? Math.max(0, pageCount - deleteCount - 1)
-        : deleteRangeStartPage;
+        : deleteRange.startPage;
       await reloadOpenPdf(nextPage);
       setShowDeleteRangeModal(false);
       showToast(`Deleted ${deleteCount} page${deleteCount === 1 ? '' : 's'}`);
@@ -2697,20 +2578,16 @@ function App() {
 
   const openPageNumbersModal = () => {
     if (!filePath || pageCount === null) return;
-    setPageNumbersScope('all');
-    setPageNumbersStartPage(0);
-    setPageNumbersEndPage((pageCount ?? 1) - 1);
+    pageNumbersRange.reset();
     setPageNumbersPrefix('Page ');
     setShowPageNumbersModal(true);
   };
 
   const handleAddPageNumbers = async () => {
     if (!filePath) return;
-    const { start, end } = resolvePageRange(pageNumbersScope, pageNumbersStartPage, pageNumbersEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = pageNumbersRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'add_page_numbers', args: { startPage: start, endPage: end, prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
   };
 
@@ -2724,20 +2601,16 @@ function App() {
 
   const openWatermarkModal = () => {
     if (!filePath || pageCount === null) return;
-    setWatermarkScope('all');
+    watermarkRange.reset();
     setWatermarkText('DRAFT');
-    setWatermarkStartPage(0);
-    setWatermarkEndPage((pageCount ?? 1) - 1);
     setShowWatermarkModal(true);
   };
 
   const handleAddWatermark = async () => {
     if (!filePath || !watermarkText.trim()) return;
-    const { start, end } = resolvePageRange(watermarkScope, watermarkStartPage, watermarkEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = watermarkRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'add_text_watermark', args: { text: watermarkText.trim(), startPage: start, endPage: end }, toast: (n) => `Watermarked ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
   };
 
@@ -2800,19 +2673,15 @@ function App() {
 
   const openFlattenModal = () => {
     if (!filePath || pageCount === null) return;
-    setFlattenScope('all');
-    setFlattenStartPage(0);
-    setFlattenEndPage((pageCount ?? 1) - 1);
+    flattenRange.reset();
     setShowFlattenModal(true);
   };
 
   const handleFlattenAnnotations = async () => {
     if (!filePath) return;
-    const { start, end } = resolvePageRange(flattenScope, flattenStartPage, flattenEndPage);
-    if (start > end) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = flattenRange.validateAndResolve();
+    if (!range) return;
+    const { start, end } = range;
     await runEdit({ command: 'flatten_annotations', args: { startPage: start, endPage: end }, toast: (n) => `Removed ${n} annotation${n === 1 ? '' : 's'}`, onSuccess: () => setShowFlattenModal(false) });
   };
 
@@ -4672,16 +4541,14 @@ function App() {
   const handleExtractPdf = async () => {
     const output = extractOutputPath.trim();
     if (!filePath || !output) return;
-    if (extractStartPage > extractEndPage) {
-      showToast('From page must be ≤ To page', 'error');
-      return;
-    }
+    const range = extractRange.validate();
+    if (!range) return;
     await withLoading(async () => {
       const written = await invoke<string>('extract_pdf_pages', {
         path: filePath,
         outputPath: output,
-        startPage: extractStartPage,
-        endPage: extractEndPage,
+        startPage: extractRange.startPage,
+        endPage: extractRange.endPage,
       });
       showToast(`Extracted pages to ${written}`);
       setShowExtractModal(false);
@@ -4690,7 +4557,7 @@ function App() {
 
   const chooseExtractOutputNative = async () => {
     const picked = await pickSaveWithNativeDialog(
-      extractOutputPath || defaultExtractOutputPath(extractStartPage, extractEndPage),
+      extractOutputPath || defaultExtractOutputPath(extractRange.startPage, extractRange.endPage),
       PDF_DIALOG_FILTER,
     );
     if (!picked) return;
@@ -4699,21 +4566,21 @@ function App() {
 
   const handleInsertPdf = async () => {
     if (!filePath || !insertFilePath) return;
+    if (!insertRange.validate()) return;
     await withLoading(async () => {
       await invoke('insert_pdf', {
         path: filePath,
         insertPath: insertFilePath,
         atIndex: insertAtPage,
-        insertStart: insertStartPage,
-        insertEnd: insertEndPage,
+        insertStart: insertRange.startPage,
+        insertEnd: insertRange.endPage,
       });
       markPdfEdited();
       showToast('PDF inserted successfully');
       setShowInsertModal(false);
       setInsertFilePath('');
       setInsertAtPage(0);
-      setInsertStartPage(0);
-      setInsertEndPage(0);
+      insertRange.reset(0, 0);
       await loadThumbnails(filePath);
       const count = await invoke<number>('get_pdf_page_count', { path: filePath });
       setPageCount(count);
@@ -4722,19 +4589,19 @@ function App() {
 
   const handleMergePdf = async () => {
     if (!filePath || !mergeFilePath) return;
+    if (!mergeRange.validate()) return;
     await withLoading(async () => {
       const added = await invoke<number>('merge_pdf', {
         path: filePath,
         mergePath: mergeFilePath,
-        mergeStart: mergeStartPage,
-        mergeEnd: mergeEndPage,
+        mergeStart: mergeRange.startPage,
+        mergeEnd: mergeRange.endPage,
       });
       markPdfEdited();
       showToast(`Merged ${added} page${added === 1 ? '' : 's'} from source PDF`);
       setShowMergeModal(false);
       setMergeFilePath('');
-      setMergeStartPage(0);
-      setMergeEndPage(0);
+      mergeRange.reset(0, 0);
       await loadThumbnails(filePath);
       const count = await invoke<number>('get_pdf_page_count', { path: filePath });
       setPageCount(count);
@@ -5898,9 +5765,9 @@ function App() {
             onChange={(e) => {
               const format = e.target.value as ImageExportFormat;
               setImageExportFormat(format);
-              const start = pngExportScope === 'current' ? currentPage : pngExportStartPage;
-              const end = pngExportScope === 'all' ? (pageCount ?? 1) - 1 : pngExportScope === 'current' ? currentPage : pngExportEndPage;
-              setPngExportOutputPath(defaultImageExportOutput(format, pngExportScope, start, end));
+              const start = pngExportRange.scope === 'current' ? currentPage : pngExportRange.startPage;
+              const end = pngExportRange.scope === 'all' ? (pageCount ?? 1) - 1 : pngExportRange.scope === 'current' ? currentPage : pngExportRange.endPage;
+              setPngExportOutputPath(defaultImageExportOutput(format, pngExportRange.scope, start, end));
             }}
           >
             <option value="png">PNG</option>
@@ -5916,74 +5783,54 @@ function App() {
           <label>Pages to export:</label>
           <select
             className="modal-input"
-            value={pngExportScope}
+            value={pngExportRange.scope}
             onChange={(e) => {
               const scope = e.target.value as PngExportScope;
-              setPngExportScope(scope);
-              const start = scope === 'current' ? currentPage : pngExportStartPage;
-              const end = scope === 'all' ? (pageCount ?? 1) - 1 : scope === 'current' ? currentPage : pngExportEndPage;
-              setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, scope, start, end));
+              pngExportRange.setScope(scope);
+              const resolved = resolvePageRange(scope, pngExportRange.startPage, pngExportRange.endPage, currentPage, pageCount);
+              setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, scope, resolved.start, resolved.end));
             }}
           >
             <option value="current">Current page only</option>
             <option value="range">Page range</option>
             <option value="all">All pages</option>
           </select>
-          {pngExportScope === 'range' && (
-            <>
-              <label>
-                From page (1-{pageCount ?? 0}):
-                <input
-                  type="number"
-                  value={pngExportStartPage + 1}
-                  onChange={(e) => {
-                    const start = Math.max(0, parseInt(e.target.value, 10) - 1);
-                    setPngExportStartPage(start);
-                    setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'range', start, pngExportEndPage));
-                  }}
-                  min="1"
-                  max={pageCount ?? undefined}
-                  className="modal-input"
-                />
-              </label>
-              <label>
-                To page (1-{pageCount ?? 0}):
-                <input
-                  type="number"
-                  value={pngExportEndPage + 1}
-                  onChange={(e) => {
-                    const end = Math.max(0, parseInt(e.target.value, 10) - 1);
-                    setPngExportEndPage(end);
-                    setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'range', pngExportStartPage, end));
-                  }}
-                  min="1"
-                  max={pageCount ?? undefined}
-                  className="modal-input"
-                />
-              </label>
-            </>
+          {pngExportRange.scope === 'range' && (
+            <PageRangePairInputs
+              startPage={pngExportRange.startPage}
+              endPage={pngExportRange.endPage}
+              onStartChange={(start) => {
+                pngExportRange.setStartPage(start);
+                setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'range', start, pngExportRange.endPage));
+              }}
+              onEndChange={(end) => {
+                pngExportRange.setEndPage(end);
+                setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'range', pngExportRange.startPage, end));
+              }}
+              maxPage={pageCount ?? undefined}
+            />
           )}
-          <label>{pngExportScope === 'current' ? 'Output file path:' : 'Output directory:'}</label>
+          <label>{pngExportRange.scope === 'current' ? 'Output file path:' : 'Output directory:'}</label>
           <div className="modal-path-row">
             <input
               type="text"
               value={pngExportOutputPath}
               onChange={(e) => setPngExportOutputPath(e.target.value)}
               className="modal-input"
-              placeholder={pngExportScope === 'current' ? '/path/to/page.png' : '/path/to/output_dir'}
+              placeholder={pngExportRange.scope === 'current' ? '/path/to/page.png' : '/path/to/output_dir'}
             />
             {nativeDialogs && (
               <button onClick={() => void chooseExportPngOutputNative()} className="btn">Choose…</button>
             )}
           </div>
-          {pngExportScope !== 'current' && (
+          {pngExportRange.scope !== 'current' && (
             <p className="modal-help">
               Files are written as page-001.{imageExportExtension(imageExportFormat)}, page-002.{imageExportExtension(imageExportFormat)}, … inside the directory.
             </p>
           )}
           <div className="modal-actions">
             <button onClick={() => setShowExportPngModal(false)} className="btn btn-secondary">Cancel</button>
-            {pngExportScope !== 'current' && (
+            {pngExportRange.scope !== 'current' && (
               <>
                 <button onClick={() => void handleExportOddPagesImage()} className="btn" disabled={!pngExportOutputPath.trim()}>Export Odd</button>
                 <button onClick={() => void handleExportEvenPagesImage()} className="btn" disabled={!pngExportOutputPath.trim()}>Export Even</button>
@@ -5999,28 +5846,13 @@ function App() {
         <Modal onClose={() => setShowDeleteRangeModal(false)}>
           <h3>Delete Page Range</h3>
           <p className="modal-help">Remove multiple pages from the working copy. At least one page must remain.</p>
-          <label>
-            From page (1-{pageCount ?? 0}):
-            <input
-              type="number"
-              value={deleteRangeStartPage + 1}
-              onChange={(e) => setDeleteRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))}
-              min="1"
-              max={pageCount ?? undefined}
-              className="modal-input"
-            />
-          </label>
-          <label>
-            To page (1-{pageCount ?? 0}):
-            <input
-              type="number"
-              value={deleteRangeEndPage + 1}
-              onChange={(e) => setDeleteRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))}
-              min="1"
-              max={pageCount ?? undefined}
-              className="modal-input"
-            />
-          </label>
+          <PageRangePairInputs
+            startPage={deleteRange.startPage}
+            endPage={deleteRange.endPage}
+            onStartChange={deleteRange.setStartPage}
+            onEndChange={deleteRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <div className="modal-actions">
             <button onClick={() => setShowDeleteRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleDeletePageRange()} className="btn btn-danger">Delete range</button>
@@ -6033,18 +5865,7 @@ function App() {
         <Modal onClose={() => setShowPageNumbersModal(false)}>
           <h3>Page Numbers</h3>
           <p className="modal-help">Stamp footer page numbers onto the working copy.</p>
-          <label>Apply to:</label>
-          <select className="modal-input" value={pageNumbersScope} onChange={(e) => setPageNumbersScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {pageNumbersScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={pageNumbersStartPage + 1} onChange={(e) => setPageNumbersStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={pageNumbersEndPage + 1} onChange={(e) => setPageNumbersEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={pageNumbersRange} pageCount={pageCount} />
           <label>Prefix (e.g. &quot;Page &quot;):</label>
           <input type="text" value={pageNumbersPrefix} onChange={(e) => setPageNumbersPrefix(e.target.value)} className="modal-input" />
           <div className="modal-actions">
@@ -6063,18 +5884,7 @@ function App() {
           <p className="modal-help">Add a diagonal watermark to the working copy.</p>
           <label>Watermark text:</label>
           <input type="text" value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} className="modal-input" />
-          <label>Apply to:</label>
-          <select className="modal-input" value={watermarkScope} onChange={(e) => setWatermarkScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {watermarkScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={watermarkStartPage + 1} onChange={(e) => setWatermarkStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={watermarkEndPage + 1} onChange={(e) => setWatermarkEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={watermarkRange} pageCount={pageCount} />
           <div className="modal-actions">
             <button onClick={() => setShowWatermarkModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleAddWatermarkOddPages()} className="btn" disabled={!watermarkText.trim()}>Apply Odd</button>
@@ -6118,14 +5928,13 @@ function App() {
         <Modal onClose={() => setShowDuplicateRangeModal(false)}>
           <h3>Duplicate Page Range</h3>
           <p className="modal-help">Deep-copy a page range and insert the copies immediately after the range.</p>
-          <label>
-            From page (1-{pageCount ?? 0}):
-            <input type="number" value={duplicateRangeStartPage + 1} onChange={(e) => setDuplicateRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" />
-          </label>
-          <label>
-            To page (1-{pageCount ?? 0}):
-            <input type="number" value={duplicateRangeEndPage + 1} onChange={(e) => setDuplicateRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" />
-          </label>
+          <PageRangePairInputs
+            startPage={duplicateRange.startPage}
+            endPage={duplicateRange.endPage}
+            onStartChange={duplicateRange.setStartPage}
+            onEndChange={duplicateRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <div className="modal-actions">
             <button onClick={() => setShowDuplicateRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleDuplicatePageRange()} className="btn">Duplicate</button>
@@ -6141,18 +5950,7 @@ function App() {
         <Modal onClose={() => setShowFlattenModal(false)}>
           <h3>Flatten Annotations</h3>
           <p className="modal-help">Remove highlight, note, and other annotation objects from selected pages.</p>
-          <label>Apply to:</label>
-          <select className="modal-input" value={flattenScope} onChange={(e) => setFlattenScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {flattenScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={flattenStartPage + 1} onChange={(e) => setFlattenStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={flattenEndPage + 1} onChange={(e) => setFlattenEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={flattenRange} pageCount={pageCount} />
           <div className="modal-actions">
             <button onClick={() => setShowFlattenModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleFlattenAnnotations()} className="btn">Flatten</button>
@@ -6181,18 +5979,7 @@ function App() {
           <p className="modal-help">Stamp header text near the top of selected pages.</p>
           <label>Header text:</label>
           <input type="text" value={pageHeaderText} onChange={(e) => setPageHeaderText(e.target.value)} className="modal-input" />
-          <label>Apply to:</label>
-          <select className="modal-input" value={pageHeaderScope} onChange={(e) => setPageHeaderScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {pageHeaderScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={pageHeaderStartPage + 1} onChange={(e) => setPageHeaderStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={pageHeaderEndPage + 1} onChange={(e) => setPageHeaderEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={pageHeaderRange} pageCount={pageCount} />
           <div className="modal-actions">
             <button onClick={() => setShowPageHeaderModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleAddPageHeaderOddPages()} className="btn" disabled={!pageHeaderText.trim()}>Apply Odd</button>
@@ -6209,18 +5996,7 @@ function App() {
           <p className="modal-help">Stamp footer text near the bottom of selected pages.</p>
           <label>Footer text:</label>
           <input type="text" value={pageFooterText} onChange={(e) => setPageFooterText(e.target.value)} className="modal-input" />
-          <label>Apply to:</label>
-          <select className="modal-input" value={pageFooterScope} onChange={(e) => setPageFooterScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {pageFooterScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={pageFooterStartPage + 1} onChange={(e) => setPageFooterStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={pageFooterEndPage + 1} onChange={(e) => setPageFooterEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={pageFooterRange} pageCount={pageCount} />
           <div className="modal-actions">
             <button onClick={() => setShowPageFooterModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleAddPageFooterOddPages()} className="btn" disabled={!pageFooterText.trim()}>Apply Odd</button>
@@ -6276,8 +6052,13 @@ function App() {
           </div>
           {interleaveSourcePageCount !== null && (
             <>
-              <label>From page: <input type="number" value={interleaveStartPage + 1} onChange={(e) => setInterleaveStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={interleaveSourcePageCount} className="modal-input" /></label>
-              <label>To page: <input type="number" value={interleaveEndPage + 1} onChange={(e) => setInterleaveEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={interleaveSourcePageCount} className="modal-input" /></label>
+              <PageRangePairInputs
+                startPage={interleaveRange.startPage}
+                endPage={interleaveRange.endPage}
+                onStartChange={interleaveRange.setStartPage}
+                onEndChange={interleaveRange.setEndPage}
+                maxPage={interleaveSourcePageCount ?? undefined}
+              />
             </>
           )}
           <div className="modal-actions">
@@ -6298,18 +6079,7 @@ function App() {
             <option value="a4">A4 (595×842 pt)</option>
             <option value="legal">Legal (612×1008 pt)</option>
           </select>
-          <label>Apply to:</label>
-          <select className="modal-input" value={pageSizeScope} onChange={(e) => setPageSizeScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {pageSizeScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={pageSizeStartPage + 1} onChange={(e) => setPageSizeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={pageSizeEndPage + 1} onChange={(e) => setPageSizeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={pageSizeRange} pageCount={pageCount} />
           <div className="modal-actions">
             <button onClick={() => setShowPageSizeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleSetPageSizeOddPages()} className="btn">Apply Odd</button>
@@ -6324,18 +6094,7 @@ function App() {
         <Modal onClose={() => setShowExportPagesPdfModal(false)}>
           <h3>Export Pages as PDF</h3>
           <p className="modal-help">Write each page as a separate single-page PDF. The open document is not modified.</p>
-          <label>Pages to export:</label>
-          <select className="modal-input" value={exportPagesPdfScope} onChange={(e) => setExportPagesPdfScope(e.target.value as PngExportScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {exportPagesPdfScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={exportPagesPdfStartPage + 1} onChange={(e) => setExportPagesPdfStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={exportPagesPdfEndPage + 1} onChange={(e) => setExportPagesPdfEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={exportPagesPdfRange} pageCount={pageCount} applyLabel="Pages to export:" />
           <label>Output directory:</label>
           <input type="text" value={exportPagesPdfOutputDir} onChange={(e) => setExportPagesPdfOutputDir(e.target.value)} className="modal-input" placeholder="/path/to/output_dir" />
           <p className="modal-help">Files are written as page-001.pdf, page-002.pdf, … inside the directory.</p>
@@ -6353,8 +6112,13 @@ function App() {
         <Modal onClose={() => setShowRotateRangeModal(false)}>
           <h3>Rotate Page Range</h3>
           <p className="modal-help">Rotate every page in the range 90° clockwise or counter-clockwise.</p>
-          <label>From page: <input type="number" value={rotateRangeStartPage + 1} onChange={(e) => setRotateRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <label>To page: <input type="number" value={rotateRangeEndPage + 1} onChange={(e) => setRotateRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <PageRangePairInputs
+            startPage={rotateRange.startPage}
+            endPage={rotateRange.endPage}
+            onStartChange={rotateRange.setStartPage}
+            onEndChange={rotateRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <div className="modal-actions">
             <button onClick={() => setShowRotateRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleRotatePageRange(false)} className="btn">Rotate CW</button>
@@ -6370,8 +6134,13 @@ function App() {
         <Modal onClose={() => setShowKeepRangeModal(false)}>
           <h3>Keep Page Range</h3>
           <p className="modal-help">Delete every page outside the selected range.</p>
-          <label>From page: <input type="number" value={keepRangeStartPage + 1} onChange={(e) => setKeepRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <label>To page: <input type="number" value={keepRangeEndPage + 1} onChange={(e) => setKeepRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <PageRangePairInputs
+            startPage={keepRange.startPage}
+            endPage={keepRange.endPage}
+            onStartChange={keepRange.setStartPage}
+            onEndChange={keepRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <div className="modal-actions">
             <button onClick={() => setShowKeepRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleKeepPageRange()} className="btn btn-danger">Keep range</button>
@@ -6384,8 +6153,13 @@ function App() {
         <Modal onClose={() => setShowMoveRangeModal(false)}>
           <h3>Move Page Range</h3>
           <p className="modal-help">Move a contiguous block so its first page lands at the target index (0 = first).</p>
-          <label>From page: <input type="number" value={moveRangeStartPage + 1} onChange={(e) => setMoveRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <label>To page: <input type="number" value={moveRangeEndPage + 1} onChange={(e) => setMoveRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <PageRangePairInputs
+            startPage={moveRange.startPage}
+            endPage={moveRange.endPage}
+            onStartChange={moveRange.setStartPage}
+            onEndChange={moveRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <label>Target index (1-{((pageCount ?? 0) + 1)}): <input type="number" value={moveRangeToIndex + 1} onChange={(e) => setMoveRangeToIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" /></label>
           <div className="modal-actions">
             <button onClick={() => setShowMoveRangeModal(false)} className="btn btn-secondary">Cancel</button>
@@ -6408,8 +6182,13 @@ function App() {
           </div>
           {prependSourcePageCount !== null && (
             <>
-              <label>From page: <input type="number" value={prependStartPage + 1} onChange={(e) => setPrependStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={prependSourcePageCount} className="modal-input" /></label>
-              <label>To page: <input type="number" value={prependEndPage + 1} onChange={(e) => setPrependEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={prependSourcePageCount} className="modal-input" /></label>
+              <PageRangePairInputs
+                startPage={prependRange.startPage}
+                endPage={prependRange.endPage}
+                onStartChange={prependRange.setStartPage}
+                onEndChange={prependRange.setEndPage}
+                maxPage={prependSourcePageCount ?? undefined}
+              />
             </>
           )}
           <div className="modal-actions">
@@ -6439,18 +6218,7 @@ function App() {
           <h3>Page Border</h3>
           <p className="modal-help">Draw a rectangular border inset from page edges (viewer pixels).</p>
           <label>Inset (px): <input type="number" value={pageBorderInset} onChange={(e) => setPageBorderInset(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Apply to:</label>
-          <select className="modal-input" value={pageBorderScope} onChange={(e) => setPageBorderScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {pageBorderScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={pageBorderStartPage + 1} onChange={(e) => setPageBorderStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={pageBorderEndPage + 1} onChange={(e) => setPageBorderEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={pageBorderRange} pageCount={pageCount} />
           <div className="modal-actions">
             <button onClick={() => setShowPageBorderModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleAddPageBorderOddPages()} className="btn">Apply Odd</button>
@@ -6481,18 +6249,7 @@ function App() {
         <Modal onClose={() => setShowShrinkMarginsModal(false)}>
           <h3>Shrink Margins</h3>
           <p className="modal-help">Shrink MediaBox inward (clips page edges; does not scale content).</p>
-          <label>Apply to:</label>
-          <select className="modal-input" value={shrinkMarginsScope} onChange={(e) => setShrinkMarginsScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {shrinkMarginsScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={shrinkMarginsStartPage + 1} onChange={(e) => setShrinkMarginsStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={shrinkMarginsEndPage + 1} onChange={(e) => setShrinkMarginsEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={shrinkMarginsRange} pageCount={pageCount} />
           <label>Top: <input type="number" value={shrinkMarginTop} onChange={(e) => setShrinkMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Right: <input type="number" value={shrinkMarginRight} onChange={(e) => setShrinkMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Bottom: <input type="number" value={shrinkMarginBottom} onChange={(e) => setShrinkMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
@@ -6567,18 +6324,7 @@ function App() {
         <Modal onClose={() => setShowExpandMarginsModal(false)}>
           <h3>Expand Margins</h3>
           <p className="modal-help">Grow MediaBox outward (adds white space; does not scale content).</p>
-          <label>Apply to:</label>
-          <select className="modal-input" value={expandMarginsScope} onChange={(e) => setExpandMarginsScope(e.target.value as PageRangeScope)}>
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {expandMarginsScope === 'range' && (
-            <>
-              <label>From page: <input type="number" value={expandMarginsStartPage + 1} onChange={(e) => setExpandMarginsStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={expandMarginsEndPage + 1} onChange={(e) => setExpandMarginsEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-            </>
-          )}
+          <PageRangeFields range={expandMarginsRange} pageCount={pageCount} />
           <label>Top: <input type="number" value={expandMarginTop} onChange={(e) => setExpandMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Right: <input type="number" value={expandMarginRight} onChange={(e) => setExpandMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Bottom: <input type="number" value={expandMarginBottom} onChange={(e) => setExpandMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
@@ -6597,8 +6343,13 @@ function App() {
         <Modal onClose={() => setShowReverseRangeModal(false)}>
           <h3>Reverse Page Range</h3>
           <p className="modal-help">Reverse order within the selected page range only.</p>
-          <label>From page: <input type="number" value={reverseRangeStartPage + 1} onChange={(e) => setReverseRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <label>To page: <input type="number" value={reverseRangeEndPage + 1} onChange={(e) => setReverseRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <PageRangePairInputs
+            startPage={reverseRange.startPage}
+            endPage={reverseRange.endPage}
+            onStartChange={reverseRange.setStartPage}
+            onEndChange={reverseRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <div className="modal-actions">
             <button onClick={() => setShowReverseRangeModal(false)} className="btn btn-secondary">Cancel</button>
             <button onClick={() => void handleReversePageRange()} className="btn">Reverse</button>
@@ -6629,8 +6380,13 @@ function App() {
           <p className="modal-help">Run parity actions within a page range, or document-wide mod-3/mod-4 filters (no range). Export/extract use the output path below; margin/text stamps use values from their respective modals.</p>
           {parityBatchNeedsRange(parityRangeCommand) && (
             <>
-              <label>From page: <input type="number" value={parityRangeStartPage + 1} onChange={(e) => setParityRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-              <label>To page: <input type="number" value={parityRangeEndPage + 1} onChange={(e) => setParityRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+              <PageRangePairInputs
+                startPage={parityRange.startPage}
+                endPage={parityRange.endPage}
+                onStartChange={parityRange.setStartPage}
+                onEndChange={parityRange.setEndPage}
+                maxPage={pageCount ?? undefined}
+              />
             </>
           )}
           <label>Action:</label>
@@ -6657,8 +6413,13 @@ function App() {
         <Modal onClose={() => setShowCropRangeModal(false)}>
           <h3>Crop Page Range</h3>
           <p className="modal-help">Apply the same margins to every page in the range.</p>
-          <label>From page: <input type="number" value={cropRangeStartPage + 1} onChange={(e) => setCropRangeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <label>To page: <input type="number" value={cropRangeEndPage + 1} onChange={(e) => setCropRangeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
+          <PageRangePairInputs
+            startPage={cropRange.startPage}
+            endPage={cropRange.endPage}
+            onStartChange={cropRange.setStartPage}
+            onEndChange={cropRange.setEndPage}
+            maxPage={pageCount ?? undefined}
+          />
           <label>Top: <input type="number" value={cropMarginTop} onChange={(e) => setCropMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Right: <input type="number" value={cropMarginRight} onChange={(e) => setCropMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
           <label>Bottom: <input type="number" value={cropMarginBottom} onChange={(e) => setCropMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
@@ -6734,36 +6495,19 @@ function App() {
         <Modal onClose={() => setShowExtractModal(false)}>
           <h3>Extract Pages</h3>
           <p className="modal-help">Save a page range from this document into a new PDF. The open file is not modified.</p>
-          <label>
-            From page (1-{pageCount ?? 0}):
-            <input
-              type="number"
-              value={extractStartPage + 1}
-              onChange={(e) => {
-                const start = Math.max(0, parseInt(e.target.value, 10) - 1);
-                setExtractStartPage(start);
-                setExtractOutputPath(defaultExtractOutputPath(start, extractEndPage));
-              }}
-              min="1"
-              max={pageCount ?? undefined}
-              className="modal-input"
-            />
-          </label>
-          <label>
-            To page (1-{pageCount ?? 0}):
-            <input
-              type="number"
-              value={extractEndPage + 1}
-              onChange={(e) => {
-                const end = Math.max(0, parseInt(e.target.value, 10) - 1);
-                setExtractEndPage(end);
-                setExtractOutputPath(defaultExtractOutputPath(extractStartPage, end));
-              }}
-              min="1"
-              max={pageCount ?? undefined}
-              className="modal-input"
-            />
-          </label>
+          <PageRangePairInputs
+            startPage={extractRange.startPage}
+            endPage={extractRange.endPage}
+            onStartChange={(start) => {
+              extractRange.setStartPage(start);
+              setExtractOutputPath(defaultExtractOutputPath(start, extractRange.endPage));
+            }}
+            onEndChange={(end) => {
+              extractRange.setEndPage(end);
+              setExtractOutputPath(defaultExtractOutputPath(extractRange.startPage, end));
+            }}
+            maxPage={pageCount ?? undefined}
+          />
           <label>Output PDF path:</label>
           <div className="modal-path-row">
             <input
@@ -6997,35 +6741,18 @@ function App() {
                 <button onClick={() => openPdfBrowser('merge')} className="btn">Browse…</button>
               </div>
             </div>
-            <label>
-              From page {mergeSourcePageCount ? `(1-${mergeSourcePageCount})` : ''} of source:
-              <input
-                type="number"
-                value={mergeStartPage + 1}
-                onChange={(e) => setMergeStartPage(Math.max(0, parseInt(e.target.value, 10) - 1))}
-                min="1"
-                max={mergeSourcePageCount ?? undefined}
-                disabled={!mergeSourcePageCount}
-                className="modal-input"
-              />
-            </label>
-            <label>
-              To page {mergeSourcePageCount ? `(1-${mergeSourcePageCount})` : ''} of source:
-              <input
-                type="number"
-                value={mergeEndPage + 1}
-                onChange={(e) => setMergeEndPage(Math.max(0, parseInt(e.target.value, 10) - 1))}
-                min="1"
-                max={mergeSourcePageCount ?? undefined}
-                disabled={!mergeSourcePageCount}
-                className="modal-input"
-              />
-            </label>
+            <PageRangePairInputs
+              startPage={mergeRange.startPage}
+              endPage={mergeRange.endPage}
+              onStartChange={mergeRange.setStartPage}
+              onEndChange={mergeRange.setEndPage}
+              maxPage={mergeSourcePageCount ?? undefined}
+            />
           </div>
           {mergeSourcePageCount ? (
             <p className="modal-help">
-              Appends page{mergeStartPage === mergeEndPage ? '' : 's'} {mergeStartPage + 1}
-              {mergeStartPage === mergeEndPage ? '' : `–${mergeEndPage + 1}`} of the source ({mergeSourcePageCount} pages) after page {pageCount ?? 0} of this document.
+              Appends page{mergeRange.startPage === mergeRange.endPage ? '' : 's'} {mergeRange.startPage + 1}
+              {mergeRange.startPage === mergeRange.endPage ? '' : `–${mergeRange.endPage + 1}`} of the source ({mergeSourcePageCount} pages) after page {pageCount ?? 0} of this document.
             </p>
           ) : null}
           <div className="modal-actions">
@@ -7060,19 +6787,18 @@ function App() {
               Insert at page (1-{(pageCount ?? 0) + 1}) of this document:
               <input type="number" value={insertAtPage + 1} onChange={(e) => setInsertAtPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" />
             </label>
-            <label>
-              From page {insertSourcePageCount ? `(1-${insertSourcePageCount})` : ''} of source:
-              <input type="number" value={insertStartPage + 1} onChange={(e) => setInsertStartPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={insertSourcePageCount ?? undefined} disabled={!insertSourcePageCount} className="modal-input" />
-            </label>
-            <label>
-              To page {insertSourcePageCount ? `(1-${insertSourcePageCount})` : ''} of source:
-              <input type="number" value={insertEndPage + 1} onChange={(e) => setInsertEndPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={insertSourcePageCount ?? undefined} disabled={!insertSourcePageCount} className="modal-input" />
-            </label>
+            <PageRangePairInputs
+              startPage={insertRange.startPage}
+              endPage={insertRange.endPage}
+              onStartChange={insertRange.setStartPage}
+              onEndChange={insertRange.setEndPage}
+              maxPage={insertSourcePageCount ?? undefined}
+            />
           </div>
           {insertSourcePageCount ? (
             <p className="modal-help">
-              Inserts page{insertStartPage === insertEndPage ? '' : 's'} {insertStartPage + 1}
-              {insertStartPage === insertEndPage ? '' : `–${insertEndPage + 1}`} of the source ({insertSourcePageCount} pages) at position {insertAtPage + 1} of this document.
+              Inserts page{insertRange.startPage === insertRange.endPage ? '' : 's'} {insertRange.startPage + 1}
+              {insertRange.startPage === insertRange.endPage ? '' : `–${insertRange.endPage + 1}`} of the source ({insertSourcePageCount} pages) at position {insertAtPage + 1} of this document.
             </p>
           ) : null}
           <div className="modal-actions">
