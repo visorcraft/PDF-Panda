@@ -12,9 +12,7 @@ import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { Modal } from './ui/Modal';
 import { Toast } from './ui/Toast';
 import type { PageRangeScope } from './pageRange/types';
-import { resolvePageRange } from './pageRange/resolvePageRange';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
-import { PageRangePairInputs } from './pageRange/PageRangeFields';
 import {
   type ImageExportFormat,
   imageExportCommand,
@@ -57,6 +55,22 @@ import { ShrinkMarginsModal } from './modals/ShrinkMarginsModal';
 import { SplitAtModal } from './modals/SplitAtModal';
 import { SplitEveryModal } from './modals/SplitEveryModal';
 import { SwapPagesModal } from './modals/SwapPagesModal';
+import { CropModal } from './modals/CropModal';
+import { CropRangeModal } from './modals/CropRangeModal';
+import { DecryptModal } from './modals/DecryptModal';
+import { DeletePageModal } from './modals/DeletePageModal';
+import { ExportPagePdfModal } from './modals/ExportPagePdfModal';
+import { ExportPngModal } from './modals/ExportPngModal';
+import { ExtractPagesModal } from './modals/ExtractPagesModal';
+import { ImageInsertModal } from './modals/ImageInsertModal';
+import { InsertImagePageModal } from './modals/InsertImagePageModal';
+import { InsertPdfModal } from './modals/InsertPdfModal';
+import { MergePdfModal } from './modals/MergePdfModal';
+import { OpenPdfModal } from './modals/OpenPdfModal';
+import { ParityRangeModal } from './modals/ParityRangeModal';
+import { RenameBookmarkModal } from './modals/RenameBookmarkModal';
+import { SplitPdfModal } from './modals/SplitPdfModal';
+import { StickyNoteModal } from './modals/StickyNoteModal';
 import { runAnnotationRemoveViaEdit, type AnnotationRemoveCommand } from './pdf/runAnnotationEdit';
 
 const MIN_ZOOM = 0.25; // 25%
@@ -3640,7 +3654,9 @@ function App() {
     setShowInsertImagePageModal(false);
     setShowExportPagePdfModal(false);
     setShowInsertModal(false);
+    setInsertFilePath('');
     setShowMergeModal(false);
+    setMergeFilePath('');
     setShowSearchModal(false);
     setActiveSearchRect(null);
     setShowImageInsertModal(false);
@@ -5394,178 +5410,58 @@ function App() {
       </main>
       </div>
 
-      {/* Open Modal */}
       {showOpenModal && (
-        <Modal onClose={() => setShowOpenModal(false)}>
-          <h3>Open PDF</h3>
-          {!nativeDialogs && (
-            <p className="modal-help">Native file picker is disabled for this session. Enter a path or use Browse….</p>
-          )}
-          <label>PDF path:</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={openFilePath}
-              onChange={(e) => setOpenFilePath(e.target.value)}
-              onKeyDown={(e) => onFieldKeyDown(e, handleOpenPdfPath)}
-              className="modal-input"
-              placeholder="/path/to/document.pdf"
-              data-testid="open-pdf-path"
-              autoFocus
-            />
-            {nativeDialogs && (
-              <button onClick={() => void chooseOpenPdfNative()} className="btn" data-testid="native-open-pdf">Choose file…</button>
-            )}
-            <button onClick={() => openPdfBrowser('open')} className="btn">Browse…</button>
-          </div>
-          {recentPdfs.length > 0 && (
-            <div className="recent-list" aria-label="Recently opened PDFs">
-              <h4>Recently Opened</h4>
-              {recentPdfs.map((path) => (
-                <button key={path} className="recent-row" onClick={() => handleOpenRecentPdf(path)}>
-                  <span className="recent-name">{fileNameFromPath(path)}</span>
-                  <span className="recent-path">{path}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowOpenModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleOpenPdfPath} className="btn" disabled={!openFilePath.trim()} data-testid="open-pdf-submit">Open</button>
-          </div>
-        </Modal>
+        <OpenPdfModal
+          filePath={openFilePath}
+          nativeDialogs={nativeDialogs}
+          recentPdfs={recentPdfs}
+          fileNameFromPath={fileNameFromPath}
+          onFilePathChange={setOpenFilePath}
+          onClose={() => setShowOpenModal(false)}
+          onOpen={handleOpenPdfPath}
+          onOpenRecent={handleOpenRecentPdf}
+          onChooseNative={chooseOpenPdfNative}
+          onBrowse={() => openPdfBrowser('open')}
+        />
       )}
 
       {showNoteModal && (
-        <Modal onClose={exitNoteMode}>
-          <h3>Add Sticky Note</h3>
-          <label>Note text:</label>
-          <textarea
-            value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
-            className="modal-input note-textarea"
-            rows={4}
-            autoFocus
-          />
-          <div className="modal-actions">
-            <button onClick={exitNoteMode} className="btn btn-secondary">Cancel</button>
-            <button onClick={submitTextNote} className="btn" disabled={!noteDraft.trim()}>Add note</button>
-          </div>
-        </Modal>
+        <StickyNoteModal
+          noteDraft={noteDraft}
+          onNoteDraftChange={setNoteDraft}
+          onClose={exitNoteMode}
+          onSubmit={submitTextNote}
+        />
       )}
 
-      {/* Delete Modal */}
       {showDeleteModal && pageCount !== null && (
-        <Modal onClose={() => setShowDeleteModal(false)}>
-          <h3>Delete Page</h3>
-          <p className="modal-help">
-            Choose the page to remove. This edits the open PDF file on disk.
-          </p>
-          <label>Page to delete:</label>
-          <input
-            type="number"
-            value={deletePageInput}
-            onChange={(e) => setDeletePageInput(e.target.value)}
-            onKeyDown={(e) => onFieldKeyDown(e, handleDeletePage)}
-            className="modal-input"
-            min="1"
-            max={pageCount}
-            autoFocus
-          />
-          <p className="muted">Current page: {currentPage + 1} / {pageCount}</p>
-          <div className="modal-actions">
-            <button onClick={() => setShowDeleteModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleDeletePage} className="btn btn-danger">Delete page</button>
-          </div>
-        </Modal>
+        <DeletePageModal
+          deletePageInput={deletePageInput}
+          currentPage={currentPage}
+          pageCount={pageCount}
+          onDeletePageInputChange={setDeletePageInput}
+          onClose={() => setShowDeleteModal(false)}
+          onDelete={handleDeletePage}
+        />
       )}
 
-      {/* Export Image Modal */}
       {showExportPngModal && (
-        <Modal onClose={() => setShowExportPngModal(false)}>
-          <h3>Export Image</h3>
-          <p className="modal-help">Render PDF pages to PNG, JPEG, WebP, BMP, TIFF, GIF, PPM, TGA, or ICO images (1600×2264). The open PDF is not modified.</p>
-          <label>Format:</label>
-          <select
-            className="modal-input"
-            value={imageExportFormat}
-            onChange={(e) => {
-              const format = e.target.value as ImageExportFormat;
-              setImageExportFormat(format);
-              const start = pngExportRange.scope === 'current' ? currentPage : pngExportRange.startPage;
-              const end = pngExportRange.scope === 'all' ? (pageCount ?? 1) - 1 : pngExportRange.scope === 'current' ? currentPage : pngExportRange.endPage;
-              setPngExportOutputPath(defaultImageExportOutput(format, pngExportRange.scope, start, end));
-            }}
-          >
-            <option value="png">PNG</option>
-            <option value="jpeg">JPEG</option>
-            <option value="webp">WebP</option>
-            <option value="bmp">BMP</option>
-            <option value="tiff">TIFF</option>
-            <option value="gif">GIF</option>
-            <option value="ppm">PPM</option>
-            <option value="tga">TGA</option>
-            <option value="ico">ICO</option>
-          </select>
-          <label>Pages to export:</label>
-          <select
-            className="modal-input"
-            value={pngExportRange.scope}
-            onChange={(e) => {
-              const scope = e.target.value as PngExportScope;
-              pngExportRange.setScope(scope);
-              const resolved = resolvePageRange(scope, pngExportRange.startPage, pngExportRange.endPage, currentPage, pageCount);
-              setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, scope, resolved.start, resolved.end));
-            }}
-          >
-            <option value="current">Current page only</option>
-            <option value="range">Page range</option>
-            <option value="all">All pages</option>
-          </select>
-          {pngExportRange.scope === 'range' && (
-            <PageRangePairInputs
-              startPage={pngExportRange.startPage}
-              endPage={pngExportRange.endPage}
-              onStartChange={(start) => {
-                pngExportRange.setStartPage(start);
-                setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'range', start, pngExportRange.endPage));
-              }}
-              onEndChange={(end) => {
-                pngExportRange.setEndPage(end);
-                setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'range', pngExportRange.startPage, end));
-              }}
-              maxPage={pageCount ?? undefined}
-            />
-          )}
-          <label>{pngExportRange.scope === 'current' ? 'Output file path:' : 'Output directory:'}</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={pngExportOutputPath}
-              onChange={(e) => setPngExportOutputPath(e.target.value)}
-              className="modal-input"
-              placeholder={pngExportRange.scope === 'current' ? '/path/to/page.png' : '/path/to/output_dir'}
-            />
-            {nativeDialogs && (
-              <button onClick={() => void chooseExportPngOutputNative()} className="btn">Choose…</button>
-            )}
-          </div>
-          {pngExportRange.scope !== 'current' && (
-            <p className="modal-help">
-              Files are written as page-001.{imageExportExtension(imageExportFormat)}, page-002.{imageExportExtension(imageExportFormat)}, … inside the directory.
-            </p>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowExportPngModal(false)} className="btn btn-secondary">Cancel</button>
-            {pngExportRange.scope !== 'current' && (
-              <>
-                <button onClick={() => void handleExportOddPagesImage()} className="btn" disabled={!pngExportOutputPath.trim()}>Export Odd</button>
-                <button onClick={() => void handleExportEvenPagesImage()} className="btn" disabled={!pngExportOutputPath.trim()}>Export Even</button>
-              </>
-            )}
-            <button onClick={() => void handleExportPng()} className="btn" disabled={!pngExportOutputPath.trim()}>Export</button>
-          </div>
-        </Modal>
+        <ExportPngModal
+          range={pngExportRange}
+          pageCount={pageCount}
+          currentPage={currentPage}
+          format={imageExportFormat}
+          outputPath={pngExportOutputPath}
+          nativeDialogs={nativeDialogs}
+          defaultOutputPath={defaultImageExportOutput}
+          onFormatChange={setImageExportFormat}
+          onOutputPathChange={setPngExportOutputPath}
+          onClose={() => setShowExportPngModal(false)}
+          onChooseOutputNative={chooseExportPngOutputNative}
+          onExport={handleExportPng}
+          onExportOdd={handleExportOddPagesImage}
+          onExportEven={handleExportEvenPagesImage}
+        />
       )}
 
       {showDeleteRangeModal && (
@@ -5606,33 +5502,32 @@ function App() {
         />
       )}
 
-      {/* Crop Modal */}
       {showCropModal && (
-        <Modal onClose={() => setShowCropModal(false)}>
-          <h3>Crop {cropApplyAll ? 'All Pages' : `Page ${currentPage + 1}`}</h3>
-          <p className="modal-help">Trim margins (viewer pixels, max ~800×1132).</p>
-          {pageSizes[currentPage] && !cropApplyAll && (
-            <p className="muted">MediaBox: {Math.round(pageSizes[currentPage].width)}×{Math.round(pageSizes[currentPage].height)} pt</p>
-          )}
-          <label>
-            <input type="checkbox" checked={cropApplyAll} onChange={(e) => setCropApplyAll(e.target.checked)} />
-            {' '}Apply to all pages
-          </label>
-          <label>Top margin: <input type="number" value={cropMarginTop} onChange={(e) => setCropMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Right margin: <input type="number" value={cropMarginRight} onChange={(e) => setCropMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Bottom margin: <input type="number" value={cropMarginBottom} onChange={(e) => setCropMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Left margin: <input type="number" value={cropMarginLeft} onChange={(e) => setCropMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <div className="modal-actions">
-            <button onClick={() => setShowCropModal(false)} className="btn btn-secondary">Cancel</button>
-            {!cropApplyAll && (
-              <button onClick={() => void handleClearPageCrop()} className="btn btn-secondary">Clear crop</button>
-            )}
-            <button onClick={() => void handleClearAllCrops()} className="btn btn-secondary">Clear all crops</button>
-            <button onClick={() => void handleClearCropOddPages()} className="btn btn-secondary">Clear odd crops</button>
-            <button onClick={() => void handleClearCropEvenPages()} className="btn btn-secondary">Clear even crops</button>
-            <button onClick={() => void handleCropPage()} className="btn">Crop</button>
-          </div>
-        </Modal>
+        <CropModal
+          currentPage={currentPage}
+          applyAll={cropApplyAll}
+          pageWidth={pageSizes[currentPage]?.width}
+          pageHeight={pageSizes[currentPage]?.height}
+          margins={{
+            top: cropMarginTop,
+            right: cropMarginRight,
+            bottom: cropMarginBottom,
+            left: cropMarginLeft,
+          }}
+          onApplyAllChange={setCropApplyAll}
+          onMarginsChange={(m) => {
+            setCropMarginTop(m.top);
+            setCropMarginRight(m.right);
+            setCropMarginBottom(m.bottom);
+            setCropMarginLeft(m.left);
+          }}
+          onClose={() => setShowCropModal(false)}
+          onClearPageCrop={handleClearPageCrop}
+          onClearAllCrops={handleClearAllCrops}
+          onClearOddCrops={handleClearCropOddPages}
+          onClearEvenCrops={handleClearCropEvenPages}
+          onCrop={handleCropPage}
+        />
       )}
 
       {showDuplicateRangeModal && (
@@ -5960,179 +5855,119 @@ function App() {
         />
       )}
 
-      {/* Parity Range Modal */}
       {showParityRangeModal && (
-        <Modal onClose={() => setShowParityRangeModal(false)}>
-          <h3>Parity Range Tools</h3>
-          <p className="modal-help">Run parity actions within a page range, or document-wide mod-3/mod-4 filters (no range). Export/extract use the output path below; margin/text stamps use values from their respective modals.</p>
-          {parityBatchNeedsRange(parityRangeCommand) && (
-            <>
-              <PageRangePairInputs
-                startPage={parityRange.startPage}
-                endPage={parityRange.endPage}
-                onStartChange={parityRange.setStartPage}
-                onEndChange={parityRange.setEndPage}
-                maxPage={pageCount ?? undefined}
-              />
-            </>
-          )}
-          <label>Action:</label>
-          <select className="modal-input" value={parityRangeCommand} onChange={(e) => setParityRangeCommand(e.target.value)}>
-            {(parityBatchCommands as string[]).map((cmd) => (
-              <option key={cmd} value={cmd}>{cmd.replaceAll('_', ' ')}</option>
-            ))}
-          </select>
-          {(parityRangeCommand.startsWith('export_') || parityRangeCommand.startsWith('extract_')) && (
-            <>
-              <label>{parityRangeCommand.startsWith('extract_') ? 'Output PDF path:' : 'Output directory:'}</label>
-              <input type="text" value={parityRangeOutputPath} onChange={(e) => setParityRangeOutputPath(e.target.value)} className="modal-input" placeholder={parityRangeCommand.startsWith('extract_') ? '/path/to/output.pdf' : '/path/to/output_dir'} />
-            </>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowParityRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleParityRangeAction()} className="btn">Run</button>
-          </div>
-        </Modal>
+        <ParityRangeModal
+          commands={parityBatchCommands as string[]}
+          command={parityRangeCommand}
+          outputPath={parityRangeOutputPath}
+          startPage={parityRange.startPage}
+          endPage={parityRange.endPage}
+          pageCount={pageCount}
+          onCommandChange={setParityRangeCommand}
+          onOutputPathChange={setParityRangeOutputPath}
+          onStartChange={parityRange.setStartPage}
+          onEndChange={parityRange.setEndPage}
+          onClose={() => setShowParityRangeModal(false)}
+          onRun={handleParityRangeAction}
+        />
       )}
 
-      {/* Crop Range Modal */}
       {showCropRangeModal && (
-        <Modal onClose={() => setShowCropRangeModal(false)}>
-          <h3>Crop Page Range</h3>
-          <p className="modal-help">Apply the same margins to every page in the range.</p>
-          <PageRangePairInputs
-            startPage={cropRange.startPage}
-            endPage={cropRange.endPage}
-            onStartChange={cropRange.setStartPage}
-            onEndChange={cropRange.setEndPage}
-            maxPage={pageCount ?? undefined}
-          />
-          <label>Top: <input type="number" value={cropMarginTop} onChange={(e) => setCropMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Right: <input type="number" value={cropMarginRight} onChange={(e) => setCropMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Bottom: <input type="number" value={cropMarginBottom} onChange={(e) => setCropMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Left: <input type="number" value={cropMarginLeft} onChange={(e) => setCropMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <div className="modal-actions">
-            <button onClick={() => setShowCropRangeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleCropOddPages()} className="btn">Crop Odd</button>
-            <button onClick={() => void handleCropEvenPages()} className="btn">Crop Even</button>
-            <button onClick={() => void handleCropPageRange()} className="btn">Crop</button>
-          </div>
-        </Modal>
+        <CropRangeModal
+          startPage={cropRange.startPage}
+          endPage={cropRange.endPage}
+          pageCount={pageCount}
+          margins={{
+            top: cropMarginTop,
+            right: cropMarginRight,
+            bottom: cropMarginBottom,
+            left: cropMarginLeft,
+          }}
+          onStartChange={cropRange.setStartPage}
+          onEndChange={cropRange.setEndPage}
+          onMarginsChange={(m) => {
+            setCropMarginTop(m.top);
+            setCropMarginRight(m.right);
+            setCropMarginBottom(m.bottom);
+            setCropMarginLeft(m.left);
+          }}
+          onClose={() => setShowCropRangeModal(false)}
+          onCropOdd={handleCropOddPages}
+          onCropEven={handleCropEvenPages}
+          onCrop={handleCropPageRange}
+        />
       )}
 
-      {/* Decrypt Modal */}
       {showDecryptModal && (
-        <Modal onClose={() => setShowDecryptModal(false)}>
-          <h3>Decrypt PDF</h3>
-          <p className="modal-help">Writes an unencrypted copy as <code>&lt;name&gt;_decrypted.pdf</code> beside the encrypted source (uses the original file path when available).</p>
-          <label>Password:</label>
-          <input type="password" value={decryptPassword} onChange={(e) => setDecryptPassword(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowDecryptModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleRemovePdfPassword()} className="btn" disabled={!decryptPassword}>Decrypt</button>
-          </div>
-        </Modal>
+        <DecryptModal
+          password={decryptPassword}
+          onPasswordChange={setDecryptPassword}
+          onClose={() => setShowDecryptModal(false)}
+          onDecrypt={handleRemovePdfPassword}
+        />
       )}
 
-      {/* Insert Image Page Modal */}
       {showInsertImagePageModal && (
-        <Modal onClose={() => setShowInsertImagePageModal(false)}>
-          <h3>Insert Image Page</h3>
-          <p className="modal-help">Add a new page with a centered image (JPEG/PNG/WebP).</p>
-          <label>Insert at position (1-{((pageCount ?? 0) + 1)}):</label>
-          <input type="number" value={insertImageAtIndex + 1} onChange={(e) => setInsertImageAtIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" />
-          <label>Image file path:</label>
-          <input type="text" value={insertImagePagePath} onChange={(e) => setInsertImagePagePath(e.target.value)} className="modal-input" placeholder="/path/to/image.jpg" />
-          <div className="modal-actions">
-            <button onClick={() => setShowInsertImagePageModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleInsertImagePage()} className="btn" disabled={!insertImagePagePath.trim()}>Insert</button>
-          </div>
-        </Modal>
+        <InsertImagePageModal
+          atIndex={insertImageAtIndex}
+          imagePath={insertImagePagePath}
+          pageCount={pageCount}
+          onAtIndexChange={setInsertImageAtIndex}
+          onImagePathChange={setInsertImagePagePath}
+          onClose={() => setShowInsertImagePageModal(false)}
+          onInsert={handleInsertImagePage}
+        />
       )}
 
-      {/* Export Page PDF Modal */}
       {showExportPagePdfModal && (
-        <Modal onClose={() => setShowExportPagePdfModal(false)}>
-          <h3>Export Page {currentPage + 1} as PDF</h3>
-          <p className="modal-help">Save only the current page to a new PDF. The open document is not modified.</p>
-          <label>Output PDF path:</label>
-          <input type="text" value={exportPagePdfPath} onChange={(e) => setExportPagePdfPath(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowExportPagePdfModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleExportPagePdf()} className="btn" disabled={!exportPagePdfPath.trim()}>Export</button>
-          </div>
-        </Modal>
+        <ExportPagePdfModal
+          currentPage={currentPage}
+          outputPath={exportPagePdfPath}
+          onOutputPathChange={setExportPagePdfPath}
+          onClose={() => setShowExportPagePdfModal(false)}
+          onExport={handleExportPagePdf}
+        />
       )}
 
-      {/* Rename Bookmark Modal */}
       {showRenameBookmarkModal && (
-        <Modal onClose={() => setShowRenameBookmarkModal(false)}>
-          <h3>Rename Bookmark</h3>
-          <label>Title:</label>
-          <input type="text" value={renameBookmarkTitle} onChange={(e) => setRenameBookmarkTitle(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowRenameBookmarkModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleRenameBookmark()} className="btn" disabled={!renameBookmarkTitle.trim()}>Rename</button>
-          </div>
-        </Modal>
+        <RenameBookmarkModal
+          title={renameBookmarkTitle}
+          onTitleChange={setRenameBookmarkTitle}
+          onClose={() => setShowRenameBookmarkModal(false)}
+          onRename={handleRenameBookmark}
+        />
       )}
 
-      {/* Extract Modal */}
       {showExtractModal && (
-        <Modal onClose={() => setShowExtractModal(false)}>
-          <h3>Extract Pages</h3>
-          <p className="modal-help">Save a page range from this document into a new PDF. The open file is not modified.</p>
-          <PageRangePairInputs
-            startPage={extractRange.startPage}
-            endPage={extractRange.endPage}
-            onStartChange={(start) => {
-              extractRange.setStartPage(start);
-              setExtractOutputPath(defaultExtractOutputPath(start, extractRange.endPage));
-            }}
-            onEndChange={(end) => {
-              extractRange.setEndPage(end);
-              setExtractOutputPath(defaultExtractOutputPath(extractRange.startPage, end));
-            }}
-            maxPage={pageCount ?? undefined}
-          />
-          <label>Output PDF path:</label>
-          <div className="modal-path-row">
-            <input
-              type="text"
-              value={extractOutputPath}
-              onChange={(e) => setExtractOutputPath(e.target.value)}
-              className="modal-input"
-              placeholder="/path/to/output.pdf"
-            />
-            {nativeDialogs && (
-              <button onClick={() => void chooseExtractOutputNative()} className="btn">Choose file…</button>
-            )}
-          </div>
-          <div className="modal-actions">
-            <button onClick={() => setShowExtractModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleExtractPdf()} className="btn" disabled={!extractOutputPath.trim()}>Extract</button>
-          </div>
-        </Modal>
+        <ExtractPagesModal
+          startPage={extractRange.startPage}
+          endPage={extractRange.endPage}
+          pageCount={pageCount}
+          outputPath={extractOutputPath}
+          nativeDialogs={nativeDialogs}
+          onStartChange={(start) => {
+            extractRange.setStartPage(start);
+            setExtractOutputPath(defaultExtractOutputPath(start, extractRange.endPage));
+          }}
+          onEndChange={(end) => {
+            extractRange.setEndPage(end);
+            setExtractOutputPath(defaultExtractOutputPath(extractRange.startPage, end));
+          }}
+          onOutputPathChange={setExtractOutputPath}
+          onClose={() => setShowExtractModal(false)}
+          onChooseOutputNative={chooseExtractOutputNative}
+          onExtract={handleExtractPdf}
+        />
       )}
 
-      {/* Split Modal */}
       {showSplitModal && (
-        <Modal onClose={() => setShowSplitModal(false)}>
-          <h3>Split PDF</h3>
-          <p>Enter page ranges (e.g., "1-3, 4-5, 6-10"):</p>
-          <input
-            type="text"
-            value={splitRanges}
-            onChange={(e) => setSplitRanges(e.target.value)}
-            className="modal-input"
-            placeholder="1-3, 4-6"
-          />
-          <p className="muted">Total pages: {pageCount}</p>
-          <div className="modal-actions">
-            <button onClick={() => setShowSplitModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleSplitPdf} className="btn">Split</button>
-          </div>
-        </Modal>
+        <SplitPdfModal
+          splitRanges={splitRanges}
+          pageCount={pageCount}
+          onSplitRangesChange={setSplitRanges}
+          onClose={() => setShowSplitModal(false)}
+          onSplit={handleSplitPdf}
+        />
       )}
 
       {showAddFormFieldModal && (
@@ -6221,22 +6056,12 @@ function App() {
       )}
 
       {showImageInsertModal && (
-        <Modal onClose={() => setShowImageInsertModal(false)}>
-          <h3>Insert Image</h3>
-          <p className="modal-help">Choose a PNG or JPEG file, then click twice on the page to size and place it.</p>
-          <label>Image path:</label>
-          <input
-            type="text"
-            value={imageSourceDraft}
-            onChange={(e) => setImageSourceDraft(e.target.value)}
-            className="modal-input"
-            placeholder="/path/to/image.png"
-          />
-          <div className="modal-actions">
-            <button onClick={() => setShowImageInsertModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void confirmImageSource()} className="btn" disabled={!imageSourceDraft.trim()}>Place on page</button>
-          </div>
-        </Modal>
+        <ImageInsertModal
+          imagePath={imageSourceDraft}
+          onImagePathChange={setImageSourceDraft}
+          onClose={() => setShowImageInsertModal(false)}
+          onConfirm={confirmImageSource}
+        />
       )}
 
       {/* Search Modal */}
@@ -6306,93 +6131,42 @@ function App() {
         </Modal>
       )}
 
-      {/* Merge Modal */}
       {showMergeModal && (
-        <Modal onClose={() => { setShowMergeModal(false); setMergeFilePath(''); }}>
-          <h3>Merge PDF</h3>
-          <p className="modal-help">Append pages from another PDF to the end of this document.</p>
-          <div className="insert-grid">
-            <div className="insert-source">
-              <label>Source PDF to merge:</label>
-              <div className="modal-path-row">
-                <input
-                  type="text"
-                  value={mergeFilePath}
-                  onChange={(e) => setMergeFilePath(e.target.value)}
-                  className="modal-input"
-                  placeholder="/path/to/source.pdf"
-                />
-                {nativeDialogs && (
-                  <button onClick={() => void chooseMergePdfNative()} className="btn">Choose file…</button>
-                )}
-                <button onClick={() => openPdfBrowser('merge')} className="btn">Browse…</button>
-              </div>
-            </div>
-            <PageRangePairInputs
-              startPage={mergeRange.startPage}
-              endPage={mergeRange.endPage}
-              onStartChange={mergeRange.setStartPage}
-              onEndChange={mergeRange.setEndPage}
-              maxPage={mergeSourcePageCount ?? undefined}
-            />
-          </div>
-          {mergeSourcePageCount ? (
-            <p className="modal-help">
-              Appends page{mergeRange.startPage === mergeRange.endPage ? '' : 's'} {mergeRange.startPage + 1}
-              {mergeRange.startPage === mergeRange.endPage ? '' : `–${mergeRange.endPage + 1}`} of the source ({mergeSourcePageCount} pages) after page {pageCount ?? 0} of this document.
-            </p>
-          ) : null}
-          <div className="modal-actions">
-            <button onClick={() => { setShowMergeModal(false); setMergeFilePath(''); }} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleMergePdf()} className="btn" disabled={!mergeFilePath}>Merge</button>
-          </div>
-        </Modal>
+        <MergePdfModal
+          sourcePath={mergeFilePath}
+          sourcePageCount={mergeSourcePageCount}
+          pageCount={pageCount}
+          startPage={mergeRange.startPage}
+          endPage={mergeRange.endPage}
+          nativeDialogs={nativeDialogs}
+          onSourcePathChange={setMergeFilePath}
+          onStartChange={mergeRange.setStartPage}
+          onEndChange={mergeRange.setEndPage}
+          onClose={() => { setShowMergeModal(false); setMergeFilePath(''); }}
+          onChooseNative={chooseMergePdfNative}
+          onBrowse={() => openPdfBrowser('merge')}
+          onMerge={handleMergePdf}
+        />
       )}
 
-      {/* Insert Modal */}
       {showInsertModal && (
-        <Modal onClose={() => { setShowInsertModal(false); setInsertFilePath(''); }}>
-          <h3>Insert PDF</h3>
-          <div className="insert-grid">
-            <div className="insert-source">
-              <label>Source PDF to insert:</label>
-              <div className="modal-path-row">
-                <input
-                  type="text"
-                  value={insertFilePath}
-                  onChange={(e) => setInsertFilePath(e.target.value)}
-                  className="modal-input"
-                  placeholder="/path/to/source.pdf"
-                />
-                {nativeDialogs && (
-                  <button onClick={() => void chooseInsertPdfNative()} className="btn">Choose file…</button>
-                )}
-                <button onClick={() => openPdfBrowser('insert')} className="btn">Browse…</button>
-              </div>
-            </div>
-            <label>
-              Insert at page (1-{(pageCount ?? 0) + 1}) of this document:
-              <input type="number" value={insertAtPage + 1} onChange={(e) => setInsertAtPage(Math.max(0, parseInt(e.target.value) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" />
-            </label>
-            <PageRangePairInputs
-              startPage={insertRange.startPage}
-              endPage={insertRange.endPage}
-              onStartChange={insertRange.setStartPage}
-              onEndChange={insertRange.setEndPage}
-              maxPage={insertSourcePageCount ?? undefined}
-            />
-          </div>
-          {insertSourcePageCount ? (
-            <p className="modal-help">
-              Inserts page{insertRange.startPage === insertRange.endPage ? '' : 's'} {insertRange.startPage + 1}
-              {insertRange.startPage === insertRange.endPage ? '' : `–${insertRange.endPage + 1}`} of the source ({insertSourcePageCount} pages) at position {insertAtPage + 1} of this document.
-            </p>
-          ) : null}
-          <div className="modal-actions">
-            <button onClick={() => { setShowInsertModal(false); setInsertFilePath(''); }} className="btn btn-secondary">Cancel</button>
-            <button onClick={handleInsertPdf} className="btn" disabled={!insertFilePath}>Insert</button>
-          </div>
-        </Modal>
+        <InsertPdfModal
+          sourcePath={insertFilePath}
+          sourcePageCount={insertSourcePageCount}
+          pageCount={pageCount}
+          insertAtPage={insertAtPage}
+          startPage={insertRange.startPage}
+          endPage={insertRange.endPage}
+          nativeDialogs={nativeDialogs}
+          onSourcePathChange={setInsertFilePath}
+          onInsertAtPageChange={setInsertAtPage}
+          onStartChange={insertRange.setStartPage}
+          onEndChange={insertRange.setEndPage}
+          onClose={() => { setShowInsertModal(false); setInsertFilePath(''); }}
+          onChooseNative={chooseInsertPdfNative}
+          onBrowse={() => openPdfBrowser('insert')}
+          onInsert={handleInsertPdf}
+        />
       )}
 
       {showPageTextModal && (

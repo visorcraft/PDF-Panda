@@ -8,15 +8,21 @@ export type MarginValues = {
 type MarginQuadInputsProps = {
   margins: MarginValues;
   onChange: (margins: MarginValues) => void;
+  /** 'crop' uses "Top margin:" labels; default uses "Top:" */
+  labelStyle?: 'short' | 'crop';
 };
 
 const parseMargin = (value: string) => Math.max(0, parseInt(value, 10) || 0);
 
-export function MarginQuadInputs({ margins, onChange }: MarginQuadInputsProps) {
+const sideLabel = (side: string, style: 'short' | 'crop') => (
+  style === 'crop' ? `${side} margin` : side
+);
+
+export function MarginQuadInputs({ margins, onChange, labelStyle = 'short' }: MarginQuadInputsProps) {
   return (
     <>
       <label>
-        Top:
+        {sideLabel('Top', labelStyle)}:
         {' '}
         <input
           type="number"
@@ -27,7 +33,7 @@ export function MarginQuadInputs({ margins, onChange }: MarginQuadInputsProps) {
         />
       </label>
       <label>
-        Right:
+        {sideLabel('Right', labelStyle)}:
         {' '}
         <input
           type="number"
@@ -38,7 +44,7 @@ export function MarginQuadInputs({ margins, onChange }: MarginQuadInputsProps) {
         />
       </label>
       <label>
-        Bottom:
+        {sideLabel('Bottom', labelStyle)}:
         {' '}
         <input
           type="number"
@@ -49,7 +55,7 @@ export function MarginQuadInputs({ margins, onChange }: MarginQuadInputsProps) {
         />
       </label>
       <label>
-        Left:
+        {sideLabel('Left', labelStyle)}:
         {' '}
         <input
           type="number"
