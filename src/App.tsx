@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { AppShell } from './chrome/AppShell';
 import { buildAppMenus } from './menu/buildAppMenus';
@@ -53,6 +52,14 @@ import { useOddEvenExtendedActions } from './pdf/useOddEvenExtendedActions';
 import { useSplitExtractPrependActions } from './pdf/useSplitExtractPrependActions';
 import { usePageDecorActions } from './pdf/usePageDecorActions';
 import { useSaveActions } from './pdf/useSaveActions';
+import { useFormFieldActions } from './pdf/useFormFieldActions';
+import { useNotePasswordActions } from './pdf/useNotePasswordActions';
+import { usePdfRevisionSync } from './app/usePdfRevisionSync';
+import { useSourcePdfPageCounts } from './app/useSourcePdfPageCounts';
+import { usePageEditsLoader } from './app/usePageEditsLoader';
+import { buildAppKeyboardActions } from './app/buildAppKeyboardActions';
+import { useWindowTitle } from './app/useWindowTitle';
+
 import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
@@ -317,44 +324,6 @@ function App() {
   // When a source PDF is chosen for Insert, load *its* page count so the From/To
   // range reflects the source document (not the currently open one) and defaults
   // to inserting the whole file.
-  useEffect(() => {
-    if (!insertFilePath) {
-      setInsertSourcePageCount(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const count = await invoke<number>('get_pdf_page_count', { path: insertFilePath });
-        if (cancelled) return;
-        setInsertSourcePageCount(count);
-        insertRange.reset(0, Math.max(0, count - 1));
-      } catch {
-        if (!cancelled) setInsertSourcePageCount(null);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [insertFilePath]);
-
-  useEffect(() => {
-    if (!mergeFilePath) {
-      setMergeSourcePageCount(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const count = await invoke<number>('get_pdf_page_count', { path: mergeFilePath });
-        if (cancelled) return;
-        setMergeSourcePageCount(count);
-        mergeRange.reset(0, Math.max(0, count - 1));
-      } catch {
-        if (!cancelled) setMergeSourcePageCount(null);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [mergeFilePath]);
-
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -372,6 +341,7 @@ function App() {
   loadPdfBookmarksRef.current = (path) => { void loadPdfBookmarks(path); };
   loadPageSizesRef.current = (path) => { void loadPageSizes(path); };
 
+  const { loadPageEdits } = usePageEditsLoader({ setPageTextEdits, setPageVectorEdits });
 
   const pageNumbersRange = usePageRange({ pageCount, currentPage, showToast });
   const watermarkRange = usePageRange({ pageCount, currentPage, showToast });
@@ -398,7 +368,14 @@ function App() {
   const insertRange = usePageRangePair({ showToast });
   const mergeRange = usePageRangePair({ showToast });
 
-  useEffect(() => { filePathRef.current = filePath; }, [filePath]);
+  useSourcePdfPageCounts({
+    insertFilePath,
+    mergeFilePath,
+    insertRange,
+    mergeRange,
+    setInsertSourcePageCount,
+    setMergeSourcePageCount,
+  });
 
   const shouldShowTesseractReminder = useCallback(
     () => ocrAvailable === false && !isTesseractReminderDismissed(),
@@ -428,33 +405,7 @@ function App() {
     onShowTesseractReminder: showLaunchTesseractReminder,
   });
 
-  const loadPageEdits = useCallback(async (path: string, page: number) => {
-    if (!path) {
-      setPageTextEdits([]);
-      setPageVectorEdits([]);
-      return;
-    }
-    try {
-      const [texts, vectors] = await Promise.all([
-        invoke<PageTextEdit[]>('list_page_text_edits', { path, pageIndex: page }),
-        invoke<PageVectorEdit[]>('list_page_vectors', { path, pageIndex: page }),
-      ]);
-      setPageTextEdits(texts);
-      setPageVectorEdits(vectors);
-    } catch {
-      setPageTextEdits([]);
-      setPageVectorEdits([]);
-    }
-  }, []);
-
-  // Mirror dirty state into a ref + reflect it in the window title (the quit
-  // handler reads the ref so it isn't stale).
-  useEffect(() => {
-    isDirtyRef.current = isDirty;
-    const name = originalPath ? (originalPath.split('/').pop() ?? '') : '';
-    const title = name ? `${isDirty ? '• ' : ''}${name} — PDF Panda` : 'PDF Panda';
-    void getCurrentWindow().setTitle(title);
-  }, [isDirty, originalPath]);
+  useWindowTitle({ filePath, originalPath, isDirty, isDirtyRef, filePathRef });
 
   // Intercept window close (quit) so unsaved edits prompt first.
   useEffect(() => {
@@ -1277,33 +1228,24 @@ function App() {
     setPageInput,
   });
 
-  const applyFormField = (name: string) => {
-    const field = formFields.find((entry) => entry.name === name);
-    if (!field || !filePath) return;
-    const draft = formDrafts[name] ?? '';
-    void withLoading(async () => {
-      await invoke('set_pdf_form_field', { path: filePath, name, value: draft });
-      markPdfEdited();
-      await loadFormFields(filePath);
-      showToast(`Updated ${name}`);
-    });
-  };
+  const { applyFormField } = useFormFieldActions({
+    filePath,
+    formFields,
+    formDrafts,
+    withLoading,
+    markPdfEdited,
+    loadFormFields,
+    showToast,
+  });
 
-  useEffect(() => {
-    if (filePath) void loadFormFields(filePath);
-  }, [filePath, pdfRevision, loadFormFields]);
-
-  useEffect(() => {
-    if (filePath) void loadPdfSignatures(filePath);
-  }, [filePath, pdfRevision, loadPdfSignatures]);
-
-  useEffect(() => {
-    if (filePath) void loadPdfBookmarks(filePath);
-  }, [filePath, pdfRevision, loadPdfBookmarks]);
-
-  useEffect(() => {
-    if (filePath) void loadPageSizes(filePath);
-  }, [filePath, pdfRevision, loadPageSizes]);
+  usePdfRevisionSync({
+    filePath,
+    pdfRevision,
+    loadFormFields,
+    loadPdfSignatures,
+    loadPdfBookmarks,
+    loadPageSizes,
+  });
 
   cancelDrawingRef.current = cancelDrawing;
 
@@ -1467,30 +1409,20 @@ function App() {
     cancelDrawing,
   });
 
-  const closePasswordModal = () => {
-    setShowPasswordModal(false);
-    setPendingEncryptedPath('');
-    setPdfPasswordDraft('');
-  };
-
-  const submitTextNote = () => {
-    const text = noteDraft.trim();
-    const pos = pendingNotePos;
-    if (!text || !pos) return;
-    void withLoading(async () => {
-      await invoke('add_text_note', {
-        path: filePath,
-        pageIndex: currentPage,
-        x: pos.x,
-        y: pos.y,
-        content: text,
-      });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Note added');
-      exitNoteMode();
-    });
-  };
+  const { closePasswordModal, submitTextNote } = useNotePasswordActions({
+    filePath,
+    currentPage,
+    noteDraft,
+    pendingNotePos,
+    withLoading,
+    markPdfEdited,
+    refreshAnnotations,
+    exitNoteMode,
+    showToast,
+    setShowPasswordModal,
+    setPendingEncryptedPath,
+    setPdfPasswordDraft,
+  });
 
   const {
     chooseOpenPdfNative,
@@ -1788,11 +1720,11 @@ function App() {
   });
 
   const keyboardActionsRef = useRef<AppKeyboardActions>({} as AppKeyboardActions);
-  keyboardActionsRef.current = {
+  keyboardActionsRef.current = buildAppKeyboardActions({
     isDirty,
     canUndo,
     canRedo,
-    hasOpenPdf: !!filePath,
+    filePath,
     noteMode,
     drawMode,
     shapeMode,
@@ -1808,7 +1740,7 @@ function App() {
     currentPage,
     viewMode,
     openPdf,
-    openCommandPalette: () => setShowCommandPalette(true),
+    setShowCommandPalette,
     dismissModals,
     exitNoteMode,
     exitDrawMode,
@@ -1834,7 +1766,8 @@ function App() {
     openDeleteModal,
     openSaveAs,
     handleSave,
-    requestClosePdf: () => guardUnsaved(closePdf),
+    guardUnsaved,
+    closePdf,
     handlePrint,
     handleRotatePage,
     openSearchModal,
@@ -1855,7 +1788,7 @@ function App() {
     resetZoom,
     undo,
     redo,
-  };
+  });
   useAppKeyboard(keyboardActionsRef);
 
   const appMenus = buildAppMenus(buildAppMenuContext({

@@ -8,11 +8,17 @@ use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_n
 use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
 use pdf::metadata::{current_pdf_mod_date, ensure_info_dict_id, read_info_string, write_info_text_field};
+use pdf::ocr::{
+    build_tesseract_install_guide, ocr_language, ocr_page_segmentation_mode, os_release_value, resolve_tesseract,
+    OcrExportStats, OcrStatus, TesseractInstallGuide, OCR_RENDER_H, OCR_RENDER_W,
+};
+use pdf::page_text::{ensure_helvetica_font, escape_pdf_literal_string, viewer_point_to_pdf};
 use pdf::page_tree::{
     delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, is_page_dict, set_pages_kids,
     INHERITABLE_PAGE_KEYS,
 };
 use pdf::rotation::{page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation};
+use pdf::search::{search_pdf_text as search_pdf_text_impl, PdfTextSearchMatch};
 
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
@@ -264,248 +270,9 @@ fn render_pdf_page(path: String, page_index: u32, width: i32, height: i32) -> Re
     render_page_image(&PathBuf::from(path), page_index, width, height, image::ImageFormat::Png)
 }
 
-const OCR_RENDER_W: i32 = 1200;
-const OCR_RENDER_H: i32 = 1697;
-
-fn ocr_language() -> String {
-    std::env::var("PDF_PANDA_OCR_LANG").unwrap_or_else(|_| "eng".into())
-}
-
-fn tessdata_prefix() -> Option<String> {
-    std::env::var("PDF_PANDA_TESSDATA_PREFIX").ok().or_else(|| std::env::var("TESSDATA_PREFIX").ok())
-}
-
-fn ocr_page_segmentation_mode() -> u8 {
-    std::env::var("PDF_PANDA_OCR_PSM")
-        .ok()
-        .and_then(|value| value.parse::<u8>().ok())
-        .filter(|mode| *mode <= 13)
-        .unwrap_or(1)
-}
-
-fn resolve_tesseract() -> Option<PathBuf> {
-    if let Ok(cmd) = std::env::var("TESSERACT_CMD") {
-        let path = PathBuf::from(cmd);
-        if path.is_file() {
-            return Some(path);
-        }
-    }
-    let name = if cfg!(windows) { "tesseract.exe" } else { "tesseract" };
-    std::env::var_os("PATH")
-        .and_then(|paths| std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|candidate| candidate.is_file()))
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct OcrStatus {
-    available: bool,
-    binary: Option<String>,
-    language: String,
-    tessdata_prefix: Option<String>,
-    page_segmentation_mode: u8,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct TesseractInstallGuide {
-    platform: String,
-    summary: String,
-    steps: Vec<String>,
-    install_command: Option<String>,
-    download_url: Option<String>,
-    license_note: String,
-}
-
-fn os_release_value(contents: &str, key: &str) -> Option<String> {
-    for line in contents.lines() {
-        let (k, v) = line.split_once('=')?;
-        if k.trim() == key {
-            return Some(v.trim().trim_matches('"').to_lowercase());
-        }
-    }
-    None
-}
-
-fn linux_tesseract_install() -> (Vec<String>, Option<String>) {
-    let os_release = fs::read_to_string("/etc/os-release").unwrap_or_default();
-    let id = os_release_value(&os_release, "ID");
-    let id_like = os_release_value(&os_release, "ID_LIKE").unwrap_or_default();
-    let ids: Vec<&str> = id.iter().map(String::as_str).chain(id_like.split_whitespace()).collect();
-
-    if ids.iter().any(|&id| matches!(id, "arch" | "cachyos" | "manjaro" | "endeavouros")) {
-        return (
-            vec![
-                "Open a terminal.".into(),
-                "Run the command below (includes English).".into(),
-                "Restart PDF Panda.".into(),
-            ],
-            Some("sudo pacman -S tesseract tesseract-data-eng".into()),
-        );
-    }
-    if ids.iter().any(|&id| matches!(id, "ubuntu" | "debian" | "pop" | "linuxmint" | "elementary")) {
-        return (
-            vec![
-                "Open a terminal.".into(),
-                "Run the command below (includes English).".into(),
-                "Restart PDF Panda.".into(),
-            ],
-            Some("sudo apt install tesseract-ocr tesseract-ocr-eng".into()),
-        );
-    }
-    if ids.iter().any(|&id| matches!(id, "fedora" | "rhel" | "centos" | "rocky" | "almalinux")) {
-        return (
-            vec![
-                "Open a terminal.".into(),
-                "Run the command below (includes English).".into(),
-                "Restart PDF Panda.".into(),
-            ],
-            Some("sudo dnf install tesseract tesseract-langpack-eng".into()),
-        );
-    }
-    if ids.iter().any(|&id| matches!(id, "opensuse-leap" | "opensuse-tumbleweed" | "suse")) {
-        return (
-            vec![
-                "Open a terminal.".into(),
-                "Run the command below (includes English).".into(),
-                "Restart PDF Panda.".into(),
-            ],
-            Some("sudo zypper install tesseract tesseract-traineddata-english".into()),
-        );
-    }
-
-    (
-        vec![
-            "Open a terminal.".into(),
-            "Install Tesseract plus English using your package manager:".into(),
-            "Arch / CachyOS: sudo pacman -S tesseract tesseract-data-eng".into(),
-            "Ubuntu / Debian: sudo apt install tesseract-ocr tesseract-ocr-eng".into(),
-            "Fedora: sudo dnf install tesseract tesseract-langpack-eng".into(),
-            "Restart PDF Panda.".into(),
-        ],
-        None,
-    )
-}
-
-fn build_tesseract_install_guide() -> TesseractInstallGuide {
-    let license_note = "Tesseract is free, open-source software (Apache 2.0). You do not need to pay for it.".into();
-    if cfg!(target_os = "macos") {
-        return TesseractInstallGuide {
-            platform: "macos".into(),
-            summary: "Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.".into(),
-            steps: vec![
-                "Open Terminal.".into(),
-                "Run the command below (Homebrew installs English by default).".into(),
-                "Restart PDF Panda.".into(),
-            ],
-            install_command: Some("brew install tesseract".into()),
-            download_url: None,
-            license_note,
-        };
-    }
-    if cfg!(target_os = "windows") {
-        return TesseractInstallGuide {
-            platform: "windows".into(),
-            summary: "Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.".into(),
-            steps: vec![
-                "Download the Windows installer (link below).".into(),
-                "Run the installer and keep the default English language pack.".into(),
-                "Restart PDF Panda.".into(),
-            ],
-            install_command: None,
-            download_url: Some("https://github.com/UB-Mannheim/tesseract/wiki".into()),
-            license_note,
-        };
-    }
-
-    let (steps, install_command) = linux_tesseract_install();
-    TesseractInstallGuide {
-        platform: "linux".into(),
-        summary: "Tesseract lets PDF Panda read text from scanned PDF pages. Normal PDFs with selectable text work without it.".into(),
-        steps,
-        install_command,
-        download_url: None,
-        license_note,
-    }
-}
-
-#[derive(Default, Debug, Clone)]
-struct OcrExportStats {
-    available: bool,
-    language: String,
-    scanned_pages: u32,
-    sparse_supplements: u32,
-    embedded_image_blocks: u32,
-    embedded_form_blocks: u32,
-    text_blocks: u32,
-    missing_install_hints: u32,
-}
-
-fn ocr_missing_hint(context: &str) -> String {
-    format!("_{context} — install Tesseract OCR (`tesseract` on PATH or `TESSERACT_CMD`) and language data (`PDF_PANDA_OCR_LANG`, default `eng`)._\n\n")
-}
-
-fn run_tesseract_on_png(png: &[u8], fail_hard: bool) -> Result<Option<String>, String> {
-    let tesseract = match resolve_tesseract() {
-        Some(path) => path,
-        None => return Ok(None),
-    };
-
-    let tmp_dir = std::env::temp_dir().join(format!(
-        "pdf_panda_ocr_{}_{}",
-        std::process::id(),
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
-    ));
-    fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
-    let image_path = tmp_dir.join("page.png");
-    fs::write(&image_path, png).map_err(|e| e.to_string())?;
-
-    let mut command = Command::new(&tesseract);
-    command
-        .arg(&image_path)
-        .arg("stdout")
-        .arg("-l")
-        .arg(ocr_language())
-        .arg("--oem")
-        .arg("1")
-        .arg("--psm")
-        .arg(ocr_page_segmentation_mode().to_string());
-    if let Some(prefix) = tessdata_prefix() {
-        command.env("TESSDATA_PREFIX", prefix);
-    }
-
-    let output = command.output().map_err(|e| format!("failed to run {}: {e}", tesseract.display()))?;
-    let _ = fs::remove_dir_all(&tmp_dir);
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if fail_hard {
-            return Err(format!("tesseract failed: {stderr}"));
-        }
-        return Ok(None);
-    }
-
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if text.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(text))
-    }
-}
-
-/// Run Tesseract on a PNG buffer. `Ok(None)` when Tesseract is not installed.
-/// Returns `Err` when Tesseract is installed but fails (missing language pack, etc.).
-fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
-    run_tesseract_on_png(png, true)
-}
-
-/// Lenient OCR for Markdown save: never fails the export when Tesseract errors.
-fn try_ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
-    run_tesseract_on_png(png, false)
-}
-
 #[tauri::command]
 fn ocr_available() -> bool {
-    resolve_tesseract().is_some()
+    pdf::ocr::ocr_available()
 }
 
 #[tauri::command]
@@ -515,13 +282,7 @@ fn tesseract_install_guide() -> TesseractInstallGuide {
 
 #[tauri::command]
 fn ocr_status() -> OcrStatus {
-    OcrStatus {
-        available: resolve_tesseract().is_some(),
-        binary: resolve_tesseract().map(|path| path.to_string_lossy().into_owned()),
-        language: ocr_language(),
-        tessdata_prefix: tessdata_prefix(),
-        page_segmentation_mode: ocr_page_segmentation_mode(),
-    }
+    pdf::ocr::ocr_status()
 }
 
 /// OCR a single rendered PDF page (for scanned documents without a text layer).
@@ -529,50 +290,7 @@ fn ocr_status() -> OcrStatus {
 fn ocr_pdf_page(path: String, page: u32) -> Result<String, String> {
     let path = PathBuf::from(path);
     let png = render_page_image(&path, page, OCR_RENDER_W, OCR_RENDER_H, image::ImageFormat::Png)?;
-    match ocr_png_bytes(&png)? {
-        Some(text) => Ok(text),
-        None => Err("Tesseract OCR is not installed (set TESSERACT_CMD or add tesseract to PATH)".into()),
-    }
-}
-
-const SEARCH_RENDER_W: i32 = 800;
-const SEARCH_RENDER_H: i32 = 1132;
-
-#[derive(Debug, Serialize)]
-struct PdfTextSearchMatch {
-    page_index: u32,
-    match_index: u32,
-    rect: [f64; 4],
-}
-
-fn pdf_rect_to_search_pixels(rect: PdfRect, page_w: f32, page_h: f32) -> [f64; 4] {
-    let sw = SEARCH_RENDER_W as f64;
-    let sh = SEARCH_RENDER_H as f64;
-    let pw = f64::from(page_w).max(1.0);
-    let ph = f64::from(page_h).max(1.0);
-    let left = f64::from(rect.left().value) / pw * sw;
-    let right = f64::from(rect.right().value) / pw * sw;
-    let top = (ph - f64::from(rect.top().value)) / ph * sh;
-    let bottom = (ph - f64::from(rect.bottom().value)) / ph * sh;
-    [left, top, right, bottom]
-}
-
-fn union_search_bounds(segments: &PdfPageTextSegments<'_>) -> Result<PdfRect, String> {
-    let mut bounds: Option<(f32, f32, f32, f32)> = None;
-    for idx in segments.as_range() {
-        let seg = segments.get(idx).map_err(|e| e.to_string())?;
-        let b = seg.bounds();
-        let l = b.left().value;
-        let r = b.right().value;
-        let bo = b.bottom().value;
-        let t = b.top().value;
-        bounds = Some(match bounds {
-            None => (l, bo, r, t),
-            Some((ul, ubo, ur, ut)) => (ul.min(l), ubo.min(bo), ur.max(r), ut.max(t)),
-        });
-    }
-    let (l, bo, r, t) = bounds.ok_or_else(|| "Empty search result".to_string())?;
-    Ok(PdfRect::new(PdfPoints::new(bo), PdfPoints::new(l), PdfPoints::new(t), PdfPoints::new(r)))
+    pdf::ocr::ocr_pdf_page_from_png(&png)
 }
 
 /// Find all occurrences of `query` in the PDF using PDFium's text layer.
@@ -583,39 +301,8 @@ fn search_pdf_text(
     match_case: bool,
     match_whole_word: bool,
 ) -> Result<Vec<PdfTextSearchMatch>, String> {
-    let query = query.trim();
-    if query.is_empty() {
-        return Err("Search query is empty".to_string());
-    }
-    let path = PathBuf::from(&path);
-    if !path.is_file() {
-        return Err("File not found".to_string());
-    }
-
     let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
-    let options = PdfSearchOptions::new().match_case(match_case).match_whole_word(match_whole_word);
-    let mut results = Vec::new();
-    let mut match_index = 0u32;
-
-    for (page_index, page) in document.pages().iter().enumerate() {
-        let text = page.text().map_err(|e| e.to_string())?;
-        let search = text.search(query, &options).map_err(|e| e.to_string())?;
-        let page_w = page.width().value;
-        let page_h = page.height().value;
-
-        for segments in search.iter(PdfSearchDirection::SearchForward) {
-            let bounds = union_search_bounds(&segments)?;
-            results.push(PdfTextSearchMatch {
-                page_index: page_index as u32,
-                match_index,
-                rect: pdf_rect_to_search_pixels(bounds, page_w, page_h),
-            });
-            match_index += 1;
-        }
-    }
-
-    Ok(results)
+    search_pdf_text_impl(&pdfium, &PathBuf::from(path), &query, match_case, match_whole_word)
 }
 
 const EXPORT_PNG_W: i32 = pdf::export::EXPORT_RENDER_W;
@@ -1219,7 +906,7 @@ fn add_page_numbers(path: String, start_page: u32, end_page: u32, prefix: Option
     let mut stamped = 0u32;
     for page_index in start_page..=end_page {
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
         let label = format!("{prefix}{}", page_index + 1);
         let ops = build_page_number_ops(&font_name, &label, px, py, 12.0);
@@ -1257,7 +944,7 @@ fn add_text_watermark(path: String, text: String, start_page: u32, end_page: u32
     let mut stamped = 0u32;
     for page_index in start_page..=end_page {
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (cx, cy) = viewer_point_to_pdf(&doc, page_id, 400.0, 566.0)?;
         let ops = build_watermark_ops(&font_name, trimmed, cx, cy);
         append_page_content(&mut doc, page_id, ops.as_bytes())?;
@@ -1586,7 +1273,7 @@ fn add_page_header(path: String, start_page: u32, end_page: u32, text: String) -
     let mut stamped = 0u32;
     for page_index in start_page..=end_page {
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
         let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
         append_page_content(&mut doc, page_id, ops.as_bytes())?;
@@ -1612,7 +1299,7 @@ fn add_page_footer(path: String, start_page: u32, end_page: u32, text: String) -
     let mut stamped = 0u32;
     for page_index in start_page..=end_page {
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
         let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
         append_page_content(&mut doc, page_id, ops.as_bytes())?;
@@ -3300,7 +2987,7 @@ fn add_page_numbers_by_parity(path: &Path, odd: bool, prefix: Option<String>) ->
             continue;
         }
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
         let label = format!("{prefix}{}", page_index + 1);
         let ops = build_page_number_ops(&font_name, &label, px, py, 12.0);
@@ -3336,7 +3023,7 @@ fn add_text_watermark_by_parity(path: &Path, odd: bool, text: &str) -> Result<u3
             continue;
         }
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (cx, cy) = viewer_point_to_pdf(&doc, page_id, 400.0, 566.0)?;
         let ops = build_watermark_ops(&font_name, trimmed, cx, cy);
         append_page_content(&mut doc, page_id, ops.as_bytes())?;
@@ -3371,7 +3058,7 @@ fn add_page_header_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, 
             continue;
         }
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
         let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
         append_page_content(&mut doc, page_id, ops.as_bytes())?;
@@ -3406,7 +3093,7 @@ fn add_page_footer_by_parity(path: &Path, odd: bool, text: &str) -> Result<u32, 
             continue;
         }
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
         let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
         let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
         append_page_content(&mut doc, page_id, ops.as_bytes())?;
@@ -3961,223 +3648,6 @@ fn add_page_image(
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PageTextEdit {
-    index: u32,
-    x: f64,
-    y: f64,
-    font_size: f64,
-    text: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PageVectorEdit {
-    index: u32,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-    kind: String,
-}
-
-fn stream_plain_content(doc: &Document, id: ObjectId) -> Result<Vec<u8>, String> {
-    let stream =
-        doc.get_object(id).map_err(|e| e.to_string())?.as_stream().map_err(|_| "Bad content stream".to_string())?;
-    match stream.get_plain_content() {
-        Ok(bytes) => Ok(bytes),
-        Err(_) => Ok(stream.content.clone()),
-    }
-}
-
-fn read_page_content(doc: &Document, page_id: ObjectId) -> Result<Vec<u8>, String> {
-    let contents = doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Contents").ok().cloned();
-    match contents {
-        Some(Object::Reference(id)) => stream_plain_content(doc, id),
-        Some(Object::Array(items)) => {
-            let mut merged = Vec::new();
-            for item in items {
-                if let Object::Reference(id) = item {
-                    merged.extend_from_slice(&stream_plain_content(doc, id)?);
-                    merged.push(b'\n');
-                }
-            }
-            Ok(merged)
-        }
-        _ => Ok(Vec::new()),
-    }
-}
-
-fn write_page_content(doc: &mut Document, page_id: ObjectId, body: Vec<u8>) -> Result<(), String> {
-    let mut stream = Stream::new(Dictionary::new(), body.clone());
-    stream.set_plain_content(body);
-    let stream_id = doc.add_object(Object::Stream(stream));
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Contents", Object::Reference(stream_id));
-    Ok(())
-}
-
-fn viewer_point_to_pdf(doc: &Document, page_id: ObjectId, x: f64, y: f64) -> Result<(f64, f64), String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 {
-        return Err("Invalid page size".to_string());
-    }
-    let px = x * mw / VIEWER_PAGE_W;
-    let py = mh - y * mh / VIEWER_PAGE_H;
-    Ok((px, py))
-}
-
-fn escape_pdf_literal_string(text: &str) -> String {
-    text.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)")
-}
-
-fn marker_label(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn ensure_helvetica_font(doc: &mut Document, page_id: ObjectId) -> Result<String, String> {
-    let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-    if !matches!(page_dict.get(b"Resources"), Ok(Object::Dictionary(_))) {
-        page_dict.set(b"Resources", Object::Dictionary(Dictionary::new()));
-    }
-    let resources = page_dict
-        .get_mut(b"Resources")
-        .map_err(|e| e.to_string())?
-        .as_dict_mut()
-        .map_err(|_| "Bad Resources".to_string())?;
-    let font_name = match resources.get_mut(b"Font") {
-        Ok(Object::Dictionary(fonts)) => {
-            if fonts.get(b"Helv").is_ok() {
-                "Helv".to_string()
-            } else {
-                fonts.set(
-                    b"Helv",
-                    Object::Dictionary(Dictionary::from_iter(vec![
-                        (b"Type".to_vec(), Object::Name(b"Font".to_vec())),
-                        (b"Subtype".to_vec(), Object::Name(b"Type1".to_vec())),
-                        (b"BaseFont".to_vec(), Object::Name(b"Helvetica".to_vec())),
-                    ])),
-                );
-                "Helv".to_string()
-            }
-        }
-        _ => {
-            let mut fonts = Dictionary::new();
-            fonts.set(
-                b"Helv",
-                Object::Dictionary(Dictionary::from_iter(vec![
-                    (b"Type".to_vec(), Object::Name(b"Font".to_vec())),
-                    (b"Subtype".to_vec(), Object::Name(b"Type1".to_vec())),
-                    (b"BaseFont".to_vec(), Object::Name(b"Helvetica".to_vec())),
-                ])),
-            );
-            resources.set(b"Font", Object::Dictionary(fonts));
-            "Helv".to_string()
-        }
-    };
-    Ok(font_name)
-}
-
-fn next_panda_text_index(content: &str) -> u32 {
-    content
-        .lines()
-        .filter_map(|line| line.strip_prefix("%PP-TXT "))
-        .filter_map(|rest| rest.split_whitespace().next()?.parse::<u32>().ok())
-        .max()
-        .map(|max| max + 1)
-        .unwrap_or(0)
-}
-
-fn next_panda_vector_index(content: &str) -> u32 {
-    content
-        .lines()
-        .filter_map(|line| line.strip_prefix("%PP-VEC "))
-        .filter_map(|rest| rest.split_whitespace().next()?.parse::<u32>().ok())
-        .max()
-        .map(|max| max + 1)
-        .unwrap_or(0)
-}
-
-fn parse_page_text_edits(content: &str) -> Vec<PageTextEdit> {
-    let mut edits = Vec::new();
-    for line in content.lines() {
-        let Some(rest) = line.strip_prefix("%PP-TXT ") else { continue };
-        let mut parts = rest.split_whitespace();
-        let Some(index) = parts.next().and_then(|v| v.parse::<u32>().ok()) else { continue };
-        let Some(x) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let Some(y) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let Some(font_size) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let text = parts.collect::<Vec<_>>().join(" ");
-        edits.push(PageTextEdit { index, x, y, font_size, text });
-    }
-    edits.sort_by_key(|edit| edit.index);
-    edits
-}
-
-fn parse_page_vectors(content: &str) -> Vec<PageVectorEdit> {
-    let mut vectors = Vec::new();
-    for line in content.lines() {
-        let Some(rest) = line.strip_prefix("%PP-VEC ") else { continue };
-        let mut parts = rest.split_whitespace();
-        let Some(index) = parts.next().and_then(|v| v.parse::<u32>().ok()) else { continue };
-        let Some(x) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let Some(y) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let Some(width) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let Some(height) = parts.next().and_then(|v| v.parse::<f64>().ok()) else { continue };
-        let kind = parts.next().unwrap_or("stroke").to_string();
-        vectors.push(PageVectorEdit { index, x, y, width, height, kind });
-    }
-    vectors.sort_by_key(|vector| vector.index);
-    vectors
-}
-
-fn remove_panda_block(content: &str, marker_prefix: &str, index: u32) -> Result<String, String> {
-    let needle = format!("{marker_prefix} {index} ");
-    let mut lines = content.lines().collect::<Vec<_>>();
-    let start = lines
-        .iter()
-        .position(|line| line.starts_with(&needle))
-        .ok_or_else(|| format!("{marker_prefix} block not found"))?;
-    let mut end = start + 1;
-    while end < lines.len() && !lines[end].starts_with("%PP-") {
-        end += 1;
-    }
-    lines.drain(start..end);
-    let mut output = lines.join("\n");
-    if !output.is_empty() && !output.ends_with('\n') {
-        output.push('\n');
-    }
-    Ok(output)
-}
-
-struct PageTextOpsArgs<'a> {
-    index: u32,
-    x: f64,
-    y: f64,
-    font_size: f64,
-    text: &'a str,
-    px: f64,
-    py: f64,
-    font_name: &'a str,
-}
-
-fn build_page_text_ops(args: PageTextOpsArgs<'_>) -> String {
-    let escaped = escape_pdf_literal_string(args.text);
-    format!(
-        "%PP-TXT {index} {x} {y} {font_size} {label}\nBT /{font_name} {font_size} Tf 1 0 0 1 {px} {py} Tm ({escaped}) Tj ET\n",
-        index = args.index,
-        x = args.x,
-        y = args.y,
-        font_size = args.font_size,
-        font_name = args.font_name,
-        px = args.px,
-        py = args.py,
-        label = marker_label(args.text)
-    )
-}
-
 #[tauri::command]
 fn add_page_text(path: String, page_index: u32, x: f64, y: f64, font_size: f64, text: String) -> Result<u32, String> {
     let trimmed = text.trim();
@@ -4190,12 +3660,20 @@ fn add_page_text(path: String, page_index: u32, x: f64, y: f64, font_size: f64, 
     let path = PathBuf::from(path);
     let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+    let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
     let (px, py) = viewer_point_to_pdf(&doc, page_id, x, y)?;
-    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
-    let index = next_panda_text_index(&content);
-    let mut ops =
-        build_page_text_ops(PageTextOpsArgs { index, x, y, font_size, text: trimmed, px, py, font_name: &font_name });
+    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
+    let index = pdf::page_text::next_panda_text_index(&content);
+    let mut ops = pdf::page_text::build_page_text_ops(pdf::page_text::PageTextOpsArgs {
+        index,
+        x,
+        y,
+        font_size,
+        text: trimmed,
+        px,
+        py,
+        font_name: &font_name,
+    });
     if !ops.starts_with('\n') {
         ops.insert(0, '\n');
     }
@@ -4205,13 +3683,13 @@ fn add_page_text(path: String, page_index: u32, x: f64, y: f64, font_size: f64, 
 }
 
 #[tauri::command]
-fn list_page_text_edits(path: String, page_index: u32) -> Result<Vec<PageTextEdit>, String> {
+fn list_page_text_edits(path: String, page_index: u32) -> Result<Vec<pdf::page_text::PageTextEdit>, String> {
     let path = PathBuf::from(path);
     let doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let bytes = read_page_content(&doc, page_id)?;
+    let bytes = pdf::page_text::read_page_content(&doc, page_id)?;
     let content = String::from_utf8_lossy(&bytes).into_owned();
-    Ok(parse_page_text_edits(&content))
+    Ok(pdf::page_text::parse_page_text_edits(&content))
 }
 
 #[tauri::command]
@@ -4231,9 +3709,9 @@ fn update_page_text(
     let path = PathBuf::from(path);
     let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let font_name = ensure_helvetica_font(&mut doc, page_id)?;
-    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
-    let existing = parse_page_text_edits(&content)
+    let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
+    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
+    let existing = pdf::page_text::parse_page_text_edits(&content)
         .into_iter()
         .find(|edit| edit.index == index)
         .ok_or_else(|| "Text block not found".to_string())?;
@@ -4243,9 +3721,9 @@ fn update_page_text(
     if !(8.0..=72.0).contains(&next_font_size) {
         return Err("Font size must be between 8 and 72".to_string());
     }
-    let mut content = remove_panda_block(&content, "%PP-TXT", index)?;
+    let mut content = pdf::page_text::remove_panda_block(&content, "%PP-TXT", index)?;
     let (px, py) = viewer_point_to_pdf(&doc, page_id, next_x, next_y)?;
-    content.push_str(&build_page_text_ops(PageTextOpsArgs {
+    content.push_str(&pdf::page_text::build_page_text_ops(pdf::page_text::PageTextOpsArgs {
         index,
         x: next_x,
         y: next_y,
@@ -4255,7 +3733,7 @@ fn update_page_text(
         py,
         font_name: &font_name,
     }));
-    write_page_content(&mut doc, page_id, content.into_bytes())?;
+    pdf::page_text::write_page_content(&mut doc, page_id, content.into_bytes())?;
     doc.save(&path).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -4265,9 +3743,9 @@ fn remove_page_text(path: String, page_index: u32, index: u32) -> Result<(), Str
     let path = PathBuf::from(path);
     let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
-    let content = remove_panda_block(&content, "%PP-TXT", index)?;
-    write_page_content(&mut doc, page_id, content.into_bytes())?;
+    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
+    let content = pdf::page_text::remove_panda_block(&content, "%PP-TXT", index)?;
+    pdf::page_text::write_page_content(&mut doc, page_id, content.into_bytes())?;
     doc.save(&path).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -4281,8 +3759,8 @@ fn add_page_vector_rect(path: String, page_index: u32, x: f64, y: f64, width: f6
     let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
     let (px, py, pw, ph) = viewer_rect_to_pdf(&doc, page_id, x, y, width, height)?;
-    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
-    let index = next_panda_vector_index(&content);
+    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
+    let index = pdf::page_text::next_panda_vector_index(&content);
     let ops = format!("\n%PP-VEC {index} {x} {y} {width} {height} stroke\nq 1 w {px} {py} {pw} {ph} re S Q\n");
     append_page_content(&mut doc, page_id, ops.as_bytes())?;
     doc.save(&path).map_err(|e| e.to_string())?;
@@ -4290,13 +3768,13 @@ fn add_page_vector_rect(path: String, page_index: u32, x: f64, y: f64, width: f6
 }
 
 #[tauri::command]
-fn list_page_vectors(path: String, page_index: u32) -> Result<Vec<PageVectorEdit>, String> {
+fn list_page_vectors(path: String, page_index: u32) -> Result<Vec<pdf::page_text::PageVectorEdit>, String> {
     let path = PathBuf::from(path);
     let doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let bytes = read_page_content(&doc, page_id)?;
+    let bytes = pdf::page_text::read_page_content(&doc, page_id)?;
     let content = String::from_utf8_lossy(&bytes).into_owned();
-    Ok(parse_page_vectors(&content))
+    Ok(pdf::page_text::parse_page_vectors(&content))
 }
 
 #[tauri::command]
@@ -4304,9 +3782,9 @@ fn remove_page_vector(path: String, page_index: u32, index: u32) -> Result<(), S
     let path = PathBuf::from(path);
     let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let content = String::from_utf8_lossy(&read_page_content(&doc, page_id)?).into_owned();
-    let content = remove_panda_block(&content, "%PP-VEC", index)?;
-    write_page_content(&mut doc, page_id, content.into_bytes())?;
+    let content = String::from_utf8_lossy(&pdf::page_text::read_page_content(&doc, page_id)?).into_owned();
+    let content = pdf::page_text::remove_panda_block(&content, "%PP-VEC", index)?;
+    pdf::page_text::write_page_content(&mut doc, page_id, content.into_bytes())?;
     doc.save(&path).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -6362,7 +5840,7 @@ fn try_ocr_image_bytes(bytes: &[u8], ext: &str) -> Result<Option<String>, String
         }
         _ => return Ok(None),
     };
-    try_ocr_png_bytes(&png)
+    pdf::ocr::try_ocr_png_bytes(&png)
 }
 
 fn append_page_ocr_supplement(
@@ -6373,7 +5851,7 @@ fn append_page_ocr_supplement(
 ) -> Result<(), String> {
     let png = render_page_image(path, page_index, OCR_RENDER_W, OCR_RENDER_H, image::ImageFormat::Png)?;
     stats.sparse_supplements += 1;
-    if let Some(text) = try_ocr_png_bytes(&png)? {
+    if let Some(text) = pdf::ocr::try_ocr_png_bytes(&png)? {
         let trimmed = text.trim();
         if !trimmed.is_empty() {
             markdown.push_str("#### OCR (page render)\n\n");
@@ -6381,7 +5859,7 @@ fn append_page_ocr_supplement(
             stats.text_blocks += 1;
         }
     } else if resolve_tesseract().is_none() {
-        markdown.push_str(&ocr_missing_hint("Sparse page"));
+        markdown.push_str(&pdf::ocr::ocr_missing_hint("Sparse page"));
         stats.missing_install_hints += 1;
     }
     Ok(())
@@ -6395,7 +5873,7 @@ fn append_scanned_page_markdown(
     stats: &mut OcrExportStats,
 ) -> Result<(), String> {
     let png = render_page_image(path, page_index, OCR_RENDER_W, OCR_RENDER_H, image::ImageFormat::Png)?;
-    let ocr_text = try_ocr_png_bytes(&png)?;
+    let ocr_text = pdf::ocr::try_ocr_png_bytes(&png)?;
     stats.scanned_pages += 1;
 
     if let Some(sink) = image_sink {
@@ -6409,7 +5887,7 @@ fn append_scanned_page_markdown(
         markdown.push_str(&plain_text_to_markdown(&text));
         stats.text_blocks += 1;
     } else if resolve_tesseract().is_none() {
-        markdown.push_str(&ocr_missing_hint("Scanned page"));
+        markdown.push_str(&pdf::ocr::ocr_missing_hint("Scanned page"));
         stats.missing_install_hints += 1;
     }
     Ok(())
@@ -7198,7 +6676,7 @@ fn append_page_embedded_images(
             {
                 *image_seq += 1;
                 let file_name = format!("page-{page_number}-form-{image_seq}.png");
-                let ocr_text = try_ocr_png_bytes(&png)?;
+                let ocr_text = pdf::ocr::try_ocr_png_bytes(&png)?;
                 fs::write(sink.assets_dir.join(&file_name), &png).map_err(|e| e.to_string())?;
                 block.push_str(&format!(
                     "![Page {page_number} embedded form (vector chart)]({}/{file_name})\n\n",
@@ -12363,7 +11841,7 @@ mod tests {
         assert_eq!(stamped, 2);
         let doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
-        let bytes = read_page_content(&doc, page_id).unwrap();
+        let bytes = pdf::page_text::read_page_content(&doc, page_id).unwrap();
         let content = String::from_utf8_lossy(&bytes);
         assert!(content.contains("(p. 1)"));
         let _ = std::fs::remove_file(&path);
@@ -12376,7 +11854,7 @@ mod tests {
         assert_eq!(stamped, 1);
         let doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
-        let bytes = read_page_content(&doc, page_id).unwrap();
+        let bytes = pdf::page_text::read_page_content(&doc, page_id).unwrap();
         let content = String::from_utf8_lossy(&bytes);
         assert!(content.contains("(CONFIDENTIAL)"));
         let _ = std::fs::remove_file(&path);
@@ -12557,7 +12035,7 @@ mod tests {
         assert_eq!(stamped, 1);
         let doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
-        let bytes = read_page_content(&doc, page_id).unwrap();
+        let bytes = pdf::page_text::read_page_content(&doc, page_id).unwrap();
         let content = String::from_utf8_lossy(&bytes);
         assert!(content.contains("(Footer note)"));
         let _ = std::fs::remove_file(&path);
@@ -12755,7 +12233,7 @@ mod tests {
         assert_eq!(bordered, 1);
         let doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
-        let bytes = read_page_content(&doc, page_id).unwrap();
+        let bytes = pdf::page_text::read_page_content(&doc, page_id).unwrap();
         let content = String::from_utf8_lossy(&bytes);
         assert!(content.contains(" re S"));
         let _ = std::fs::remove_file(&path);
@@ -28637,7 +28115,7 @@ mod tests {
         assert_eq!(stamped, 1);
         let doc = Document::load(&path).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
-        let bytes = read_page_content(&doc, page_id).unwrap();
+        let bytes = pdf::page_text::read_page_content(&doc, page_id).unwrap();
         let content = String::from_utf8_lossy(&bytes);
         assert!(content.contains("(DRAFT)"));
         let _ = std::fs::remove_file(&path);
@@ -29442,7 +28920,7 @@ mod tests {
         let prev_cmd = std::env::var_os("TESSERACT_CMD");
         std::env::remove_var("PATH");
         std::env::remove_var("TESSERACT_CMD");
-        let result = ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
+        let result = pdf::ocr::ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
         if let Some(path) = prev_path {
             std::env::set_var("PATH", path);
         }
@@ -29462,7 +28940,7 @@ mod tests {
         }
         let path = save(&mut build_pdf(1), "ocr_smoke");
         let png = render_page_png(Path::new(&path), 0, OCR_RENDER_W, OCR_RENDER_H).unwrap();
-        let text = ocr_png_bytes(&png).unwrap().unwrap_or_default();
+        let text = pdf::ocr::ocr_png_bytes(&png).unwrap().unwrap_or_default();
         assert!(!text.is_empty());
         let _ = fs::remove_file(&path);
     }
@@ -30216,10 +29694,10 @@ mod tests {
     #[test]
     fn parse_page_text_and_vector_markers() {
         let content = "%PP-TXT 0 10 20 14 Hello world\nBT\n%PP-VEC 1 5 6 40 30 stroke\nq\n";
-        let texts = parse_page_text_edits(content);
+        let texts = pdf::page_text::parse_page_text_edits(content);
         assert_eq!(texts.len(), 1);
         assert_eq!(texts[0].text, "Hello world");
-        let vectors = parse_page_vectors(content);
+        let vectors = pdf::page_text::parse_page_vectors(content);
         assert_eq!(vectors.len(), 1);
         assert_eq!(vectors[0].width, 40.0);
     }
@@ -30712,8 +30190,8 @@ mod tests {
         }
         let prev_lang = std::env::var_os("PDF_PANDA_OCR_LANG");
         std::env::set_var("PDF_PANDA_OCR_LANG", "zzzinvalid_lang_pack");
-        let strict = ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
-        let lenient = try_ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
+        let strict = pdf::ocr::ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
+        let lenient = pdf::ocr::try_ocr_png_bytes(&[0x89, 0x50, 0x4e, 0x47]);
         if let Some(lang) = prev_lang {
             std::env::set_var("PDF_PANDA_OCR_LANG", lang);
         } else {
