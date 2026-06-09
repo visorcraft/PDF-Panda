@@ -21,10 +21,13 @@
 
 ## Screenshots
 
-> _Placeholder — drop a real capture here._ The app shows a top menu bar (File,
-> Edit, Pages, …), a quick-access row, page/zoom controls, a thumbnail sidebar
-> beside a scrollable viewer (25–400% zoom), and tool overlays for highlights,
-> notes, shapes, stamps, and forms.
+<p align="center">
+  <img src="docs/screenshots/welcome-screen.png" alt="PDF Panda welcome screen with menu bar and click-to-open prompt" width="720" />
+</p>
+
+<p align="center">
+  <i>Welcome screen — custom title bar, menu bar, and click-to-open splash before a document is loaded.</i>
+</p>
 
 ---
 

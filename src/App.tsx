@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openNativeDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog';
 import parityBatchCommands from './parity_batch_commands.json';
+import pandaWelcome from './assets/panda.png';
+import { TitleBar } from './chrome/TitleBar';
 import { buildAppMenus } from './menu/buildAppMenus';
 import { MenuChrome } from './menu/MenuChrome';
 
@@ -5994,8 +5996,13 @@ function App() {
     </>
   ) : null;
 
+  const windowTitle = originalPath
+    ? `${isDirty ? '• ' : ''}${originalPath.split('/').pop() ?? ''} — PDF Panda`
+    : 'PDF Panda';
+
   return (
     <div className="app">
+      <TitleBar title={windowTitle} />
       <Toast notification={toast} />
 
       {loading && (
@@ -6069,7 +6076,8 @@ function App() {
       </div>
 
       <div className="app-body">
-      {/* Sidebar */}
+      {/* Sidebar — only when a PDF is open */}
+      {filePath && (
       <aside className="sidebar">
         <h3>Thumbnails</h3>
         {thumbnails.length > 0 ? (
@@ -6246,12 +6254,28 @@ function App() {
           </div>
         )}
       </aside>
+      )}
 
       {/* Main Content */}
       <main className="main">
         {/* Scrollable page area */}
-        <div className={`page-scroll ${viewMode === 'markdown' ? 'markdown-scroll' : ''}`} ref={scrollRef} onWheel={handleWheel}>
-          {viewMode === 'markdown' ? (
+        <div
+          className={`page-scroll${!filePath ? ' welcome-scroll' : ''}${viewMode === 'markdown' ? ' markdown-scroll' : ''}`}
+          ref={scrollRef}
+          onWheel={handleWheel}
+        >
+          {!filePath ? (
+            <button
+              type="button"
+              className="welcome-splash"
+              onClick={openPdf}
+              data-testid="welcome-open-pdf"
+              aria-label="Click to open a PDF"
+            >
+              <img src={pandaWelcome} alt="" className="welcome-panda" aria-hidden="true" />
+              <span className="welcome-hint">Click to open a PDF</span>
+            </button>
+          ) : viewMode === 'markdown' ? (
             <div className="markdown-viewer">
               <div className="markdown-header">
                 <span>Markdown</span>
@@ -6633,7 +6657,7 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <p className="muted">No page rendered — use File → Open PDF to begin.</p>
+                <p className="muted">No page rendered.</p>
               )}
             </div>
           )}

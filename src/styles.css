@@ -89,6 +89,88 @@ body {
   overflow: hidden;
 }
 
+/* Window title bar (custom decorations) */
+.window-titlebar {
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+  min-height: 32px;
+  flex-shrink: 0;
+  background: #363636;
+  color: #e8e8e8;
+  user-select: none;
+}
+
+.titlebar-leading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.titlebar-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.titlebar-drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.titlebar-title {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.titlebar-controls {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: #e8e8e8;
+  cursor: pointer;
+}
+
+.titlebar-btn-icon {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.titlebar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-btn-close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
 /* Menu chrome */
 .menu-chrome {
   display: flex;
@@ -101,7 +183,7 @@ body {
   align-items: stretch;
   gap: 2px;
   padding: 0 12px;
-  min-height: 36px;
+  min-height: 28px;
 }
 
 .menu-bar-entry {
@@ -110,11 +192,11 @@ body {
 
 .menu-bar-trigger {
   height: 100%;
-  padding: 8px 12px;
+  padding: 4px 10px;
   border: 0;
   background: transparent;
   color: #333;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   border-radius: 4px 4px 0 0;
@@ -221,7 +303,7 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 6px 12px;
 }
 
 .quick-toolbar {
@@ -493,6 +575,55 @@ body {
 .page-scroll.markdown-scroll {
   justify-content: stretch;
   align-items: stretch;
+}
+
+.page-scroll.welcome-scroll {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.welcome-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 40px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.welcome-splash:hover {
+  background: rgba(74, 144, 217, 0.06);
+}
+
+.welcome-splash:focus-visible {
+  outline: 2px solid #4a90d9;
+  outline-offset: 4px;
+}
+
+.welcome-panda {
+  max-width: min(480px, 78vw);
+  max-height: min(62vh, 560px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.welcome-hint {
+  font-size: 15px;
+  font-weight: 500;
+  color: #666;
+  transition: color 0.15s;
+}
+
+.welcome-splash:hover .welcome-hint {
+  color: #1a5fb4;
 }
 
 /* Page Container */
