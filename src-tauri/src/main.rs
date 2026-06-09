@@ -7,6 +7,7 @@ use pdf::annotations::{annot_is_redaction, annot_panda_stamp_kind, append_page_a
 use pdf::bookmarks::{collect_outline_items, flat_outline_ids, remove_outline_item, PdfBookmarkEntry};
 use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
 use pdf::coords::{page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
+use pdf::crop::apply_crop_margins;
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
 use pdf::fonts::dedup_fonts_after_insert;
 use pdf::form_merge::merge_acroform_after_insert;
@@ -27,8 +28,9 @@ use pdf::ocr::{
 #[cfg(test)]
 use pdf::ocr::{ocr_page_segmentation_mode, os_release_value};
 use pdf::page_decor::{append_outline_item, build_page_number_ops, build_watermark_ops, create_blank_page};
+use pdf::page_sizes::PdfPageSize;
 use pdf::page_text::{ensure_helvetica_font, viewer_point_to_pdf};
-use pdf::page_tree::{delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, set_pages_kids};
+use pdf::page_tree::{flatten_pages, get_pages_kids, inherited_page_attr, set_pages_kids};
 use pdf::pdfium_bind::{
     get_pdfium, render_page_bmp, render_page_gif, render_page_ico, render_page_image, render_page_jpeg,
     render_page_png, render_page_ppm, render_page_tga, render_page_tiff, render_page_webp, set_bundled_pdfium_dir,
@@ -224,85 +226,24 @@ fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u
 
 #[tauri::command]
 fn delete_page(path: String, page_index: u32) -> Result<(), String> {
-    let path = PathBuf::from(path);
-    pdf::io::mutate_pdf(&path, |doc| {
-        // Use lopdf's tree-aware deletion: it resolves the leaf page through the
-        // (possibly nested) page tree, removes only that leaf, and decrements /Count
-        // up the parent chain. The old flat `Kids` edit assumed every kid was a leaf
-        // page, so on a nested tree it deleted whole sub-trees and wrote a bogus
-        // /Count (deleting "page 1" could drop pages 1–5 and hide the rest).
-        let total = doc.get_pages().len();
-        if total <= 1 {
-            return Err("Cannot delete the only page in the document".to_string());
-        }
-        let idx = page_index as usize;
-        if idx >= total {
-            return Err("Page index out of bounds".to_string());
-        }
-        doc.delete_pages(&[page_index + 1]); // lopdf page numbers are 1-based
-        Ok(())
-    })
+    pdf::page_ops::delete_page(&PathBuf::from(path), page_index)
 }
 
 #[tauri::command]
 fn move_page(path: String, from_index: u32, to_index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    pdf::io::mutate_pdf(&path, |doc| {
-        // Flatten first so /Kids is a flat leaf list (index == page order) even when
-        // the source PDF uses a nested page tree.
-        let pages_ref = flatten_pages(doc)?;
-        let (mut kids, _) = get_pages_kids(doc)?;
-
-        let from = from_index as usize;
-        let to = to_index as usize;
-        if from >= kids.len() || to >= kids.len() {
-            return Err("Index out of bounds".to_string());
-        }
-        if from == to {
-            return Ok(());
-        }
-
-        let moved = kids.remove(from);
-        kids.insert(to, moved);
-        set_pages_kids(doc, pages_ref, kids)?;
-        Ok(())
-    })
+    pdf::page_ops::move_page(&PathBuf::from(path), from_index, to_index)
 }
 
 /// Deep-copy `page_index` and insert the copy immediately after it.
 #[tauri::command]
 fn duplicate_page(path: String, page_index: u32) -> Result<u32, String> {
-    let path_buf = PathBuf::from(&path);
-    let page_count = pdf::io::page_count(&path_buf)?;
-    let idx = page_index as usize;
-    if idx >= page_count {
-        return Err("Page index out of bounds".to_string());
-    }
-    let path_str = path_buf.to_string_lossy().into_owned();
-    insert_pdf(path_str.clone(), path_str, page_index + 1, page_index, page_index)?;
-    Ok(page_index + 1)
+    pdf::page_ops::duplicate_page(&PathBuf::from(&path), page_index)
 }
 
 /// Append pages from `merge_path` to the end of `path`.
 #[tauri::command]
 fn merge_pdf(path: String, merge_path: String, merge_start: u32, merge_end: u32) -> Result<u32, String> {
-    let path_buf = PathBuf::from(&path);
-    let merge_path_buf = PathBuf::from(&merge_path);
-    if path_buf == merge_path_buf {
-        return Err("Cannot merge a PDF into itself".to_string());
-    }
-
-    let at_index = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    let source_count = Document::load(&merge_path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    if source_count == 0 {
-        return Err("Source PDF has no pages".to_string());
-    }
-    if merge_start > merge_end || merge_end >= source_count {
-        return Err("Invalid merge page range".to_string());
-    }
-
-    insert_pdf(path, merge_path, at_index, merge_start, merge_end)?;
-    Ok(merge_end - merge_start + 1)
+    pdf::page_ops::merge_pdf(&PathBuf::from(&path), &PathBuf::from(&merge_path), merge_start, merge_end)
 }
 
 #[tauri::command]
@@ -324,39 +265,19 @@ fn rotate_all_pages(path: String) -> Result<u32, String> {
 /// Reverse the document page order.
 #[tauri::command]
 fn reverse_pages(path: String) -> Result<(), String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut kids, _) = get_pages_kids(&doc)?;
-    kids.reverse();
-    set_pages_kids(&mut doc, pages_ref, kids)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::page_ops::reverse_pages(&PathBuf::from(path))
 }
 
 /// Insert a blank page before `at_index` (0 = first page).
 #[tauri::command]
 fn add_blank_page(path: String, at_index: u32) -> Result<u32, String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut kids, _) = get_pages_kids(&doc)?;
-    let at = at_index as usize;
-    if at > kids.len() {
-        return Err("Insert index out of bounds".to_string());
-    }
-    let page_id = create_blank_page(&mut doc, pages_ref);
-    kids.insert(at, Object::Reference(page_id));
-    set_pages_kids(&mut doc, pages_ref, kids)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(at_index)
+    pdf::page_ops::add_blank_page(&PathBuf::from(path), at_index)
 }
 
 /// Delete `start_page`..=`end_page` (inclusive, 0-based). At least one page must remain.
 #[tauri::command]
 fn delete_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
-    let path = PathBuf::from(path);
-    pdf::io::mutate_pdf(&path, |doc| delete_kids_in_range(doc, start_page, end_page))
+    pdf::page_ops::delete_page_range(&PathBuf::from(path), start_page, end_page)
 }
 
 /// Append a bookmark pointing at `page_index`.
@@ -402,15 +323,7 @@ fn crop_page(
     margin_bottom: f64,
     margin_left: f64,
 ) -> Result<(), String> {
-    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
-        return Err("Margins must be non-negative".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or_else(|| "Page not found".to_string())?;
-    apply_crop_margins(&mut doc, page_id, margin_top, margin_right, margin_bottom, margin_left)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::crop::crop_page(&PathBuf::from(path), page_index, margin_top, margin_right, margin_bottom, margin_left)
 }
 
 /// Rotate `page_index` 90° counter-clockwise.
@@ -443,14 +356,7 @@ fn reset_all_page_rotations(path: String) -> Result<u32, String> {
 /// Deep-copy `start_page`..=`end_page` and insert the copies immediately after the range.
 #[tauri::command]
 fn duplicate_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
-    let path_buf = PathBuf::from(&path);
-    let total = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let count = end_page - start_page + 1;
-    insert_pdf(path.clone(), path, end_page + 1, start_page, end_page)?;
-    Ok(count)
+    pdf::page_ops::duplicate_page_range(&PathBuf::from(&path), start_page, end_page)
 }
 
 /// Remove a bookmark by flat index (same order as `get_pdf_bookmarks`).
@@ -495,72 +401,16 @@ fn rename_pdf_bookmark(path: String, bookmark_index: u32, title: String) -> Resu
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct PdfPageSize {
-    width: f64,
-    height: f64,
-    rotation: i64,
-}
-
 /// Return MediaBox width/height (points) and rotation for every page.
 #[tauri::command]
 fn get_pdf_page_sizes(path: String) -> Result<Vec<PdfPageSize>, String> {
-    let path = PathBuf::from(path);
-    let doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let mut sizes = Vec::new();
-    for page_id in doc.get_pages().into_values() {
-        let media = page_media_box(&doc, page_id)?;
-        sizes.push(PdfPageSize {
-            width: media[2] - media[0],
-            height: media[3] - media[1],
-            rotation: page_rotation(&doc, page_id),
-        });
-    }
-    Ok(sizes)
+    pdf::page_sizes::get_pdf_page_sizes(&PathBuf::from(path))
 }
 
 /// Remove `/CropBox` from `page_index`.
 #[tauri::command]
 fn clear_page_crop(path: String, page_index: u32) -> Result<(), String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-fn apply_crop_margins(
-    doc: &mut Document,
-    page_id: ObjectId,
-    margin_top: f64,
-    margin_right: f64,
-    margin_bottom: f64,
-    margin_left: f64,
-) -> Result<(), String> {
-    let media = page_media_box(doc, page_id)?;
-    let mw = media[2] - media[0];
-    let mh = media[3] - media[1];
-    if mw <= 0.0 || mh <= 0.0 {
-        return Err("Invalid page size".to_string());
-    }
-    let left = media[0] + margin_left * mw / VIEWER_PAGE_W;
-    let bottom = media[1] + margin_bottom * mh / VIEWER_PAGE_H;
-    let right = media[2] - margin_right * mw / VIEWER_PAGE_W;
-    let top = media[3] - margin_top * mh / VIEWER_PAGE_H;
-    if right <= left || top <= bottom {
-        return Err("Crop margins are too large".to_string());
-    }
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(
-        b"CropBox",
-        Object::Array(vec![
-            Object::Real(left as f32),
-            Object::Real(bottom as f32),
-            Object::Real(right as f32),
-            Object::Real(top as f32),
-        ]),
-    );
-    Ok(())
+    pdf::crop::clear_page_crop(&PathBuf::from(path), page_index)
 }
 
 /// Apply the same viewer-pixel crop margins to every page.
@@ -572,17 +422,7 @@ fn crop_all_pages(
     margin_bottom: f64,
     margin_left: f64,
 ) -> Result<u32, String> {
-    if margin_top < 0.0 || margin_right < 0.0 || margin_bottom < 0.0 || margin_left < 0.0 {
-        return Err("Margins must be non-negative".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
-    for page_id in &page_ids {
-        apply_crop_margins(&mut doc, *page_id, margin_top, margin_right, margin_bottom, margin_left)?;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(page_ids.len() as u32)
+    pdf::crop::crop_all_pages(&PathBuf::from(path), margin_top, margin_right, margin_bottom, margin_left)
 }
 
 /// Rotate `page_index` 180°.
@@ -605,45 +445,19 @@ fn rotate_all_pages_ccw(path: String) -> Result<u32, String> {
 /// Move `page_index` to the first position.
 #[tauri::command]
 fn move_page_to_first(path: String, page_index: u32) -> Result<(), String> {
-    if page_index == 0 {
-        return Ok(());
-    }
-    move_page(path, page_index, 0)
+    pdf::page_ops::move_page_to_first(&PathBuf::from(path), page_index)
 }
 
 /// Move `page_index` to the last position.
 #[tauri::command]
 fn move_page_to_last(path: String, page_index: u32) -> Result<(), String> {
-    let path_buf = PathBuf::from(&path);
-    let last = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len() as u32;
-    if last == 0 {
-        return Err("Document has no pages".to_string());
-    }
-    let last_index = last - 1;
-    if page_index == last_index {
-        return Ok(());
-    }
-    if page_index >= last {
-        return Err("Page index out of bounds".to_string());
-    }
-    move_page(path, page_index, last_index)
+    pdf::page_ops::move_page_to_last(&PathBuf::from(path), page_index)
 }
 
 /// Remove `/CropBox` from every page.
 #[tauri::command]
 fn clear_all_page_crops(path: String) -> Result<u32, String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
-    let mut cleared = 0u32;
-    for page_id in &page_ids {
-        if doc.get_dictionary(*page_id).ok().and_then(|d| d.get(b"CropBox").ok()).is_some() {
-            doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.remove(b"CropBox");
-            cleared += 1;
-        }
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(cleared)
+    pdf::crop::clear_all_page_crops(&PathBuf::from(path))
 }
 
 /// Remove every PDF outline/bookmark entry.

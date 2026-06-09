@@ -1,67 +1,33 @@
 import { AppShell } from './chrome/AppShell';
-import { buildAppMenuInput } from './menu/buildAppMenuInput';
-import { useAppBootstrap } from './app/useAppBootstrap';
+import { buildAppShellRenderInput } from './chrome/buildAppShellRenderInput';
 import { buildAppModalCtxInput } from './modals/buildAppModalCtxInput';
-import { buildAppShellSource } from './chrome/buildAppShellSource';
-import { buildAppShellChromeInput } from './chrome/buildAppShellChromeInput';
-import { buildAppShellViewerInput } from './viewer/buildAppShellViewerInput';
+import { useAppDocumentState } from './app/useAppDocumentState';
 import { useAppModalState } from './app/useAppModalState';
-import { useDocumentPanelsState } from './app/useDocumentPanelsState';
 import { useSecurityFormState } from './app/useSecurityFormState';
+import { useDocumentPanelsState } from './app/useDocumentPanelsState';
 import { useAnnotationDraftState } from './app/useAnnotationDraftState';
 import { useHelpChromeState } from './app/useHelpChromeState';
-import { useModalDismiss } from './app/useModalDismiss';
-import { buildModalDismissInput } from './app/buildModalDismissInput';
-import { useAppKeyboardBinding } from './app/useAppKeyboardBinding';
 import { useAppRefs } from './app/useAppRefs';
-import { useAppPdfActions } from './app/useAppPdfActions';
-import { buildAppPdfActionsInput } from './app/buildAppPdfActionsInput';
-import { useAppDocumentState } from './app/useAppDocumentState';
 import { useDrawingGesture } from './viewer/useDrawingGesture';
-import { useSourcePdfPageCounts } from './app/useSourcePdfPageCounts';
-import { useWindowTitle } from './app/useWindowTitle';
-import { usePageZoomInputSync } from './app/usePageZoomInputSync';
 import { useAppLoading } from './app/useAppLoading';
 import { useAppPageRanges } from './app/useAppPageRanges';
-import { buildModeToolbarExtras } from './viewer/buildModeToolbarExtras';
-import { buildAppKeyboardSource } from './app/buildAppKeyboardSource';
-import { useAppViewerWorkflow } from './app/useAppViewerWorkflow';
+import { useSourcePdfPageCounts } from './app/useSourcePdfPageCounts';
 import { useAppLifecycleHooks } from './app/useAppLifecycleHooks';
+import { useAppViewerWorkflow } from './app/useAppViewerWorkflow';
+import { useAppPdfActionsBinding } from './app/useAppPdfActionsBinding';
+import { useAppChromeBindings } from './app/useAppChromeBindings';
+import { useAppSetupHooks } from './app/useAppSetupHooks';
+
 function App() {
   const doc = useAppDocumentState();
   const modal = useAppModalState();
-
   const security = useSecurityFormState();
-
   const panels = useDocumentPanelsState();
-
-  const {
-    filePathRef,
-    handleMarkdownViewRef,
-    loadPdfBookmarksRef,
-    loadPageSizesRef,
-    cancelDrawingRef,
-    keyboardActionsRef,
-    imgRef,
-    handleSaveRef,
-  } = useAppRefs();
-  const {
-    showCommandPalette, setShowCommandPalette,
-    showShortcutsHelp, setShowShortcutsHelp,
-    showLicenses, setShowLicenses,
-    showCredits, setShowCredits,
-    showAbout, setShowAbout,
-    showTesseractModal, setShowTesseractModal,
-    tesseractInstallGuide, setTesseractInstallGuide,
-    tesseractDoNotRemind, setTesseractDoNotRemind,
-    tesseractReminderSource, setTesseractReminderSource,
-  } = useHelpChromeState();
-
+  const help = useHelpChromeState();
   const annotation = useAnnotationDraftState();
   const drawingGesture = useDrawingGesture();
-  const { highlightStart, highlightRect, inkDraft, shapeLineEnd, drawing, cancelDrawing } = drawingGesture;
+  const refs = useAppRefs();
   const { showToast, withLoading } = useAppLoading({ setToast: doc.setToast, setLoading: doc.setLoading });
-
   const pageRanges = useAppPageRanges({ pageCount: doc.pageCount, currentPage: doc.currentPage, showToast });
 
   useSourcePdfPageCounts({
@@ -79,31 +45,37 @@ function App() {
     security,
     panels,
     annotation,
-    refs: { filePathRef, handleMarkdownViewRef, loadPdfBookmarksRef, loadPageSizesRef, cancelDrawingRef, keyboardActionsRef, imgRef, handleSaveRef },
+    refs: {
+      filePathRef: refs.filePathRef,
+      handleMarkdownViewRef: refs.handleMarkdownViewRef,
+      loadPdfBookmarksRef: refs.loadPdfBookmarksRef,
+      loadPageSizesRef: refs.loadPageSizesRef,
+      cancelDrawingRef: refs.cancelDrawingRef,
+      keyboardActionsRef: refs.keyboardActionsRef,
+      imgRef: refs.imgRef,
+      handleSaveRef: refs.handleSaveRef,
+    },
     pageRanges,
     ocrAvailable: !!doc.ocrAvailable,
-    tesseractReminderSource,
-    setTesseractReminderSource,
-    tesseractDoNotRemind,
-    setTesseractDoNotRemind,
-    setShowTesseractModal,
+    tesseractReminderSource: help.tesseractReminderSource,
+    setTesseractReminderSource: help.setTesseractReminderSource,
+    tesseractDoNotRemind: help.tesseractDoNotRemind,
+    setTesseractDoNotRemind: help.setTesseractDoNotRemind,
+    setShowTesseractModal: help.setShowTesseractModal,
     showToast,
     withLoading,
     isDirtyRef: doc.isDirtyRef,
-    filePathRef,
-    cancelDrawing,
+    filePathRef: refs.filePathRef,
+    cancelDrawing: () => refs.cancelDrawingRef.current(),
   });
+
   const {
     loadFormFields,
     loadPdfBookmarks,
     loadPdfSignatures,
     loadPageSizes,
-    shouldShowTesseractReminder,
-    closeTesseractReminderModal,
     showLaunchTesseractReminder,
     openTesseractGuide,
-    rememberBrowserDirectory,
-    rememberOpenedPdf,
     showUnsavedModal,
     resolveUnsaved,
     guardUnsaved,
@@ -114,23 +86,24 @@ function App() {
     loadThumbnails,
     renderPage,
     goToPage,
-    reloadOpenPdf,
     canUndo,
     canRedo,
     markPdfEdited,
     markSaved,
     undo,
     redo,
-    loadPdfFromPath,
     openPdf,
-    handleOpenPdfPath,
-    handleOpenEncryptedPdf,
-    handleOpenRecentPdf,
     browser,
     search,
     printPages,
     handlePrint,
     closePdf,
+  } = lifecycle;
+
+  const {
+    handleOpenPdfPath,
+    handleOpenEncryptedPdf,
+    handleOpenRecentPdf,
   } = lifecycle;
   const {
     showBrowserModal,
@@ -143,48 +116,17 @@ function App() {
     commitBrowserPath,
     handleBrowserEntryClick,
   } = browser;
-  const {
-    showSearchModal,
-    searchQuery,
-    setSearchQuery,
-    searchMatchCase,
-    setSearchMatchCase,
-    searchWholeWord,
-    setSearchWholeWord,
-    searchResults,
-    searchResultIndex,
-    activeSearchRect,
-    searchInputRef,
-    openSearchModal,
-    closeSearchModal,
-    runPdfSearch,
-    stepSearchMatch,
-  } = search;
+  const { showSearchModal, closeSearchModal, openSearchModal } = search;
 
-  useAppBootstrap({
-    onNativeDialogs: modal.setNativeDialogs,
-    onOcrAvailable: doc.setOcrAvailable,
-    onTesseractInstallGuide: setTesseractInstallGuide,
+  const { windowTitle } = useAppSetupHooks({
+    doc,
+    modal,
+    help,
+    refs: { filePathRef: refs.filePathRef },
     onShowTesseractReminder: showLaunchTesseractReminder,
   });
 
-  const { windowTitle } = useWindowTitle({ filePath: doc.filePath, originalPath: doc.originalPath, isDirty: doc.isDirty, isDirtyRef: doc.isDirtyRef, filePathRef });
-
-  usePageZoomInputSync({ currentPage: doc.currentPage, setPageInput: doc.setPageInput, zoom: doc.zoom, setZoomInput: doc.setZoomInput });
-
-  const {
-    scrollRef,
-    handleWheel,
-    handleImageLoad,
-    handleDragStart,
-    handleDragOver,
-    handleDrop,
-    zoomIn,
-    zoomOut,
-    resetZoom,
-    commitZoom,
-    commitPage,
-  } = useAppViewerWorkflow({
+  const viewerWorkflow = useAppViewerWorkflow({
     pageCount: doc.pageCount,
     viewMode: doc.viewMode,
     currentPage: doc.currentPage,
@@ -205,80 +147,68 @@ function App() {
     renderPage,
   });
 
-  const pdfActions = useAppPdfActions(buildAppPdfActionsInput({
+  const pdfActions = useAppPdfActionsBinding({
+    doc,
     modal,
     security,
     panels,
     annotation,
-    document: doc,
     drawing: drawingGesture,
     pageRanges,
-    refs: { cancelDrawingRef, handleSaveRef, handleMarkdownViewRef, imgRef },
+    refs: {
+      cancelDrawingRef: refs.cancelDrawingRef,
+      handleSaveRef: refs.handleSaveRef,
+      handleMarkdownViewRef: refs.handleMarkdownViewRef,
+      imgRef: refs.imgRef,
+    },
+    help,
     runtime: {
       loadFormFields,
       loadPageSizes,
       loadPdfBookmarks,
-      loadPdfFromPath,
+      loadPdfFromPath: lifecycle.loadPdfFromPath,
       loadPdfSignatures,
       loadThumbnails,
       markPdfEdited,
       markSaved,
-      reloadOpenPdf,
-      rememberBrowserDirectory,
-      rememberOpenedPdf,
+      reloadOpenPdf: lifecycle.reloadOpenPdf,
+      rememberBrowserDirectory: lifecycle.rememberBrowserDirectory,
+      rememberOpenedPdf: lifecycle.rememberOpenedPdf,
       renderPage,
       setAnnotations,
-      shouldShowTesseractReminder,
+      shouldShowTesseractReminder: lifecycle.shouldShowTesseractReminder,
       showToast,
       withLoading,
-      setShowTesseractModal,
-      setTesseractReminderSource,
     },
-  }));
+  });
 
-
-  const { dismissModals, anyModalOpen } = useModalDismiss(buildModalDismissInput({
+  const { appMenus, modeToolbarExtras } = useAppChromeBindings({
+    doc,
     modal,
     security,
+    panels,
     annotation,
-    help: { showCommandPalette, setShowCommandPalette, showShortcutsHelp, setShowShortcutsHelp, showLicenses, setShowLicenses, showCredits, setShowCredits, showAbout, setShowAbout, showTesseractModal, setShowTesseractModal, tesseractInstallGuide, setTesseractInstallGuide, tesseractDoNotRemind, setTesseractDoNotRemind, tesseractReminderSource, setTesseractReminderSource },
+    help,
+    refs: { keyboardActionsRef: refs.keyboardActionsRef },
+    pdfActions,
+    history: { canUndo, canRedo, undo, redo },
+    chrome: {
+      guardUnsaved,
+      closePdf,
+      openPdf,
+      goToPage,
+      handlePrint,
+      openSearchModal,
+      openTesseractGuide,
+    },
+    zoom: {
+      zoomIn: viewerWorkflow.zoomIn,
+      zoomOut: viewerWorkflow.zoomOut,
+      resetZoom: viewerWorkflow.resetZoom,
+    },
     unsaved: { showUnsavedModal, resolveUnsaved },
     browser: { showBrowserModal, setShowBrowserModal },
     search: { showSearchModal, closeSearchModal },
-  }));
-
-  useAppKeyboardBinding(keyboardActionsRef, buildAppKeyboardSource({
-    doc: { isDirty: doc.isDirty, filePath: doc.filePath, pageCount: doc.pageCount, currentPage: doc.currentPage, viewMode: doc.viewMode },
-    annotation: { noteMode: annotation.noteMode, drawMode: annotation.drawMode, shapeMode: annotation.shapeMode, stampMode: annotation.stampMode, redactMode: annotation.redactMode, imageInsertMode: annotation.imageInsertMode, textEditMode: annotation.textEditMode, vectorEditMode: annotation.vectorEditMode, formAddMode: annotation.formAddMode, highlightMode: annotation.highlightMode },
-    history: { canUndo, canRedo, undo, redo },
-    chrome: { anyModalOpen, dismissModals, guardUnsaved, closePdf, openPdf, setShowCommandPalette, goToPage, handlePrint, openSearchModal },
-    zoom: { zoomIn, zoomOut, resetZoom },
-    pdfActions,
-  }));
-
-  const appMenus = buildAppMenuInput({
-    doc: { filePath: doc.filePath, isDirty: doc.isDirty, pageCount: doc.pageCount, currentPage: doc.currentPage, viewMode: doc.viewMode, ocrAvailable: !!doc.ocrAvailable },
-    annotation: { highlightMode: annotation.highlightMode, noteMode: annotation.noteMode, drawMode: annotation.drawMode, shapeMode: annotation.shapeMode, stampMode: annotation.stampMode, redactMode: annotation.redactMode, imageInsertMode: annotation.imageInsertMode, textEditMode: annotation.textEditMode, vectorEditMode: annotation.vectorEditMode },
-    panels: { showFormsPanel: panels.showFormsPanel, showBookmarksPanel: panels.showBookmarksPanel, showSignaturesPanel: panels.showSignaturesPanel },
-    history: { canUndo, canRedo, undo, redo },
-    chrome: { guardUnsaved, closePdf, setViewMode: doc.setViewMode, setShowBookmarksPanel: panels.setShowBookmarksPanel, setShowPageEditsModal: annotation.setShowPageEditsModal, openTesseractGuide, openPdf, handlePrint, openSearchModal },
-    help: { setShowShortcutsHelp, setShowLicenses, setShowCredits, setShowAbout, setShowCommandPalette },
-    pdfActions,
-  });
-
-  const modeToolbarExtras = buildModeToolbarExtras({
-    filePath: doc.filePath,
-    imageInsertMode: annotation.imageInsertMode,
-    imageSourcePath: annotation.imageSourcePath,
-    onOpenImageInsertModal: pdfActions.openImageInsertModal,
-    stampMode: annotation.stampMode,
-    stampKind: annotation.stampKind,
-    stampPreset: annotation.stampPreset,
-    onStampKindChange: annotation.setStampKind,
-    onStampPresetChange: annotation.setStampPreset,
-    shapeMode: annotation.shapeMode,
-    shapeKind: annotation.shapeKind,
-    onShapeKindChange: annotation.setShapeKind,
   });
 
   const modalCtx = buildAppModalCtxInput({
@@ -287,136 +217,78 @@ function App() {
     annotation,
     pageRanges,
     doc: { currentPage: doc.currentPage, pageCount: doc.pageCount },
-    browser: { showBrowserModal, setShowBrowserModal, browserListing, browserPathInput, setBrowserPathInput, loadPdfBrowser, openPdfBrowser, commitBrowserPath, handleBrowserEntryClick },
-    search: { showSearchModal, searchQuery, setSearchQuery, searchMatchCase, setSearchMatchCase, searchWholeWord, setSearchWholeWord, searchResults, searchResultIndex, searchInputRef, closeSearchModal, runPdfSearch, stepSearchMatch },
+    browser: {
+      showBrowserModal,
+      setShowBrowserModal,
+      browserListing,
+      browserPathInput,
+      setBrowserPathInput,
+      loadPdfBrowser,
+      openPdfBrowser,
+      commitBrowserPath,
+      handleBrowserEntryClick,
+    },
+    search: {
+      showSearchModal,
+      searchQuery: search.searchQuery,
+      setSearchQuery: search.setSearchQuery,
+      searchMatchCase: search.searchMatchCase,
+      setSearchMatchCase: search.setSearchMatchCase,
+      searchWholeWord: search.searchWholeWord,
+      setSearchWholeWord: search.setSearchWholeWord,
+      searchResults: search.searchResults,
+      searchResultIndex: search.searchResultIndex,
+      searchInputRef: search.searchInputRef,
+      closeSearchModal,
+      runPdfSearch: search.runPdfSearch,
+      stepSearchMatch: search.stepSearchMatch,
+    },
     unsaved: { showUnsavedModal, resolveUnsaved },
-    tesseract: { closeTesseractReminderModal },
-    help: { showCommandPalette, setShowCommandPalette, showShortcutsHelp, setShowShortcutsHelp, showLicenses, setShowLicenses, showCredits, setShowCredits, showAbout, setShowAbout, showTesseractModal, setShowTesseractModal, tesseractInstallGuide, setTesseractInstallGuide, tesseractDoNotRemind, setTesseractDoNotRemind, tesseractReminderSource, setTesseractReminderSource },
+    tesseract: { closeTesseractReminderModal: lifecycle.closeTesseractReminderModal },
+    help,
     lifecycle: { handleOpenPdfPath, handleOpenEncryptedPdf, handleOpenRecentPdf, loadPdfBrowser, openPdfBrowser },
     runtime: { showToast },
     pdfActions,
   });
 
+  const shell = buildAppShellRenderInput({
+    doc,
+    modal,
+    panels,
+    annotation,
+    drawing: drawingGesture,
+    help,
+    refs: { imgRef: refs.imgRef },
+    pdfActions,
+    windowTitle,
+    appMenus,
+    modeExtras: modeToolbarExtras,
+    modalCtx,
+    printPages,
+    viewer: {
+      thumbnails,
+      imageSrc,
+      annotations,
+      scrollRef: viewerWorkflow.scrollRef,
+      handleWheel: viewerWorkflow.handleWheel,
+      handleImageLoad: viewerWorkflow.handleImageLoad,
+      handleDragStart: viewerWorkflow.handleDragStart,
+      handleDragOver: viewerWorkflow.handleDragOver,
+      handleDrop: viewerWorkflow.handleDrop,
+      goToPage,
+      openPdf,
+      loadPdfBookmarks,
+      loadPdfSignatures,
+      activeSearchRect: search.activeSearchRect,
+      commitPage: viewerWorkflow.commitPage,
+      commitZoom: viewerWorkflow.commitZoom,
+      zoomIn: viewerWorkflow.zoomIn,
+      zoomOut: viewerWorkflow.zoomOut,
+      resetZoom: viewerWorkflow.resetZoom,
+    },
+  });
 
-  return (
-    <AppShell
-      {...buildAppShellSource({
-        windowTitle,
-        toast: doc.toast,
-        loading: doc.loading,
-        chrome: buildAppShellChromeInput({
-          menus: appMenus,
-          help: {
-            showCommandPalette,
-            showShortcutsHelp,
-            showLicenses,
-            showCredits,
-            showAbout,
-            setShowCommandPalette,
-            setShowShortcutsHelp,
-            setShowLicenses,
-            setShowCredits,
-            setShowAbout,
-          },
-          modeExtras: modeToolbarExtras,
-          page: {
-            pageCount: doc.pageCount,
-            viewMode: doc.viewMode,
-            currentPage: doc.currentPage,
-            pageInput: doc.pageInput,
-            pageSizes: modal.pageSizes,
-            setPageInput: doc.setPageInput,
-            commitPage,
-            goToPage,
-          },
-          zoom: {
-            zoom: doc.zoom,
-            zoomInput: doc.zoomInput,
-            setZoomInput: doc.setZoomInput,
-            commitZoom,
-            zoomIn,
-            zoomOut,
-            resetZoom,
-          },
-        }),
-        viewer: buildAppShellViewerInput({
-          document: { filePath: doc.filePath, viewMode: doc.viewMode, zoom: doc.zoom, markdownOcrNotice: doc.markdownOcrNotice, markdownPath: doc.markdownPath, markdownText: doc.markdownText },
-          sidebar: {
-            thumbnails,
-            currentPage: doc.currentPage,
-            draggedIndex: doc.draggedIndex,
-            handleDragStart,
-            handleDragOver,
-            handleDrop,
-            goToPage,
-            showBookmarksPanel: panels.showBookmarksPanel,
-            pdfBookmarks: panels.pdfBookmarks,
-            openAddBookmarkModal: pdfActions.openAddBookmarkModal,
-            openBookmarkAllModal: pdfActions.openBookmarkAllModal,
-            handleClearAllBookmarks: pdfActions.handleClearAllBookmarks,
-            loadPdfBookmarks,
-            openRenameBookmarkModal: pdfActions.openRenameBookmarkModal,
-            handleRemoveBookmark: pdfActions.handleRemoveBookmark,
-            showSignaturesPanel: panels.showSignaturesPanel,
-            pdfSignatures: panels.pdfSignatures,
-            signatureVerification: panels.signatureVerification,
-            loadPdfSignatures,
-            showFormsPanel: panels.showFormsPanel,
-            formFields: panels.formFields,
-            formDrafts: panels.formDrafts,
-            setFormDrafts: panels.setFormDrafts,
-            openAddFormFieldModal: pdfActions.openAddFormFieldModal,
-            applyFormField: pdfActions.applyFormField,
-          },
-          viewer: {
-            scrollRef,
-            handleWheel,
-            openPdf,
-            openMarkdownSaveAs: pdfActions.openMarkdownSaveAs,
-            imageSrc,
-            imgRef,
-            handleImageLoad,
-            activeSearchRect,
-            annotations,
-          },
-          modes: {
-            highlightMode: annotation.highlightMode,
-            noteMode: annotation.noteMode,
-            drawMode: annotation.drawMode,
-            shapeMode: annotation.shapeMode,
-            stampMode: annotation.stampMode,
-            redactMode: annotation.redactMode,
-            imageInsertMode: annotation.imageInsertMode,
-            textEditMode: annotation.textEditMode,
-            vectorEditMode: annotation.vectorEditMode,
-            formAddMode: annotation.formAddMode,
-            shapeKind: annotation.shapeKind,
-            drawing,
-            highlightStart,
-            highlightRect,
-            shapeLineEnd,
-            inkDraft,
-            pageTextEdits: annotation.pageTextEdits,
-            pageVectorEdits: annotation.pageVectorEdits,
-          },
-          interaction: {
-            handlePageClick: pdfActions.handlePageClick,
-            handleDrawMouseDown: pdfActions.handleDrawMouseDown,
-            handlePageMouseMove: pdfActions.handlePageMouseMove,
-            handleDrawMouseUp: pdfActions.handleDrawMouseUp,
-            removeHighlight: pdfActions.removeHighlight,
-            removeRedaction: pdfActions.removeRedaction,
-            removeStamp: pdfActions.removeStamp,
-            removeShape: pdfActions.removeShape,
-            removeInkStroke: pdfActions.removeInkStroke,
-            removeTextNote: pdfActions.removeTextNote,
-          },
-        }),
-        modalCtx,
-        printPages,
-      })}
-    />
-  );
+  return <AppShell {...shell} />;
 }
 
 export default App;
