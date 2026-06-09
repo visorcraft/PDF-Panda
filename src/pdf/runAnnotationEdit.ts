@@ -1,29 +1,32 @@
-import { invoke } from '@tauri-apps/api/core';
+import type { RunStructuralEditOptions } from './runStructuralEdit';
 
-export type AnnotationEditDeps = {
-  filePath: string;
-  currentPage: number;
-  withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  markPdfEdited: () => void;
-  refreshAnnotations: () => Promise<void>;
-  showToast: (message: string, type?: 'success' | 'error') => void;
-};
+export type AnnotationRemoveCommand =
+  | 'remove_highlight'
+  | 'remove_ink_stroke'
+  | 'remove_redaction'
+  | 'remove_text_note'
+  | 'remove_text_stamp'
+  | 'remove_image_stamp'
+  | 'remove_square'
+  | 'remove_circle'
+  | 'remove_line';
 
-export type AnnotationRemoveRequest = {
-  command: string;
-  index: number;
-  toast: string;
-};
+type StructuralEditRunner = <T = unknown>(
+  options: RunStructuralEditOptions<T>,
+) => Promise<T | undefined>;
 
-export async function runAnnotationRemove(
-  deps: AnnotationEditDeps,
-  { command, index, toast }: AnnotationRemoveRequest,
-): Promise<void> {
-  if (!deps.filePath) return;
-  await deps.withLoading(async () => {
-    await invoke(command, { path: deps.filePath, pageIndex: deps.currentPage, index });
-    deps.markPdfEdited();
-    await deps.refreshAnnotations();
-    deps.showToast(toast);
+export function runAnnotationRemoveViaEdit(
+  runEdit: StructuralEditRunner,
+  refreshAnnotations: () => Promise<void>,
+  command: AnnotationRemoveCommand,
+  pageIndex: number,
+  index: number,
+  toast: string,
+): void {
+  void runEdit({
+    command,
+    args: { pageIndex, index },
+    afterEdit: async () => { await refreshAnnotations(); },
+    toast,
   });
 }

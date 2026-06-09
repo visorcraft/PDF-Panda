@@ -14,7 +14,7 @@ import { Toast } from './ui/Toast';
 import type { PageRangeScope } from './pageRange/types';
 import { resolvePageRange } from './pageRange/resolvePageRange';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
-import { PageRangeFields, PageRangePairInputs } from './pageRange/PageRangeFields';
+import { PageRangePairInputs } from './pageRange/PageRangeFields';
 import {
   type ImageExportFormat,
   imageExportCommand,
@@ -43,7 +43,21 @@ import { PageBorderModal } from './modals/PageBorderModal';
 import { type PageSizePreset, PageSizeModal } from './modals/PageSizeModal';
 import { ReverseRangeModal } from './modals/ReverseRangeModal';
 import { RotateRangeModal } from './modals/RotateRangeModal';
-import { runAnnotationRemove } from './pdf/runAnnotationEdit';
+import { AddBookmarkModal } from './modals/AddBookmarkModal';
+import { BookmarkAllModal } from './modals/BookmarkAllModal';
+import { DeleteNthModal } from './modals/DeleteNthModal';
+import { ExpandMarginsModal } from './modals/ExpandMarginsModal';
+import { ExtractEvenPagesModal } from './modals/ExtractEvenPagesModal';
+import { ExtractOddPagesModal } from './modals/ExtractOddPagesModal';
+import { InsertBlankPagesModal } from './modals/InsertBlankPagesModal';
+import { InterleaveModal } from './modals/InterleaveModal';
+import { PrependModal } from './modals/PrependModal';
+import { ReplacePageModal } from './modals/ReplacePageModal';
+import { ShrinkMarginsModal } from './modals/ShrinkMarginsModal';
+import { SplitAtModal } from './modals/SplitAtModal';
+import { SplitEveryModal } from './modals/SplitEveryModal';
+import { SwapPagesModal } from './modals/SwapPagesModal';
+import { runAnnotationRemoveViaEdit, type AnnotationRemoveCommand } from './pdf/runAnnotationEdit';
 
 const MIN_ZOOM = 0.25; // 25%
 const MAX_ZOOM = 4; // 400%
@@ -3083,32 +3097,22 @@ function App() {
     });
   };
 
-  const removeRedaction = (index: number) => {
-    void runEdit({
-      command: 'remove_redaction',
-      args: { pageIndex: currentPage, index },
-      afterEdit: async () => { await refreshAnnotations(); },
-      toast: 'Redaction removed',
-    });
+  const removeAnnotation = (command: AnnotationRemoveCommand, index: number, toast: string) => {
+    runAnnotationRemoveViaEdit(runEdit, refreshAnnotations, command, currentPage, index, toast);
   };
 
-  const annotationEditDeps = {
-    filePath,
-    currentPage,
-    withLoading,
-    markPdfEdited,
-    refreshAnnotations,
-    showToast,
+  const removeRedaction = (index: number) => {
+    removeAnnotation('remove_redaction', index, 'Redaction removed');
   };
 
   const removeStamp = (kind: StampKind, index: number) => {
     const command = kind === 'text' ? 'remove_text_stamp' : 'remove_image_stamp';
-    void runAnnotationRemove(annotationEditDeps, { command, index, toast: 'Stamp removed' });
+    removeAnnotation(command, index, 'Stamp removed');
   };
 
   const removeShape = (subtype: 'Square' | 'Circle' | 'Line', index: number) => {
     const command = subtype === 'Square' ? 'remove_square' : subtype === 'Circle' ? 'remove_circle' : 'remove_line';
-    void runAnnotationRemove(annotationEditDeps, { command, index, toast: 'Shape removed' });
+    removeAnnotation(command, index, 'Shape removed');
   };
 
   const commitInkStroke = (points: number[]) => {
@@ -3133,12 +3137,12 @@ function App() {
   };
 
   const removeInkStroke = (inkIndex: number) => {
-    void runEdit({ command: 'remove_ink_stroke', args: { pageIndex: currentPage, index: inkIndex }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Drawing removed' });
+    removeAnnotation('remove_ink_stroke', inkIndex, 'Drawing removed');
   };
 
   // Click an existing highlight (while in highlight mode) to remove it.
   const removeHighlight = (highlightIndex: number) => {
-    void runEdit({ command: 'remove_highlight', args: { pageIndex: currentPage, index: highlightIndex }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Highlight removed' });
+    removeAnnotation('remove_highlight', highlightIndex, 'Highlight removed');
   };
 
   const openImageInsertModal = () => {
@@ -3473,7 +3477,7 @@ function App() {
   };
 
   const removeTextNote = (noteIndex: number) => {
-    void runEdit({ command: 'remove_text_note', args: { pageIndex: currentPage, index: noteIndex }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Note removed' });
+    removeAnnotation('remove_text_note', noteIndex, 'Note removed');
   };
 
   const submitTextNote = () => {
@@ -5655,18 +5659,14 @@ function App() {
         />
       )}
 
-      {/* Add Bookmark Modal */}
       {showAddBookmarkModal && (
-        <Modal onClose={() => setShowAddBookmarkModal(false)}>
-          <h3>Add Bookmark</h3>
-          <p className="modal-help">Create an outline entry pointing at page {currentPage + 1}.</p>
-          <label>Title:</label>
-          <input type="text" value={bookmarkTitle} onChange={(e) => setBookmarkTitle(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowAddBookmarkModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleAddBookmark()} className="btn" disabled={!bookmarkTitle.trim()}>Add</button>
-          </div>
-        </Modal>
+        <AddBookmarkModal
+          currentPage={currentPage}
+          title={bookmarkTitle}
+          onTitleChange={setBookmarkTitle}
+          onClose={() => setShowAddBookmarkModal(false)}
+          onAdd={handleAddBookmark}
+        />
       )}
 
       {showPageHeaderModal && (
@@ -5695,66 +5695,45 @@ function App() {
         />
       )}
 
-      {/* Swap Pages Modal */}
       {showSwapPagesModal && (
-        <Modal onClose={() => setShowSwapPagesModal(false)}>
-          <h3>Swap Pages</h3>
-          <p className="modal-help">Exchange the positions of two pages in the working copy.</p>
-          <label>Page A (1-{pageCount ?? 0}): <input type="number" value={swapPageA + 1} onChange={(e) => setSwapPageA(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <label>Page B (1-{pageCount ?? 0}): <input type="number" value={swapPageB + 1} onChange={(e) => setSwapPageB(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={pageCount ?? undefined} className="modal-input" /></label>
-          <div className="modal-actions">
-            <button onClick={() => setShowSwapPagesModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleSwapPages()} className="btn" disabled={swapPageA === swapPageB}>Swap</button>
-          </div>
-        </Modal>
+        <SwapPagesModal
+          pageA={swapPageA}
+          pageB={swapPageB}
+          pageCount={pageCount}
+          onPageAChange={setSwapPageA}
+          onPageBChange={setSwapPageB}
+          onClose={() => setShowSwapPagesModal(false)}
+          onSwap={handleSwapPages}
+        />
       )}
 
-      {/* Replace Page Modal */}
       {showReplacePageModal && (
-        <Modal onClose={() => setShowReplacePageModal(false)}>
-          <h3>Replace Page {currentPage + 1}</h3>
-          <p className="modal-help">Replace the current page with a deep-copied page from another PDF.</p>
-          <label>Source PDF path:</label>
-          <div className="modal-path-row">
-            <input type="text" value={replaceSourcePath} onChange={(e) => void handleReplaceSourcePathChange(e.target.value)} className="modal-input" placeholder="/path/to/source.pdf" />
-            <button onClick={() => openPdfBrowser('replace')} className="btn">Browse…</button>
-          </div>
-          {replaceSourcePageCount !== null && (
-            <label>Source page (1-{replaceSourcePageCount}): <input type="number" value={replaceSourcePage + 1} onChange={(e) => setReplaceSourcePage(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={replaceSourcePageCount} className="modal-input" /></label>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowReplacePageModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleReplacePage()} className="btn" disabled={!replaceSourcePath.trim()}>Replace</button>
-          </div>
-        </Modal>
+        <ReplacePageModal
+          currentPage={currentPage}
+          sourcePath={replaceSourcePath}
+          sourcePage={replaceSourcePage}
+          sourcePageCount={replaceSourcePageCount}
+          onSourcePathChange={(value) => void handleReplaceSourcePathChange(value)}
+          onSourcePageChange={setReplaceSourcePage}
+          onBrowse={() => openPdfBrowser('replace')}
+          onClose={() => setShowReplacePageModal(false)}
+          onReplace={handleReplacePage}
+        />
       )}
 
-      {/* Interleave Modal */}
       {showInterleaveModal && (
-        <Modal onClose={() => setShowInterleaveModal(false)}>
-          <h3>Interleave PDF</h3>
-          <p className="modal-help">Alternate pages: A0, B0, A1, B1, … from the source range.</p>
-          <label>Source PDF path:</label>
-          <div className="modal-path-row">
-            <input type="text" value={interleaveFilePath} onChange={(e) => void handleInterleaveSourcePathChange(e.target.value)} className="modal-input" placeholder="/path/to/source.pdf" />
-            <button onClick={() => openPdfBrowser('interleave')} className="btn">Browse…</button>
-          </div>
-          {interleaveSourcePageCount !== null && (
-            <>
-              <PageRangePairInputs
-                startPage={interleaveRange.startPage}
-                endPage={interleaveRange.endPage}
-                onStartChange={interleaveRange.setStartPage}
-                onEndChange={interleaveRange.setEndPage}
-                maxPage={interleaveSourcePageCount ?? undefined}
-              />
-            </>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowInterleaveModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleInterleavePdf()} className="btn" disabled={!interleaveFilePath.trim()}>Interleave</button>
-          </div>
-        </Modal>
+        <InterleaveModal
+          sourcePath={interleaveFilePath}
+          sourcePageCount={interleaveSourcePageCount}
+          startPage={interleaveRange.startPage}
+          endPage={interleaveRange.endPage}
+          onSourcePathChange={(value) => void handleInterleaveSourcePathChange(value)}
+          onStartChange={interleaveRange.setStartPage}
+          onEndChange={interleaveRange.setEndPage}
+          onBrowse={() => openPdfBrowser('interleave')}
+          onClose={() => setShowInterleaveModal(false)}
+          onInterleave={handleInterleavePdf}
+        />
       )}
 
       {showPageSizeModal && (
@@ -5826,46 +5805,28 @@ function App() {
         />
       )}
 
-      {/* Prepend Modal */}
       {showPrependModal && (
-        <Modal onClose={() => setShowPrependModal(false)}>
-          <h3>Prepend PDF</h3>
-          <p className="modal-help">Insert pages from another PDF at the beginning of the document.</p>
-          <label>Source PDF path:</label>
-          <div className="modal-path-row">
-            <input type="text" value={prependFilePath} onChange={(e) => void handlePrependSourcePathChange(e.target.value)} className="modal-input" placeholder="/path/to/source.pdf" />
-            <button onClick={() => openPdfBrowser('prepend')} className="btn">Browse…</button>
-          </div>
-          {prependSourcePageCount !== null && (
-            <>
-              <PageRangePairInputs
-                startPage={prependRange.startPage}
-                endPage={prependRange.endPage}
-                onStartChange={prependRange.setStartPage}
-                onEndChange={prependRange.setEndPage}
-                maxPage={prependSourcePageCount ?? undefined}
-              />
-            </>
-          )}
-          <div className="modal-actions">
-            <button onClick={() => setShowPrependModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handlePrependPdf()} className="btn" disabled={!prependFilePath.trim()}>Prepend</button>
-          </div>
-        </Modal>
+        <PrependModal
+          sourcePath={prependFilePath}
+          sourcePageCount={prependSourcePageCount}
+          startPage={prependRange.startPage}
+          endPage={prependRange.endPage}
+          onSourcePathChange={(value) => void handlePrependSourcePathChange(value)}
+          onStartChange={prependRange.setStartPage}
+          onEndChange={prependRange.setEndPage}
+          onBrowse={() => openPdfBrowser('prepend')}
+          onClose={() => setShowPrependModal(false)}
+          onPrepend={handlePrependPdf}
+        />
       )}
 
-      {/* Split Every N Modal */}
       {showSplitEveryModal && (
-        <Modal onClose={() => setShowSplitEveryModal(false)}>
-          <h3>Split Every N Pages</h3>
-          <p className="modal-help">Write consecutive chunk files beside the open PDF. The working copy is not modified.</p>
-          <label>Pages per file:</label>
-          <input type="number" value={splitEveryN} onChange={(e) => setSplitEveryN(Math.max(1, parseInt(e.target.value, 10) || 1))} min="1" className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowSplitEveryModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleSplitEveryN()} className="btn">Split</button>
-          </div>
-        </Modal>
+        <SplitEveryModal
+          everyN={splitEveryN}
+          onEveryNChange={setSplitEveryN}
+          onClose={() => setShowSplitEveryModal(false)}
+          onSplit={handleSplitEveryN}
+        />
       )}
 
       {showPageBorderModal && (
@@ -5881,114 +5842,98 @@ function App() {
         />
       )}
 
-      {/* Bookmark All Modal */}
       {showBookmarkAllModal && (
-        <Modal onClose={() => setShowBookmarkAllModal(false)}>
-          <h3>Bookmark All Pages</h3>
-          <p className="modal-help">Append an outline entry for every page.</p>
-          <label>Title prefix:</label>
-          <input type="text" value={bookmarkAllPrefix} onChange={(e) => setBookmarkAllPrefix(e.target.value)} className="modal-input" placeholder="Page " />
-          <div className="modal-actions">
-            <button onClick={() => setShowBookmarkAllModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleBookmarkOddPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Bookmark Odd</button>
-            <button onClick={() => void handleBookmarkEvenPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Bookmark Even</button>
-            <button onClick={() => void handleBookmarkAllPages()} className="btn" disabled={!bookmarkAllPrefix.trim()}>Add all</button>
-          </div>
-        </Modal>
+        <BookmarkAllModal
+          prefix={bookmarkAllPrefix}
+          onPrefixChange={setBookmarkAllPrefix}
+          onClose={() => setShowBookmarkAllModal(false)}
+          onBookmarkOdd={handleBookmarkOddPages}
+          onBookmarkEven={handleBookmarkEvenPages}
+          onBookmarkAll={handleBookmarkAllPages}
+        />
       )}
 
-      {/* Shrink Margins Modal */}
       {showShrinkMarginsModal && (
-        <Modal onClose={() => setShowShrinkMarginsModal(false)}>
-          <h3>Shrink Margins</h3>
-          <p className="modal-help">Shrink MediaBox inward (clips page edges; does not scale content).</p>
-          <PageRangeFields range={shrinkMarginsRange} pageCount={pageCount} />
-          <label>Top: <input type="number" value={shrinkMarginTop} onChange={(e) => setShrinkMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Right: <input type="number" value={shrinkMarginRight} onChange={(e) => setShrinkMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Bottom: <input type="number" value={shrinkMarginBottom} onChange={(e) => setShrinkMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Left: <input type="number" value={shrinkMarginLeft} onChange={(e) => setShrinkMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <div className="modal-actions">
-            <button onClick={() => setShowShrinkMarginsModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleShrinkOddPages()} className="btn">Shrink Odd</button>
-            <button onClick={() => void handleShrinkEvenPages()} className="btn">Shrink Even</button>
-            <button onClick={() => void handleShrinkPageMargins()} className="btn">Shrink</button>
-          </div>
-        </Modal>
+        <ShrinkMarginsModal
+          range={shrinkMarginsRange}
+          pageCount={pageCount}
+          margins={{
+            top: shrinkMarginTop,
+            right: shrinkMarginRight,
+            bottom: shrinkMarginBottom,
+            left: shrinkMarginLeft,
+          }}
+          onMarginsChange={(m) => {
+            setShrinkMarginTop(m.top);
+            setShrinkMarginRight(m.right);
+            setShrinkMarginBottom(m.bottom);
+            setShrinkMarginLeft(m.left);
+          }}
+          onClose={() => setShowShrinkMarginsModal(false)}
+          onShrink={handleShrinkPageMargins}
+          onShrinkOdd={handleShrinkOddPages}
+          onShrinkEven={handleShrinkEvenPages}
+        />
       )}
 
-      {/* Split At Page Modal */}
       {showSplitAtModal && (
-        <Modal onClose={() => setShowSplitAtModal(false)}>
-          <h3>Split At Page</h3>
-          <p className="modal-help">Write `_part1.pdf` (pages before the split) and `_part2.pdf` (from the split page onward). The open document is not modified.</p>
-          <label>Start of second file (page 2–{pageCount ?? 0}):</label>
-          <input type="number" value={splitAtPage} onChange={(e) => setSplitAtPage(Math.max(2, parseInt(e.target.value, 10) || 2))} min="2" max={pageCount ?? undefined} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowSplitAtModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleSplitPdfAtPage()} className="btn">Split</button>
-          </div>
-        </Modal>
+        <SplitAtModal
+          splitAtPage={splitAtPage}
+          pageCount={pageCount}
+          onSplitAtPageChange={setSplitAtPage}
+          onClose={() => setShowSplitAtModal(false)}
+          onSplit={handleSplitPdfAtPage}
+        />
       )}
 
-      {/* Delete Every Nth Page Modal */}
       {showDeleteNthModal && (
-        <Modal onClose={() => setShowDeleteNthModal(false)}>
-          <h3>Delete Every Nth Page</h3>
-          <p className="modal-help">Delete pages n, 2n, 3n, … (1-based). At least one page is always kept.</p>
-          <label>N (≥ 2):</label>
-          <input type="number" value={deleteNthValue} onChange={(e) => setDeleteNthValue(Math.max(2, parseInt(e.target.value, 10) || 2))} min="2" className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowDeleteNthModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleDeleteEveryNthPage()} className="btn btn-danger">Delete</button>
-          </div>
-        </Modal>
+        <DeleteNthModal
+          nth={deleteNthValue}
+          onNthChange={setDeleteNthValue}
+          onClose={() => setShowDeleteNthModal(false)}
+          onDelete={handleDeleteEveryNthPage}
+        />
       )}
 
-      {/* Extract Odd Pages Modal */}
       {showExtractOddModal && (
-        <Modal onClose={() => setShowExtractOddModal(false)}>
-          <h3>Extract Odd Pages</h3>
-          <p className="modal-help">Save pages 1, 3, 5, … to a new PDF. The open document is not modified.</p>
-          <label>Output path:</label>
-          <input type="text" value={extractOddOutputPath} onChange={(e) => setExtractOddOutputPath(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowExtractOddModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleExtractOddPages()} className="btn" disabled={!extractOddOutputPath.trim()}>Extract</button>
-          </div>
-        </Modal>
+        <ExtractOddPagesModal
+          outputPath={extractOddOutputPath}
+          onOutputPathChange={setExtractOddOutputPath}
+          onClose={() => setShowExtractOddModal(false)}
+          onExtract={handleExtractOddPages}
+        />
       )}
 
-      {/* Extract Even Pages Modal */}
       {showExtractEvenModal && (
-        <Modal onClose={() => setShowExtractEvenModal(false)}>
-          <h3>Extract Even Pages</h3>
-          <p className="modal-help">Save pages 2, 4, 6, … to a new PDF. The open document is not modified.</p>
-          <label>Output path:</label>
-          <input type="text" value={extractEvenOutputPath} onChange={(e) => setExtractEvenOutputPath(e.target.value)} className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowExtractEvenModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleExtractEvenPages()} className="btn" disabled={!extractEvenOutputPath.trim()}>Extract</button>
-          </div>
-        </Modal>
+        <ExtractEvenPagesModal
+          outputPath={extractEvenOutputPath}
+          onOutputPathChange={setExtractEvenOutputPath}
+          onClose={() => setShowExtractEvenModal(false)}
+          onExtract={handleExtractEvenPages}
+        />
       )}
 
-      {/* Expand Margins Modal */}
       {showExpandMarginsModal && (
-        <Modal onClose={() => setShowExpandMarginsModal(false)}>
-          <h3>Expand Margins</h3>
-          <p className="modal-help">Grow MediaBox outward (adds white space; does not scale content).</p>
-          <PageRangeFields range={expandMarginsRange} pageCount={pageCount} />
-          <label>Top: <input type="number" value={expandMarginTop} onChange={(e) => setExpandMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Right: <input type="number" value={expandMarginRight} onChange={(e) => setExpandMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Bottom: <input type="number" value={expandMarginBottom} onChange={(e) => setExpandMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <label>Left: <input type="number" value={expandMarginLeft} onChange={(e) => setExpandMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <div className="modal-actions">
-            <button onClick={() => setShowExpandMarginsModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleExpandOddPages()} className="btn">Expand Odd</button>
-            <button onClick={() => void handleExpandEvenPages()} className="btn">Expand Even</button>
-            <button onClick={() => void handleExpandPageMargins()} className="btn">Expand</button>
-          </div>
-        </Modal>
+        <ExpandMarginsModal
+          range={expandMarginsRange}
+          pageCount={pageCount}
+          margins={{
+            top: expandMarginTop,
+            right: expandMarginRight,
+            bottom: expandMarginBottom,
+            left: expandMarginLeft,
+          }}
+          onMarginsChange={(m) => {
+            setExpandMarginTop(m.top);
+            setExpandMarginRight(m.right);
+            setExpandMarginBottom(m.bottom);
+            setExpandMarginLeft(m.left);
+          }}
+          onClose={() => setShowExpandMarginsModal(false)}
+          onExpand={handleExpandPageMargins}
+          onExpandOdd={handleExpandOddPages}
+          onExpandEven={handleExpandEvenPages}
+        />
       )}
 
       {showReverseRangeModal && (
@@ -6003,20 +5948,16 @@ function App() {
         />
       )}
 
-      {/* Insert Blank Pages Modal */}
       {showInsertBlankPagesModal && (
-        <Modal onClose={() => setShowInsertBlankPagesModal(false)}>
-          <h3>Insert Blank Pages</h3>
-          <p className="modal-help">Insert multiple empty pages at once.</p>
-          <label>Insert at position (1-{((pageCount ?? 0) + 1)}):</label>
-          <input type="number" value={insertBlankAtIndex + 1} onChange={(e) => setInsertBlankAtIndex(Math.max(0, parseInt(e.target.value, 10) - 1))} min="1" max={(pageCount ?? 0) + 1} className="modal-input" />
-          <label>Number of pages:</label>
-          <input type="number" value={insertBlankCount} onChange={(e) => setInsertBlankCount(Math.max(1, parseInt(e.target.value, 10) || 1))} min="1" className="modal-input" />
-          <div className="modal-actions">
-            <button onClick={() => setShowInsertBlankPagesModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleInsertBlankPages()} className="btn">Insert</button>
-          </div>
-        </Modal>
+        <InsertBlankPagesModal
+          atIndex={insertBlankAtIndex}
+          count={insertBlankCount}
+          pageCount={pageCount}
+          onAtIndexChange={setInsertBlankAtIndex}
+          onCountChange={setInsertBlankCount}
+          onClose={() => setShowInsertBlankPagesModal(false)}
+          onInsert={handleInsertBlankPages}
+        />
       )}
 
       {/* Parity Range Modal */}
