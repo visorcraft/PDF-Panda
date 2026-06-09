@@ -198,80 +198,18 @@ fn set_pdf_metadata(
     Ok(())
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PdfBrowserEntry {
-    name: String,
-    path: String,
-    is_dir: bool,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PdfBrowserListing {
-    current_dir: String,
-    parent_dir: Option<String>,
-    entries: Vec<PdfBrowserEntry>,
-}
-
-fn default_browser_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .and_then(|home| {
-            let documents = home.join("Documents");
-            if documents.is_dir() {
-                Some(documents)
-            } else if home.is_dir() {
-                Some(home)
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")))
-}
-
-fn list_pdf_entries_for_dir(dir: &Path) -> Result<PdfBrowserListing, String> {
-    let current_dir = dir.canonicalize().map_err(|e| e.to_string())?;
-    if !current_dir.is_dir() {
-        return Err(format!("{} is not a directory", current_dir.to_string_lossy()));
-    }
-
-    let mut entries = Vec::new();
-    for entry in fs::read_dir(&current_dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        let metadata = entry.metadata().map_err(|e| e.to_string())?;
-        let is_dir = metadata.is_dir();
-        let is_pdf =
-            path.extension().and_then(|ext| ext.to_str()).map(|ext| ext.eq_ignore_ascii_case("pdf")).unwrap_or(false);
-        if !is_dir && !is_pdf {
-            continue;
-        }
-        entries.push(PdfBrowserEntry {
-            name: entry.file_name().to_string_lossy().to_string(),
-            path: path.to_string_lossy().to_string(),
-            is_dir,
-        });
-    }
-
-    entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-    });
-
-    Ok(PdfBrowserListing {
-        parent_dir: current_dir.parent().map(|path| path.to_string_lossy().to_string()),
-        current_dir: current_dir.to_string_lossy().to_string(),
-        entries,
-    })
-}
-
 #[tauri::command]
-fn list_pdf_browser_entries(path: Option<String>) -> Result<PdfBrowserListing, String> {
-    let dir = path.filter(|path| !path.trim().is_empty()).map(PathBuf::from).unwrap_or_else(default_browser_dir);
-    let dir = if dir.is_file() { dir.parent().map(Path::to_path_buf).unwrap_or_else(default_browser_dir) } else { dir };
-    list_pdf_entries_for_dir(&dir)
+fn list_pdf_browser_entries(path: Option<String>) -> Result<pdf::browser::PdfBrowserListing, String> {
+    let dir = path
+        .filter(|path| !path.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(pdf::browser::default_browser_dir);
+    let dir = if dir.is_file() {
+        dir.parent().map(Path::to_path_buf).unwrap_or_else(pdf::browser::default_browser_dir)
+    } else {
+        dir
+    };
+    pdf::browser::list_pdf_entries_for_dir(&dir)
 }
 
 fn render_page_image(

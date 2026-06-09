@@ -10,15 +10,7 @@ import { usePdfSearch } from './pdf/usePdfSearch';
 import { usePdfBrowser } from './pdf/usePdfBrowser';
 import { usePrintJobs } from './pdf/usePrintJobs';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
-import {
-  type ImageExportFormat,
-  parityImageExportCommand,
-} from './pdf/imageExportCommands';
-import {
-  buildParityBatchPayload,
-  parityBatchMutatesPdf,
-  parityBatchNeedsRange,
-} from './pdf/parityPayload';
+import { type ImageExportFormat } from './pdf/imageExportCommands';
 import { useUndoHistory } from './pdf/useUndoHistory';
 import { usePdfDocument } from './pdf/usePdfDocument';
 import { type FormFieldKind } from './modals/AddFormFieldModal';
@@ -52,6 +44,15 @@ import { usePdfFileOpsActions } from './pdf/usePdfFileOpsActions';
 import { useSecurityDocumentActions } from './pdf/useSecurityDocumentActions';
 import { usePageDuplicateActions } from './pdf/usePageDuplicateActions';
 import { useOddEvenPageActions } from './pdf/useOddEvenPageActions';
+import { useSwapReplaceInterleaveActions } from './pdf/useSwapReplaceInterleaveActions';
+import { usePageSizeActions } from './pdf/usePageSizeActions';
+import { useExportPagesActions } from './pdf/useExportPagesActions';
+import { useParityExportActions } from './pdf/useParityExportActions';
+import { useRangeModalActions } from './pdf/useRangeModalActions';
+import { useOddEvenExtendedActions } from './pdf/useOddEvenExtendedActions';
+import { useSplitExtractPrependActions } from './pdf/useSplitExtractPrependActions';
+import { usePageDecorActions } from './pdf/usePageDecorActions';
+import { useSaveActions } from './pdf/useSaveActions';
 import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
@@ -77,7 +78,6 @@ import {
 import {
   directoryFromPath,
   dismissTesseractReminder,
-  ensureExtension,
   fileNameFromPath,
   isTesseractReminderDismissed,
   readStoredString,
@@ -820,427 +820,181 @@ function App() {
     setShowPageFooterModal,
   });
 
-  const openSwapPagesModal = () => {
-    if (!filePath || pageCount === null) return;
-    setSwapPageA(currentPage);
-    setSwapPageB(Math.min(currentPage + 1, pageCount - 1));
-    setShowSwapPagesModal(true);
-  };
-
-  const handleSwapPages = async () => {
-    if (!filePath || pageCount === null) return;
-    if (swapPageA === swapPageB) {
-      showToast('Choose two different pages', 'error');
-      return;
-    }
-    await runEdit({
-      command: 'swap_pages',
-      args: { pageIndexA: swapPageA, pageIndexB: swapPageB },
-      reloadAt: swapPageA === currentPage ? swapPageB : swapPageB === currentPage ? swapPageA : currentPage,
-      toast: `Swapped pages ${swapPageA + 1} and ${swapPageB + 1}`,
-      onSuccess: () => setShowSwapPagesModal(false),
-    });
-  };
-
-  const openReplacePageModal = () => {
-    if (!filePath) return;
-    setReplaceSourcePath('');
-    setReplaceSourcePage(currentPage);
-    setReplaceSourcePageCount(null);
-    setShowReplacePageModal(true);
-  };
-
-  const handleReplaceSourcePathChange = async (value: string) => {
-    setReplaceSourcePath(value);
-    const trimmed = value.trim();
-    if (!trimmed) {
-      setReplaceSourcePageCount(null);
-      return;
-    }
-    try {
-      const count = await invoke<number>('get_pdf_page_count', { path: trimmed });
-      setReplaceSourcePageCount(count);
-      setReplaceSourcePage((prev) => Math.min(prev, Math.max(0, count - 1)));
-    } catch {
-      setReplaceSourcePageCount(null);
-    }
-  };
-
-  const handleReplacePage = async () => {
-    const source = replaceSourcePath.trim();
-    if (!filePath || !source) return;
-    await runEdit({ command: 'replace_page', args: { pageIndex: currentPage, sourcePath: source, sourcePageIndex: replaceSourcePage }, toast: `Replaced page ${currentPage + 1}`, onSuccess: () => setShowReplacePageModal(false) });
-  };
-
-  const openInterleaveModal = () => {
-    if (!filePath) return;
-    setInterleaveFilePath('');
-    interleaveRange.reset(0, 0);
-    setInterleaveSourcePageCount(null);
-    setShowInterleaveModal(true);
-  };
-
-  const handleInterleaveSourcePathChange = async (value: string) => {
-    setInterleaveFilePath(value);
-    const trimmed = value.trim();
-    if (!trimmed) {
-      setInterleaveSourcePageCount(null);
-      return;
-    }
-    try {
-      const count = await invoke<number>('get_pdf_page_count', { path: trimmed });
-      setInterleaveSourcePageCount(count);
-      interleaveRange.reset(0, Math.max(0, count - 1));
-    } catch {
-      setInterleaveSourcePageCount(null);
-    }
-  };
-
-  const handleInterleavePdf = async () => {
-    const source = interleaveFilePath.trim();
-    if (!filePath || !source) return;
-    const range = interleaveRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'interleave_pdf', args: { otherPath: source, otherStart: interleaveRange.startPage, otherEnd: interleaveRange.endPage }, toast: (n) => `Interleaved ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowInterleaveModal(false) });
-  };
-
-  const handleSplitOddEven = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) {
-      showToast('Need at least 2 pages', 'error');
-      return;
-    }
-    await withLoading(async () => {
-      const outputs = await invoke<string[]>('split_odd_even_pages', { path: filePath });
-      showToast(`Split into ${outputs.length} files: ${outputs.map((p) => fileNameFromPath(p)).join(', ')}`);
-    });
-  };
-
-  const handleDuplicateAllPages = async () => {
-    if (!filePath || pageCount === null) return;
-    await runEdit({ command: 'duplicate_all_pages', reloadAt: pageCount, toast: (n) => `Duplicated all ${n} pages at end` });
-  };
-
-  const openPageSizeModal = () => {
-    if (!filePath || pageCount === null) return;
-    pageSizeRange.reset();
-    setPageSizePreset('letter');
-    setShowPageSizeModal(true);
-  };
-
-  const handleSetPageSize = async () => {
-    if (!filePath) return;
-    const range = pageSizeRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'set_page_size', args: { startPage: start, endPage: end, preset: pageSizePreset }, toast: (n) => `Resized ${n} page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
-  };
-
-  const handleSetPageSizeOddPages = async () => {
-    await runEdit({ command: 'set_page_size_odd_pages', args: { preset: pageSizePreset }, toast: (n) => `Resized ${n} odd page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
-  };
-
-  const handleSetPageSizeEvenPages = async () => {
-    await runEdit({ command: 'set_page_size_even_pages', args: { preset: pageSizePreset }, toast: (n) => `Resized ${n} even page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
-  };
-
-  const defaultExportPagesPdfDir = () => {
-    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    return `${base}_pages`;
-  };
-
-  const openExportPagesPdfModal = () => {
-    if (!filePath || pageCount === null) return;
-    exportPagesPdfRange.reset();
-    setExportPagesPdfOutputDir(defaultExportPagesPdfDir());
-    setShowExportPagesPdfModal(true);
-  };
-
-  const handleExportPagesPdf = async () => {
-    const outputDir = exportPagesPdfOutputDir.trim();
-    if (!filePath || !outputDir) return;
-    const range = exportPagesPdfRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await withLoading(async () => {
-      const written = await invoke<string[]>('export_pdf_pages_as_pdf', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        outputDir,
-      });
-      setShowExportPagesPdfModal(false);
-      showToast(`Exported ${written.length} PDF file${written.length === 1 ? '' : 's'} to ${outputDir}`);
-    });
-  };
-
-  const handleExportOddPagesAsPdf = async () => {
-    const outputDir = exportPagesPdfOutputDir.trim();
-    if (!filePath || !outputDir) return;
-    await withLoading(async () => {
-      const written = await invoke<string[]>('export_odd_pages_as_pdf', { path: filePath, outputDir });
-      setShowExportPagesPdfModal(false);
-      showToast(`Exported ${written.length} odd page PDF${written.length === 1 ? '' : 's'} to ${outputDir}`);
-    });
-  };
-
-  const handleExportEvenPagesAsPdf = async () => {
-    const outputDir = exportPagesPdfOutputDir.trim();
-    if (!filePath || !outputDir) return;
-    await withLoading(async () => {
-      const written = await invoke<string[]>('export_even_pages_as_pdf', { path: filePath, outputDir });
-      setShowExportPagesPdfModal(false);
-      showToast(`Exported ${written.length} even page PDF${written.length === 1 ? '' : 's'} to ${outputDir}`);
-    });
-  };
-
-  const parityBatchContext = () => ({
+  const {
+    openSwapPagesModal,
+    handleSwapPages,
+    openReplacePageModal,
+    handleReplaceSourcePathChange,
+    handleReplacePage,
+    openInterleaveModal,
+    handleInterleaveSourcePathChange,
+    handleInterleavePdf,
+  } = useSwapReplaceInterleaveActions({
     filePath,
-    startPage: parityRange.startPage,
-    endPage: parityRange.endPage,
-    outputPath: parityRangeOutputPath,
-    marginTop: cropMarginTop,
-    marginRight: cropMarginRight,
-    marginBottom: cropMarginBottom,
-    marginLeft: cropMarginLeft,
+    pageCount,
+    currentPage,
+    swapPageA,
+    swapPageB,
+    replaceSourcePath,
+    replaceSourcePage,
+    interleaveFilePath,
+    interleaveRange,
+    runEdit,
+    showToast,
+    setSwapPageA,
+    setSwapPageB,
+    setShowSwapPagesModal,
+    setReplaceSourcePath,
+    setReplaceSourcePage,
+    setReplaceSourcePageCount,
+    setShowReplacePageModal,
+    setInterleaveFilePath,
+    setInterleaveSourcePageCount,
+    setShowInterleaveModal,
+  });
+
+  const {
+    handleSplitOddEven,
+    handleDuplicateAllPages,
+    openPageSizeModal,
+    handleSetPageSize,
+    handleSetPageSizeOddPages,
+    handleSetPageSizeEvenPages,
+  } = usePageSizeActions({
+    filePath,
+    pageCount,
+    pageSizePreset,
+    pageSizeRange,
+    runEdit,
+    withLoading,
+    showToast,
+    setPageSizePreset,
+    setShowPageSizeModal,
+  });
+
+  const {
+    openExportPagesPdfModal,
+    handleExportPagesPdf,
+    handleExportOddPagesAsPdf,
+    handleExportEvenPagesAsPdf,
+    openExportPagePdfModal,
+    handleExportPagePdf,
+  } = useExportPagesActions({
+    filePath,
+    originalPath,
+    pageCount,
+    currentPage,
+    exportPagesPdfOutputDir,
+    exportPagePdfPath,
+    exportPagesPdfRange,
+    withLoading,
+    showToast,
+    setExportPagesPdfOutputDir,
+    setExportPagePdfPath,
+    setShowExportPagesPdfModal,
+    setShowExportPagePdfModal,
+  });
+
+  const {
+    openParityRangeModal,
+    handleParityRangeAction,
+    handleExportOddPagesImage,
+    handleExportEvenPagesImage,
+  } = useParityExportActions({
+    filePath,
+    pageCount,
+    currentPage,
+    parityRange,
+    parityRangeCommand,
+    parityRangeOutputPath,
+    cropMarginTop,
+    cropMarginRight,
+    cropMarginBottom,
+    cropMarginLeft,
     watermarkText,
     pageHeaderText,
     pageFooterText,
     pageBorderInset,
     pageSizePreset,
     pageNumbersPrefix,
+    pngExportOutputPath,
+    imageExportFormat,
+    withLoading,
+    markPdfEdited,
+    reloadOpenPdf,
+    showToast,
+    setParityRangeCommand,
+    setShowParityRangeModal,
+    setShowExportPngModal,
   });
 
-  const openParityRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    parityRange.reset(currentPage, currentPage);
-    setParityRangeCommand('rotate_odd_pages_in_range');
-    setShowParityRangeModal(true);
-  };
-
-  const handleParityRangeAction = async () => {
-    if (!filePath) return;
-    const command = parityRangeCommand;
-    if (parityBatchNeedsRange(command)) {
-      const range = parityRange.validate();
-      if (!range) return;
-    }
-    if ((command.startsWith('export_') || command.startsWith('extract_')) && !parityRangeOutputPath.trim()) {
-      showToast('Output path or directory is required', 'error');
-      return;
-    }
-    const payload = buildParityBatchPayload(command, parityBatchContext());
-    if ((command.includes('watermark') || command.includes('header') || command.includes('footer'))
-      && !payload.text) {
-      showToast('Text is required for this action', 'error');
-      return;
-    }
-    await withLoading(async () => {
-      const result = await invoke<number | string | string[] | void>(command, payload);
-      if (parityBatchMutatesPdf(command)) {
-        markPdfEdited();
-        await reloadOpenPdf(currentPage);
-      }
-      setShowParityRangeModal(false);
-      if (typeof result === 'number') {
-        showToast(`Done — affected ${result} item${result === 1 ? '' : 's'}`);
-      } else if (Array.isArray(result)) {
-        showToast(`Wrote ${result.length} file${result.length === 1 ? '' : 's'}`);
-      } else if (typeof result === 'string') {
-        showToast(`Wrote ${result}`);
-      } else {
-        showToast('Done');
-      }
-    });
-  };
-
-  const handleExportOddPagesImage = async () => {
-    const outputDir = pngExportOutputPath.trim();
-    if (!filePath || !outputDir) return;
-    await withLoading(async () => {
-      const written = await invoke<string[]>(parityImageExportCommand(imageExportFormat, true), { path: filePath, outputDir });
-      setShowExportPngModal(false);
-      showToast(`Exported ${written.length} odd page image${written.length === 1 ? '' : 's'} to ${outputDir}`);
-    });
-  };
-
-  const handleExportEvenPagesImage = async () => {
-    const outputDir = pngExportOutputPath.trim();
-    if (!filePath || !outputDir) return;
-    await withLoading(async () => {
-      const written = await invoke<string[]>(parityImageExportCommand(imageExportFormat, false), { path: filePath, outputDir });
-      setShowExportPngModal(false);
-      showToast(`Exported ${written.length} even page image${written.length === 1 ? '' : 's'} to ${outputDir}`);
-    });
-  };
-
-  const openRotateRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    rotateRange.reset(currentPage, currentPage);
-    setShowRotateRangeModal(true);
-  };
-
-  const handleRotatePageRange = async (ccw: boolean) => {
-    if (!filePath) return;
-    const range = rotateRange.validate();
-    if (!range) return;
-    await withLoading(async () => {
-      const cmd = ccw ? 'rotate_page_range_ccw' : 'rotate_page_range';
-      const rotated = await invoke<number>(cmd, {
-        path: filePath,
-        startPage: rotateRange.startPage,
-        endPage: rotateRange.endPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowRotateRangeModal(false);
-      showToast(`Rotated ${rotated} page${rotated === 1 ? '' : 's'} ${ccw ? 'CCW' : 'CW'}`);
-    });
-  };
-
-  const handleResetRotationRange = async () => {
-    if (!filePath) return;
-    const range = rotateRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'reset_rotation_range', args: { startPage: rotateRange.startPage, endPage: rotateRange.endPage }, toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowRotateRangeModal(false) });
-  };
-
-  const handleRotatePage180Range = async () => {
-    if (!filePath) return;
-    const range = rotateRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'rotate_page_180_range', args: { startPage: rotateRange.startPage, endPage: rotateRange.endPage }, toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 180°`, onSuccess: () => setShowRotateRangeModal(false) });
-  };
-
-  const openReverseRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    reverseRange.reset(currentPage, currentPage);
-    setShowReverseRangeModal(true);
-  };
-
-  const handleReversePageRange = async () => {
-    if (!filePath) return;
-    const range = reverseRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'reverse_page_range', args: { startPage: reverseRange.startPage, endPage: reverseRange.endPage }, toast: `Reversed pages ${reverseRange.startPage + 1}–${reverseRange.endPage + 1}`, onSuccess: () => setShowReverseRangeModal(false) });
-  };
-
-  const openInsertBlankPagesModal = () => {
-    if (!filePath) return;
-    setInsertBlankCount(1);
-    setInsertBlankAtIndex(currentPage + 1);
-    setShowInsertBlankPagesModal(true);
-  };
-
-  const handleInsertBlankPages = async () => {
-    if (!filePath || insertBlankCount < 1) return;
-    await runEdit({ command: 'insert_blank_pages', args: { atIndex: insertBlankAtIndex, count: insertBlankCount }, reloadAt: insertBlankAtIndex, toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'}`, onSuccess: () => setShowInsertBlankPagesModal(false) });
-  };
-
-  const openCropRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    cropRange.reset(currentPage, currentPage);
-    setCropMarginTop(50);
-    setCropMarginRight(50);
-    setCropMarginBottom(50);
-    setCropMarginLeft(50);
-    setShowCropRangeModal(true);
-  };
-
-  const handleCropPageRange = async () => {
-    if (!filePath) return;
-    const range = cropRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'crop_page_range', args: { startPage: cropRange.startPage, endPage: cropRange.endPage, marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
-  };
-
-  const handleFlattenAllAnnotations = async () => {
-    await runEdit({ command: 'flatten_all_annotations', toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on all pages` });
-  };
-
-  const handleClearPdfMetadata = async () => {
-    await runEdit({
-      command: 'clear_pdf_metadata',
-      skipReload: true,
-      toast: 'Cleared document metadata',
-      onSuccess: () => {
-        setMetadataTitle('');
-        setMetadataAuthor('');
-        setMetadataSubject('');
-        setMetadataKeywords('');
-        setMetadataCreator('');
-        setMetadataProducer('');
-        setMetadataCreationDate('');
-        setMetadataModDate('');
-      },
-    });
-  };
-
-  const handleSortPagesBySize = async (descending: boolean) => {
-    await runEdit({ command: 'sort_pages_by_size', args: { descending }, reloadAt: 0, toast: `Sorted pages by size (${descending ? 'largest first' : 'smallest first'})` });
-  };
-
-  const openKeepRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    keepRange.reset(currentPage, currentPage);
-    setShowKeepRangeModal(true);
-  };
-
-  const handleKeepPageRange = async () => {
-    if (!filePath || pageCount === null) return;
-    const range = keepRange.validate();
-    if (!range) return;
-    const keepCount = keepRange.endPage - keepRange.startPage + 1;
-    if (keepCount >= pageCount) {
-      showToast('Range already includes every page', 'error');
-      return;
-    }
-    await runEdit<number>({
-      command: 'keep_page_range',
-      args: { startPage: keepRange.startPage, endPage: keepRange.endPage },
-      reloadAt: Math.min(keepRange.startPage, keepCount - 1),
-      toast: (deleted) => `Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`,
-      onSuccess: () => setShowKeepRangeModal(false),
-    });
-  };
-
-  const openMoveRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    moveRange.reset(currentPage, currentPage);
-    setMoveRangeToIndex(currentPage);
-    setShowMoveRangeModal(true);
-  };
-
-  const handleMovePageRange = async () => {
-    if (!filePath || pageCount === null) return;
-    const range = moveRange.validate();
-    if (!range) return;
-    if (moveRangeToIndex > pageCount) {
-      showToast('Target index out of bounds', 'error');
-      return;
-    }
-    await runEdit({ command: 'move_page_range', args: { startPage: moveRange.startPage, endPage: moveRange.endPage, toIndex: moveRangeToIndex }, reloadAt: moveRangeToIndex, toast: `Moved pages ${moveRange.startPage + 1}–${moveRange.endPage + 1} to index ${moveRangeToIndex + 1}`, onSuccess: () => setShowMoveRangeModal(false) });
-  };
-
-  const handleMovePageRangeToStart = async () => {
-    if (!filePath) return;
-    const range = moveRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'move_page_range_to_start', args: { startPage: moveRange.startPage, endPage: moveRange.endPage }, reloadAt: 0, toast: `Moved pages ${moveRange.startPage + 1}–${moveRange.endPage + 1} to start`, onSuccess: () => setShowMoveRangeModal(false) });
-  };
-
-  const handleMovePageRangeToEnd = async () => {
-    if (!filePath || pageCount === null) return;
-    const range = moveRange.validate();
-    if (!range) return;
-    await runEdit({
-      command: 'move_page_range_to_end',
-      args: { startPage: moveRange.startPage, endPage: moveRange.endPage },
-      reloadAt: pageCount - (moveRange.endPage - moveRange.startPage + 1),
-      toast: `Moved pages ${moveRange.startPage + 1}–${moveRange.endPage + 1} to end`,
-      onSuccess: () => setShowMoveRangeModal(false),
-    });
-  };
-
+  const {
+    openRotateRangeModal,
+    handleRotatePageRange,
+    handleResetRotationRange,
+    handleRotatePage180Range,
+    openReverseRangeModal,
+    handleReversePageRange,
+    openInsertBlankPagesModal,
+    handleInsertBlankPages,
+    openCropRangeModal,
+    handleCropPageRange,
+    handleFlattenAllAnnotations,
+    handleClearPdfMetadata,
+    handleSortPagesBySize,
+    openKeepRangeModal,
+    handleKeepPageRange,
+    openMoveRangeModal,
+    handleMovePageRange,
+    handleMovePageRangeToStart,
+    handleMovePageRangeToEnd,
+    openDeleteRangeModal,
+    handleDeletePageRange,
+  } = useRangeModalActions({
+    filePath,
+    pageCount,
+    currentPage,
+    rotateRange,
+    reverseRange,
+    cropRange,
+    keepRange,
+    moveRange,
+    deleteRange,
+    insertBlankCount,
+    insertBlankAtIndex,
+    moveRangeToIndex,
+    cropMarginTop,
+    cropMarginRight,
+    cropMarginBottom,
+    cropMarginLeft,
+    runEdit,
+    withLoading,
+    markPdfEdited,
+    reloadOpenPdf,
+    showToast,
+    setInsertBlankCount,
+    setInsertBlankAtIndex,
+    setMoveRangeToIndex,
+    setCropMarginTop,
+    setCropMarginRight,
+    setCropMarginBottom,
+    setCropMarginLeft,
+    setMetadataTitle,
+    setMetadataAuthor,
+    setMetadataSubject,
+    setMetadataKeywords,
+    setMetadataCreator,
+    setMetadataProducer,
+    setMetadataCreationDate,
+    setMetadataModDate,
+    setShowRotateRangeModal,
+    setShowReverseRangeModal,
+    setShowInsertBlankPagesModal,
+    setShowCropRangeModal,
+    setShowKeepRangeModal,
+    setShowMoveRangeModal,
+    setShowDeleteRangeModal,
+  });
 
   const {
     handleRotateOddPages,
@@ -1280,547 +1034,172 @@ function App() {
     setShowShrinkMarginsModal,
   });
 
-  const handleReverseOddPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const reversed = await invoke<number>('reverse_odd_pages', { path: filePath });
-      if (reversed === 0) {
-        showToast('Need at least two odd pages to reverse', 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Reversed ${reversed} odd page${reversed === 1 ? '' : 's'}`);
-    });
-  };
-
-  const handleReverseEvenPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const reversed = await invoke<number>('reverse_even_pages', { path: filePath });
-      if (reversed === 0) {
-        showToast('Need at least two even pages to reverse', 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Reversed ${reversed} even page${reversed === 1 ? '' : 's'}`);
-    });
-  };
-
-  const handleMoveOddPagesToStart = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'move_odd_pages_to_start', reloadAt: 0, toast: 'Moved odd pages to start' });
-  };
-
-  const handleMoveEvenPagesToStart = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'move_even_pages_to_start', reloadAt: 0, toast: 'Moved even pages to start' });
-  };
-
-  const handleMoveOddPagesToEnd = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'move_odd_pages_to_end', reloadAt: 0, toast: 'Moved odd pages to end' });
-  };
-
-  const handleMoveEvenPagesToEnd = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'move_even_pages_to_end', reloadAt: 0, toast: 'Moved even pages to end' });
-  };
-
-  const handleClearCropOddPages = async () => {
-    await runEdit({ command: 'clear_crop_odd_pages', toast: (n) => `Cleared crop on ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropModal(false) });
-  };
-
-  const handleClearCropEvenPages = async () => {
-    await runEdit({ command: 'clear_crop_even_pages', toast: (n) => `Cleared crop on ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropModal(false) });
-  };
-
-  const handleDuplicateOddPagesBefore = async () => {
-    await runEdit({ command: 'duplicate_odd_pages_before', toast: (n) => `Inserted ${n} odd page cop${n === 1 ? 'y' : 'ies'} before originals` });
-  };
-
-  const handleDuplicateEvenPagesBefore = async () => {
-    await runEdit({ command: 'duplicate_even_pages_before', toast: (n) => `Inserted ${n} even page cop${n === 1 ? 'y' : 'ies'} before originals` });
-  };
-
-  const handleSortOddPagesByRotation = async (descending: boolean) => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const sorted = await invoke<number>('sort_odd_pages_by_rotation', { path: filePath, descending });
-      if (sorted < 2) {
-        showToast('Need at least two odd pages to sort by rotation', 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Sorted ${sorted} odd page${sorted === 1 ? '' : 's'} by rotation (${descending ? 'largest first' : 'smallest first'})`);
-    });
-  };
-
-  const handleSortEvenPagesByRotation = async (descending: boolean) => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const sorted = await invoke<number>('sort_even_pages_by_rotation', { path: filePath, descending });
-      if (sorted < 2) {
-        showToast('Need at least two even pages to sort by rotation', 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Sorted ${sorted} even page${sorted === 1 ? '' : 's'} by rotation (${descending ? 'largest first' : 'smallest first'})`);
-    });
-  };
-
-  const handleSortOddPagesBySize = async (descending: boolean) => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const sorted = await invoke<number>('sort_odd_pages_by_size', { path: filePath, descending });
-      if (sorted < 2) {
-        showToast('Need at least two odd pages to sort by size', 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Sorted ${sorted} odd page${sorted === 1 ? '' : 's'} by size (${descending ? 'largest first' : 'smallest first'})`);
-    });
-  };
-
-  const handleSortEvenPagesBySize = async (descending: boolean) => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const sorted = await invoke<number>('sort_even_pages_by_size', { path: filePath, descending });
-      if (sorted < 2) {
-        showToast('Need at least two even pages to sort by size', 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Sorted ${sorted} even page${sorted === 1 ? '' : 's'} by size (${descending ? 'largest first' : 'smallest first'})`);
-    });
-  };
-
-  const handleSortPagesByRotation = async (descending: boolean) => {
-    await runEdit({ command: 'sort_pages_by_rotation', args: { descending }, reloadAt: 0, toast: `Sorted pages by rotation (${descending ? 'largest first' : 'smallest first'})` });
-  };
-
-  const openSplitAtModal = () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    setSplitAtPage(Math.min(currentPage + 1, pageCount - 1) + 1);
-    setShowSplitAtModal(true);
-  };
-
-  const handleSplitPdfAtPage = async () => {
-    if (!filePath || pageCount === null) return;
-    const atIndex = splitAtPage - 1;
-    if (atIndex < 1 || atIndex >= pageCount) {
-      showToast(`Split page must be between 2 and ${pageCount}`, 'error');
-      return;
-    }
-    await withLoading(async () => {
-      const written = await invoke<string[]>('split_pdf_at_page', {
-        path: filePath,
-        atPage: atIndex,
-      });
-      setShowSplitAtModal(false);
-      showToast(`Split into ${written.length} files at page ${splitAtPage}`);
-    });
-  };
-
-  const openDeleteNthModal = () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    setDeleteNthValue(2);
-    setShowDeleteNthModal(true);
-  };
-
-  const handleDeleteEveryNthPage = async () => {
-    if (!filePath || deleteNthValue < 2) return;
-    await withLoading(async () => {
-      const deleted = await invoke<number>('delete_every_nth_page', {
-        path: filePath,
-        nth: deleteNthValue,
-      });
-      if (deleted === 0) {
-        showToast(`No pages are every ${deleteNthValue}th page`, 'error');
-        return;
-      }
-      markPdfEdited();
-      await reloadOpenPdf(Math.min(currentPage, (pageCount ?? 1) - deleted - 1));
-      setShowDeleteNthModal(false);
-      showToast(`Deleted ${deleted} page${deleted === 1 ? '' : 's'} (every ${deleteNthValue}th)`);
-    });
-  };
-
-  const openExtractOddModal = () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    setExtractOddOutputPath(`${base}_odd_extract.pdf`);
-    setShowExtractOddModal(true);
-  };
-
-  const handleExtractOddPages = async () => {
-    if (!filePath || !extractOddOutputPath.trim()) return;
-    await withLoading(async () => {
-      const written = await invoke<string>('extract_odd_pages', {
-        path: filePath,
-        outputPath: extractOddOutputPath.trim(),
-      });
-      setShowExtractOddModal(false);
-      showToast(`Extracted odd pages to ${written}`);
-    });
-  };
-
-  const openExtractEvenModal = () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    setExtractEvenOutputPath(`${base}_even_extract.pdf`);
-    setShowExtractEvenModal(true);
-  };
-
-  const handleExtractEvenPages = async () => {
-    if (!filePath || !extractEvenOutputPath.trim()) return;
-    await withLoading(async () => {
-      const written = await invoke<string>('extract_even_pages', {
-        path: filePath,
-        outputPath: extractEvenOutputPath.trim(),
-      });
-      setShowExtractEvenModal(false);
-      showToast(`Extracted even pages to ${written}`);
-    });
-  };
-
-  const openPrependModal = () => {
-    if (!filePath) return;
-    setPrependFilePath('');
-    prependRange.reset(0, 0);
-    setPrependSourcePageCount(null);
-    setShowPrependModal(true);
-  };
-
-  const handlePrependSourcePathChange = async (value: string) => {
-    setPrependFilePath(value);
-    const trimmed = value.trim();
-    if (!trimmed) {
-      setPrependSourcePageCount(null);
-      return;
-    }
-    try {
-      const count = await invoke<number>('get_pdf_page_count', { path: trimmed });
-      setPrependSourcePageCount(count);
-      prependRange.reset(0, Math.max(0, count - 1));
-    } catch {
-      setPrependSourcePageCount(null);
-    }
-  };
-
-  const handlePrependPdf = async () => {
-    const source = prependFilePath.trim();
-    if (!filePath || !source) return;
-    const range = prependRange.validate();
-    if (!range) return;
-    await runEdit<number>({
-      command: 'prepend_pdf',
-      args: { sourcePath: source, sourceStart: prependRange.startPage, sourceEnd: prependRange.endPage },
-      reloadAt: (added) => currentPage + added,
-      toast: (added) => `Prepended ${added} page${added === 1 ? '' : 's'}`,
-      onSuccess: () => setShowPrependModal(false),
-    });
-  };
-
-  const openSplitEveryModal = () => {
-    if (!filePath) return;
-    setSplitEveryN(2);
-    setShowSplitEveryModal(true);
-  };
-
-  const handleSplitEveryN = async () => {
-    if (!filePath || splitEveryN < 1) return;
-    await withLoading(async () => {
-      const outputs = await invoke<string[]>('split_every_n_pages', {
-        path: filePath,
-        pagesPerFile: splitEveryN,
-      });
-      setShowSplitEveryModal(false);
-      showToast(`Split into ${outputs.length} file${outputs.length === 1 ? '' : 's'}`);
-    });
-  };
-
-  const openPageBorderModal = () => {
-    if (!filePath || pageCount === null) return;
-    pageBorderRange.reset();
-    setPageBorderInset(20);
-    setShowPageBorderModal(true);
-  };
-
-  const handleAddPageBorder = async () => {
-    if (!filePath) return;
-    const range = pageBorderRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'add_page_border', args: { startPage: start, endPage: end, inset: pageBorderInset }, toast: (n) => `Added border to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
-  };
-
-  const handleAddPageBorderOddPages = async () => {
-    await runEdit({ command: 'add_page_border_odd_pages', args: { inset: pageBorderInset }, toast: (n) => `Added border to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
-  };
-
-  const handleAddPageBorderEvenPages = async () => {
-    await runEdit({ command: 'add_page_border_even_pages', args: { inset: pageBorderInset }, toast: (n) => `Added border to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
-  };
-
-
-  const handleInsertBlankBeforeOddPages = async () => {
-    await runEdit({ command: 'insert_blank_before_odd_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} before odd pages` });
-  };
-
-  const handleInsertBlankBeforeEvenPages = async () => {
-    await runEdit({ command: 'insert_blank_before_even_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} before even pages` });
-  };
-
-  const handleInsertBlankAfterOddPages = async () => {
-    await runEdit({ command: 'insert_blank_after_odd_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} after odd pages` });
-  };
-
-  const handleInsertBlankAfterEvenPages = async () => {
-    await runEdit({ command: 'insert_blank_after_even_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} after even pages` });
-  };
-
-  const handleDuplicateOddPagesToEnd = async () => {
-    await runEdit({ command: 'duplicate_odd_pages_to_end', toast: (n) => `Moved ${n} odd page cop${n === 1 ? 'y' : 'ies'} to end` });
-  };
-
-  const handleDuplicateEvenPagesToEnd = async () => {
-    await runEdit({ command: 'duplicate_even_pages_to_end', toast: (n) => `Moved ${n} even page cop${n === 1 ? 'y' : 'ies'} to end` });
-  };
-
-  const handleDuplicateOddPagesToStart = async () => {
-    await runEdit({ command: 'duplicate_odd_pages_to_start', reloadAt: 0, toast: (n) => `Inserted ${n} odd page cop${n === 1 ? 'y' : 'ies'} at start` });
-  };
-
-  const handleDuplicateEvenPagesToStart = async () => {
-    await runEdit({ command: 'duplicate_even_pages_to_start', reloadAt: 0, toast: (n) => `Inserted ${n} even page cop${n === 1 ? 'y' : 'ies'} at start` });
-  };
-
-  const openExpandMarginsModal = () => {
-    if (!filePath || pageCount === null) return;
-    expandMarginsRange.reset();
-    setExpandMarginTop(20);
-    setExpandMarginRight(20);
-    setExpandMarginBottom(20);
-    setExpandMarginLeft(20);
-    setShowExpandMarginsModal(true);
-  };
-
-  const openShrinkMarginsModal = () => {
-    if (!filePath || pageCount === null) return;
-    shrinkMarginsRange.reset();
-    setShrinkMarginTop(20);
-    setShrinkMarginRight(20);
-    setShrinkMarginBottom(20);
-    setShrinkMarginLeft(20);
-    setShowShrinkMarginsModal(true);
-  };
-
-  const handleShrinkPageMargins = async () => {
-    if (!filePath) return;
-    const range = shrinkMarginsRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'shrink_page_margins', args: { startPage: start, endPage: end, marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
-  };
-
-  const handleExpandPageMargins = async () => {
-    if (!filePath) return;
-    const range = expandMarginsRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'expand_page_margins', args: { startPage: start, endPage: end, marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
-  };
-
-  const openInsertImagePageModal = () => {
-    if (!filePath) return;
-    setInsertImageAtIndex(currentPage + 1);
-    setInsertImagePagePath('');
-    setShowInsertImagePageModal(true);
-  };
-
-  const handleInsertImagePage = async () => {
-    const image = insertImagePagePath.trim();
-    if (!filePath || !image) return;
-    await runEdit<number>({
-      command: 'insert_image_page',
-      args: { atIndex: insertImageAtIndex, imagePath: image },
-      reloadAt: (newIndex) => newIndex,
-      toast: (newIndex) => `Image page inserted at position ${newIndex + 1}`,
-      onSuccess: () => setShowInsertImagePageModal(false),
-    });
-  };
-
-  const defaultExportPagePdfPath = () => {
-    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    return `${base}_page_${currentPage + 1}.pdf`;
-  };
-
-  const openExportPagePdfModal = () => {
-    if (!filePath) return;
-    setExportPagePdfPath(defaultExportPagePdfPath());
-    setShowExportPagePdfModal(true);
-  };
-
-  const handleExportPagePdf = async () => {
-    const output = exportPagePdfPath.trim();
-    if (!filePath || !output) return;
-    await withLoading(async () => {
-      const written = await invoke<string>('export_page_as_pdf', {
-        path: filePath,
-        pageIndex: currentPage,
-        outputPath: ensureExtension(output, 'pdf'),
-      });
-      showToast(`Exported page to ${written}`);
-      setShowExportPagePdfModal(false);
-    });
-  };
-
-  const openDeleteRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    deleteRange.reset(currentPage, currentPage);
-    setShowDeleteRangeModal(true);
-  };
-
-  const handleDeletePageRange = async () => {
-    if (!filePath || pageCount === null) return;
-    const range = deleteRange.validate();
-    if (!range) return;
-    const deleteCount = deleteRange.endPage - deleteRange.startPage + 1;
-    if (deleteCount >= pageCount) {
-      showToast('Cannot delete every page', 'error');
-      return;
-    }
-    await withLoading(async () => {
-      await invoke<number>('delete_page_range', {
-        path: filePath,
-        startPage: deleteRange.startPage,
-        endPage: deleteRange.endPage,
-      });
-      markPdfEdited();
-      const nextPage = deleteRange.startPage >= pageCount - deleteCount
-        ? Math.max(0, pageCount - deleteCount - 1)
-        : deleteRange.startPage;
-      await reloadOpenPdf(nextPage);
-      setShowDeleteRangeModal(false);
-      showToast(`Deleted ${deleteCount} page${deleteCount === 1 ? '' : 's'}`);
-    });
-  };
-
-  const openPageNumbersModal = () => {
-    if (!filePath || pageCount === null) return;
-    pageNumbersRange.reset();
-    setPageNumbersPrefix('Page ');
-    setShowPageNumbersModal(true);
-  };
-
-  const handleAddPageNumbers = async () => {
-    if (!filePath) return;
-    const range = pageNumbersRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'add_page_numbers', args: { startPage: start, endPage: end, prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
-  };
-
-  const handleAddPageNumbersOddPages = async () => {
-    await runEdit({ command: 'add_page_numbers_odd_pages', args: { prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
-  };
-
-  const handleAddPageNumbersEvenPages = async () => {
-    await runEdit({ command: 'add_page_numbers_even_pages', args: { prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
-  };
-
-  const openWatermarkModal = () => {
-    if (!filePath || pageCount === null) return;
-    watermarkRange.reset();
-    setWatermarkText('DRAFT');
-    setShowWatermarkModal(true);
-  };
-
-  const handleAddWatermark = async () => {
-    if (!filePath || !watermarkText.trim()) return;
-    const range = watermarkRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'add_text_watermark', args: { text: watermarkText.trim(), startPage: start, endPage: end }, toast: (n) => `Watermarked ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
-  };
-
-  const handleAddWatermarkOddPages = async () => {
-    if (!filePath || !watermarkText.trim()) return;
-    await runEdit({ command: 'add_text_watermark_odd_pages', args: { text: watermarkText.trim() }, toast: (n) => `Watermarked ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
-  };
-
-  const handleAddWatermarkEvenPages = async () => {
-    if (!filePath || !watermarkText.trim()) return;
-    await runEdit({ command: 'add_text_watermark_even_pages', args: { text: watermarkText.trim() }, toast: (n) => `Watermarked ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
-  };
-
-  const openCropModal = () => {
-    if (!filePath) return;
-    setCropMarginTop(50);
-    setCropMarginRight(50);
-    setCropMarginBottom(50);
-    setCropMarginLeft(50);
-    setCropApplyAll(false);
-    void loadPageSizes(filePath);
-    setShowCropModal(true);
-  };
-
-  const handleCropPage = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      if (cropApplyAll) {
-        const count = await invoke<number>('crop_all_pages', {
-          path: filePath,
-          marginTop: cropMarginTop,
-          marginRight: cropMarginRight,
-          marginBottom: cropMarginBottom,
-          marginLeft: cropMarginLeft,
-        });
-        markPdfEdited();
-        await reloadOpenPdf(currentPage);
-        setShowCropModal(false);
-        showToast(`Cropped ${count} page${count === 1 ? '' : 's'}`);
-        return;
-      }
-      await invoke('crop_page', {
-        path: filePath,
-        pageIndex: currentPage,
-        marginTop: cropMarginTop,
-        marginRight: cropMarginRight,
-        marginBottom: cropMarginBottom,
-        marginLeft: cropMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowCropModal(false);
-      showToast(`Cropped page ${currentPage + 1}`);
-    });
-  };
-
-  const handleClearPageCrop = async () => {
-    await runEdit({ command: 'clear_page_crop', args: { pageIndex: currentPage }, toast: `Cleared crop on page ${currentPage + 1}` });
-  };
-
-  const openFlattenModal = () => {
-    if (!filePath || pageCount === null) return;
-    flattenRange.reset();
-    setShowFlattenModal(true);
-  };
-
-  const handleFlattenAnnotations = async () => {
-    if (!filePath) return;
-    const range = flattenRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'flatten_annotations', args: { startPage: start, endPage: end }, toast: (n) => `Removed ${n} annotation${n === 1 ? '' : 's'}`, onSuccess: () => setShowFlattenModal(false) });
-  };
-
+  const {
+    handleReverseOddPages,
+    handleReverseEvenPages,
+    handleMoveOddPagesToStart,
+    handleMoveEvenPagesToStart,
+    handleMoveOddPagesToEnd,
+    handleMoveEvenPagesToEnd,
+    handleClearCropOddPages,
+    handleClearCropEvenPages,
+    handleDuplicateOddPagesBefore,
+    handleDuplicateEvenPagesBefore,
+    handleSortOddPagesByRotation,
+    handleSortEvenPagesByRotation,
+    handleSortOddPagesBySize,
+    handleSortEvenPagesBySize,
+    handleSortPagesByRotation,
+  } = useOddEvenExtendedActions({
+    filePath,
+    pageCount,
+    runEdit,
+    withLoading,
+    markPdfEdited,
+    reloadOpenPdf,
+    showToast,
+    setShowCropModal,
+  });
+
+  const {
+    openSplitAtModal,
+    handleSplitPdfAtPage,
+    openDeleteNthModal,
+    handleDeleteEveryNthPage,
+    openExtractOddModal,
+    handleExtractOddPages,
+    openExtractEvenModal,
+    handleExtractEvenPages,
+    openPrependModal,
+    handlePrependSourcePathChange,
+    handlePrependPdf,
+    openSplitEveryModal,
+    handleSplitEveryN,
+  } = useSplitExtractPrependActions({
+    filePath,
+    originalPath,
+    pageCount,
+    currentPage,
+    splitAtPage,
+    deleteNthValue,
+    extractOddOutputPath,
+    extractEvenOutputPath,
+    prependFilePath,
+    prependRange,
+    splitEveryN,
+    runEdit,
+    withLoading,
+    markPdfEdited,
+    reloadOpenPdf,
+    showToast,
+    setSplitAtPage,
+    setDeleteNthValue,
+    setExtractOddOutputPath,
+    setExtractEvenOutputPath,
+    setPrependFilePath,
+    setPrependSourcePageCount,
+    setSplitEveryN,
+    setShowSplitAtModal,
+    setShowDeleteNthModal,
+    setShowExtractOddModal,
+    setShowExtractEvenModal,
+    setShowPrependModal,
+    setShowSplitEveryModal,
+  });
+
+  const {
+    openPageBorderModal,
+    handleAddPageBorder,
+    handleAddPageBorderOddPages,
+    handleAddPageBorderEvenPages,
+    handleInsertBlankBeforeOddPages,
+    handleInsertBlankBeforeEvenPages,
+    handleInsertBlankAfterOddPages,
+    handleInsertBlankAfterEvenPages,
+    handleDuplicateOddPagesToEnd,
+    handleDuplicateEvenPagesToEnd,
+    handleDuplicateOddPagesToStart,
+    handleDuplicateEvenPagesToStart,
+    openExpandMarginsModal,
+    openShrinkMarginsModal,
+    handleShrinkPageMargins,
+    handleExpandPageMargins,
+    openInsertImagePageModal,
+    handleInsertImagePage,
+    openPageNumbersModal,
+    handleAddPageNumbers,
+    handleAddPageNumbersOddPages,
+    handleAddPageNumbersEvenPages,
+    openWatermarkModal,
+    handleAddWatermark,
+    handleAddWatermarkOddPages,
+    handleAddWatermarkEvenPages,
+    openCropModal,
+    handleCropPage,
+    handleClearPageCrop,
+    openFlattenModal,
+    handleFlattenAnnotations,
+  } = usePageDecorActions({
+    filePath,
+    pageCount,
+    currentPage,
+    pageBorderRange,
+    expandMarginsRange,
+    shrinkMarginsRange,
+    pageNumbersRange,
+    watermarkRange,
+    flattenRange,
+    pageBorderInset,
+    expandMarginTop,
+    expandMarginRight,
+    expandMarginBottom,
+    expandMarginLeft,
+    shrinkMarginTop,
+    shrinkMarginRight,
+    shrinkMarginBottom,
+    shrinkMarginLeft,
+    cropMarginTop,
+    cropMarginRight,
+    cropMarginBottom,
+    cropMarginLeft,
+    cropApplyAll,
+    pageNumbersPrefix,
+    watermarkText,
+    insertImageAtIndex,
+    insertImagePagePath,
+    runEdit,
+    withLoading,
+    markPdfEdited,
+    reloadOpenPdf,
+    loadPageSizes,
+    showToast,
+    setPageBorderInset,
+    setExpandMarginTop,
+    setExpandMarginRight,
+    setExpandMarginBottom,
+    setExpandMarginLeft,
+    setShrinkMarginTop,
+    setShrinkMarginRight,
+    setShrinkMarginBottom,
+    setShrinkMarginLeft,
+    setCropMarginTop,
+    setCropMarginRight,
+    setCropMarginBottom,
+    setCropMarginLeft,
+    setCropApplyAll,
+    setPageNumbersPrefix,
+    setWatermarkText,
+    setInsertImageAtIndex,
+    setInsertImagePagePath,
+    setShowPageBorderModal,
+    setShowExpandMarginsModal,
+    setShowShrinkMarginsModal,
+    setShowInsertImagePageModal,
+    setShowPageNumbersModal,
+    setShowWatermarkModal,
+    setShowCropModal,
+    setShowFlattenModal,
+  });
 
   const bookmarkActions = useBookmarkActions({
     filePath,
@@ -2113,16 +1492,6 @@ function App() {
     });
   };
 
-  const handleSave = async () => {
-    if (!filePath || !originalPath) return;
-    await withLoading(async () => {
-      await invoke('save_working_copy', { working: filePath, target: originalPath });
-      markSaved();
-      showToast('Saved');
-    });
-  };
-  handleSaveRef.current = handleSave;
-
   const {
     chooseOpenPdfNative,
     chooseInsertPdfNative,
@@ -2171,15 +1540,18 @@ function App() {
     showToast,
   });
 
-  const openSaveAs = () => {
-    if (nativeDialogs) {
-      void saveAsViaNativeDialog();
-      return;
-    }
-    setSaveAsPath(originalPath);
-    setShowSaveAsModal(true);
-  };
-
+  const { handleSave, openSaveAs } = useSaveActions({
+    filePath,
+    originalPath,
+    nativeDialogs,
+    withLoading,
+    markSaved,
+    showToast,
+    saveAsViaNativeDialog,
+    setSaveAsPath,
+    setShowSaveAsModal,
+  });
+  handleSaveRef.current = handleSave;
 
   const {
     handleMarkdownView,

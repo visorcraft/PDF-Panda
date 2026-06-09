@@ -1,4 +1,5 @@
 pub mod bookmarks;
+pub mod browser;
 pub mod content;
 pub mod coords;
 pub mod export;
