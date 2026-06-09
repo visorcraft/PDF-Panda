@@ -33,11 +33,12 @@ use pdf::pdfium_bind::{
 use pdf::rotation::{page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation};
 use pdf::search::{search_pdf_text as search_pdf_text_impl, PdfTextSearchMatch};
 use pdf::security::{PdfSignatureInfo, PdfSignatureVerificationSummary};
+use pdf::summary::{PdfSummaryResult, SummarySaveResult};
 
 use lopdf::{Dictionary, Document, Object, ObjectId, Stream};
 use pdfium_render::prelude::*;
 use serde::Serialize;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -5939,307 +5940,6 @@ fn pdf_to_markdown(
     Ok(markdown)
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PdfIntelligentExtraction {
-    headings: Vec<String>,
-    emails: Vec<String>,
-    urls: Vec<String>,
-    dates: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PdfSummaryResult {
-    page_count: u32,
-    word_count: u32,
-    title_guess: Option<String>,
-    overview: String,
-    key_points: Vec<String>,
-    extraction: PdfIntelligentExtraction,
-    scanned_pages: u32,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SummarySaveResult {
-    summary: PdfSummaryResult,
-    summary_path: String,
-    written: bool,
-    conflict: bool,
-}
-
-const SUMMARY_STOPWORDS: &[&str] = &[
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "had", "has", "have", "he", "her", "his", "in",
-    "is", "it", "its", "of", "on", "or", "that", "the", "their", "they", "this", "to", "was", "were", "will", "with",
-];
-
-fn is_summary_stopword(word: &str) -> bool {
-    SUMMARY_STOPWORDS.contains(&word)
-}
-
-fn strip_markdown_for_summary(markdown: &str) -> String {
-    markdown
-        .lines()
-        .filter(|line| {
-            let trimmed = line.trim();
-            !trimmed.is_empty()
-                && !trimmed.starts_with("## Page ")
-                && !trimmed.starts_with("# PDF to Markdown")
-                && !trimmed.starts_with('|')
-                && !trimmed.starts_with("![")
-                && trimmed != "_(no extractable text on this page)_"
-        })
-        .map(|line| line.trim_start_matches('#').trim())
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn split_sentences(text: &str) -> Vec<String> {
-    let mut sentences = Vec::new();
-    let mut current = String::new();
-    for ch in text.chars() {
-        current.push(ch);
-        if matches!(ch, '.' | '!' | '?') {
-            let trimmed = current.trim();
-            if trimmed.len() > 8 && trimmed.chars().any(|c| c.is_alphabetic()) {
-                sentences.push(normalize_inline_text(trimmed));
-            }
-            current.clear();
-        }
-    }
-    let tail = current.trim();
-    if tail.len() > 8 && tail.chars().any(|c| c.is_alphabetic()) {
-        sentences.push(normalize_inline_text(tail));
-    }
-    sentences
-}
-
-fn count_words(text: &str) -> u32 {
-    text.split_whitespace().filter(|word| !word.is_empty()).count() as u32
-}
-
-fn collect_term_frequencies(sentences: &[String]) -> HashMap<String, u32> {
-    let mut freq = HashMap::new();
-    for sentence in sentences {
-        for word in sentence
-            .split(|c: char| !c.is_alphanumeric())
-            .map(str::to_ascii_lowercase)
-            .filter(|word| word.len() > 2 && !is_summary_stopword(word))
-        {
-            *freq.entry(word).or_insert(0) += 1;
-        }
-    }
-    freq
-}
-
-fn score_sentence_for_summary(sentence: &str, index: usize, total: usize, term_freq: &HashMap<String, u32>) -> f32 {
-    let words: Vec<&str> = sentence.split_whitespace().collect();
-    let word_count = words.len();
-    if !(4..=60).contains(&word_count) {
-        return 0.0;
-    }
-    let mut score = 0.0f32;
-    if index < total / 5 {
-        score += 1.5;
-    }
-    if (12..=40).contains(&word_count) {
-        score += 1.0;
-    }
-    for word in words {
-        let key = word.to_ascii_lowercase();
-        if let Some(count) = term_freq.get(&key) {
-            score += (*count as f32).sqrt();
-        }
-    }
-    if sentence.chars().filter(|c| c.is_uppercase()).count() > 2 {
-        score += 0.5;
-    }
-    score
-}
-
-fn extractive_overview(sentences: &[String], term_freq: &HashMap<String, u32>, max_sentences: usize) -> String {
-    if sentences.is_empty() {
-        return String::new();
-    }
-    let total = sentences.len();
-    let mut ranked: Vec<(usize, f32)> = sentences
-        .iter()
-        .enumerate()
-        .map(|(index, sentence)| (index, score_sentence_for_summary(sentence, index, total, term_freq)))
-        .filter(|(_, score)| *score > 0.0)
-        .collect();
-    ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    let mut picked = ranked.into_iter().take(max_sentences).map(|(index, _)| index).collect::<Vec<_>>();
-    picked.sort_unstable();
-    picked.into_iter().map(|index| sentences[index].clone()).collect::<Vec<_>>().join(" ")
-}
-
-fn looks_like_heading_line(line: &str) -> bool {
-    let text = line.trim();
-    if text.is_empty() || text.len() > 120 {
-        return false;
-    }
-    let words = text.split_whitespace().count();
-    if words > 14 {
-        return false;
-    }
-    text.chars().next().is_some_and(|ch| ch.is_uppercase()) && !text.ends_with('.')
-}
-
-fn extract_key_points(sentences: &[String], headings: &[String], max_points: usize) -> Vec<String> {
-    let mut points = BTreeSet::new();
-    for heading in headings.iter().take(max_points) {
-        points.insert(heading.clone());
-    }
-    for sentence in sentences {
-        let trimmed = sentence.trim();
-        if trimmed.starts_with("- ") || trimmed.starts_with("• ") {
-            points.insert(trimmed.trim_start_matches(['-', '•', ' ']).to_string());
-        } else if let Some(rest) = trimmed.strip_prefix(|c: char| c.is_ascii_digit()) {
-            if rest.starts_with('.') || rest.starts_with(')') {
-                points.insert(trimmed.to_string());
-            }
-        }
-        if points.len() >= max_points {
-            break;
-        }
-    }
-    if points.len() < max_points {
-        let term_freq = collect_term_frequencies(sentences);
-        let total = sentences.len();
-        let mut ranked: Vec<(usize, f32)> = sentences
-            .iter()
-            .enumerate()
-            .map(|(index, sentence)| (index, score_sentence_for_summary(sentence, index, total, &term_freq)))
-            .filter(|(_, score)| *score > 0.0)
-            .collect();
-        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        for (index, _) in ranked {
-            let sentence = &sentences[index];
-            if sentence.len() <= 160 {
-                points.insert(sentence.clone());
-            }
-            if points.len() >= max_points {
-                break;
-            }
-        }
-    }
-    points.into_iter().take(max_points).collect()
-}
-
-fn trim_token_edges(token: &str) -> String {
-    token
-        .trim_matches(|c: char| {
-            !c.is_alphanumeric() && c != '@' && c != '.' && c != '_' && c != '-' && c != '/' && c != ':'
-        })
-        .to_string()
-}
-
-fn extract_emails(text: &str) -> Vec<String> {
-    let mut emails = BTreeSet::new();
-    for token in text.split_whitespace() {
-        let cleaned = trim_token_edges(token);
-        if cleaned.contains('@')
-            && cleaned.contains('.')
-            && !cleaned.starts_with('@')
-            && cleaned.len() >= 5
-            && cleaned.chars().all(|c| c.is_alphanumeric() || "@._-+".contains(c))
-        {
-            emails.insert(cleaned);
-        }
-    }
-    emails.into_iter().collect()
-}
-
-fn extract_urls(text: &str) -> Vec<String> {
-    let mut urls = BTreeSet::new();
-    for token in text.split_whitespace() {
-        let cleaned = trim_token_edges(token);
-        if cleaned.starts_with("http://") || cleaned.starts_with("https://") || cleaned.starts_with("www.") {
-            urls.insert(cleaned);
-        }
-    }
-    urls.into_iter().collect()
-}
-
-fn looks_like_date_token(token: &str) -> bool {
-    let token = trim_token_edges(token);
-    if token.len() < 6 || token.len() > 32 {
-        return false;
-    }
-    let digits = token.chars().filter(|c| c.is_ascii_digit()).count();
-    if digits < 4 {
-        return false;
-    }
-    let has_sep = token.contains('/') || token.contains('-') || token.contains('.');
-    let month_names = [
-        "january",
-        "february",
-        "march",
-        "april",
-        "may",
-        "june",
-        "july",
-        "august",
-        "september",
-        "october",
-        "november",
-        "december",
-        "jan",
-        "feb",
-        "mar",
-        "apr",
-        "jun",
-        "jul",
-        "aug",
-        "sep",
-        "oct",
-        "nov",
-        "dec",
-    ];
-    let lower = token.to_ascii_lowercase();
-    month_names.iter().any(|month| lower.contains(month)) || has_sep
-}
-
-fn extract_dates(text: &str) -> Vec<String> {
-    let mut dates = BTreeSet::new();
-    for token in text.split_whitespace() {
-        if looks_like_date_token(token) {
-            dates.insert(trim_token_edges(token));
-        }
-    }
-    dates.into_iter().collect()
-}
-
-fn intelligent_extract_from_text(text: &str) -> PdfIntelligentExtraction {
-    let mut headings = BTreeSet::new();
-    for line in text.lines() {
-        if looks_like_heading_line(line) {
-            headings.insert(normalize_inline_text(line));
-        }
-    }
-    PdfIntelligentExtraction {
-        headings: headings.into_iter().take(24).collect(),
-        emails: extract_emails(text),
-        urls: extract_urls(text),
-        dates: extract_dates(text),
-    }
-}
-
-fn guess_title(first_page: &str, headings: &[String]) -> Option<String> {
-    if let Some(heading) = headings.first() {
-        if heading.len() <= 120 {
-            return Some(heading.clone());
-        }
-    }
-    first_page
-        .lines()
-        .map(str::trim)
-        .find(|line| !line.is_empty() && line.len() <= 120 && looks_like_heading_line(line))
-        .map(normalize_inline_text)
-}
-
 fn pdf_plain_text_pages(path: &Path) -> Result<(Vec<String>, u32), String> {
     let lopdf_doc = Document::load(path).map_err(|e| e.to_string())?;
     let tagged_pages = tagged_markdown_by_page(&lopdf_doc);
@@ -6253,7 +5953,7 @@ fn pdf_plain_text_pages(path: &Path) -> Result<(Vec<String>, u32), String> {
             .and_then(|pages| pages.get(&(index as u32)))
             .filter(|page_md| tagged_page_has_content(page_md))
         {
-            strip_markdown_for_summary(page_md)
+            pdf::summary::strip_markdown_for_summary_page(page_md)
         } else {
             let text = page.text().map_err(|e| e.to_string())?;
             let lines = polish_heuristic_lines(lines_from_pdfium_text(&text));
@@ -6275,124 +5975,25 @@ fn pdf_plain_text_pages(path: &Path) -> Result<(Vec<String>, u32), String> {
     Ok((pages, scanned_pages))
 }
 
-fn build_pdf_summary(pages: &[String], scanned_pages: u32) -> PdfSummaryResult {
-    let page_count = pages.len() as u32;
-    let full_text = pages.iter().filter(|page| !page.trim().is_empty()).cloned().collect::<Vec<_>>().join("\n\n");
-    let word_count = count_words(&full_text);
-    let extraction = intelligent_extract_from_text(&full_text);
-    let sentences = split_sentences(&full_text);
-    let term_freq = collect_term_frequencies(&sentences);
-    let overview = if sentences.is_empty() {
-        if scanned_pages > 0 {
-            format!(
-                "No extractable text was found. {scanned_pages} page(s) appear scanned or image-only (use Markdown export with Tesseract OCR for those pages)."
-            )
-        } else {
-            "No extractable text was found in this document.".to_string()
-        }
-    } else {
-        extractive_overview(&sentences, &term_freq, 4)
-    };
-    let key_points = extract_key_points(&sentences, &extraction.headings, 8);
-    let title_guess = guess_title(pages.first().map(String::as_str).unwrap_or_default(), &extraction.headings);
-    PdfSummaryResult { page_count, word_count, title_guess, overview, key_points, extraction, scanned_pages }
-}
-
-fn summary_markdown_path(pdf_path: &Path) -> PathBuf {
-    pdf_path.with_extension("summary.md")
-}
-
-fn summary_to_markdown(summary: &PdfSummaryResult) -> String {
-    let mut output = String::from("# Document Summary\n\n");
-    if let Some(title) = &summary.title_guess {
-        output.push_str(&format!("**Title guess:** {title}\n\n"));
-    }
-    output.push_str(&format!(
-        "**Pages:** {} · **Words:** {} · **Scanned/image-only pages:** {}\n\n",
-        summary.page_count, summary.word_count, summary.scanned_pages
-    ));
-    output.push_str("## Overview\n\n");
-    output.push_str(&summary.overview);
-    output.push_str("\n\n## Key points\n\n");
-    if summary.key_points.is_empty() {
-        output.push_str("_(none)_\n\n");
-    } else {
-        for point in &summary.key_points {
-            output.push_str(&format!("- {point}\n"));
-        }
-        output.push('\n');
-    }
-    output.push_str("## Extracted headings\n\n");
-    if summary.extraction.headings.is_empty() {
-        output.push_str("_(none)_\n\n");
-    } else {
-        for heading in &summary.extraction.headings {
-            output.push_str(&format!("- {heading}\n"));
-        }
-        output.push('\n');
-    }
-    output.push_str("## Emails\n\n");
-    if summary.extraction.emails.is_empty() {
-        output.push_str("_(none)_\n\n");
-    } else {
-        for email in &summary.extraction.emails {
-            output.push_str(&format!("- {email}\n"));
-        }
-        output.push('\n');
-    }
-    output.push_str("## URLs\n\n");
-    if summary.extraction.urls.is_empty() {
-        output.push_str("_(none)_\n\n");
-    } else {
-        for url in &summary.extraction.urls {
-            output.push_str(&format!("- {url}\n"));
-        }
-        output.push('\n');
-    }
-    output.push_str("## Dates\n\n");
-    if summary.extraction.dates.is_empty() {
-        output.push_str("_(none)_\n");
-    } else {
-        for date in &summary.extraction.dates {
-            output.push_str(&format!("- {date}\n"));
-        }
-    }
-    output
-}
-
-fn summarize_pdf_document(path: &Path) -> Result<PdfSummaryResult, String> {
+#[tauri::command]
+fn summarize_pdf(path: String) -> Result<PdfSummaryResult, String> {
+    let path = PathBuf::from(path);
     if !path.is_file() {
         return Err(format!("file not found: {}", path.display()));
     }
-    let (pages, scanned_pages) = pdf_plain_text_pages(path)?;
-    Ok(build_pdf_summary(&pages, scanned_pages))
-}
-
-#[tauri::command]
-fn summarize_pdf(path: String) -> Result<PdfSummaryResult, String> {
-    summarize_pdf_document(&PathBuf::from(path))
+    let (pages, scanned) = pdf_plain_text_pages(&path)?;
+    Ok(pdf::summary::build_pdf_summary(&pages, scanned))
 }
 
 #[tauri::command]
 fn save_pdf_summary(path: String, overwrite: bool) -> Result<SummarySaveResult, String> {
-    let pdf_path = PathBuf::from(&path);
-    let summary = summarize_pdf_document(&pdf_path)?;
-    let target = summary_markdown_path(&pdf_path);
-    if target.exists() && !overwrite {
-        return Ok(SummarySaveResult {
-            summary,
-            summary_path: target.to_string_lossy().into_owned(),
-            written: false,
-            conflict: true,
-        });
+    let pdf_path = PathBuf::from(path);
+    if !pdf_path.is_file() {
+        return Err(format!("file not found: {}", pdf_path.display()));
     }
-    fs::write(&target, summary_to_markdown(&summary)).map_err(|e| e.to_string())?;
-    Ok(SummarySaveResult {
-        summary,
-        summary_path: target.to_string_lossy().into_owned(),
-        written: true,
-        conflict: false,
-    })
+    let (pages, scanned) = pdf_plain_text_pages(&pdf_path)?;
+    let summary = pdf::summary::build_pdf_summary(&pages, scanned);
+    pdf::summary::save_summary_file(&pdf_path, &summary, overwrite)
 }
 
 /// Return on-disk byte length for undo snapshot sizing decisions.
@@ -6586,81 +6187,9 @@ fn insert_pdf(
     Ok(())
 }
 
-fn recompress_images(doc: &mut Document) -> Result<u32, String> {
-    let pages = doc.get_pages();
-    let mut all_images: Vec<(ObjectId, Vec<u8>, u32, u32)> = Vec::new();
-
-    for page_id in pages.values() {
-        let images = doc.get_page_images(*page_id).map_err(|e| e.to_string())?;
-        for img in &images {
-            all_images.push((img.id, img.content.to_vec(), img.width as u32, img.height as u32));
-        }
-    }
-
-    let mut count = 0u32;
-    for (obj_id, content, width, height) in &all_images {
-        let reencoded = reencode_image(content, *width, *height);
-        if let Some(data) = reencoded {
-            let obj = doc.get_object_mut(*obj_id).map_err(|e| e.to_string())?;
-            if let Object::Stream(ref mut s) = obj {
-                s.set_plain_content(data);
-                s.dict.set(b"Filter", Object::Name(b"DCTDecode".to_vec()));
-                count += 1;
-            }
-        }
-    }
-
-    Ok(count)
-}
-
-fn reencode_image(raw: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
-    use image::{DynamicImage, GrayImage, RgbImage};
-    let expected_len = (width * height * 3) as usize;
-
-    let img: DynamicImage = if raw.len() >= expected_len && expected_len > 0 {
-        let rgb = RgbImage::from_raw(width, height, raw[..expected_len].to_vec())?;
-        DynamicImage::ImageRgb8(rgb)
-    } else if raw.len() >= (width * height) as usize {
-        let gray = GrayImage::from_raw(width, height, raw[..(width * height) as usize].to_vec())?;
-        DynamicImage::ImageLuma8(gray)
-    } else {
-        return None;
-    };
-
-    let mut buf = Vec::new();
-    let mut cursor = std::io::Cursor::new(&mut buf);
-    img.write_to(&mut cursor, image::ImageFormat::Jpeg).ok()?;
-    Some(buf)
-}
-
 #[tauri::command]
 fn optimize_pdf(path: String) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    if let Ok(catalog) = doc.catalog_mut() {
-        catalog.set(b"Metadata", Object::Null);
-    }
-
-    if let Ok(trailer) = doc.trailer.get_mut(b"Info") {
-        *trailer = Object::Null;
-    }
-
-    let images_recompressed = recompress_images(&mut doc)?;
-
-    // Remove unreferenced objects and flate-compress remaining uncompressed
-    // streams (e.g. content streams) for additional size reduction.
-    doc.prune_objects();
-    doc.compress();
-
-    let output_path = path.with_file_name(format!("{}_optimized.pdf", path.file_stem().unwrap().to_string_lossy()));
-    doc.save(&output_path).map_err(|e| e.to_string())?;
-
-    Ok(format!(
-        "Saved to {}. Metadata stripped, objects pruned & streams compressed. {} image(s) recompressed.",
-        output_path.file_name().unwrap().to_string_lossy(),
-        images_recompressed
-    ))
+    pdf::optimize::optimize_pdf_file(&PathBuf::from(path))
 }
 
 #[tauri::command]
@@ -6751,55 +6280,7 @@ fn prune_history_entry(history: Vec<HistorySnapshot>, drop_index: usize) -> Resu
 
 #[tauri::command]
 fn add_highlight(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f64) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Highlight".to_vec())),
-        (
-            b"Rect".to_vec(),
-            Object::Array(vec![
-                Object::Real(x1 as f32),
-                Object::Real(y1 as f32),
-                Object::Real(x2 as f32),
-                Object::Real(y2 as f32),
-            ]),
-        ),
-        (
-            b"QuadPoints".to_vec(),
-            Object::Array(vec![
-                Object::Real(x1 as f32),
-                Object::Real(y2 as f32),
-                Object::Real(x2 as f32),
-                Object::Real(y2 as f32),
-                Object::Real(x1 as f32),
-                Object::Real(y1 as f32),
-                Object::Real(x2 as f32),
-                Object::Real(y1 as f32),
-            ]),
-        ),
-        (b"C".to_vec(), Object::Array(vec![Object::Real(1.0), Object::Real(1.0), Object::Real(0.0)])),
-    ])));
-
-    let annots = doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
-
-    match annots {
-        Ok(Object::Array(ref mut arr)) => {
-            arr.push(Object::Reference(annot));
-        }
-        _ => {
-            doc.get_dictionary_mut(*page_id)
-                .map_err(|e| e.to_string())?
-                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
-        }
-    }
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotations::add_highlight(&PathBuf::from(path), page_index, x1, y1, x2, y2)
 }
 
 /// Remove the `index`-th highlight annotation (0-based, in document order) from a
@@ -6807,47 +6288,7 @@ fn add_highlight(path: String, page_index: u32, x1: f64, y1: f64, x2: f64, y2: f
 /// `get_annotations` after filtering to the `Highlight` subtype.
 #[tauri::command]
 fn remove_highlight(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
-        Ok(Object::Array(arr)) => arr.clone(),
-        _ => return Err("No annotations on this page".to_string()),
-    };
-
-    let mut highlight_count = 0u32;
-    let mut target_pos: Option<usize> = None;
-    for (pos, annot_ref) in annots.iter().enumerate() {
-        let Object::Reference(id) = annot_ref else {
-            continue;
-        };
-        let is_highlight = doc
-            .get_object(*id)
-            .ok()
-            .and_then(|o| o.as_dict().ok())
-            .and_then(|d| d.get(b"Subtype").ok())
-            .and_then(|o| o.as_name().ok())
-            .map(|n| String::from_utf8_lossy(n) == "Highlight")
-            .unwrap_or(false);
-        if is_highlight {
-            if highlight_count == index {
-                target_pos = Some(pos);
-                break;
-            }
-            highlight_count += 1;
-        }
-    }
-
-    let pos = target_pos.ok_or("Highlight not found".to_string())?;
-    let mut new_annots = annots;
-    new_annots.remove(pos);
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotations::remove_highlight(&PathBuf::from(path), page_index, index)
 }
 
 const TEXT_NOTE_WIDTH: f64 = 140.0;
@@ -27421,14 +26862,14 @@ mod tests {
 
     #[test]
     fn split_sentences_splits_on_punctuation() {
-        let sentences = split_sentences("Alpha one. Beta two! Gamma three?");
+        let sentences = pdf::summary::split_sentences("Alpha one. Beta two! Gamma three?");
         assert_eq!(sentences.len(), 3);
         assert!(sentences[0].contains("Alpha"));
     }
 
     #[test]
     fn intelligent_extract_finds_email_url_and_date() {
-        let extraction = intelligent_extract_from_text(
+        let extraction = pdf::summary::intelligent_extract_from_text(
             "Contact team@example.com on 03/15/2024. Visit https://example.com/docs today.",
         );
         assert!(extraction.emails.iter().any(|email| email.contains("team@example.com")));
@@ -27443,7 +26884,7 @@ mod tests {
             "Revenue increased across all regions during the quarter.".to_string(),
             "Operating costs remained stable while product adoption accelerated.".to_string(),
         ];
-        let summary = build_pdf_summary(&pages, 0);
+        let summary = pdf::summary::build_pdf_summary(&pages, 0);
         assert_eq!(summary.page_count, 3);
         assert!(summary.word_count > 10);
         assert!(summary.title_guess.as_deref() == Some("Quarterly Report"));
@@ -27460,11 +26901,11 @@ mod tests {
 
     #[test]
     fn summary_to_markdown_formats_sections() {
-        let summary = build_pdf_summary(
+        let summary = pdf::summary::build_pdf_summary(
             &["Quarterly Report".to_string(), "Revenue increased across all regions.".to_string()],
             1,
         );
-        let md = summary_to_markdown(&summary);
+        let md = pdf::summary::summary_to_markdown(&summary);
         assert!(md.contains("# Document Summary"));
         assert!(md.contains("## Overview"));
         assert!(md.contains("## Key points"));
