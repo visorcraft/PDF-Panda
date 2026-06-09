@@ -7,6 +7,9 @@ import pandaWelcome from './assets/panda.png';
 import { TitleBar } from './chrome/TitleBar';
 import { buildAppMenus } from './menu/buildAppMenus';
 import { MenuChrome } from './menu/MenuChrome';
+import { useStructuralEdit } from './pdf/useStructuralEdit';
+import { Modal } from './ui/Modal';
+import { Toast } from './ui/Toast';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -1330,34 +1333,25 @@ function App() {
     void loadPageSizes(filePath);
   };
 
+  const runEdit = useStructuralEdit({
+    filePath,
+    currentPage,
+    withLoading,
+    markPdfEdited,
+    reloadOpenPdf,
+    showToast,
+  });
+
   const handleRotatePageCcw = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('rotate_page_ccw', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast('Page rotated 90° counter-clockwise');
-    });
+    await runEdit({ command: 'rotate_page_ccw', args: { pageIndex: currentPage }, toast: 'Page rotated 90° counter-clockwise' });
   };
 
   const handleResetPageRotation = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('reset_page_rotation', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast('Page rotation reset');
-    });
+    await runEdit({ command: 'reset_page_rotation', args: { pageIndex: currentPage }, toast: 'Page rotation reset' });
   };
 
   const handleResetAllRotations = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const count = await invoke<number>('reset_all_page_rotations', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Reset rotation on ${count} page${count === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'reset_all_page_rotations', toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}` });
   };
 
   const openDuplicateRangeModal = () => {
@@ -1373,17 +1367,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const count = await invoke<number>('duplicate_page_range', {
-        path: filePath,
-        startPage: duplicateRangeStartPage,
-        endPage: duplicateRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(duplicateRangeEndPage + 1);
-      setShowDuplicateRangeModal(false);
-      showToast(`Duplicated ${count} page${count === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'duplicate_page_range', args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage }, reloadAt: duplicateRangeEndPage + 1, toast: (n) => `Duplicated ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowDuplicateRangeModal(false) });
   };
 
   const handleDuplicatePageRangeToEnd = async () => {
@@ -1392,16 +1376,12 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const count = await invoke<number>('duplicate_page_range_to_end', {
-        path: filePath,
-        startPage: duplicateRangeStartPage,
-        endPage: duplicateRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(pageCount + count - 1);
-      setShowDuplicateRangeModal(false);
-      showToast(`Appended ${count} page${count === 1 ? '' : 's'} to end`);
+    await runEdit<number>({
+      command: 'duplicate_page_range_to_end',
+      args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage },
+      reloadAt: (count) => pageCount + count - 1,
+      toast: (count) => `Appended ${count} page${count === 1 ? '' : 's'} to end`,
+      onSuccess: () => setShowDuplicateRangeModal(false),
     });
   };
 
@@ -1411,17 +1391,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const count = await invoke<number>('duplicate_page_range_to_start', {
-        path: filePath,
-        startPage: duplicateRangeStartPage,
-        endPage: duplicateRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      setShowDuplicateRangeModal(false);
-      showToast(`Inserted ${count} page${count === 1 ? '' : 's'} at start`);
-    });
+    await runEdit({ command: 'duplicate_page_range_to_start', args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage }, reloadAt: 0, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} at start`, onSuccess: () => setShowDuplicateRangeModal(false) });
   };
 
   const handleDuplicatePageRangeBefore = async () => {
@@ -1430,123 +1400,68 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const count = await invoke<number>('duplicate_page_range_before', {
-        path: filePath,
-        startPage: duplicateRangeStartPage,
-        endPage: duplicateRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(duplicateRangeStartPage);
-      setShowDuplicateRangeModal(false);
-      showToast(`Inserted ${count} page${count === 1 ? '' : 's'} before range`);
-    });
+    await runEdit({ command: 'duplicate_page_range_before', args: { startPage: duplicateRangeStartPage, endPage: duplicateRangeEndPage }, reloadAt: duplicateRangeStartPage, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} before range`, onSuccess: () => setShowDuplicateRangeModal(false) });
   };
 
   const handleReversePages = async () => {
     if (!filePath || pageCount === null) return;
-    await withLoading(async () => {
-      await invoke('reverse_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(pageCount - 1 - currentPage);
-      showToast('Page order reversed');
-    });
+    await runEdit({ command: 'reverse_pages', reloadAt: pageCount - 1 - currentPage, toast: 'Page order reversed' });
   };
 
   const handleRotateAllPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const count = await invoke<number>('rotate_all_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${count} page${count === 1 ? '' : 's'} 90°`);
-    });
+    await runEdit({ command: 'rotate_all_pages', toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 90°` });
   };
 
   const handleAddBlankPage = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const newIndex = await invoke<number>('add_blank_page', {
-        path: filePath,
-        atIndex: currentPage + 1,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(newIndex);
-      showToast(`Blank page inserted at position ${newIndex + 1}`);
+    await runEdit<number>({
+      command: 'add_blank_page',
+      args: { atIndex: currentPage + 1 },
+      reloadAt: (newIndex) => newIndex,
+      toast: (newIndex) => `Blank page inserted at position ${newIndex + 1}`,
     });
   };
 
   const handleAddBlankPageBefore = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const newIndex = await invoke<number>('add_blank_page', {
-        path: filePath,
-        atIndex: currentPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(newIndex);
-      showToast(`Blank page inserted before page ${currentPage + 1}`);
+    await runEdit<number>({
+      command: 'add_blank_page',
+      args: { atIndex: currentPage },
+      reloadAt: (newIndex) => newIndex,
+      toast: () => `Blank page inserted before page ${currentPage + 1}`,
     });
   };
 
   const handleRotatePage180 = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('rotate_page_180', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast('Page rotated 180°');
-    });
+    await runEdit({ command: 'rotate_page_180', args: { pageIndex: currentPage }, toast: 'Page rotated 180°' });
   };
 
   const handleRotateAllPagesCcw = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const count = await invoke<number>('rotate_all_pages_ccw', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${count} page${count === 1 ? '' : 's'} CCW`);
-    });
+    await runEdit({ command: 'rotate_all_pages_ccw', toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} CCW` });
   };
 
   const handleMovePageToFirst = async () => {
     if (!filePath || currentPage === 0) return;
-    await withLoading(async () => {
-      await invoke('move_page_to_first', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast('Page moved to first position');
-    });
+    await runEdit({ command: 'move_page_to_first', args: { pageIndex: currentPage }, reloadAt: 0, toast: 'Page moved to first position' });
   };
 
   const handleMovePageToLast = async () => {
     if (!filePath || pageCount === null || currentPage >= pageCount - 1) return;
-    await withLoading(async () => {
-      await invoke('move_page_to_last', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      const last = (pageCount ?? 1) - 1;
-      await reloadOpenPdf(last);
-      showToast('Page moved to last position');
+    await runEdit({
+      command: 'move_page_to_last',
+      args: { pageIndex: currentPage },
+      reloadAt: () => (pageCount ?? 1) - 1,
+      toast: 'Page moved to last position',
     });
   };
 
   const handleClearAllCrops = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const cleared = await invoke<number>('clear_all_page_crops', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Cleared crop on ${cleared} page${cleared === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'clear_all_page_crops', toast: (n) => `Cleared crop on ${n} page${n === 1 ? '' : 's'}` });
   };
 
   const handleClearAllBookmarks = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const removed = await invoke<number>('clear_pdf_bookmarks', { path: filePath });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      showToast(`Removed ${removed} bookmark${removed === 1 ? '' : 's'}`);
+    await runEdit({
+      command: 'clear_pdf_bookmarks',
+      afterEdit: async () => { await loadPdfBookmarks(filePath); },
+      toast: (n) => `Removed ${n} bookmark${n === 1 ? '' : 's'}`,
     });
   };
 
@@ -1566,46 +1481,17 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_header', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        text: pageHeaderText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageHeaderModal(false);
-      showToast(`Added header to ${stamped} page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_header', args: { startPage: start, endPage: end, text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
   };
 
   const handleAddPageHeaderOddPages = async () => {
     if (!filePath || !pageHeaderText.trim()) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_header_odd_pages', {
-        path: filePath,
-        text: pageHeaderText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageHeaderModal(false);
-      showToast(`Added header to ${stamped} odd page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_header_odd_pages', args: { text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
   };
 
   const handleAddPageHeaderEvenPages = async () => {
     if (!filePath || !pageHeaderText.trim()) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_header_even_pages', {
-        path: filePath,
-        text: pageHeaderText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageHeaderModal(false);
-      showToast(`Added header to ${stamped} even page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_header_even_pages', args: { text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
   };
 
   const openPageFooterModal = () => {
@@ -1624,46 +1510,17 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_footer', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        text: pageFooterText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageFooterModal(false);
-      showToast(`Added footer to ${stamped} page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_footer', args: { startPage: start, endPage: end, text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
   };
 
   const handleAddPageFooterOddPages = async () => {
     if (!filePath || !pageFooterText.trim()) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_footer_odd_pages', {
-        path: filePath,
-        text: pageFooterText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageFooterModal(false);
-      showToast(`Added footer to ${stamped} odd page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_footer_odd_pages', args: { text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
   };
 
   const handleAddPageFooterEvenPages = async () => {
     if (!filePath || !pageFooterText.trim()) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_footer_even_pages', {
-        path: filePath,
-        text: pageFooterText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageFooterModal(false);
-      showToast(`Added footer to ${stamped} even page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_footer_even_pages', args: { text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
   };
 
   const openSwapPagesModal = () => {
@@ -1679,34 +1536,23 @@ function App() {
       showToast('Choose two different pages', 'error');
       return;
     }
-    await withLoading(async () => {
-      await invoke('swap_pages', { path: filePath, pageIndexA: swapPageA, pageIndexB: swapPageB });
-      markPdfEdited();
-      const nextPage = currentPage === swapPageA ? swapPageB : currentPage === swapPageB ? swapPageA : currentPage;
-      await reloadOpenPdf(nextPage);
-      setShowSwapPagesModal(false);
-      showToast(`Swapped pages ${swapPageA + 1} and ${swapPageB + 1}`);
+    await runEdit({
+      command: 'swap_pages',
+      args: { pageIndexA: swapPageA, pageIndexB: swapPageB },
+      reloadAt: swapPageA === currentPage ? swapPageB : swapPageB === currentPage ? swapPageA : currentPage,
+      toast: `Swapped pages ${swapPageA + 1} and ${swapPageB + 1}`,
+      onSuccess: () => setShowSwapPagesModal(false),
     });
   };
 
   const handleMovePageUp = async () => {
     if (!filePath || currentPage === 0) return;
-    await withLoading(async () => {
-      await invoke('move_page_up', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage - 1);
-      showToast(`Moved page ${currentPage + 1} up`);
-    });
+    await runEdit({ command: 'move_page_up', args: { pageIndex: currentPage }, reloadAt: currentPage - 1, toast: `Moved page ${currentPage + 1} up` });
   };
 
   const handleMovePageDown = async () => {
     if (!filePath || pageCount === null || currentPage >= pageCount - 1) return;
-    await withLoading(async () => {
-      await invoke('move_page_down', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage + 1);
-      showToast(`Moved page ${currentPage + 1} down`);
-    });
+    await runEdit({ command: 'move_page_down', args: { pageIndex: currentPage }, reloadAt: currentPage + 1, toast: `Moved page ${currentPage + 1} down` });
   };
 
   const openReplacePageModal = () => {
@@ -1736,18 +1582,7 @@ function App() {
   const handleReplacePage = async () => {
     const source = replaceSourcePath.trim();
     if (!filePath || !source) return;
-    await withLoading(async () => {
-      await invoke('replace_page', {
-        path: filePath,
-        pageIndex: currentPage,
-        sourcePath: source,
-        sourcePageIndex: replaceSourcePage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowReplacePageModal(false);
-      showToast(`Replaced page ${currentPage + 1}`);
-    });
+    await runEdit({ command: 'replace_page', args: { pageIndex: currentPage, sourcePath: source, sourcePageIndex: replaceSourcePage }, toast: `Replaced page ${currentPage + 1}`, onSuccess: () => setShowReplacePageModal(false) });
   };
 
   const openInterleaveModal = () => {
@@ -1783,18 +1618,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const inserted = await invoke<number>('interleave_pdf', {
-        path: filePath,
-        otherPath: source,
-        otherStart: interleaveStartPage,
-        otherEnd: interleaveEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowInterleaveModal(false);
-      showToast(`Interleaved ${inserted} page${inserted === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'interleave_pdf', args: { otherPath: source, otherStart: interleaveStartPage, otherEnd: interleaveEndPage }, toast: (n) => `Interleaved ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowInterleaveModal(false) });
   };
 
   const handleSplitOddEven = async () => {
@@ -1810,12 +1634,7 @@ function App() {
 
   const handleDuplicateAllPages = async () => {
     if (!filePath || pageCount === null) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_all_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(pageCount);
-      showToast(`Duplicated all ${copied} pages at end`);
-    });
+    await runEdit({ command: 'duplicate_all_pages', reloadAt: pageCount, toast: (n) => `Duplicated all ${n} pages at end` });
   };
 
   const openPageSizeModal = () => {
@@ -1834,46 +1653,15 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const resized = await invoke<number>('set_page_size', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        preset: pageSizePreset,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageSizeModal(false);
-      showToast(`Resized ${resized} page${resized === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`);
-    });
+    await runEdit({ command: 'set_page_size', args: { startPage: start, endPage: end, preset: pageSizePreset }, toast: (n) => `Resized ${n} page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
   };
 
   const handleSetPageSizeOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const resized = await invoke<number>('set_page_size_odd_pages', {
-        path: filePath,
-        preset: pageSizePreset,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageSizeModal(false);
-      showToast(`Resized ${resized} odd page${resized === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`);
-    });
+    await runEdit({ command: 'set_page_size_odd_pages', args: { preset: pageSizePreset }, toast: (n) => `Resized ${n} odd page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
   };
 
   const handleSetPageSizeEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const resized = await invoke<number>('set_page_size_even_pages', {
-        path: filePath,
-        preset: pageSizePreset,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageSizeModal(false);
-      showToast(`Resized ${resized} even page${resized === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`);
-    });
+    await runEdit({ command: 'set_page_size_even_pages', args: { preset: pageSizePreset }, toast: (n) => `Resized ${n} even page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
   };
 
   const openDecryptModal = () => {
@@ -2171,17 +1959,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const reset = await invoke<number>('reset_rotation_range', {
-        path: filePath,
-        startPage: rotateRangeStartPage,
-        endPage: rotateRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowRotateRangeModal(false);
-      showToast(`Reset rotation on ${reset} page${reset === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'reset_rotation_range', args: { startPage: rotateRangeStartPage, endPage: rotateRangeEndPage }, toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowRotateRangeModal(false) });
   };
 
   const handleRotatePage180Range = async () => {
@@ -2190,17 +1968,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_page_180_range', {
-        path: filePath,
-        startPage: rotateRangeStartPage,
-        endPage: rotateRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowRotateRangeModal(false);
-      showToast(`Rotated ${rotated} page${rotated === 1 ? '' : 's'} 180°`);
-    });
+    await runEdit({ command: 'rotate_page_180_range', args: { startPage: rotateRangeStartPage, endPage: rotateRangeEndPage }, toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 180°`, onSuccess: () => setShowRotateRangeModal(false) });
   };
 
   const openReverseRangeModal = () => {
@@ -2216,17 +1984,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      await invoke('reverse_page_range', {
-        path: filePath,
-        startPage: reverseRangeStartPage,
-        endPage: reverseRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowReverseRangeModal(false);
-      showToast(`Reversed pages ${reverseRangeStartPage + 1}–${reverseRangeEndPage + 1}`);
-    });
+    await runEdit({ command: 'reverse_page_range', args: { startPage: reverseRangeStartPage, endPage: reverseRangeEndPage }, toast: `Reversed pages ${reverseRangeStartPage + 1}–${reverseRangeEndPage + 1}`, onSuccess: () => setShowReverseRangeModal(false) });
   };
 
   const openInsertBlankPagesModal = () => {
@@ -2238,17 +1996,7 @@ function App() {
 
   const handleInsertBlankPages = async () => {
     if (!filePath || insertBlankCount < 1) return;
-    await withLoading(async () => {
-      const inserted = await invoke<number>('insert_blank_pages', {
-        path: filePath,
-        atIndex: insertBlankAtIndex,
-        count: insertBlankCount,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(insertBlankAtIndex);
-      setShowInsertBlankPagesModal(false);
-      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'insert_blank_pages', args: { atIndex: insertBlankAtIndex, count: insertBlankCount }, reloadAt: insertBlankAtIndex, toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'}`, onSuccess: () => setShowInsertBlankPagesModal(false) });
   };
 
   const openCropRangeModal = () => {
@@ -2268,58 +2016,33 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const cropped = await invoke<number>('crop_page_range', {
-        path: filePath,
-        startPage: cropRangeStartPage,
-        endPage: cropRangeEndPage,
-        marginTop: cropMarginTop,
-        marginRight: cropMarginRight,
-        marginBottom: cropMarginBottom,
-        marginLeft: cropMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowCropRangeModal(false);
-      showToast(`Cropped ${cropped} page${cropped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'crop_page_range', args: { startPage: cropRangeStartPage, endPage: cropRangeEndPage, marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
   };
 
   const handleFlattenAllAnnotations = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const removed = await invoke<number>('flatten_all_annotations', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Flattened ${removed} annotation${removed === 1 ? '' : 's'} on all pages`);
-    });
+    await runEdit({ command: 'flatten_all_annotations', toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on all pages` });
   };
 
   const handleClearPdfMetadata = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('clear_pdf_metadata', { path: filePath });
-      markPdfEdited();
-      setMetadataTitle('');
-      setMetadataAuthor('');
-      setMetadataSubject('');
-      setMetadataKeywords('');
-      setMetadataCreator('');
-      setMetadataProducer('');
-      setMetadataCreationDate('');
-      setMetadataModDate('');
-      showToast('Cleared document metadata');
+    await runEdit({
+      command: 'clear_pdf_metadata',
+      skipReload: true,
+      toast: 'Cleared document metadata',
+      onSuccess: () => {
+        setMetadataTitle('');
+        setMetadataAuthor('');
+        setMetadataSubject('');
+        setMetadataKeywords('');
+        setMetadataCreator('');
+        setMetadataProducer('');
+        setMetadataCreationDate('');
+        setMetadataModDate('');
+      },
     });
   };
 
   const handleSortPagesBySize = async (descending: boolean) => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('sort_pages_by_size', { path: filePath, descending });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Sorted pages by size (${descending ? 'largest first' : 'smallest first'})`);
-    });
+    await runEdit({ command: 'sort_pages_by_size', args: { descending }, reloadAt: 0, toast: `Sorted pages by size (${descending ? 'largest first' : 'smallest first'})` });
   };
 
   const openKeepRangeModal = () => {
@@ -2340,16 +2063,12 @@ function App() {
       showToast('Range already includes every page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const deleted = await invoke<number>('keep_page_range', {
-        path: filePath,
-        startPage: keepRangeStartPage,
-        endPage: keepRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(Math.min(keepRangeStartPage, keepCount - 1));
-      setShowKeepRangeModal(false);
-      showToast(`Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`);
+    await runEdit<number>({
+      command: 'keep_page_range',
+      args: { startPage: keepRangeStartPage, endPage: keepRangeEndPage },
+      reloadAt: Math.min(keepRangeStartPage, keepCount - 1),
+      toast: (deleted) => `Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`,
+      onSuccess: () => setShowKeepRangeModal(false),
     });
   };
 
@@ -2371,18 +2090,7 @@ function App() {
       showToast('Target index out of bounds', 'error');
       return;
     }
-    await withLoading(async () => {
-      await invoke('move_page_range', {
-        path: filePath,
-        startPage: moveRangeStartPage,
-        endPage: moveRangeEndPage,
-        toIndex: moveRangeToIndex,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(moveRangeToIndex);
-      setShowMoveRangeModal(false);
-      showToast(`Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to index ${moveRangeToIndex + 1}`);
-    });
+    await runEdit({ command: 'move_page_range', args: { startPage: moveRangeStartPage, endPage: moveRangeEndPage, toIndex: moveRangeToIndex }, reloadAt: moveRangeToIndex, toast: `Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to index ${moveRangeToIndex + 1}`, onSuccess: () => setShowMoveRangeModal(false) });
   };
 
   const handleMovePageRangeToStart = async () => {
@@ -2391,17 +2099,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      await invoke('move_page_range_to_start', {
-        path: filePath,
-        startPage: moveRangeStartPage,
-        endPage: moveRangeEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      setShowMoveRangeModal(false);
-      showToast(`Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to start`);
-    });
+    await runEdit({ command: 'move_page_range_to_start', args: { startPage: moveRangeStartPage, endPage: moveRangeEndPage }, reloadAt: 0, toast: `Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to start`, onSuccess: () => setShowMoveRangeModal(false) });
   };
 
   const handleMovePageRangeToEnd = async () => {
@@ -2410,300 +2108,114 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      await invoke('move_page_range_to_end', {
-        path: filePath,
-        startPage: moveRangeStartPage,
-        endPage: moveRangeEndPage,
-      });
-      markPdfEdited();
-      const rangeLen = moveRangeEndPage - moveRangeStartPage + 1;
-      await reloadOpenPdf(pageCount - rangeLen);
-      setShowMoveRangeModal(false);
-      showToast(`Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to end`);
+    await runEdit({
+      command: 'move_page_range_to_end',
+      args: { startPage: moveRangeStartPage, endPage: moveRangeEndPage },
+      reloadAt: pageCount - (moveRangeEndPage - moveRangeStartPage + 1),
+      toast: `Moved pages ${moveRangeStartPage + 1}–${moveRangeEndPage + 1} to end`,
+      onSuccess: () => setShowMoveRangeModal(false),
     });
   };
 
   const handleRotateOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${rotated} odd page${rotated === 1 ? '' : 's'} 90° CW`);
-    });
+    await runEdit({ command: 'rotate_odd_pages', toast: (n) => `Rotated ${n} odd page${n === 1 ? '' : 's'} 90° CW` });
   };
 
   const handleRotateEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${rotated} even page${rotated === 1 ? '' : 's'} 90° CW`);
-    });
+    await runEdit({ command: 'rotate_even_pages', toast: (n) => `Rotated ${n} even page${n === 1 ? '' : 's'} 90° CW` });
   };
 
   const handleRotateOddPagesCcw = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_odd_pages_ccw', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${rotated} odd page${rotated === 1 ? '' : 's'} 90° CCW`);
-    });
+    await runEdit({ command: 'rotate_odd_pages_ccw', toast: (n) => `Rotated ${n} odd page${n === 1 ? '' : 's'} 90° CCW` });
   };
 
   const handleRotateEvenPagesCcw = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_even_pages_ccw', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${rotated} even page${rotated === 1 ? '' : 's'} 90° CCW`);
-    });
+    await runEdit({ command: 'rotate_even_pages_ccw', toast: (n) => `Rotated ${n} even page${n === 1 ? '' : 's'} 90° CCW` });
   };
 
   const handleResetRotationOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const reset = await invoke<number>('reset_rotation_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Reset rotation on ${reset} odd page${reset === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'reset_rotation_odd_pages', toast: (n) => `Reset rotation on ${n} odd page${n === 1 ? '' : 's'}` });
   };
 
   const handleResetRotationEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const reset = await invoke<number>('reset_rotation_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Reset rotation on ${reset} even page${reset === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'reset_rotation_even_pages', toast: (n) => `Reset rotation on ${n} even page${n === 1 ? '' : 's'}` });
   };
 
   const handleKeepOddPages = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const deleted = await invoke<number>('keep_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Kept odd pages; removed ${deleted}`);
-    });
+    await runEdit({ command: 'keep_odd_pages', reloadAt: 0, toast: (n) => `Kept odd pages; removed ${n}` });
   };
 
   const handleKeepEvenPages = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const deleted = await invoke<number>('keep_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Kept even pages; removed ${deleted}`);
-    });
+    await runEdit({ command: 'keep_even_pages', reloadAt: 0, toast: (n) => `Kept even pages; removed ${n}` });
   };
 
   const handleDeleteOddPages = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const deleted = await invoke<number>('delete_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Deleted ${deleted} odd page${deleted === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'delete_odd_pages', reloadAt: 0, toast: (n) => `Deleted ${n} odd page${n === 1 ? '' : 's'}` });
   };
 
   const handleDeleteEvenPages = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const deleted = await invoke<number>('delete_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Deleted ${deleted} even page${deleted === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'delete_even_pages', reloadAt: 0, toast: (n) => `Deleted ${n} even page${n === 1 ? '' : 's'}` });
   };
 
   const handleRotate180OddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_180_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${rotated} odd page${rotated === 1 ? '' : 's'} 180°`);
-    });
+    await runEdit({ command: 'rotate_180_odd_pages', toast: (n) => `Rotated ${n} odd page${n === 1 ? '' : 's'} 180°` });
   };
 
   const handleRotate180EvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_180_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated ${rotated} even page${rotated === 1 ? '' : 's'} 180°`);
-    });
+    await runEdit({ command: 'rotate_180_even_pages', toast: (n) => `Rotated ${n} even page${n === 1 ? '' : 's'} 180°` });
   };
 
   const handleDuplicateOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf((pageCount ?? 1) - 1);
-      showToast(`Appended ${copied} odd page cop${copied === 1 ? 'y' : 'ies'}`);
-    });
+    await runEdit({ command: 'duplicate_odd_pages', reloadAt: (pageCount ?? 1) - 1, toast: (n) => `Appended ${n} odd page cop${n === 1 ? 'y' : 'ies'}` });
   };
 
   const handleDuplicateEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf((pageCount ?? 1) - 1);
-      showToast(`Appended ${copied} even page cop${copied === 1 ? 'y' : 'ies'}`);
-    });
+    await runEdit({ command: 'duplicate_even_pages', reloadAt: (pageCount ?? 1) - 1, toast: (n) => `Appended ${n} even page cop${n === 1 ? 'y' : 'ies'}` });
   };
 
   const handleInsertBlankBetweenPages = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      const inserted = await invoke<number>('insert_blank_between_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage * 2);
-      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} between pages`);
-    });
+    await runEdit({ command: 'insert_blank_between_pages', reloadAt: currentPage * 2, toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} between pages` });
   };
 
   const handleFlattenOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const removed = await invoke<number>('flatten_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Flattened ${removed} annotation${removed === 1 ? '' : 's'} on odd pages`);
-    });
+    await runEdit({ command: 'flatten_odd_pages', toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on odd pages` });
   };
 
   const handleFlattenEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const removed = await invoke<number>('flatten_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Flattened ${removed} annotation${removed === 1 ? '' : 's'} on even pages`);
-    });
+    await runEdit({ command: 'flatten_even_pages', toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on even pages` });
   };
 
   const handleRotateAllPages180 = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const rotated = await invoke<number>('rotate_all_pages_180', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Rotated all ${rotated} page${rotated === 1 ? '' : 's'} 180°`);
-    });
+    await runEdit({ command: 'rotate_all_pages_180', toast: (n) => `Rotated all ${n} page${n === 1 ? '' : 's'} 180°` });
   };
 
   const handleCropOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const cropped = await invoke<number>('crop_odd_pages', {
-        path: filePath,
-        marginTop: cropMarginTop,
-        marginRight: cropMarginRight,
-        marginBottom: cropMarginBottom,
-        marginLeft: cropMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowCropRangeModal(false);
-      showToast(`Cropped ${cropped} odd page${cropped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'crop_odd_pages', args: { marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
   };
 
   const handleCropEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const cropped = await invoke<number>('crop_even_pages', {
-        path: filePath,
-        marginTop: cropMarginTop,
-        marginRight: cropMarginRight,
-        marginBottom: cropMarginBottom,
-        marginLeft: cropMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowCropRangeModal(false);
-      showToast(`Cropped ${cropped} even page${cropped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'crop_even_pages', args: { marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
   };
 
   const handleExpandOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const expanded = await invoke<number>('expand_odd_pages', {
-        path: filePath,
-        marginTop: expandMarginTop,
-        marginRight: expandMarginRight,
-        marginBottom: expandMarginBottom,
-        marginLeft: expandMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowExpandMarginsModal(false);
-      showToast(`Expanded margins on ${expanded} odd page${expanded === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'expand_odd_pages', args: { marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
   };
 
   const handleExpandEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const expanded = await invoke<number>('expand_even_pages', {
-        path: filePath,
-        marginTop: expandMarginTop,
-        marginRight: expandMarginRight,
-        marginBottom: expandMarginBottom,
-        marginLeft: expandMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowExpandMarginsModal(false);
-      showToast(`Expanded margins on ${expanded} even page${expanded === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'expand_even_pages', args: { marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
   };
 
   const handleShrinkOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const shrunk = await invoke<number>('shrink_odd_pages', {
-        path: filePath,
-        marginTop: shrinkMarginTop,
-        marginRight: shrinkMarginRight,
-        marginBottom: shrinkMarginBottom,
-        marginLeft: shrinkMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowShrinkMarginsModal(false);
-      showToast(`Shrunk margins on ${shrunk} odd page${shrunk === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'shrink_odd_pages', args: { marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
   };
 
   const handleShrinkEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const shrunk = await invoke<number>('shrink_even_pages', {
-        path: filePath,
-        marginTop: shrinkMarginTop,
-        marginRight: shrinkMarginRight,
-        marginBottom: shrinkMarginBottom,
-        marginLeft: shrinkMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowShrinkMarginsModal(false);
-      showToast(`Shrunk margins on ${shrunk} even page${shrunk === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'shrink_even_pages', args: { marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
   };
 
   const handleReverseOddPages = async () => {
@@ -2736,84 +2248,38 @@ function App() {
 
   const handleMoveOddPagesToStart = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      await invoke('move_odd_pages_to_start', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast('Moved odd pages to start');
-    });
+    await runEdit({ command: 'move_odd_pages_to_start', reloadAt: 0, toast: 'Moved odd pages to start' });
   };
 
   const handleMoveEvenPagesToStart = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      await invoke('move_even_pages_to_start', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast('Moved even pages to start');
-    });
+    await runEdit({ command: 'move_even_pages_to_start', reloadAt: 0, toast: 'Moved even pages to start' });
   };
 
   const handleMoveOddPagesToEnd = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      await invoke('move_odd_pages_to_end', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast('Moved odd pages to end');
-    });
+    await runEdit({ command: 'move_odd_pages_to_end', reloadAt: 0, toast: 'Moved odd pages to end' });
   };
 
   const handleMoveEvenPagesToEnd = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
-    await withLoading(async () => {
-      await invoke('move_even_pages_to_end', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast('Moved even pages to end');
-    });
+    await runEdit({ command: 'move_even_pages_to_end', reloadAt: 0, toast: 'Moved even pages to end' });
   };
 
   const handleClearCropOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const cleared = await invoke<number>('clear_crop_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowCropModal(false);
-      showToast(`Cleared crop on ${cleared} odd page${cleared === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'clear_crop_odd_pages', toast: (n) => `Cleared crop on ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropModal(false) });
   };
 
   const handleClearCropEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const cleared = await invoke<number>('clear_crop_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowCropModal(false);
-      showToast(`Cleared crop on ${cleared} even page${cleared === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'clear_crop_even_pages', toast: (n) => `Cleared crop on ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropModal(false) });
   };
 
   const handleDuplicateOddPagesBefore = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_odd_pages_before', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Inserted ${copied} odd page cop${copied === 1 ? 'y' : 'ies'} before originals`);
-    });
+    await runEdit({ command: 'duplicate_odd_pages_before', toast: (n) => `Inserted ${n} odd page cop${n === 1 ? 'y' : 'ies'} before originals` });
   };
 
   const handleDuplicateEvenPagesBefore = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_even_pages_before', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Inserted ${copied} even page cop${copied === 1 ? 'y' : 'ies'} before originals`);
-    });
+    await runEdit({ command: 'duplicate_even_pages_before', toast: (n) => `Inserted ${n} even page cop${n === 1 ? 'y' : 'ies'} before originals` });
   };
 
   const handleSortOddPagesByRotation = async (descending: boolean) => {
@@ -2873,13 +2339,7 @@ function App() {
   };
 
   const handleSortPagesByRotation = async (descending: boolean) => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('sort_pages_by_rotation', { path: filePath, descending });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Sorted pages by rotation (${descending ? 'largest first' : 'smallest first'})`);
-    });
+    await runEdit({ command: 'sort_pages_by_rotation', args: { descending }, reloadAt: 0, toast: `Sorted pages by rotation (${descending ? 'largest first' : 'smallest first'})` });
   };
 
   const openSplitAtModal = () => {
@@ -3000,17 +2460,12 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const added = await invoke<number>('prepend_pdf', {
-        path: filePath,
-        sourcePath: source,
-        sourceStart: prependStartPage,
-        sourceEnd: prependEndPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage + added);
-      setShowPrependModal(false);
-      showToast(`Prepended ${added} page${added === 1 ? '' : 's'}`);
+    await runEdit<number>({
+      command: 'prepend_pdf',
+      args: { sourcePath: source, sourceStart: prependStartPage, sourceEnd: prependEndPage },
+      reloadAt: (added) => currentPage + added,
+      toast: (added) => `Prepended ${added} page${added === 1 ? '' : 's'}`,
+      onSuccess: () => setShowPrependModal(false),
     });
   };
 
@@ -3048,46 +2503,15 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const bordered = await invoke<number>('add_page_border', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        inset: pageBorderInset,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageBorderModal(false);
-      showToast(`Added border to ${bordered} page${bordered === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_border', args: { startPage: start, endPage: end, inset: pageBorderInset }, toast: (n) => `Added border to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
   };
 
   const handleAddPageBorderOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const bordered = await invoke<number>('add_page_border_odd_pages', {
-        path: filePath,
-        inset: pageBorderInset,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageBorderModal(false);
-      showToast(`Added border to ${bordered} odd page${bordered === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_border_odd_pages', args: { inset: pageBorderInset }, toast: (n) => `Added border to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
   };
 
   const handleAddPageBorderEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const bordered = await invoke<number>('add_page_border_even_pages', {
-        path: filePath,
-        inset: pageBorderInset,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageBorderModal(false);
-      showToast(`Added border to ${bordered} even page${bordered === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_border_even_pages', args: { inset: pageBorderInset }, toast: (n) => `Added border to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
   };
 
   const openBookmarkAllModal = () => {
@@ -3097,137 +2521,55 @@ function App() {
   };
 
   const handleBookmarkAllPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const count = await invoke<number>('bookmark_all_pages', {
-        path: filePath,
-        prefix: bookmarkAllPrefix.trim() || 'Page ',
-      });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      setShowBookmarkAllModal(false);
-      showToast(`Added ${count} bookmark${count === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'bookmark_all_pages', args: { prefix: bookmarkAllPrefix.trim() || 'Page ' }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: (n) => `Added ${n} bookmark${n === 1 ? '' : 's'}`, onSuccess: () => setShowBookmarkAllModal(false) });
   };
 
   const handleBookmarkOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const count = await invoke<number>('bookmark_odd_pages', {
-        path: filePath,
-        prefix: bookmarkAllPrefix.trim() || 'Page ',
-      });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      setShowBookmarkAllModal(false);
-      showToast(`Added ${count} odd bookmark${count === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'bookmark_odd_pages', args: { prefix: bookmarkAllPrefix.trim() || 'Page ' }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: (n) => `Added ${n} odd bookmark${n === 1 ? '' : 's'}`, onSuccess: () => setShowBookmarkAllModal(false) });
   };
 
   const handleBookmarkEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const count = await invoke<number>('bookmark_even_pages', {
-        path: filePath,
-        prefix: bookmarkAllPrefix.trim() || 'Page ',
-      });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      setShowBookmarkAllModal(false);
-      showToast(`Added ${count} even bookmark${count === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'bookmark_even_pages', args: { prefix: bookmarkAllPrefix.trim() || 'Page ' }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: (n) => `Added ${n} even bookmark${n === 1 ? '' : 's'}`, onSuccess: () => setShowBookmarkAllModal(false) });
   };
 
   const handleInsertBlankBeforeOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const inserted = await invoke<number>('insert_blank_before_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} before odd pages`);
-    });
+    await runEdit({ command: 'insert_blank_before_odd_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} before odd pages` });
   };
 
   const handleInsertBlankBeforeEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const inserted = await invoke<number>('insert_blank_before_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} before even pages`);
-    });
+    await runEdit({ command: 'insert_blank_before_even_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} before even pages` });
   };
 
   const handleInsertBlankAfterOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const inserted = await invoke<number>('insert_blank_after_odd_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} after odd pages`);
-    });
+    await runEdit({ command: 'insert_blank_after_odd_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} after odd pages` });
   };
 
   const handleInsertBlankAfterEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const inserted = await invoke<number>('insert_blank_after_even_pages', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Inserted ${inserted} blank page${inserted === 1 ? '' : 's'} after even pages`);
-    });
+    await runEdit({ command: 'insert_blank_after_even_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} after even pages` });
   };
 
   const handleDuplicateOddPagesToEnd = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_odd_pages_to_end', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Moved ${copied} odd page cop${copied === 1 ? 'y' : 'ies'} to end`);
-    });
+    await runEdit({ command: 'duplicate_odd_pages_to_end', toast: (n) => `Moved ${n} odd page cop${n === 1 ? 'y' : 'ies'} to end` });
   };
 
   const handleDuplicateEvenPagesToEnd = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_even_pages_to_end', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Moved ${copied} even page cop${copied === 1 ? 'y' : 'ies'} to end`);
-    });
+    await runEdit({ command: 'duplicate_even_pages_to_end', toast: (n) => `Moved ${n} even page cop${n === 1 ? 'y' : 'ies'} to end` });
   };
 
   const handleDuplicateOddPagesToStart = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_odd_pages_to_start', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Inserted ${copied} odd page cop${copied === 1 ? 'y' : 'ies'} at start`);
-    });
+    await runEdit({ command: 'duplicate_odd_pages_to_start', reloadAt: 0, toast: (n) => `Inserted ${n} odd page cop${n === 1 ? 'y' : 'ies'} at start` });
   };
 
   const handleDuplicateEvenPagesToStart = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const copied = await invoke<number>('duplicate_even_pages_to_start', { path: filePath });
-      markPdfEdited();
-      await reloadOpenPdf(0);
-      showToast(`Inserted ${copied} even page cop${copied === 1 ? 'y' : 'ies'} at start`);
-    });
+    await runEdit({ command: 'duplicate_even_pages_to_start', reloadAt: 0, toast: (n) => `Inserted ${n} even page cop${n === 1 ? 'y' : 'ies'} at start` });
   };
 
   const handleDuplicatePageToEnd = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const last = await invoke<number>('duplicate_page_to_end', {
-        path: filePath,
-        pageIndex: currentPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(last);
-      showToast(`Duplicated page ${currentPage + 1} to end`);
+    await runEdit<number>({
+      command: 'duplicate_page_to_end',
+      args: { pageIndex: currentPage },
+      reloadAt: (last) => last,
+      toast: () => `Duplicated page ${currentPage + 1} to end`,
     });
   };
 
@@ -3262,21 +2604,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const shrunk = await invoke<number>('shrink_page_margins', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        marginTop: shrinkMarginTop,
-        marginRight: shrinkMarginRight,
-        marginBottom: shrinkMarginBottom,
-        marginLeft: shrinkMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowShrinkMarginsModal(false);
-      showToast(`Shrunk margins on ${shrunk} page${shrunk === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'shrink_page_margins', args: { startPage: start, endPage: end, marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
   };
 
   const handleExpandPageMargins = async () => {
@@ -3286,21 +2614,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const expanded = await invoke<number>('expand_page_margins', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        marginTop: expandMarginTop,
-        marginRight: expandMarginRight,
-        marginBottom: expandMarginBottom,
-        marginLeft: expandMarginLeft,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowExpandMarginsModal(false);
-      showToast(`Expanded margins on ${expanded} page${expanded === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'expand_page_margins', args: { startPage: start, endPage: end, marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
   };
 
   const openInsertImagePageModal = () => {
@@ -3313,16 +2627,12 @@ function App() {
   const handleInsertImagePage = async () => {
     const image = insertImagePagePath.trim();
     if (!filePath || !image) return;
-    await withLoading(async () => {
-      const newIndex = await invoke<number>('insert_image_page', {
-        path: filePath,
-        atIndex: insertImageAtIndex,
-        imagePath: image,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(newIndex);
-      setShowInsertImagePageModal(false);
-      showToast(`Image page inserted at position ${newIndex + 1}`);
+    await runEdit<number>({
+      command: 'insert_image_page',
+      args: { atIndex: insertImageAtIndex, imagePath: image },
+      reloadAt: (newIndex) => newIndex,
+      toast: (newIndex) => `Image page inserted at position ${newIndex + 1}`,
+      onSuccess: () => setShowInsertImagePageModal(false),
     });
   };
 
@@ -3401,46 +2711,15 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_numbers', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-        prefix: pageNumbersPrefix || null,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageNumbersModal(false);
-      showToast(`Added page numbers to ${stamped} page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_numbers', args: { startPage: start, endPage: end, prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
   };
 
   const handleAddPageNumbersOddPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_numbers_odd_pages', {
-        path: filePath,
-        prefix: pageNumbersPrefix || null,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageNumbersModal(false);
-      showToast(`Added page numbers to ${stamped} odd page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_numbers_odd_pages', args: { prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
   };
 
   const handleAddPageNumbersEvenPages = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_page_numbers_even_pages', {
-        path: filePath,
-        prefix: pageNumbersPrefix || null,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowPageNumbersModal(false);
-      showToast(`Added page numbers to ${stamped} even page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_page_numbers_even_pages', args: { prefix: pageNumbersPrefix || null }, toast: (n) => `Added page numbers to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageNumbersModal(false) });
   };
 
   const openWatermarkModal = () => {
@@ -3459,46 +2738,17 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_text_watermark', {
-        path: filePath,
-        text: watermarkText.trim(),
-        startPage: start,
-        endPage: end,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowWatermarkModal(false);
-      showToast(`Watermarked ${stamped} page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_text_watermark', args: { text: watermarkText.trim(), startPage: start, endPage: end }, toast: (n) => `Watermarked ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
   };
 
   const handleAddWatermarkOddPages = async () => {
     if (!filePath || !watermarkText.trim()) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_text_watermark_odd_pages', {
-        path: filePath,
-        text: watermarkText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowWatermarkModal(false);
-      showToast(`Watermarked ${stamped} odd page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_text_watermark_odd_pages', args: { text: watermarkText.trim() }, toast: (n) => `Watermarked ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
   };
 
   const handleAddWatermarkEvenPages = async () => {
     if (!filePath || !watermarkText.trim()) return;
-    await withLoading(async () => {
-      const stamped = await invoke<number>('add_text_watermark_even_pages', {
-        path: filePath,
-        text: watermarkText.trim(),
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowWatermarkModal(false);
-      showToast(`Watermarked ${stamped} even page${stamped === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'add_text_watermark_even_pages', args: { text: watermarkText.trim() }, toast: (n) => `Watermarked ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowWatermarkModal(false) });
   };
 
   const openCropModal = () => {
@@ -3545,13 +2795,7 @@ function App() {
   };
 
   const handleClearPageCrop = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('clear_page_crop', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      showToast(`Cleared crop on page ${currentPage + 1}`);
-    });
+    await runEdit({ command: 'clear_page_crop', args: { pageIndex: currentPage }, toast: `Cleared crop on page ${currentPage + 1}` });
   };
 
   const openFlattenModal = () => {
@@ -3569,17 +2813,7 @@ function App() {
       showToast('From page must be ≤ To page', 'error');
       return;
     }
-    await withLoading(async () => {
-      const removed = await invoke<number>('flatten_annotations', {
-        path: filePath,
-        startPage: start,
-        endPage: end,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(currentPage);
-      setShowFlattenModal(false);
-      showToast(`Removed ${removed} annotation${removed === 1 ? '' : 's'}`);
-    });
+    await runEdit({ command: 'flatten_annotations', args: { startPage: start, endPage: end }, toast: (n) => `Removed ${n} annotation${n === 1 ? '' : 's'}`, onSuccess: () => setShowFlattenModal(false) });
   };
 
   const openAddBookmarkModal = () => {
@@ -3590,17 +2824,7 @@ function App() {
 
   const handleAddBookmark = async () => {
     if (!filePath || !bookmarkTitle.trim()) return;
-    await withLoading(async () => {
-      await invoke('add_pdf_bookmark', {
-        path: filePath,
-        title: bookmarkTitle.trim(),
-        pageIndex: currentPage,
-      });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      setShowAddBookmarkModal(false);
-      showToast('Bookmark added');
-    });
+    await runEdit({ command: 'add_pdf_bookmark', args: { title: bookmarkTitle.trim(), pageIndex: currentPage }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: 'Bookmark added', onSuccess: () => setShowAddBookmarkModal(false) });
   };
 
   const openRenameBookmarkModal = (index: number, title: string) => {
@@ -3611,26 +2835,15 @@ function App() {
 
   const handleRenameBookmark = async () => {
     if (!filePath || !renameBookmarkTitle.trim()) return;
-    await withLoading(async () => {
-      await invoke('rename_pdf_bookmark', {
-        path: filePath,
-        bookmarkIndex: renameBookmarkIndex,
-        title: renameBookmarkTitle.trim(),
-      });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      setShowRenameBookmarkModal(false);
-      showToast('Bookmark renamed');
-    });
+    await runEdit({ command: 'rename_pdf_bookmark', args: { bookmarkIndex: renameBookmarkIndex, title: renameBookmarkTitle.trim() }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: 'Bookmark renamed', onSuccess: () => setShowRenameBookmarkModal(false) });
   };
 
   const handleRemoveBookmark = async (index: number) => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('remove_pdf_bookmark', { path: filePath, bookmarkIndex: index });
-      markPdfEdited();
-      await loadPdfBookmarks(filePath);
-      showToast('Bookmark removed');
+    await runEdit({
+      command: 'remove_pdf_bookmark',
+      args: { bookmarkIndex: index },
+      afterEdit: async () => { await loadPdfBookmarks(filePath); },
+      toast: 'Bookmark removed',
     });
   };
 
@@ -3717,26 +2930,15 @@ function App() {
   };
 
   const handleRotatePage = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('rotate_page', { path: filePath, pageIndex: currentPage });
-      markPdfEdited();
-      await renderPage(filePath, currentPage);
-      await loadThumbnails(filePath);
-      showToast('Page rotated 90°');
-    });
+    await runEdit({ command: 'rotate_page', args: { pageIndex: currentPage }, toast: 'Page rotated 90°' });
   };
 
   const handleDuplicatePageBefore = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const newIndex = await invoke<number>('duplicate_page_before', {
-        path: filePath,
-        pageIndex: currentPage,
-      });
-      markPdfEdited();
-      await reloadOpenPdf(newIndex);
-      showToast(`Duplicated page ${currentPage + 1} before itself`);
+    await runEdit<number>({
+      command: 'duplicate_page_before',
+      args: { pageIndex: currentPage },
+      reloadAt: (newIndex) => newIndex,
+      toast: () => `Duplicated page ${currentPage + 1} before itself`,
     });
   };
 
@@ -4095,19 +3297,7 @@ function App() {
         h: Math.abs(coords.y - start.y),
       };
       if (rect.w < 5 || rect.h < 5) return;
-      void withLoading(async () => {
-        await invoke('add_redaction', {
-          path: filePath,
-          pageIndex: currentPage,
-          x1: rect.x,
-          y1: rect.y,
-          x2: rect.x + rect.w,
-          y2: rect.y + rect.h,
-        });
-        markPdfEdited();
-        await refreshAnnotations();
-        showToast('Redaction added');
-      });
+      void runEdit({ command: 'add_redaction', args: { pageIndex: currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Redaction added' });
       return;
     }
     if (stampMode) {
@@ -4151,19 +3341,7 @@ function App() {
       if (shapeKind === 'line') {
         const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
         if (dist < 5) return;
-        void withLoading(async () => {
-          await invoke('add_line', {
-            path: filePath,
-            pageIndex: currentPage,
-            x1: start.x,
-            y1: start.y,
-            x2: coords.x,
-            y2: coords.y,
-          });
-          markPdfEdited();
-          await refreshAnnotations();
-          showToast('Line added');
-        });
+        void runEdit({ command: 'add_line', args: { pageIndex: currentPage, x1: start.x, y1: start.y, x2: coords.x, y2: coords.y }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Line added' });
         return;
       }
       const rect = {
@@ -4215,19 +3393,7 @@ function App() {
       h: Math.abs(coords.y - start.y),
     };
     if (rect.w < 5 || rect.h < 5) return;
-    void withLoading(async () => {
-      await invoke('add_highlight', {
-        path: filePath,
-        pageIndex: currentPage,
-        x1: rect.x,
-        y1: rect.y,
-        x2: rect.x + rect.w,
-        y2: rect.y + rect.h,
-      });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Highlight added');
-    });
+    void runEdit({ command: 'add_highlight', args: { pageIndex: currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Highlight added' });
   };
 
   const handlePageMouseMove = (e: React.MouseEvent) => {
@@ -4267,11 +3433,11 @@ function App() {
   };
 
   const removeRedaction = (index: number) => {
-    void withLoading(async () => {
-      await invoke('remove_redaction', { path: filePath, pageIndex: currentPage, index });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Redaction removed');
+    void runEdit({
+      command: 'remove_redaction',
+      args: { pageIndex: currentPage, index },
+      afterEdit: async () => { await refreshAnnotations(); },
+      toast: 'Redaction removed',
     });
   };
 
@@ -4297,16 +3463,7 @@ function App() {
 
   const commitInkStroke = (points: number[]) => {
     if (points.length < 4) return;
-    void withLoading(async () => {
-      await invoke('add_ink_stroke', {
-        path: filePath,
-        pageIndex: currentPage,
-        points,
-      });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Drawing added');
-    });
+    void runEdit({ command: 'add_ink_stroke', args: { pageIndex: currentPage, points }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Drawing added' });
   };
 
   const handleDrawMouseDown = (e: React.MouseEvent) => {
@@ -4326,26 +3483,12 @@ function App() {
   };
 
   const removeInkStroke = (inkIndex: number) => {
-    void withLoading(async () => {
-      await invoke('remove_ink_stroke', {
-        path: filePath, pageIndex: currentPage, index: inkIndex,
-      });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Drawing removed');
-    });
+    void runEdit({ command: 'remove_ink_stroke', args: { pageIndex: currentPage, index: inkIndex }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Drawing removed' });
   };
 
   // Click an existing highlight (while in highlight mode) to remove it.
   const removeHighlight = (highlightIndex: number) => {
-    void withLoading(async () => {
-      await invoke('remove_highlight', {
-        path: filePath, pageIndex: currentPage, index: highlightIndex,
-      });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Highlight removed');
-    });
+    void runEdit({ command: 'remove_highlight', args: { pageIndex: currentPage, index: highlightIndex }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Highlight removed' });
   };
 
   const openImageInsertModal = () => {
@@ -4680,14 +3823,7 @@ function App() {
   };
 
   const removeTextNote = (noteIndex: number) => {
-    void withLoading(async () => {
-      await invoke('remove_text_note', {
-        path: filePath, pageIndex: currentPage, index: noteIndex,
-      });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Note removed');
-    });
+    void runEdit({ command: 'remove_text_note', args: { pageIndex: currentPage, index: noteIndex }, afterEdit: async () => { await refreshAnnotations(); }, toast: 'Note removed' });
   };
 
   const submitTextNote = () => {
@@ -5638,20 +4774,19 @@ function App() {
   };
 
   const handleSaveMetadata = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      await invoke('set_pdf_metadata', {
-        path: filePath,
+    await runEdit({
+      command: 'set_pdf_metadata',
+      args: {
         title: metadataTitle.trim() || null,
         author: metadataAuthor.trim() || null,
         subject: metadataSubject.trim() || null,
         keywords: metadataKeywords.trim() || null,
         creator: metadataCreator.trim() || null,
         producer: metadataProducer.trim() || null,
-      });
-      markPdfEdited();
-      setShowMetadataModal(false);
-      showToast('Document metadata updated');
+      },
+      skipReload: true,
+      toast: 'Document metadata updated',
+      onSuccess: () => setShowMetadataModal(false),
     });
   };
 
@@ -8370,25 +7505,6 @@ function App() {
           <img key={i} src={src} className="print-page" alt={`Print page ${i + 1}`} />
         ))}
       </div>
-    </div>
-  );
-}
-
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Toast({ notification }: { notification: { message: string; type: 'success' | 'error' } | null }) {
-  if (!notification) return null;
-  return (
-    <div className={`toast toast-${notification.type}`}>
-      {notification.message}
     </div>
   );
 }
