@@ -6,6 +6,7 @@ import parityBatchCommands from './parity_batch_commands.json';
 import pandaWelcome from './assets/panda.png';
 import { TitleBar } from './chrome/TitleBar';
 import { buildAppMenus } from './menu/buildAppMenus';
+import { buildAppMenuContext } from './menu/buildAppMenuContext';
 import { MenuChrome } from './menu/MenuChrome';
 import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { Modal } from './ui/Modal';
@@ -34,6 +35,9 @@ import { PageFooterModal } from './modals/PageFooterModal';
 import { PageHeaderModal } from './modals/PageHeaderModal';
 import { PageNumbersModal } from './modals/PageNumbersModal';
 import { WatermarkModal } from './modals/WatermarkModal';
+import { PageBorderModal } from './modals/PageBorderModal';
+import { type PageSizePreset, PageSizeModal } from './modals/PageSizeModal';
+import { runAnnotationRemove } from './pdf/runAnnotationEdit';
 
 const MIN_ZOOM = 0.25; // 25%
 const MAX_ZOOM = 4; // 400%
@@ -237,7 +241,6 @@ interface PdfDocumentMetadata {
 
 type PdfBrowserTarget = 'open' | 'insert' | 'merge' | 'replace' | 'interleave' | 'prepend';
 type PngExportScope = PageRangeScope;
-type PageSizePreset = 'letter' | 'a4' | 'legal';
 
 interface PdfBrowserEntry {
   name: string;
@@ -3083,24 +3086,23 @@ function App() {
     });
   };
 
+  const annotationEditDeps = {
+    filePath,
+    currentPage,
+    withLoading,
+    markPdfEdited,
+    refreshAnnotations,
+    showToast,
+  };
+
   const removeStamp = (kind: StampKind, index: number) => {
     const command = kind === 'text' ? 'remove_text_stamp' : 'remove_image_stamp';
-    void withLoading(async () => {
-      await invoke(command, { path: filePath, pageIndex: currentPage, index });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Stamp removed');
-    });
+    void runAnnotationRemove(annotationEditDeps, { command, index, toast: 'Stamp removed' });
   };
 
   const removeShape = (subtype: 'Square' | 'Circle' | 'Line', index: number) => {
     const command = subtype === 'Square' ? 'remove_square' : subtype === 'Circle' ? 'remove_circle' : 'remove_line';
-    void withLoading(async () => {
-      await invoke(command, { path: filePath, pageIndex: currentPage, index });
-      markPdfEdited();
-      await refreshAnnotations();
-      showToast('Shape removed');
-    });
+    void runAnnotationRemove(annotationEditDeps, { command, index, toast: 'Shape removed' });
   };
 
   const commitInkStroke = (points: number[]) => {
@@ -4483,7 +4485,7 @@ function App() {
     }
   };
 
-  const appMenus = buildAppMenus({
+  const appMenus = buildAppMenus(buildAppMenuContext({
     hasPdf: !!filePath,
     isDirty,
     canUndo,
@@ -4513,64 +4515,64 @@ function App() {
     handlePrint,
     openSearchModal,
     handleRotatePage,
-    handleRotatePageCcw: () => void handleRotatePageCcw(),
-    handleResetPageRotation: () => void handleResetPageRotation(),
-    handleRotatePage180: () => void handleRotatePage180(),
-    handleRotateAllPages: () => void handleRotateAllPages(),
-    handleRotateAllPagesCcw: () => void handleRotateAllPagesCcw(),
-    handleRotateAllPages180: () => void handleRotateAllPages180(),
-    handleRotateOddPages: () => void handleRotateOddPages(),
-    handleRotateEvenPages: () => void handleRotateEvenPages(),
-    handleRotateOddPagesCcw: () => void handleRotateOddPagesCcw(),
-    handleRotateEvenPagesCcw: () => void handleRotateEvenPagesCcw(),
-    handleRotate180OddPages: () => void handleRotate180OddPages(),
-    handleRotate180EvenPages: () => void handleRotate180EvenPages(),
-    handleResetRotationOddPages: () => void handleResetRotationOddPages(),
-    handleResetRotationEvenPages: () => void handleResetRotationEvenPages(),
-    handleResetAllRotations: () => void handleResetAllRotations(),
+    handleRotatePageCcw,
+    handleResetPageRotation,
+    handleRotatePage180,
+    handleRotateAllPages,
+    handleRotateAllPagesCcw,
+    handleRotateAllPages180,
+    handleRotateOddPages,
+    handleRotateEvenPages,
+    handleRotateOddPagesCcw,
+    handleRotateEvenPagesCcw,
+    handleRotate180OddPages,
+    handleRotate180EvenPages,
+    handleResetRotationOddPages,
+    handleResetRotationEvenPages,
+    handleResetAllRotations,
     openRotateRangeModal,
     handleDuplicatePage,
-    handleDuplicatePageBefore: () => void handleDuplicatePageBefore(),
+    handleDuplicatePageBefore,
     openDuplicateRangeModal,
     openParityRangeModal,
     openMoveRangeModal,
     openKeepRangeModal,
-    handleKeepOddPages: () => void handleKeepOddPages(),
-    handleKeepEvenPages: () => void handleKeepEvenPages(),
-    handleDeleteOddPages: () => void handleDeleteOddPages(),
-    handleDeleteEvenPages: () => void handleDeleteEvenPages(),
-    handleAddBlankPage: () => void handleAddBlankPage(),
-    handleAddBlankPageBefore: () => void handleAddBlankPageBefore(),
+    handleKeepOddPages,
+    handleKeepEvenPages,
+    handleDeleteOddPages,
+    handleDeleteEvenPages,
+    handleAddBlankPage,
+    handleAddBlankPageBefore,
     openInsertBlankPagesModal,
-    handleInsertBlankBetweenPages: () => void handleInsertBlankBetweenPages(),
-    handleInsertBlankBeforeOddPages: () => void handleInsertBlankBeforeOddPages(),
-    handleInsertBlankBeforeEvenPages: () => void handleInsertBlankBeforeEvenPages(),
-    handleInsertBlankAfterOddPages: () => void handleInsertBlankAfterOddPages(),
-    handleInsertBlankAfterEvenPages: () => void handleInsertBlankAfterEvenPages(),
-    handleMovePageToFirst: () => void handleMovePageToFirst(),
-    handleMovePageToLast: () => void handleMovePageToLast(),
-    handleMovePageUp: () => void handleMovePageUp(),
-    handleMovePageDown: () => void handleMovePageDown(),
+    handleInsertBlankBetweenPages,
+    handleInsertBlankBeforeOddPages,
+    handleInsertBlankBeforeEvenPages,
+    handleInsertBlankAfterOddPages,
+    handleInsertBlankAfterEvenPages,
+    handleMovePageToFirst,
+    handleMovePageToLast,
+    handleMovePageUp,
+    handleMovePageDown,
     openSwapPagesModal,
-    handleReversePages: () => void handleReversePages(),
+    handleReversePages,
     openReverseRangeModal,
-    handleReverseOddPages: () => void handleReverseOddPages(),
-    handleReverseEvenPages: () => void handleReverseEvenPages(),
-    handleMoveOddPagesToStart: () => void handleMoveOddPagesToStart(),
-    handleMoveEvenPagesToStart: () => void handleMoveEvenPagesToStart(),
-    handleMoveOddPagesToEnd: () => void handleMoveOddPagesToEnd(),
-    handleMoveEvenPagesToEnd: () => void handleMoveEvenPagesToEnd(),
-    handleSplitOddEven: () => void handleSplitOddEven(),
-    handleDuplicateAllPages: () => void handleDuplicateAllPages(),
-    handleDuplicatePageToEnd: () => void handleDuplicatePageToEnd(),
-    handleDuplicateOddPages: () => void handleDuplicateOddPages(),
-    handleDuplicateEvenPages: () => void handleDuplicateEvenPages(),
-    handleDuplicateOddPagesBefore: () => void handleDuplicateOddPagesBefore(),
-    handleDuplicateEvenPagesBefore: () => void handleDuplicateEvenPagesBefore(),
-    handleDuplicateOddPagesToEnd: () => void handleDuplicateOddPagesToEnd(),
-    handleDuplicateEvenPagesToEnd: () => void handleDuplicateEvenPagesToEnd(),
-    handleDuplicateOddPagesToStart: () => void handleDuplicateOddPagesToStart(),
-    handleDuplicateEvenPagesToStart: () => void handleDuplicateEvenPagesToStart(),
+    handleReverseOddPages,
+    handleReverseEvenPages,
+    handleMoveOddPagesToStart,
+    handleMoveEvenPagesToStart,
+    handleMoveOddPagesToEnd,
+    handleMoveEvenPagesToEnd,
+    handleSplitOddEven,
+    handleDuplicateAllPages,
+    handleDuplicatePageToEnd,
+    handleDuplicateOddPages,
+    handleDuplicateEvenPages,
+    handleDuplicateOddPagesBefore,
+    handleDuplicateEvenPagesBefore,
+    handleDuplicateOddPagesToEnd,
+    handleDuplicateEvenPagesToEnd,
+    handleDuplicateOddPagesToStart,
+    handleDuplicateEvenPagesToStart,
     openDeleteModal,
     openDeleteRangeModal,
     openDeleteNthModal,
@@ -4599,22 +4601,22 @@ function App() {
     openWatermarkModal,
     openCropModal,
     openCropRangeModal,
-    handleCropOddPages: () => void handleCropOddPages(),
-    handleCropEvenPages: () => void handleCropEvenPages(),
+    handleCropOddPages,
+    handleCropEvenPages,
     openExpandMarginsModal,
     openShrinkMarginsModal,
     openPageBorderModal,
     openFlattenModal,
-    handleFlattenAllAnnotations: () => void handleFlattenAllAnnotations(),
-    handleFlattenOddPages: () => void handleFlattenOddPages(),
-    handleFlattenEvenPages: () => void handleFlattenEvenPages(),
-    handleSortPagesBySize: (desc) => void handleSortPagesBySize(desc),
-    handleSortOddPagesBySize: (desc) => void handleSortOddPagesBySize(desc),
-    handleSortEvenPagesBySize: (desc) => void handleSortEvenPagesBySize(desc),
-    handleSortPagesByRotation: (desc) => void handleSortPagesByRotation(desc),
-    handleSortOddPagesByRotation: (desc) => void handleSortOddPagesByRotation(desc),
-    handleSortEvenPagesByRotation: (desc) => void handleSortEvenPagesByRotation(desc),
-    openMetadataModal: () => void openMetadataModal(),
+    handleFlattenAllAnnotations,
+    handleFlattenOddPages,
+    handleFlattenEvenPages,
+    handleSortPagesBySize,
+    handleSortOddPagesBySize,
+    handleSortEvenPagesBySize,
+    handleSortPagesByRotation,
+    handleSortOddPagesByRotation,
+    handleSortEvenPagesByRotation,
+    openMetadataModal,
     handleSummarizePdf,
     openProtectModal,
     openDecryptModal,
@@ -4641,7 +4643,7 @@ function App() {
     openCredits: () => setShowCredits(true),
     openAbout: () => setShowAbout(true),
     openCommandPalette: () => setShowCommandPalette(true),
-  });
+  }));
 
   const modeToolbarExtras = filePath ? (
     <>
@@ -5756,25 +5758,17 @@ function App() {
         </Modal>
       )}
 
-      {/* Page Size Modal */}
       {showPageSizeModal && (
-        <Modal onClose={() => setShowPageSizeModal(false)}>
-          <h3>Page Size</h3>
-          <p className="modal-help">Set MediaBox to a standard paper size (content is not scaled).</p>
-          <label>Preset:</label>
-          <select className="modal-input" value={pageSizePreset} onChange={(e) => setPageSizePreset(e.target.value as PageSizePreset)}>
-            <option value="letter">Letter (612×792 pt)</option>
-            <option value="a4">A4 (595×842 pt)</option>
-            <option value="legal">Legal (612×1008 pt)</option>
-          </select>
-          <PageRangeFields range={pageSizeRange} pageCount={pageCount} />
-          <div className="modal-actions">
-            <button onClick={() => setShowPageSizeModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleSetPageSizeOddPages()} className="btn">Apply Odd</button>
-            <button onClick={() => void handleSetPageSizeEvenPages()} className="btn">Apply Even</button>
-            <button onClick={() => void handleSetPageSize()} className="btn">Apply</button>
-          </div>
-        </Modal>
+        <PageSizeModal
+          range={pageSizeRange}
+          pageCount={pageCount}
+          preset={pageSizePreset}
+          onPresetChange={setPageSizePreset}
+          onClose={() => setShowPageSizeModal(false)}
+          onApply={handleSetPageSize}
+          onApplyOdd={handleSetPageSizeOddPages}
+          onApplyEven={handleSetPageSizeEvenPages}
+        />
       )}
 
       {/* Export Pages as PDF Modal */}
@@ -5900,20 +5894,17 @@ function App() {
         </Modal>
       )}
 
-      {/* Page Border Modal */}
       {showPageBorderModal && (
-        <Modal onClose={() => setShowPageBorderModal(false)}>
-          <h3>Page Border</h3>
-          <p className="modal-help">Draw a rectangular border inset from page edges (viewer pixels).</p>
-          <label>Inset (px): <input type="number" value={pageBorderInset} onChange={(e) => setPageBorderInset(Math.max(0, parseInt(e.target.value, 10) || 0))} min="0" className="modal-input" /></label>
-          <PageRangeFields range={pageBorderRange} pageCount={pageCount} />
-          <div className="modal-actions">
-            <button onClick={() => setShowPageBorderModal(false)} className="btn btn-secondary">Cancel</button>
-            <button onClick={() => void handleAddPageBorderOddPages()} className="btn">Apply Odd</button>
-            <button onClick={() => void handleAddPageBorderEvenPages()} className="btn">Apply Even</button>
-            <button onClick={() => void handleAddPageBorder()} className="btn">Apply</button>
-          </div>
-        </Modal>
+        <PageBorderModal
+          range={pageBorderRange}
+          pageCount={pageCount}
+          inset={pageBorderInset}
+          onInsetChange={setPageBorderInset}
+          onClose={() => setShowPageBorderModal(false)}
+          onApply={handleAddPageBorder}
+          onApplyOdd={handleAddPageBorderOddPages}
+          onApplyEven={handleAddPageBorderEvenPages}
+        />
       )}
 
       {/* Bookmark All Modal */}
