@@ -12,9 +12,6 @@ import { usePrintJobs } from './pdf/usePrintJobs';
 import { usePageRange, usePageRangePair } from './pageRange/usePageRange';
 import {
   type ImageExportFormat,
-  imageExportCommand,
-  imageExportExtension,
-  imageExportLabel,
   parityImageExportCommand,
 } from './pdf/imageExportCommands';
 import {
@@ -45,6 +42,16 @@ import { usePageTextEdits } from './app/usePageTextEdits';
 import { usePageZoom } from './viewer/usePageZoom';
 import { useDrawingGesture } from './viewer/useDrawingGesture';
 import { usePageInteraction } from './viewer/usePageInteraction';
+import { useImageExportActions } from './pdf/useImageExportActions';
+import { usePdfModalOpeners } from './pdf/usePdfModalOpeners';
+import { useSinglePageEditActions } from './pdf/useSinglePageEditActions';
+import { useDuplicateRangeActions } from './pdf/useDuplicateRangeActions';
+import { usePageHeaderFooterActions } from './pdf/usePageHeaderFooterActions';
+import { useBookmarkActions } from './pdf/useBookmarkActions';
+import { usePdfFileOpsActions } from './pdf/usePdfFileOpsActions';
+import { useSecurityDocumentActions } from './pdf/useSecurityDocumentActions';
+import { usePageDuplicateActions } from './pdf/usePageDuplicateActions';
+import { useOddEvenPageActions } from './pdf/useOddEvenPageActions';
 import { ModeToolbarExtras } from './viewer/ModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
 import {
@@ -61,12 +68,10 @@ import {
   type PageTextEdit,
   type PageVectorEdit,
   type PdfBookmarkEntry,
-  type PdfDocumentMetadata,
   type PdfPageSize,
   type PdfSignatureInfo,
   type PdfSignatureVerificationSummary,
   type PdfSummaryResult,
-  type PngExportScope,
   type ViewMode,
 } from './app/types';
 import {
@@ -722,77 +727,39 @@ function App() {
     setCurrentPage,
   });
 
-  const openDeleteModal = () => {
-    if (!filePath || pageCount === null) return;
-    setDeletePageInput(String(currentPage + 1));
-    setShowDeleteModal(true);
-  };
+  const {
+    defaultExtractOutputPath,
+    openDeleteModal,
+    openInsertModal,
+    openSplitModal,
+    openExtractModal,
+  } = usePdfModalOpeners({
+    filePath,
+    originalPath,
+    currentPage,
+    pageCount,
+    extractRange,
+    setDeletePageInput,
+    setShowDeleteModal,
+    setShowInsertModal,
+    setShowSplitModal,
+    setExtractOutputPath,
+    setShowExtractModal,
+  });
 
-  const openInsertModal = () => {
-    if (!filePath) return;
-    setShowInsertModal(true);
-  };
-
-  const openSplitModal = () => {
-    if (!filePath) return;
-    setShowSplitModal(true);
-  };
-
-  const defaultExtractOutputPath = (start: number, end: number) => {
-    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    return `${base}_pages_${start + 1}-${end + 1}.pdf`;
-  };
-
-  const openExtractModal = () => {
-    if (!filePath || pageCount === null) return;
-    extractRange.reset(currentPage, currentPage);
-    setExtractOutputPath(defaultExtractOutputPath(currentPage, currentPage));
-    setShowExtractModal(true);
-  };
-
-
-  const defaultImageExportOutput = (format: ImageExportFormat, scope: PngExportScope, start: number, _end: number) => {
-    const base = (originalPath || filePath).replace(/\.pdf$/i, '');
-    const ext = imageExportExtension(format);
-    if (scope === 'current') return `${base}_page_${start + 1}.${ext}`;
-    return `${base}_pages`;
-  };
-
-  const openExportPngModal = () => {
-    if (!filePath || pageCount === null) return;
-    pngExportRange.reset({ scope: 'current', start: currentPage, end: currentPage });
-    setPngExportOutputPath(defaultImageExportOutput(imageExportFormat, 'current', currentPage, currentPage));
-    setShowExportPngModal(true);
-  };
-
-  const handleExportPng = async () => {
-    const output = pngExportOutputPath.trim();
-    if (!filePath || !output) return;
-    const range = pngExportRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    const ext = imageExportExtension(imageExportFormat);
-    const label = imageExportLabel(imageExportFormat);
-    await withLoading(async () => {
-      if (pngExportRange.scope === 'current') {
-        const written = await invoke<string>(imageExportCommand(imageExportFormat, false), {
-          path: filePath,
-          pageIndex: currentPage,
-          outputPath: ensureExtension(output, ext),
-        });
-        showToast(`Exported ${label} to ${written}`);
-      } else {
-        const written = await invoke<string[]>(imageExportCommand(imageExportFormat, true), {
-          path: filePath,
-          startPage: start,
-          endPage: end,
-          outputDir: output,
-        });
-        showToast(`Exported ${written.length} ${label} file${written.length === 1 ? '' : 's'} to ${output}`);
-      }
-      setShowExportPngModal(false);
-    });
-  };
+  const { defaultImageExportOutput, openExportPngModal, handleExportPng } = useImageExportActions({
+    filePath,
+    originalPath,
+    currentPage,
+    pageCount,
+    imageExportFormat,
+    pngExportOutputPath,
+    pngExportRange,
+    withLoading,
+    showToast,
+    setPngExportOutputPath,
+    setShowExportPngModal,
+  });
 
   const runEdit = useStructuralEdit({
     filePath,
@@ -803,169 +770,55 @@ function App() {
     showToast,
   });
 
-  const handleRotatePageCcw = async () => {
-    await runEdit({ command: 'rotate_page_ccw', args: { pageIndex: currentPage }, toast: 'Page rotated 90° counter-clockwise' });
-  };
 
-  const handleResetPageRotation = async () => {
-    await runEdit({ command: 'reset_page_rotation', args: { pageIndex: currentPage }, toast: 'Page rotation reset' });
-  };
+  const {
+    handleRotatePageCcw,
+    handleResetPageRotation,
+    handleResetAllRotations,
+    handleReversePages,
+    handleRotateAllPages,
+    handleAddBlankPage,
+    handleAddBlankPageBefore,
+    handleRotatePage180,
+    handleRotateAllPagesCcw,
+    handleMovePageToFirst,
+    handleMovePageToLast,
+    handleClearAllCrops,
+    handleClearAllBookmarks,
+    handleMovePageUp,
+    handleMovePageDown,
+  } = useSinglePageEditActions({ filePath, currentPage, pageCount, runEdit, loadPdfBookmarks });
 
-  const handleResetAllRotations = async () => {
-    await runEdit({ command: 'reset_all_page_rotations', toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}` });
-  };
+  const {
+    openDuplicateRangeModal,
+    handleDuplicatePageRange,
+    handleDuplicatePageRangeToEnd,
+    handleDuplicatePageRangeToStart,
+    handleDuplicatePageRangeBefore,
+  } = useDuplicateRangeActions({ filePath, pageCount, currentPage, duplicateRange, runEdit, setShowDuplicateRangeModal });
 
-  const openDuplicateRangeModal = () => {
-    if (!filePath || pageCount === null) return;
-    duplicateRange.reset(currentPage, currentPage);
-    setShowDuplicateRangeModal(true);
-  };
-
-  const handleDuplicatePageRange = async () => {
-    if (!filePath) return;
-    const range = duplicateRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'duplicate_page_range', args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage }, reloadAt: duplicateRange.endPage + 1, toast: (n) => `Duplicated ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowDuplicateRangeModal(false) });
-  };
-
-  const handleDuplicatePageRangeToEnd = async () => {
-    if (!filePath || pageCount === null) return;
-    const range = duplicateRange.validate();
-    if (!range) return;
-    await runEdit<number>({
-      command: 'duplicate_page_range_to_end',
-      args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage },
-      reloadAt: (count) => pageCount + count - 1,
-      toast: (count) => `Appended ${count} page${count === 1 ? '' : 's'} to end`,
-      onSuccess: () => setShowDuplicateRangeModal(false),
-    });
-  };
-
-  const handleDuplicatePageRangeToStart = async () => {
-    if (!filePath) return;
-    const range = duplicateRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'duplicate_page_range_to_start', args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage }, reloadAt: 0, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} at start`, onSuccess: () => setShowDuplicateRangeModal(false) });
-  };
-
-  const handleDuplicatePageRangeBefore = async () => {
-    if (!filePath) return;
-    const range = duplicateRange.validate();
-    if (!range) return;
-    await runEdit({ command: 'duplicate_page_range_before', args: { startPage: duplicateRange.startPage, endPage: duplicateRange.endPage }, reloadAt: duplicateRange.startPage, toast: (n) => `Inserted ${n} page${n === 1 ? '' : 's'} before range`, onSuccess: () => setShowDuplicateRangeModal(false) });
-  };
-
-  const handleReversePages = async () => {
-    if (!filePath || pageCount === null) return;
-    await runEdit({ command: 'reverse_pages', reloadAt: pageCount - 1 - currentPage, toast: 'Page order reversed' });
-  };
-
-  const handleRotateAllPages = async () => {
-    await runEdit({ command: 'rotate_all_pages', toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 90°` });
-  };
-
-  const handleAddBlankPage = async () => {
-    await runEdit<number>({
-      command: 'add_blank_page',
-      args: { atIndex: currentPage + 1 },
-      reloadAt: (newIndex) => newIndex,
-      toast: (newIndex) => `Blank page inserted at position ${newIndex + 1}`,
-    });
-  };
-
-  const handleAddBlankPageBefore = async () => {
-    await runEdit<number>({
-      command: 'add_blank_page',
-      args: { atIndex: currentPage },
-      reloadAt: (newIndex) => newIndex,
-      toast: () => `Blank page inserted before page ${currentPage + 1}`,
-    });
-  };
-
-  const handleRotatePage180 = async () => {
-    await runEdit({ command: 'rotate_page_180', args: { pageIndex: currentPage }, toast: 'Page rotated 180°' });
-  };
-
-  const handleRotateAllPagesCcw = async () => {
-    await runEdit({ command: 'rotate_all_pages_ccw', toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} CCW` });
-  };
-
-  const handleMovePageToFirst = async () => {
-    if (!filePath || currentPage === 0) return;
-    await runEdit({ command: 'move_page_to_first', args: { pageIndex: currentPage }, reloadAt: 0, toast: 'Page moved to first position' });
-  };
-
-  const handleMovePageToLast = async () => {
-    if (!filePath || pageCount === null || currentPage >= pageCount - 1) return;
-    await runEdit({
-      command: 'move_page_to_last',
-      args: { pageIndex: currentPage },
-      reloadAt: () => (pageCount ?? 1) - 1,
-      toast: 'Page moved to last position',
-    });
-  };
-
-  const handleClearAllCrops = async () => {
-    await runEdit({ command: 'clear_all_page_crops', toast: (n) => `Cleared crop on ${n} page${n === 1 ? '' : 's'}` });
-  };
-
-  const handleClearAllBookmarks = async () => {
-    await runEdit({
-      command: 'clear_pdf_bookmarks',
-      afterEdit: async () => { await loadPdfBookmarks(filePath); },
-      toast: (n) => `Removed ${n} bookmark${n === 1 ? '' : 's'}`,
-    });
-  };
-
-  const openPageHeaderModal = () => {
-    if (!filePath || pageCount === null) return;
-    pageHeaderRange.reset();
-    setPageHeaderText('DRAFT');
-    setShowPageHeaderModal(true);
-  };
-
-  const handleAddPageHeader = async () => {
-    if (!filePath || !pageHeaderText.trim()) return;
-    const range = pageHeaderRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'add_page_header', args: { startPage: start, endPage: end, text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
-  };
-
-  const handleAddPageHeaderOddPages = async () => {
-    if (!filePath || !pageHeaderText.trim()) return;
-    await runEdit({ command: 'add_page_header_odd_pages', args: { text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
-  };
-
-  const handleAddPageHeaderEvenPages = async () => {
-    if (!filePath || !pageHeaderText.trim()) return;
-    await runEdit({ command: 'add_page_header_even_pages', args: { text: pageHeaderText.trim() }, toast: (n) => `Added header to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageHeaderModal(false) });
-  };
-
-  const openPageFooterModal = () => {
-    if (!filePath || pageCount === null) return;
-    pageFooterRange.reset();
-    setPageFooterText('Confidential');
-    setShowPageFooterModal(true);
-  };
-
-  const handleAddPageFooter = async () => {
-    if (!filePath || !pageFooterText.trim()) return;
-    const range = pageFooterRange.validateAndResolve();
-    if (!range) return;
-    const { start, end } = range;
-    await runEdit({ command: 'add_page_footer', args: { startPage: start, endPage: end, text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
-  };
-
-  const handleAddPageFooterOddPages = async () => {
-    if (!filePath || !pageFooterText.trim()) return;
-    await runEdit({ command: 'add_page_footer_odd_pages', args: { text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
-  };
-
-  const handleAddPageFooterEvenPages = async () => {
-    if (!filePath || !pageFooterText.trim()) return;
-    await runEdit({ command: 'add_page_footer_even_pages', args: { text: pageFooterText.trim() }, toast: (n) => `Added footer to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageFooterModal(false) });
-  };
+  const {
+    openPageHeaderModal,
+    handleAddPageHeader,
+    handleAddPageHeaderOddPages,
+    handleAddPageHeaderEvenPages,
+    openPageFooterModal,
+    handleAddPageFooter,
+    handleAddPageFooterOddPages,
+    handleAddPageFooterEvenPages,
+  } = usePageHeaderFooterActions({
+    filePath,
+    pageCount,
+    pageHeaderText,
+    pageFooterText,
+    pageHeaderRange,
+    pageFooterRange,
+    runEdit,
+    setPageHeaderText,
+    setPageFooterText,
+    setShowPageHeaderModal,
+    setShowPageFooterModal,
+  });
 
   const openSwapPagesModal = () => {
     if (!filePath || pageCount === null) return;
@@ -987,16 +840,6 @@ function App() {
       toast: `Swapped pages ${swapPageA + 1} and ${swapPageB + 1}`,
       onSuccess: () => setShowSwapPagesModal(false),
     });
-  };
-
-  const handleMovePageUp = async () => {
-    if (!filePath || currentPage === 0) return;
-    await runEdit({ command: 'move_page_up', args: { pageIndex: currentPage }, reloadAt: currentPage - 1, toast: `Moved page ${currentPage + 1} up` });
-  };
-
-  const handleMovePageDown = async () => {
-    if (!filePath || pageCount === null || currentPage >= pageCount - 1) return;
-    await runEdit({ command: 'move_page_down', args: { pageIndex: currentPage }, reloadAt: currentPage + 1, toast: `Moved page ${currentPage + 1} down` });
   };
 
   const openReplacePageModal = () => {
@@ -1098,25 +941,6 @@ function App() {
 
   const handleSetPageSizeEvenPages = async () => {
     await runEdit({ command: 'set_page_size_even_pages', args: { preset: pageSizePreset }, toast: (n) => `Resized ${n} even page${n === 1 ? '' : 's'} to ${pageSizePreset.toUpperCase()}`, onSuccess: () => setShowPageSizeModal(false) });
-  };
-
-  const openDecryptModal = () => {
-    setDecryptPassword('');
-    setShowDecryptModal(true);
-  };
-
-  const handleRemovePdfPassword = async () => {
-    if (!filePath || !decryptPassword) return;
-    const sourcePath = originalPath || filePath;
-    await withLoading(async () => {
-      const written = await invoke<string>('remove_pdf_password', {
-        path: sourcePath,
-        password: decryptPassword,
-      });
-      setShowDecryptModal(false);
-      setDecryptPassword('');
-      showToast(`Saved decrypted copy to ${written}`);
-    });
   };
 
   const defaultExportPagesPdfDir = () => {
@@ -1417,106 +1241,44 @@ function App() {
     });
   };
 
-  const handleRotateOddPages = async () => {
-    await runEdit({ command: 'rotate_odd_pages', toast: (n) => `Rotated ${n} odd page${n === 1 ? '' : 's'} 90° CW` });
-  };
 
-  const handleRotateEvenPages = async () => {
-    await runEdit({ command: 'rotate_even_pages', toast: (n) => `Rotated ${n} even page${n === 1 ? '' : 's'} 90° CW` });
-  };
-
-  const handleRotateOddPagesCcw = async () => {
-    await runEdit({ command: 'rotate_odd_pages_ccw', toast: (n) => `Rotated ${n} odd page${n === 1 ? '' : 's'} 90° CCW` });
-  };
-
-  const handleRotateEvenPagesCcw = async () => {
-    await runEdit({ command: 'rotate_even_pages_ccw', toast: (n) => `Rotated ${n} even page${n === 1 ? '' : 's'} 90° CCW` });
-  };
-
-  const handleResetRotationOddPages = async () => {
-    await runEdit({ command: 'reset_rotation_odd_pages', toast: (n) => `Reset rotation on ${n} odd page${n === 1 ? '' : 's'}` });
-  };
-
-  const handleResetRotationEvenPages = async () => {
-    await runEdit({ command: 'reset_rotation_even_pages', toast: (n) => `Reset rotation on ${n} even page${n === 1 ? '' : 's'}` });
-  };
-
-  const handleKeepOddPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'keep_odd_pages', reloadAt: 0, toast: (n) => `Kept odd pages; removed ${n}` });
-  };
-
-  const handleKeepEvenPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'keep_even_pages', reloadAt: 0, toast: (n) => `Kept even pages; removed ${n}` });
-  };
-
-  const handleDeleteOddPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'delete_odd_pages', reloadAt: 0, toast: (n) => `Deleted ${n} odd page${n === 1 ? '' : 's'}` });
-  };
-
-  const handleDeleteEvenPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'delete_even_pages', reloadAt: 0, toast: (n) => `Deleted ${n} even page${n === 1 ? '' : 's'}` });
-  };
-
-  const handleRotate180OddPages = async () => {
-    await runEdit({ command: 'rotate_180_odd_pages', toast: (n) => `Rotated ${n} odd page${n === 1 ? '' : 's'} 180°` });
-  };
-
-  const handleRotate180EvenPages = async () => {
-    await runEdit({ command: 'rotate_180_even_pages', toast: (n) => `Rotated ${n} even page${n === 1 ? '' : 's'} 180°` });
-  };
-
-  const handleDuplicateOddPages = async () => {
-    await runEdit({ command: 'duplicate_odd_pages', reloadAt: (pageCount ?? 1) - 1, toast: (n) => `Appended ${n} odd page cop${n === 1 ? 'y' : 'ies'}` });
-  };
-
-  const handleDuplicateEvenPages = async () => {
-    await runEdit({ command: 'duplicate_even_pages', reloadAt: (pageCount ?? 1) - 1, toast: (n) => `Appended ${n} even page cop${n === 1 ? 'y' : 'ies'}` });
-  };
-
-  const handleInsertBlankBetweenPages = async () => {
-    if (!filePath || pageCount === null || pageCount < 2) return;
-    await runEdit({ command: 'insert_blank_between_pages', reloadAt: currentPage * 2, toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} between pages` });
-  };
-
-  const handleFlattenOddPages = async () => {
-    await runEdit({ command: 'flatten_odd_pages', toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on odd pages` });
-  };
-
-  const handleFlattenEvenPages = async () => {
-    await runEdit({ command: 'flatten_even_pages', toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on even pages` });
-  };
-
-  const handleRotateAllPages180 = async () => {
-    await runEdit({ command: 'rotate_all_pages_180', toast: (n) => `Rotated all ${n} page${n === 1 ? '' : 's'} 180°` });
-  };
-
-  const handleCropOddPages = async () => {
-    await runEdit({ command: 'crop_odd_pages', args: { marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
-  };
-
-  const handleCropEvenPages = async () => {
-    await runEdit({ command: 'crop_even_pages', args: { marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft }, toast: (n) => `Cropped ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowCropRangeModal(false) });
-  };
-
-  const handleExpandOddPages = async () => {
-    await runEdit({ command: 'expand_odd_pages', args: { marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
-  };
-
-  const handleExpandEvenPages = async () => {
-    await runEdit({ command: 'expand_even_pages', args: { marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft }, toast: (n) => `Expanded margins on ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowExpandMarginsModal(false) });
-  };
-
-  const handleShrinkOddPages = async () => {
-    await runEdit({ command: 'shrink_odd_pages', args: { marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} odd page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
-  };
-
-  const handleShrinkEvenPages = async () => {
-    await runEdit({ command: 'shrink_even_pages', args: { marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft }, toast: (n) => `Shrunk margins on ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowShrinkMarginsModal(false) });
-  };
+  const {
+    handleRotateOddPages,
+    handleRotateEvenPages,
+    handleRotateOddPagesCcw,
+    handleRotateEvenPagesCcw,
+    handleResetRotationOddPages,
+    handleResetRotationEvenPages,
+    handleKeepOddPages,
+    handleKeepEvenPages,
+    handleDeleteOddPages,
+    handleDeleteEvenPages,
+    handleRotate180OddPages,
+    handleRotate180EvenPages,
+    handleDuplicateOddPages,
+    handleDuplicateEvenPages,
+    handleInsertBlankBetweenPages,
+    handleFlattenOddPages,
+    handleFlattenEvenPages,
+    handleRotateAllPages180,
+    handleCropOddPages,
+    handleCropEvenPages,
+    handleExpandOddPages,
+    handleExpandEvenPages,
+    handleShrinkOddPages,
+    handleShrinkEvenPages,
+  } = useOddEvenPageActions({
+    filePath,
+    pageCount,
+    currentPage,
+    cropMargins: { marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft },
+    expandMargins: { marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft },
+    shrinkMargins: { marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft },
+    runEdit,
+    setShowCropRangeModal,
+    setShowExpandMarginsModal,
+    setShowShrinkMarginsModal,
+  });
 
   const handleReverseOddPages = async () => {
     if (!filePath || pageCount === null || pageCount < 2) return;
@@ -1806,23 +1568,6 @@ function App() {
     await runEdit({ command: 'add_page_border_even_pages', args: { inset: pageBorderInset }, toast: (n) => `Added border to ${n} even page${n === 1 ? '' : 's'}`, onSuccess: () => setShowPageBorderModal(false) });
   };
 
-  const openBookmarkAllModal = () => {
-    if (!filePath) return;
-    setBookmarkAllPrefix('Page ');
-    setShowBookmarkAllModal(true);
-  };
-
-  const handleBookmarkAllPages = async () => {
-    await runEdit({ command: 'bookmark_all_pages', args: { prefix: bookmarkAllPrefix.trim() || 'Page ' }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: (n) => `Added ${n} bookmark${n === 1 ? '' : 's'}`, onSuccess: () => setShowBookmarkAllModal(false) });
-  };
-
-  const handleBookmarkOddPages = async () => {
-    await runEdit({ command: 'bookmark_odd_pages', args: { prefix: bookmarkAllPrefix.trim() || 'Page ' }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: (n) => `Added ${n} odd bookmark${n === 1 ? '' : 's'}`, onSuccess: () => setShowBookmarkAllModal(false) });
-  };
-
-  const handleBookmarkEvenPages = async () => {
-    await runEdit({ command: 'bookmark_even_pages', args: { prefix: bookmarkAllPrefix.trim() || 'Page ' }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: (n) => `Added ${n} even bookmark${n === 1 ? '' : 's'}`, onSuccess: () => setShowBookmarkAllModal(false) });
-  };
 
   const handleInsertBlankBeforeOddPages = async () => {
     await runEdit({ command: 'insert_blank_before_odd_pages', toast: (n) => `Inserted ${n} blank page${n === 1 ? '' : 's'} before odd pages` });
@@ -1854,15 +1599,6 @@ function App() {
 
   const handleDuplicateEvenPagesToStart = async () => {
     await runEdit({ command: 'duplicate_even_pages_to_start', reloadAt: 0, toast: (n) => `Inserted ${n} even page cop${n === 1 ? 'y' : 'ies'} at start` });
-  };
-
-  const handleDuplicatePageToEnd = async () => {
-    await runEdit<number>({
-      command: 'duplicate_page_to_end',
-      args: { pageIndex: currentPage },
-      reloadAt: (last) => last,
-      toast: () => `Duplicated page ${currentPage + 1} to end`,
-    });
   };
 
   const openExpandMarginsModal = () => {
@@ -2085,100 +1821,82 @@ function App() {
     await runEdit({ command: 'flatten_annotations', args: { startPage: start, endPage: end }, toast: (n) => `Removed ${n} annotation${n === 1 ? '' : 's'}`, onSuccess: () => setShowFlattenModal(false) });
   };
 
-  const openAddBookmarkModal = () => {
-    if (!filePath) return;
-    setBookmarkTitle(`Page ${currentPage + 1}`);
-    setShowAddBookmarkModal(true);
-  };
 
-  const handleAddBookmark = async () => {
-    if (!filePath || !bookmarkTitle.trim()) return;
-    await runEdit({ command: 'add_pdf_bookmark', args: { title: bookmarkTitle.trim(), pageIndex: currentPage }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: 'Bookmark added', onSuccess: () => setShowAddBookmarkModal(false) });
-  };
+  const bookmarkActions = useBookmarkActions({
+    filePath,
+    currentPage,
+    bookmarkTitle,
+    bookmarkAllPrefix,
+    renameBookmarkIndex,
+    renameBookmarkTitle,
+    runEdit,
+    loadPdfBookmarks,
+    setBookmarkTitle,
+    setBookmarkAllPrefix,
+    setRenameBookmarkIndex,
+    setRenameBookmarkTitle,
+    setShowAddBookmarkModal,
+    setShowRenameBookmarkModal,
+    setShowBookmarkAllModal,
+  });
+  const {
+    openAddBookmarkModal,
+    handleAddBookmark,
+    openRenameBookmarkModal,
+    handleRenameBookmark,
+    handleRemoveBookmark,
+    openBookmarkAllModal,
+    handleBookmarkAllPages,
+    handleBookmarkOddPages,
+    handleBookmarkEvenPages,
+  } = bookmarkActions;
 
-  const openRenameBookmarkModal = (index: number, title: string) => {
-    setRenameBookmarkIndex(index);
-    setRenameBookmarkTitle(title);
-    setShowRenameBookmarkModal(true);
-  };
+  const { openMergeModal, handleSplitPdf, handleDeletePage, handleExtractPdf, handleInsertPdf, handleMergePdf, handleOptimizePdf } = usePdfFileOpsActions({
+    filePath,
+    pageCount,
+    currentPage,
+    deletePageInput,
+    splitRanges,
+    insertFilePath,
+    insertAtPage,
+    mergeFilePath,
+    extractOutputPath,
+    insertRange,
+    mergeRange,
+    extractRange,
+    withLoading,
+    markPdfEdited,
+    loadThumbnails,
+    renderPage,
+    showToast,
+    setPageCount,
+    setCurrentPage,
+    setDeletePageInput,
+    setShowDeleteModal,
+    setShowSplitModal,
+    setSplitRanges,
+    setShowInsertModal,
+    setInsertFilePath,
+    setInsertAtPage,
+    setShowMergeModal,
+    setMergeFilePath,
+    setShowExtractModal,
+  });
 
-  const handleRenameBookmark = async () => {
-    if (!filePath || !renameBookmarkTitle.trim()) return;
-    await runEdit({ command: 'rename_pdf_bookmark', args: { bookmarkIndex: renameBookmarkIndex, title: renameBookmarkTitle.trim() }, afterEdit: async () => { await loadPdfBookmarks(filePath); }, toast: 'Bookmark renamed', onSuccess: () => setShowRenameBookmarkModal(false) });
-  };
-
-  const handleRemoveBookmark = async (index: number) => {
-    await runEdit({
-      command: 'remove_pdf_bookmark',
-      args: { bookmarkIndex: index },
-      afterEdit: async () => { await loadPdfBookmarks(filePath); },
-      toast: 'Bookmark removed',
-    });
-  };
-
-  const openMergeModal = () => {
-    if (!filePath) return;
-    setShowMergeModal(true);
-  };
-
-  const handleDeletePage = async () => {
-    if (!filePath || pageCount === null) return;
-    if (pageCount <= 1) {
-      showToast('Cannot delete the only page', 'error');
-      return;
-    }
-    const pageNumber = parseInt(deletePageInput, 10);
-    if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > pageCount) {
-      showToast(`Enter a page from 1 to ${pageCount}`, 'error');
-      setDeletePageInput(String(currentPage + 1));
-      return;
-    }
-    const targetPage = pageNumber - 1;
-    await withLoading(async () => {
-      await invoke('delete_page', { path: filePath, pageIndex: targetPage });
-      markPdfEdited();
-      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
-      setPageCount(count);
-      const newPage = Math.min(targetPage, count - 1);
-      setCurrentPage(newPage);
-      await loadThumbnails(filePath);
-      await renderPage(filePath, newPage);
-      setShowDeleteModal(false);
-      showToast(`Page ${pageNumber} deleted`);
-    });
-  };
-
-  const handleRotatePage = async () => {
-    await runEdit({ command: 'rotate_page', args: { pageIndex: currentPage }, toast: 'Page rotated 90°' });
-  };
-
-  const handleDuplicatePageBefore = async () => {
-    await runEdit<number>({
-      command: 'duplicate_page_before',
-      args: { pageIndex: currentPage },
-      reloadAt: (newIndex) => newIndex,
-      toast: () => `Duplicated page ${currentPage + 1} before itself`,
-    });
-  };
-
-  const handleDuplicatePage = async () => {
-    if (!filePath) return;
-    const sourcePage = currentPage;
-    await withLoading(async () => {
-      const newIndex = await invoke<number>('duplicate_page', {
-        path: filePath,
-        pageIndex: sourcePage,
-      });
-      markPdfEdited();
-      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
-      setPageCount(count);
-      setCurrentPage(newIndex);
-      setPageInput(String(newIndex + 1));
-      await renderPage(filePath, newIndex);
-      await loadThumbnails(filePath);
-      showToast(`Page ${sourcePage + 1} duplicated`);
-    });
-  };
+  const { handleRotatePage, handleDuplicatePageBefore, handleDuplicatePage, handleDuplicatePageToEnd } = usePageDuplicateActions({
+    filePath,
+    currentPage,
+    pageInput,
+    withLoading,
+    markPdfEdited,
+    loadThumbnails,
+    renderPage,
+    runEdit,
+    showToast,
+    setPageCount,
+    setCurrentPage,
+    setPageInput,
+  });
 
   const applyFormField = (name: string) => {
     const field = formFields.find((entry) => entry.name === name);
@@ -2500,191 +2218,63 @@ function App() {
   });
   handleMarkdownViewRef.current = handleMarkdownView;
 
-  const handleSplitPdf = async () => {
-    if (!filePath || !splitRanges) return;
-    await withLoading(async () => {
-      const ranges = splitRanges.split(',').map((r) => {
-        const [start, end] = r.trim().split('-').map((n) => parseInt(n.trim(), 10) - 1);
-        return [start, end] as [number, number];
-      });
-      const outputPaths = await invoke<string[]>('split_pdf', { path: filePath, pageRanges: ranges });
-      showToast(`PDF split into ${outputPaths.length} file(s)`);
-      setShowSplitModal(false);
-      setSplitRanges('');
-    });
-  };
 
-  const handleExtractPdf = async () => {
-    const output = extractOutputPath.trim();
-    if (!filePath || !output) return;
-    const range = extractRange.validate();
-    if (!range) return;
-    await withLoading(async () => {
-      const written = await invoke<string>('extract_pdf_pages', {
-        path: filePath,
-        outputPath: output,
-        startPage: extractRange.startPage,
-        endPage: extractRange.endPage,
-      });
-      showToast(`Extracted pages to ${written}`);
-      setShowExtractModal(false);
-    });
-  };
+  const {
+    openProtectModal,
+    openDecryptModal,
+    handleRemovePdfPassword,
+    openMetadataModal,
+    handleSaveMetadata,
+    handleProtectPdf,
+    openSignModal,
+    handleSignPdf,
+    toggleSignaturesPanel,
+  } = useSecurityDocumentActions({
+    filePath,
+    originalPath,
+    protectUserPassword,
+    protectUserPasswordConfirm,
+    protectOwnerPassword,
+    decryptPassword,
+    signCertPath,
+    signCertPassword,
+    signReason,
+    signLocation,
+    metadataTitle,
+    metadataAuthor,
+    metadataSubject,
+    metadataKeywords,
+    metadataCreator,
+    metadataProducer,
+    withLoading,
+    markPdfEdited,
+    runEdit,
+    loadPdfSignatures,
+    showToast,
+    setProtectUserPassword,
+    setProtectUserPasswordConfirm,
+    setProtectOwnerPassword,
+    setShowProtectModal,
+    setDecryptPassword,
+    setShowDecryptModal,
+    setSignCertPath,
+    setSignCertPassword,
+    setSignReason,
+    setSignLocation,
+    setShowSignModal,
+    setPdfRevision,
+    setMetadataTitle,
+    setMetadataAuthor,
+    setMetadataSubject,
+    setMetadataKeywords,
+    setMetadataCreator,
+    setMetadataProducer,
+    setMetadataCreationDate,
+    setMetadataModDate,
+    setShowMetadataModal,
+    setShowSignaturesPanel,
+  });
 
-  const handleInsertPdf = async () => {
-    if (!filePath || !insertFilePath) return;
-    if (!insertRange.validate()) return;
-    await withLoading(async () => {
-      await invoke('insert_pdf', {
-        path: filePath,
-        insertPath: insertFilePath,
-        atIndex: insertAtPage,
-        insertStart: insertRange.startPage,
-        insertEnd: insertRange.endPage,
-      });
-      markPdfEdited();
-      showToast('PDF inserted successfully');
-      setShowInsertModal(false);
-      setInsertFilePath('');
-      setInsertAtPage(0);
-      insertRange.reset(0, 0);
-      await loadThumbnails(filePath);
-      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
-      setPageCount(count);
-    });
-  };
-
-  const handleMergePdf = async () => {
-    if (!filePath || !mergeFilePath) return;
-    if (!mergeRange.validate()) return;
-    await withLoading(async () => {
-      const added = await invoke<number>('merge_pdf', {
-        path: filePath,
-        mergePath: mergeFilePath,
-        mergeStart: mergeRange.startPage,
-        mergeEnd: mergeRange.endPage,
-      });
-      markPdfEdited();
-      showToast(`Merged ${added} page${added === 1 ? '' : 's'} from source PDF`);
-      setShowMergeModal(false);
-      setMergeFilePath('');
-      mergeRange.reset(0, 0);
-      await loadThumbnails(filePath);
-      const count = await invoke<number>('get_pdf_page_count', { path: filePath });
-      setPageCount(count);
-    });
-  };
-
-  const handleOptimizePdf = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const result = await invoke<string>('optimize_pdf', { path: filePath });
-      showToast(result);
-    });
-  };
-
-  const openProtectModal = () => {
-    setProtectUserPassword('');
-    setProtectUserPasswordConfirm('');
-    setProtectOwnerPassword('');
-    setShowProtectModal(true);
-  };
-
-  const openMetadataModal = async () => {
-    if (!filePath) return;
-    await withLoading(async () => {
-      const metadata = await invoke<PdfDocumentMetadata>('get_pdf_metadata', { path: filePath });
-      setMetadataTitle(metadata.title ?? '');
-      setMetadataAuthor(metadata.author ?? '');
-      setMetadataSubject(metadata.subject ?? '');
-      setMetadataKeywords(metadata.keywords ?? '');
-      setMetadataCreator(metadata.creator ?? '');
-      setMetadataProducer(metadata.producer ?? '');
-      setMetadataCreationDate(metadata.creation_date ?? '');
-      setMetadataModDate(metadata.mod_date ?? '');
-      setShowMetadataModal(true);
-    });
-  };
-
-  const handleSaveMetadata = async () => {
-    await runEdit({
-      command: 'set_pdf_metadata',
-      args: {
-        title: metadataTitle.trim() || null,
-        author: metadataAuthor.trim() || null,
-        subject: metadataSubject.trim() || null,
-        keywords: metadataKeywords.trim() || null,
-        creator: metadataCreator.trim() || null,
-        producer: metadataProducer.trim() || null,
-      },
-      skipReload: true,
-      toast: 'Document metadata updated',
-      onSuccess: () => setShowMetadataModal(false),
-    });
-  };
-
-  const handleProtectPdf = async () => {
-    if (!filePath) return;
-    const userPassword = protectUserPassword;
-    const confirm = protectUserPasswordConfirm;
-    if (!userPassword) {
-      showToast('User password is required', 'error');
-      return;
-    }
-    if (userPassword !== confirm) {
-      showToast('Passwords do not match', 'error');
-      return;
-    }
-    const ownerPassword = protectOwnerPassword.trim();
-    await withLoading(async () => {
-      const result = await invoke<string>('protect_pdf', {
-        path: filePath,
-        userPassword,
-        ownerPassword: ownerPassword || null,
-      });
-      setShowProtectModal(false);
-      showToast(result);
-    });
-  };
-
-  const openSignModal = () => {
-    setSignCertPath('');
-    setSignCertPassword('');
-    setSignReason('');
-    setSignLocation('');
-    setShowSignModal(true);
-  };
-
-  const handleSignPdf = async () => {
-    if (!filePath) return;
-    const certPath = signCertPath.trim();
-    if (!certPath) {
-      showToast('Choose a PKCS#12 certificate (.p12/.pfx)', 'error');
-      return;
-    }
-    if (!signCertPassword) {
-      showToast('Certificate password is required', 'error');
-      return;
-    }
-    await withLoading(async () => {
-      const result = await invoke<string>('sign_pdf', {
-        path: filePath,
-        certPath,
-        certPassword: signCertPassword,
-        reason: signReason.trim() || null,
-        location: signLocation.trim() || null,
-        fieldName: null,
-        outputPath: null,
-      });
-      markPdfEdited();
-      setShowSignModal(false);
-      setPdfRevision((r) => r + 1);
-      await loadPdfSignatures(filePath);
-      showToast(result);
-    });
-  };
-
-  const toggleSignaturesPanel = () => setShowSignaturesPanel((prev) => !prev);
   const { zoomIn, zoomOut, resetZoom, commitZoom, commitPage } = usePageZoom({
     zoom,
     setZoom,

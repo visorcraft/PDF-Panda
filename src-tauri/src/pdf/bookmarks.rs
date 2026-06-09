@@ -1,4 +1,86 @@
-use lopdf::{Document, Object, ObjectId};
+use lopdf::{Dictionary, Document, Object, ObjectId};
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PdfBookmarkEntry {
+    pub title: String,
+    pub depth: u32,
+    pub page_index: Option<u32>,
+}
+
+pub fn page_index_for_object(doc: &Document, object_id: ObjectId) -> Option<u32> {
+    doc.get_pages().iter().find(|(_, id)| **id == object_id).map(|(num, _)| num - 1)
+}
+
+pub fn outline_title(dict: &Dictionary) -> String {
+    dict.get(b"Title")
+        .ok()
+        .and_then(|value| value.as_str().ok())
+        .map(|value| String::from_utf8_lossy(value).into_owned())
+        .unwrap_or_else(|| "Untitled".to_string())
+}
+
+pub fn resolve_dest_object(doc: &Document, dest: &Object) -> Option<u32> {
+    match dest {
+        Object::Array(items) if !items.is_empty() => {
+            items[0].as_reference().ok().and_then(|id| page_index_for_object(doc, id))
+        }
+        Object::String(name, _) | Object::Name(name) => resolve_named_dest(doc, name.as_slice()),
+        Object::Reference(id) => page_index_for_object(doc, *id),
+        _ => None,
+    }
+}
+
+pub fn resolve_named_dest(doc: &Document, name: &[u8]) -> Option<u32> {
+    let catalog = doc.catalog().ok()?;
+    let dests_id = catalog.get(b"Dests").ok()?.as_reference().ok()?;
+    let dests = doc.get_dictionary(dests_id).ok()?;
+    let names = dests.get(b"Names").ok()?.as_array().ok()?;
+    let mut index = 0usize;
+    while index + 1 < names.len() {
+        let matches = names[index].as_str().ok().is_some_and(|value| value == name);
+        if matches {
+            return resolve_dest_object(doc, &names[index + 1]);
+        }
+        index += 2;
+    }
+    None
+}
+
+pub fn resolve_outline_destination(doc: &Document, dict: &Dictionary) -> Option<u32> {
+    if let Ok(dest) = dict.get(b"Dest") {
+        if let Some(page_index) = resolve_dest_object(doc, dest) {
+            return Some(page_index);
+        }
+    }
+    let action = dict.get(b"A").ok()?.as_dict().ok()?;
+    let subtype = action.get(b"S").ok().and_then(|value| value.as_name().ok());
+    if subtype != Some(b"GoTo".as_slice()) {
+        return None;
+    }
+    resolve_dest_object(doc, action.get(b"D").ok()?)
+}
+
+pub fn collect_outline_items(doc: &Document, item_id: ObjectId, depth: u32, entries: &mut Vec<PdfBookmarkEntry>) {
+    let mut current = Some(item_id);
+    while let Some(id) = current {
+        let dict = match doc.get_dictionary(id) {
+            Ok(dict) => dict,
+            Err(_) => break,
+        };
+        entries.push(PdfBookmarkEntry {
+            title: outline_title(dict),
+            depth,
+            page_index: resolve_outline_destination(doc, dict),
+        });
+        if let Ok(first) = dict.get(b"First") {
+            if let Ok(child_id) = first.as_reference() {
+                collect_outline_items(doc, child_id, depth + 1, entries);
+            }
+        }
+        current = dict.get(b"Next").ok().and_then(|value| value.as_reference().ok());
+    }
+}
 
 pub fn collect_outline_ids(doc: &Document, item_id: ObjectId, ids: &mut Vec<ObjectId>) {
     let mut current = Some(item_id);
