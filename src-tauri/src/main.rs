@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod licenses;
+mod pdf;
 
 use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
 use pdfium_render::prelude::*;
@@ -407,31 +408,56 @@ fn list_pdf_browser_entries(path: Option<String>) -> Result<PdfBrowserListing, S
     list_pdf_entries_for_dir(&dir)
 }
 
-#[tauri::command]
-fn render_pdf_page(path: String, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let path = PathBuf::from(path);
+fn render_page_image(
+    path: &Path,
+    page_index: u32,
+    width: i32,
+    height: i32,
+    format: image::ImageFormat,
+) -> Result<Vec<u8>, String> {
     let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png).map_err(|e| e.to_string())?;
-
-    Ok(buffer)
+    pdf::render::render_page_bytes(&pdfium, path, page_index, width, height, format)
 }
 
 fn render_page_png(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png).map_err(|e| e.to_string())?;
-    Ok(buffer)
+    render_page_image(path, page_index, width, height, image::ImageFormat::Png)
+}
+
+fn render_page_jpeg(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Jpeg)
+}
+
+fn render_page_webp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::WebP)
+}
+
+fn render_page_bmp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Bmp)
+}
+
+fn render_page_tiff(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Tiff)
+}
+
+fn render_page_gif(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Gif)
+}
+
+fn render_page_ppm(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Pnm)
+}
+
+fn render_page_tga(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Tga)
+}
+
+fn render_page_ico(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(path, page_index, width, height, image::ImageFormat::Ico)
+}
+
+#[tauri::command]
+fn render_pdf_page(path: String, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
+    render_page_image(&PathBuf::from(path), page_index, width, height, image::ImageFormat::Png)
 }
 
 const OCR_RENDER_W: i32 = 1200;
@@ -698,7 +724,7 @@ fn ocr_status() -> OcrStatus {
 #[tauri::command]
 fn ocr_pdf_page(path: String, page: u32) -> Result<String, String> {
     let path = PathBuf::from(path);
-    let png = render_page_png(&path, page, OCR_RENDER_W, OCR_RENDER_H)?;
+    let png = render_page_image(&path, page, OCR_RENDER_W, OCR_RENDER_H, image::ImageFormat::Png)?;
     match ocr_png_bytes(&png)? {
         Some(text) => Ok(text),
         None => Err("Tesseract OCR is not installed (set TESSERACT_CMD or add tesseract to PATH)".into()),
@@ -817,7 +843,7 @@ fn export_pdf_page_png(path: String, page_index: u32, output_path: String) -> Re
     }
     validate_page_range(&path, page_index, page_index)?;
 
-    let png = render_page_png(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let png = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Png)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &png)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -842,7 +868,7 @@ fn export_pdf_pages_png(
 
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let png = render_page_png(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let png = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Png)?;
         let file_name = format!("page-{:03}.png", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &png)?;
@@ -1286,59 +1312,55 @@ fn dedup_fonts_after_insert(doc: &mut Document, inserted_page_ids: &[ObjectId]) 
 #[tauri::command]
 fn delete_page(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    // Use lopdf's tree-aware deletion: it resolves the leaf page through the
-    // (possibly nested) page tree, removes only that leaf, and decrements /Count
-    // up the parent chain. The old flat `Kids` edit assumed every kid was a leaf
-    // page, so on a nested tree it deleted whole sub-trees and wrote a bogus
-    // /Count (deleting "page 1" could drop pages 1–5 and hide the rest).
-    let total = doc.get_pages().len();
-    if total <= 1 {
-        return Err("Cannot delete the only page in the document".to_string());
-    }
-    let idx = page_index as usize;
-    if idx >= total {
-        return Err("Page index out of bounds".to_string());
-    }
-    doc.delete_pages(&[page_index + 1]); // lopdf page numbers are 1-based
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::io::mutate_pdf(&path, |doc| {
+        // Use lopdf's tree-aware deletion: it resolves the leaf page through the
+        // (possibly nested) page tree, removes only that leaf, and decrements /Count
+        // up the parent chain. The old flat `Kids` edit assumed every kid was a leaf
+        // page, so on a nested tree it deleted whole sub-trees and wrote a bogus
+        // /Count (deleting "page 1" could drop pages 1–5 and hide the rest).
+        let total = doc.get_pages().len();
+        if total <= 1 {
+            return Err("Cannot delete the only page in the document".to_string());
+        }
+        let idx = page_index as usize;
+        if idx >= total {
+            return Err("Page index out of bounds".to_string());
+        }
+        doc.delete_pages(&[page_index + 1]); // lopdf page numbers are 1-based
+        Ok(())
+    })
 }
 
 #[tauri::command]
 fn move_page(path: String, from_index: u32, to_index: u32) -> Result<(), String> {
     let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
+    pdf::io::mutate_pdf(&path, |doc| {
+        // Flatten first so /Kids is a flat leaf list (index == page order) even when
+        // the source PDF uses a nested page tree.
+        let pages_ref = flatten_pages(doc)?;
+        let (mut kids, _) = get_pages_kids(doc)?;
 
-    // Flatten first so /Kids is a flat leaf list (index == page order) even when
-    // the source PDF uses a nested page tree.
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut kids, _) = get_pages_kids(&doc)?;
+        let from = from_index as usize;
+        let to = to_index as usize;
+        if from >= kids.len() || to >= kids.len() {
+            return Err("Index out of bounds".to_string());
+        }
+        if from == to {
+            return Ok(());
+        }
 
-    let from = from_index as usize;
-    let to = to_index as usize;
-    if from >= kids.len() || to >= kids.len() {
-        return Err("Index out of bounds".to_string());
-    }
-    if from == to {
-        return Ok(());
-    }
-
-    let moved = kids.remove(from);
-    kids.insert(to, moved);
-    set_pages_kids(&mut doc, pages_ref, kids)?;
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+        let moved = kids.remove(from);
+        kids.insert(to, moved);
+        set_pages_kids(doc, pages_ref, kids)?;
+        Ok(())
+    })
 }
 
 /// Deep-copy `page_index` and insert the copy immediately after it.
 #[tauri::command]
 fn duplicate_page(path: String, page_index: u32) -> Result<u32, String> {
     let path_buf = PathBuf::from(&path);
-    let page_count = Document::load(&path_buf).map_err(|e| e.to_string())?.get_pages().len();
+    let page_count = pdf::io::page_count(&path_buf)?;
     let idx = page_index as usize;
     if idx >= page_count {
         return Err("Page index out of bounds".to_string());
@@ -1463,32 +1485,21 @@ fn add_blank_page(path: String, at_index: u32) -> Result<u32, String> {
 #[tauri::command]
 fn delete_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut kids, _) = get_pages_kids(&doc)?;
-    let total = kids.len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let delete_count = end_page - start_page + 1;
-    if delete_count >= total {
-        return Err("Cannot delete every page in the document".to_string());
-    }
-    kids.drain(start_page as usize..=end_page as usize);
-    set_pages_kids(&mut doc, pages_ref, kids)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(delete_count)
-}
-
-fn render_page_jpeg(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Jpeg).map_err(|e| e.to_string())?;
-    Ok(buffer)
+    pdf::io::mutate_pdf(&path, |doc| {
+        let pages_ref = flatten_pages(doc)?;
+        let (mut kids, _) = get_pages_kids(doc)?;
+        let total = kids.len() as u32;
+        if start_page >= total || end_page >= total || start_page > end_page {
+            return Err(format!("Invalid page range: {start_page}-{end_page}"));
+        }
+        let delete_count = end_page - start_page + 1;
+        if delete_count >= total {
+            return Err("Cannot delete every page in the document".to_string());
+        }
+        kids.drain(start_page as usize..=end_page as usize);
+        set_pages_kids(doc, pages_ref, kids)?;
+        Ok(delete_count)
+    })
 }
 
 /// Render one PDF page to a JPEG file (2× viewer resolution by default).
@@ -1500,7 +1511,7 @@ fn export_pdf_page_jpeg(path: String, page_index: u32, output_path: String) -> R
     }
     validate_page_range(&path, page_index, page_index)?;
 
-    let jpeg = render_page_jpeg(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let jpeg = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Jpeg)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &jpeg)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -1525,7 +1536,7 @@ fn export_pdf_pages_jpeg(
 
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let jpeg = render_page_jpeg(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let jpeg = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Jpeg)?;
         let file_name = format!("page-{:03}.jpg", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &jpeg)?;
@@ -1745,23 +1756,23 @@ fn set_page_rotation(doc: &mut Document, page_id: ObjectId, rotation: i64) -> Re
 #[tauri::command]
 fn rotate_page_ccw(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    let next = (page_rotation(&doc, page_id) + 270) % 360;
-    set_page_rotation(&mut doc, page_id, next)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::io::mutate_pdf(&path, |doc| {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let next = (page_rotation(doc, page_id) + 270) % 360;
+        set_page_rotation(doc, page_id, next)?;
+        Ok(())
+    })
 }
 
 /// Clear rotation on `page_index`.
 #[tauri::command]
 fn reset_page_rotation(path: String, page_index: u32) -> Result<(), String> {
     let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-    set_page_rotation(&mut doc, page_id, 0)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::io::mutate_pdf(&path, |doc| {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        set_page_rotation(doc, page_id, 0)?;
+        Ok(())
+    })
 }
 
 /// Clear rotation on every page.
@@ -2010,17 +2021,6 @@ fn crop_all_pages(
     Ok(page_ids.len() as u32)
 }
 
-fn render_page_webp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::WebP).map_err(|e| e.to_string())?;
-    Ok(buffer)
-}
-
 /// Render one PDF page to a WebP file (2× viewer resolution by default).
 #[tauri::command]
 fn export_pdf_page_webp(path: String, page_index: u32, output_path: String) -> Result<String, String> {
@@ -2029,7 +2029,7 @@ fn export_pdf_page_webp(path: String, page_index: u32, output_path: String) -> R
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let webp = render_page_webp(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let webp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::WebP)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &webp)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -2052,7 +2052,7 @@ fn export_pdf_pages_webp(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let webp = render_page_webp(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let webp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::WebP)?;
         let file_name = format!("page-{:03}.webp", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &webp)?;
@@ -4248,7 +4248,7 @@ fn export_pages_by_parity_png(path: &Path, output_dir: &Path, odd: bool) -> Resu
         if (page_index % 2 == 0) != odd {
             continue;
         }
-        let png = render_page_png(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let png = render_page_image(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Png)?;
         let file_name = format!("page-{:03}.png", page_index + 1);
         let output_path = output_dir.join(file_name);
         write_png_output(&output_path, &png)?;
@@ -4280,7 +4280,7 @@ fn export_pages_by_parity_jpeg(path: &Path, output_dir: &Path, odd: bool) -> Res
         if (page_index % 2 == 0) != odd {
             continue;
         }
-        let jpeg = render_page_jpeg(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let jpeg = render_page_image(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Jpeg)?;
         let file_name = format!("page-{:03}.jpg", page_index + 1);
         let output_path = output_dir.join(file_name);
         write_png_output(&output_path, &jpeg)?;
@@ -4312,7 +4312,7 @@ fn export_pages_by_parity_webp(path: &Path, output_dir: &Path, odd: bool) -> Res
         if (page_index % 2 == 0) != odd {
             continue;
         }
-        let webp = render_page_webp(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let webp = render_page_image(path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::WebP)?;
         let file_name = format!("page-{:03}.webp", page_index + 1);
         let output_path = output_dir.join(file_name);
         write_png_output(&output_path, &webp)?;
@@ -4529,17 +4529,6 @@ fn export_page_as_pdf(path: String, page_index: u32, output_path: String) -> Res
     extract_pdf_pages(path, output_path, page_index, page_index)
 }
 
-fn render_page_bmp(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Bmp).map_err(|e| e.to_string())?;
-    Ok(buffer)
-}
-
 /// Render one PDF page to a BMP file (2× viewer resolution by default).
 #[tauri::command]
 fn export_pdf_page_bmp(path: String, page_index: u32, output_path: String) -> Result<String, String> {
@@ -4548,7 +4537,7 @@ fn export_pdf_page_bmp(path: String, page_index: u32, output_path: String) -> Re
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let bmp = render_page_bmp(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let bmp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Bmp)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &bmp)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -4571,24 +4560,13 @@ fn export_pdf_pages_bmp(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let bmp = render_page_bmp(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let bmp = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Bmp)?;
         let file_name = format!("page-{:03}.bmp", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &bmp)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
-}
-
-fn render_page_tiff(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Tiff).map_err(|e| e.to_string())?;
-    Ok(buffer)
 }
 
 /// Render one PDF page to a TIFF file (2× viewer resolution by default).
@@ -4599,7 +4577,7 @@ fn export_pdf_page_tiff(path: String, page_index: u32, output_path: String) -> R
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let tiff = render_page_tiff(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let tiff = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tiff)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &tiff)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -4622,24 +4600,13 @@ fn export_pdf_pages_tiff(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let tiff = render_page_tiff(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let tiff = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tiff)?;
         let file_name = format!("page-{:03}.tiff", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &tiff)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
-}
-
-fn render_page_gif(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Gif).map_err(|e| e.to_string())?;
-    Ok(buffer)
 }
 
 /// Render one PDF page to a GIF file (2× viewer resolution by default).
@@ -4650,7 +4617,7 @@ fn export_pdf_page_gif(path: String, page_index: u32, output_path: String) -> Re
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let gif = render_page_gif(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let gif = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Gif)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &gif)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -4673,24 +4640,13 @@ fn export_pdf_pages_gif(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let gif = render_page_gif(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let gif = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Gif)?;
         let file_name = format!("page-{:03}.gif", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &gif)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
-}
-
-fn render_page_ppm(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Pnm).map_err(|e| e.to_string())?;
-    Ok(buffer)
 }
 
 /// Render one PDF page to a PPM file (2× viewer resolution by default).
@@ -4701,7 +4657,7 @@ fn export_pdf_page_ppm(path: String, page_index: u32, output_path: String) -> Re
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let ppm = render_page_ppm(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let ppm = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Pnm)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &ppm)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -4724,24 +4680,13 @@ fn export_pdf_pages_ppm(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let ppm = render_page_ppm(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let ppm = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Pnm)?;
         let file_name = format!("page-{:03}.ppm", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &ppm)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
-}
-
-fn render_page_tga(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Tga).map_err(|e| e.to_string())?;
-    Ok(buffer)
 }
 
 /// Render one PDF page to a TGA file (2× viewer resolution by default).
@@ -4752,7 +4697,7 @@ fn export_pdf_page_tga(path: String, page_index: u32, output_path: String) -> Re
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let tga = render_page_tga(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let tga = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tga)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &tga)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -4775,24 +4720,13 @@ fn export_pdf_pages_tga(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let tga = render_page_tga(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let tga = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Tga)?;
         let file_name = format!("page-{:03}.tga", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &tga)?;
         written.push(output_path.to_string_lossy().into_owned());
     }
     Ok(written)
-}
-
-fn render_page_ico(path: &Path, page_index: u32, width: i32, height: i32) -> Result<Vec<u8>, String> {
-    let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
-    let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
-    let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-    let image = bitmap.as_image().map_err(|e| e.to_string())?;
-    let mut buffer = Vec::new();
-    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Ico).map_err(|e| e.to_string())?;
-    Ok(buffer)
 }
 
 /// Render one PDF page to an ICO file (2× viewer resolution by default).
@@ -4803,7 +4737,7 @@ fn export_pdf_page_ico(path: String, page_index: u32, output_path: String) -> Re
         return Err("File not found".to_string());
     }
     validate_page_range(&path, page_index, page_index)?;
-    let ico = render_page_ico(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+    let ico = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Ico)?;
     let output_path = PathBuf::from(&output_path);
     write_png_output(&output_path, &ico)?;
     Ok(output_path.to_string_lossy().into_owned())
@@ -4826,7 +4760,7 @@ fn export_pdf_pages_ico(
     fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in start_page..=end_page {
-        let ico = render_page_ico(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H)?;
+        let ico = render_page_image(&path, page_index, EXPORT_PNG_W, EXPORT_PNG_H, image::ImageFormat::Ico)?;
         let file_name = format!("page-{:03}.ico", page_index + 1);
         let output_path = output_dir.join(&file_name);
         write_png_output(&output_path, &ico)?;
@@ -7404,7 +7338,7 @@ fn append_page_ocr_supplement(
     page_index: u32,
     stats: &mut OcrExportStats,
 ) -> Result<(), String> {
-    let png = render_page_png(path, page_index, OCR_RENDER_W, OCR_RENDER_H)?;
+    let png = render_page_image(path, page_index, OCR_RENDER_W, OCR_RENDER_H, image::ImageFormat::Png)?;
     stats.sparse_supplements += 1;
     if let Some(text) = try_ocr_png_bytes(&png)? {
         let trimmed = text.trim();
@@ -7427,7 +7361,7 @@ fn append_scanned_page_markdown(
     image_sink: Option<&MarkdownImageSink<'_>>,
     stats: &mut OcrExportStats,
 ) -> Result<(), String> {
-    let png = render_page_png(path, page_index, OCR_RENDER_W, OCR_RENDER_H)?;
+    let png = render_page_image(path, page_index, OCR_RENDER_W, OCR_RENDER_H, image::ImageFormat::Png)?;
     let ocr_text = try_ocr_png_bytes(&png)?;
     stats.scanned_pages += 1;
 
@@ -8146,7 +8080,7 @@ fn render_xobject_wrapper_png(
         object_id.1
     ));
     wrapper.save(&temp_path).map_err(|e| e.to_string())?;
-    let png = match render_page_png(&temp_path, 0, render_w, render_h) {
+    let png = match render_page_image(&temp_path, 0, render_w, render_h, image::ImageFormat::Png) {
         Ok(bytes) if !bytes.is_empty() => Some(bytes),
         Ok(_) => None,
         Err(_) => None,

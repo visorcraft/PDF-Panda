@@ -73,13 +73,7 @@ fn build_runtime_licenses_text() -> String {
 that PDF-Panda links against or bundles in packaged builds.\n\n",
     );
 
-    for spdx in [
-        "BSD-3-Clause",
-        "LGPL-2.1-or-later",
-        "Apache-2.0",
-        "GPL-2.0-or-later",
-        "LGPL-3.0-only",
-    ] {
+    for spdx in ["BSD-3-Clause", "LGPL-2.1-or-later", "Apache-2.0", "GPL-2.0-or-later", "LGPL-3.0-only"] {
         let body = runtime_license_body(spdx);
         if body.is_empty() {
             continue;
@@ -112,10 +106,7 @@ that PDF-Panda links against or bundles in packaged builds.\n\n",
     out.push_str(RULE);
     out.push('\n');
     for component in RUNTIME_COMPONENTS {
-        out.push_str(&format!(
-            "- {} — {} — {}\n",
-            component.name, component.license_display, component.url
-        ));
+        out.push_str(&format!("- {} — {} — {}\n", component.name, component.license_display, component.url));
     }
 
     out
@@ -136,11 +127,7 @@ fn license_section_to_spdx(title: &str) -> String {
         "Unicode License v3" => "Unicode-3.0".to_owned(),
         "University of Illinois/NCSA Open Source License" => "NCSA".to_owned(),
         "zlib License" => "Zlib".to_owned(),
-        other => other
-            .replace("&quot;", "\"")
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">"),
+        other => other.replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">"),
     }
 }
 
@@ -205,10 +192,7 @@ fn rust_credit_entries(text: &str) -> Vec<ThirdPartyCredit> {
     }
 
     entries.sort_by(|a, b| {
-        a.name
-            .cmp(&b.name)
-            .then_with(|| a.version.cmp(&b.version))
-            .then_with(|| a.license.cmp(&b.license))
+        a.name.cmp(&b.name).then_with(|| a.version.cmp(&b.version)).then_with(|| a.license.cmp(&b.license))
     });
     entries
 }
@@ -280,11 +264,7 @@ pub fn credits_catalog() -> CreditsCatalog {
         })
         .collect();
 
-    CreditsCatalog {
-        crates,
-        npm_packages: npm_credit_rows(),
-        runtime_components,
-    }
+    CreditsCatalog { crates, npm_packages: npm_credit_rows(), runtime_components }
 }
 
 #[tauri::command]
@@ -300,24 +280,15 @@ pub fn open_external_url(url: String) -> Result<(), String> {
 
     #[cfg(target_os = "linux")]
     {
-        Command::new("xdg-open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        Command::new("xdg-open").arg(&url).spawn().map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "macos")]
     {
-        Command::new("open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        Command::new("open").arg(&url).spawn().map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "windows")]
     {
-        Command::new("cmd")
-            .args(["/C", "start", "", &url])
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        Command::new("cmd").args(["/C", "start", "", &url]).spawn().map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -347,12 +318,12 @@ mod tests {
     fn rust_credit_entries_parse_bundled_markdown() {
         let entries = rust_credit_entries(THIRD_PARTY_LICENSES_TEXT);
         assert!(entries.len() > 200);
-        assert!(entries.iter().any(|entry| {
-            entry.name == "adler2" && entry.version == "2.0.1" && entry.license == "0BSD"
-        }));
-        assert!(entries.iter().any(|entry| {
-            entry.name == "lopdf" && entry.license == "MIT" && entry.url.contains("lopdf")
-        }));
+        assert!(entries
+            .iter()
+            .any(|entry| { entry.name == "adler2" && entry.version == "2.0.1" && entry.license == "0BSD" }));
+        assert!(entries
+            .iter()
+            .any(|entry| { entry.name == "lopdf" && entry.license == "MIT" && entry.url.contains("lopdf") }));
         assert!(!entries.iter().any(|entry| entry.name == "react"));
     }
 
