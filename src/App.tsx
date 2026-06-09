@@ -2,19 +2,18 @@ import { useState, useRef } from 'react';
 import { AppShell } from './chrome/AppShell';
 import { buildAppMenusFromSource } from './menu/buildAppMenusFromSource';
 import { useAppBootstrap } from './app/useAppBootstrap';
-import { useStructuralEdit } from './pdf/useStructuralEdit';
 import { usePdfSearch } from './pdf/usePdfSearch';
 import { usePdfBrowser } from './pdf/usePdfBrowser';
 import { usePrintJobs } from './pdf/usePrintJobs';
-import { type ImageExportFormat } from './pdf/imageExportCommands';
 import { useUndoHistory } from './pdf/useUndoHistory';
 import { usePdfDocument } from './pdf/usePdfDocument';
-import { type FormFieldKind } from './modals/AddFormFieldModal';
-import { type PageSizePreset } from './modals/PageSizeModal';
-import { type TesseractInstallGuide } from './modals/TesseractReminderModal';
 import { buildAppModalsSource } from './modals/buildAppModalsSource';
-import { buildAppViewerSource } from './viewer/buildAppViewerSource';
-import { buildAppChromeSource } from './chrome/buildAppChromeSource';
+import { buildAppShellSource } from './chrome/buildAppShellSource';
+import { useAppModalState } from './app/useAppModalState';
+import { useDocumentPanelsState } from './app/useDocumentPanelsState';
+import { useSecurityFormState } from './app/useSecurityFormState';
+import { useAnnotationDraftState } from './app/useAnnotationDraftState';
+import { useHelpChromeState } from './app/useHelpChromeState';
 import { useUnsavedGuard } from './app/useUnsavedGuard';
 import { useModalDismiss } from './app/useModalDismiss';
 import { buildModalDismissSource } from './app/buildModalDismissSource';
@@ -26,35 +25,9 @@ import { useClosePdf } from './app/usePdfLifecycle';
 import { usePdfRecents } from './app/usePdfRecents';
 import { usePdfOpen } from './app/usePdfOpen';
 import { useThumbnailReorder } from './app/useThumbnailReorder';
-import { useAnnotationModes } from './app/useAnnotationModes';
-import { useMarkdownFlow } from './app/useMarkdownFlow';
-import { useNativeFilePickers } from './app/useNativeFilePickers';
-import { usePageTextEdits } from './app/usePageTextEdits';
+import { useAppPdfActions } from './app/useAppPdfActions';
 import { usePageZoom } from './viewer/usePageZoom';
 import { useDrawingGesture } from './viewer/useDrawingGesture';
-import { usePageInteraction } from './viewer/usePageInteraction';
-import { useImageExportActions } from './pdf/useImageExportActions';
-import { usePdfModalOpeners } from './pdf/usePdfModalOpeners';
-import { useSinglePageEditActions } from './pdf/useSinglePageEditActions';
-import { useDuplicateRangeActions } from './pdf/useDuplicateRangeActions';
-import { usePageHeaderFooterActions } from './pdf/usePageHeaderFooterActions';
-import { useBookmarkActions } from './pdf/useBookmarkActions';
-import { usePdfFileOpsActions } from './pdf/usePdfFileOpsActions';
-import { useSecurityDocumentActions } from './pdf/useSecurityDocumentActions';
-import { usePageDuplicateActions } from './pdf/usePageDuplicateActions';
-import { useOddEvenPageActions } from './pdf/useOddEvenPageActions';
-import { useSwapReplaceInterleaveActions } from './pdf/useSwapReplaceInterleaveActions';
-import { usePageSizeActions } from './pdf/usePageSizeActions';
-import { useExportPagesActions } from './pdf/useExportPagesActions';
-import { useParityExportActions } from './pdf/useParityExportActions';
-import { useRangeModalActions } from './pdf/useRangeModalActions';
-import { useOddEvenExtendedActions } from './pdf/useOddEvenExtendedActions';
-import { useSplitExtractPrependActions } from './pdf/useSplitExtractPrependActions';
-import { usePageDecorActions } from './pdf/usePageDecorActions';
-import { useSaveActions } from './pdf/useSaveActions';
-import { useFormFieldActions } from './pdf/useFormFieldActions';
-import { useNotePasswordActions } from './pdf/useNotePasswordActions';
-import { usePdfRevisionSync } from './app/usePdfRevisionSync';
 import { useSourcePdfPageCounts } from './app/useSourcePdfPageCounts';
 import { usePageEditsLoader } from './app/usePageEditsLoader';
 import { useWindowTitle } from './app/useWindowTitle';
@@ -65,70 +38,165 @@ import { useAppLoading } from './app/useAppLoading';
 import { useAppPageRanges } from './app/useAppPageRanges';
 import { buildModeToolbarExtras } from './viewer/buildModeToolbarExtras';
 import { useWheelNavigation } from './viewer/useWheelNavigation';
-import {
-  DEFAULT_TESSERACT_GUIDE,
-  RECENT_PDFS_KEY,
-  LAST_BROWSER_DIR_KEY,
-  type ShapeKind,
-  type StampKind,
-  STAMP_PRESETS,
-} from './app/constants';
-import {
-  type FormFieldData,
-  type MarkdownOcrNotice,
-  type PageTextEdit,
-  type PageVectorEdit,
-  type PdfBookmarkEntry,
-  type PdfPageSize,
-  type PdfSignatureInfo,
-  type PdfSignatureVerificationSummary,
-  type PdfSummaryResult,
-  type ViewMode,
-} from './app/types';
-import {
-  fileNameFromPath,
-  readStoredString,
-  readStoredStringArray,
-} from './app/utils';
+import { type MarkdownOcrNotice, type ViewMode } from './app/types';
+import { fileNameFromPath } from './app/utils';
 
 function App() {
   const [filePath, setFilePath] = useState<string>(''); // working-copy path; all backend ops target this
   const [originalPath, setOriginalPath] = useState<string>(''); // user's real file (display / recents / Save target)
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const isDirtyRef = useRef(false);
-  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
-  const [saveAsPath, setSaveAsPath] = useState<string>('');
-  const [showMarkdownSaveAsModal, setShowMarkdownSaveAsModal] = useState(false);
-  const [showProtectModal, setShowProtectModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [pendingEncryptedPath, setPendingEncryptedPath] = useState('');
-  const [protectUserPassword, setProtectUserPassword] = useState('');
-  const [protectUserPasswordConfirm, setProtectUserPasswordConfirm] = useState('');
-  const [protectOwnerPassword, setProtectOwnerPassword] = useState('');
-  const [showSignModal, setShowSignModal] = useState(false);
-  const [signCertPath, setSignCertPath] = useState('');
-  const [signCertPassword, setSignCertPassword] = useState('');
-  const [signReason, setSignReason] = useState('');
-  const [signLocation, setSignLocation] = useState('');
-  const [showSignaturesPanel, setShowSignaturesPanel] = useState(false);
-  const [pdfSignatures, setPdfSignatures] = useState<PdfSignatureInfo[]>([]);
-  const [signatureVerification, setSignatureVerification] = useState<PdfSignatureVerificationSummary | null>(null);
-  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
-  const [pdfBookmarks, setPdfBookmarks] = useState<PdfBookmarkEntry[]>([]);
-  const [showMetadataModal, setShowMetadataModal] = useState(false);
-  const [metadataTitle, setMetadataTitle] = useState('');
-  const [metadataAuthor, setMetadataAuthor] = useState('');
-  const [metadataSubject, setMetadataSubject] = useState('');
-  const [metadataKeywords, setMetadataKeywords] = useState('');
-  const [metadataCreator, setMetadataCreator] = useState('');
-  const [metadataProducer, setMetadataProducer] = useState('');
-  const [metadataCreationDate, setMetadataCreationDate] = useState('');
-  const [metadataModDate, setMetadataModDate] = useState('');
-  const [pdfPasswordDraft, setPdfPasswordDraft] = useState('');
-  const [markdownSaveAsPath, setMarkdownSaveAsPath] = useState('');
-  const [nativeDialogs, setNativeDialogs] = useState(false);
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [pdfSummary, setPdfSummary] = useState<PdfSummaryResult | null>(null);
+  const modal = useAppModalState();
+  const {
+    showSaveAsModal, setShowSaveAsModal,
+    saveAsPath, setSaveAsPath,
+    showMarkdownSaveAsModal, setShowMarkdownSaveAsModal,
+    markdownSaveAsPath, setMarkdownSaveAsPath,
+    nativeDialogs, setNativeDialogs,
+    showSummaryModal, setShowSummaryModal,
+    pdfSummary, setPdfSummary,
+    showOpenModal, setShowOpenModal,
+    openFilePath, setOpenFilePath,
+    recentPdfs, setRecentPdfs,
+    lastBrowserDir, setLastBrowserDir,
+    showDeleteModal, setShowDeleteModal,
+    deletePageInput, setDeletePageInput,
+    showSplitModal, setShowSplitModal,
+    splitRanges, setSplitRanges,
+    showExtractModal, setShowExtractModal,
+    extractOutputPath, setExtractOutputPath,
+    showExportPngModal, setShowExportPngModal,
+    pngExportOutputPath, setPngExportOutputPath,
+    imageExportFormat, setImageExportFormat,
+    showDeleteRangeModal, setShowDeleteRangeModal,
+    showPageNumbersModal, setShowPageNumbersModal,
+    pageNumbersPrefix, setPageNumbersPrefix,
+    showWatermarkModal, setShowWatermarkModal,
+    watermarkText, setWatermarkText,
+    showCropModal, setShowCropModal,
+    cropMarginTop, setCropMarginTop,
+    cropMarginRight, setCropMarginRight,
+    cropMarginBottom, setCropMarginBottom,
+    cropMarginLeft, setCropMarginLeft,
+    showFlattenModal, setShowFlattenModal,
+    showAddBookmarkModal, setShowAddBookmarkModal,
+    bookmarkTitle, setBookmarkTitle,
+    showRenameBookmarkModal, setShowRenameBookmarkModal,
+    renameBookmarkIndex, setRenameBookmarkIndex,
+    renameBookmarkTitle, setRenameBookmarkTitle,
+    showDuplicateRangeModal, setShowDuplicateRangeModal,
+    cropApplyAll, setCropApplyAll,
+    pageSizes, setPageSizes,
+    showPageHeaderModal, setShowPageHeaderModal,
+    pageHeaderText, setPageHeaderText,
+    showInsertImagePageModal, setShowInsertImagePageModal,
+    insertImagePagePath, setInsertImagePagePath,
+    insertImageAtIndex, setInsertImageAtIndex,
+    showExportPagePdfModal, setShowExportPagePdfModal,
+    exportPagePdfPath, setExportPagePdfPath,
+    showExportPagesPdfModal, setShowExportPagesPdfModal,
+    exportPagesPdfOutputDir, setExportPagesPdfOutputDir,
+    showPageFooterModal, setShowPageFooterModal,
+    pageFooterText, setPageFooterText,
+    showSwapPagesModal, setShowSwapPagesModal,
+    swapPageA, setSwapPageA,
+    swapPageB, setSwapPageB,
+    showReplacePageModal, setShowReplacePageModal,
+    replaceSourcePath, setReplaceSourcePath,
+    replaceSourcePage, setReplaceSourcePage,
+    replaceSourcePageCount, setReplaceSourcePageCount,
+    showInterleaveModal, setShowInterleaveModal,
+    interleaveFilePath, setInterleaveFilePath,
+    interleaveSourcePageCount, setInterleaveSourcePageCount,
+    showPageSizeModal, setShowPageSizeModal,
+    pageSizePreset, setPageSizePreset,
+    showRotateRangeModal, setShowRotateRangeModal,
+    showKeepRangeModal, setShowKeepRangeModal,
+    showMoveRangeModal, setShowMoveRangeModal,
+    moveRangeToIndex, setMoveRangeToIndex,
+    showPrependModal, setShowPrependModal,
+    prependFilePath, setPrependFilePath,
+    prependSourcePageCount, setPrependSourcePageCount,
+    showSplitEveryModal, setShowSplitEveryModal,
+    splitEveryN, setSplitEveryN,
+    showPageBorderModal, setShowPageBorderModal,
+    pageBorderInset, setPageBorderInset,
+    showBookmarkAllModal, setShowBookmarkAllModal,
+    bookmarkAllPrefix, setBookmarkAllPrefix,
+    showExpandMarginsModal, setShowExpandMarginsModal,
+    expandMarginTop, setExpandMarginTop,
+    expandMarginRight, setExpandMarginRight,
+    expandMarginBottom, setExpandMarginBottom,
+    expandMarginLeft, setExpandMarginLeft,
+    showShrinkMarginsModal, setShowShrinkMarginsModal,
+    shrinkMarginTop, setShrinkMarginTop,
+    shrinkMarginRight, setShrinkMarginRight,
+    shrinkMarginBottom, setShrinkMarginBottom,
+    shrinkMarginLeft, setShrinkMarginLeft,
+    showDeleteNthModal, setShowDeleteNthModal,
+    deleteNthValue, setDeleteNthValue,
+    showExtractOddModal, setShowExtractOddModal,
+    extractOddOutputPath, setExtractOddOutputPath,
+    showExtractEvenModal, setShowExtractEvenModal,
+    extractEvenOutputPath, setExtractEvenOutputPath,
+    showSplitAtModal, setShowSplitAtModal,
+    splitAtPage, setSplitAtPage,
+    showReverseRangeModal, setShowReverseRangeModal,
+    showInsertBlankPagesModal, setShowInsertBlankPagesModal,
+    insertBlankCount, setInsertBlankCount,
+    insertBlankAtIndex, setInsertBlankAtIndex,
+    showCropRangeModal, setShowCropRangeModal,
+    showParityRangeModal, setShowParityRangeModal,
+    parityRangeCommand, setParityRangeCommand,
+    parityRangeOutputPath, setParityRangeOutputPath,
+    showInsertModal, setShowInsertModal,
+    insertFilePath, setInsertFilePath,
+    insertAtPage, setInsertAtPage,
+    insertSourcePageCount, setInsertSourcePageCount,
+    showMergeModal, setShowMergeModal,
+    mergeFilePath, setMergeFilePath,
+    mergeSourcePageCount, setMergeSourcePageCount,
+  } = modal;
+
+  const security = useSecurityFormState();
+  const {
+    showProtectModal, setShowProtectModal,
+    showPasswordModal, setShowPasswordModal,
+    pendingEncryptedPath, setPendingEncryptedPath,
+    protectUserPassword, setProtectUserPassword,
+    protectUserPasswordConfirm, setProtectUserPasswordConfirm,
+    protectOwnerPassword, setProtectOwnerPassword,
+    showSignModal, setShowSignModal,
+    signCertPath, setSignCertPath,
+    signCertPassword, setSignCertPassword,
+    signReason, setSignReason,
+    signLocation, setSignLocation,
+    showMetadataModal, setShowMetadataModal,
+    metadataTitle, setMetadataTitle,
+    metadataAuthor, setMetadataAuthor,
+    metadataSubject, setMetadataSubject,
+    metadataKeywords, setMetadataKeywords,
+    metadataCreator, setMetadataCreator,
+    metadataProducer, setMetadataProducer,
+    metadataCreationDate, setMetadataCreationDate,
+    metadataModDate, setMetadataModDate,
+    pdfPasswordDraft, setPdfPasswordDraft,
+    showDecryptModal, setShowDecryptModal,
+    decryptPassword, setDecryptPassword,
+  } = security;
+
+  const panels = useDocumentPanelsState();
+  const {
+    showSignaturesPanel, setShowSignaturesPanel,
+    pdfSignatures, setPdfSignatures,
+    signatureVerification, setSignatureVerification,
+    showBookmarksPanel, setShowBookmarksPanel,
+    pdfBookmarks, setPdfBookmarks,
+    showFormsPanel, setShowFormsPanel,
+    formFields, setFormFields,
+    formDrafts, setFormDrafts,
+  } = panels;
+
   const {
     filePathRef,
     handleMarkdownViewRef,
@@ -152,58 +220,59 @@ function App() {
   const [markdownRevision, setMarkdownRevision] = useState<number | null>(null);
   const [markdownOcrNotice, setMarkdownOcrNotice] = useState<MarkdownOcrNotice | null>(null);
   const [ocrAvailable, setOcrAvailable] = useState<boolean | null>(null);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  const [showLicenses, setShowLicenses] = useState(false);
-  const [showCredits, setShowCredits] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
-  const [showTesseractModal, setShowTesseractModal] = useState(false);
-  const [tesseractInstallGuide, setTesseractInstallGuide] = useState<TesseractInstallGuide>(DEFAULT_TESSERACT_GUIDE);
-  const [tesseractDoNotRemind, setTesseractDoNotRemind] = useState(false);
-  const [tesseractReminderSource, setTesseractReminderSource] = useState<'launch' | 'markdown' | null>(null);
+  const {
+    showCommandPalette, setShowCommandPalette,
+    showShortcutsHelp, setShowShortcutsHelp,
+    showLicenses, setShowLicenses,
+    showCredits, setShowCredits,
+    showAbout, setShowAbout,
+    showTesseractModal, setShowTesseractModal,
+    tesseractInstallGuide, setTesseractInstallGuide,
+    tesseractDoNotRemind, setTesseractDoNotRemind,
+    tesseractReminderSource, setTesseractReminderSource,
+  } = useHelpChromeState();
 
   // Editable page/zoom field values (kept in sync with the canonical state).
   const [pageInput, setPageInput] = useState('1');
   const [zoomInput, setZoomInput] = useState('100');
 
-  // Annotations
-  const [highlightMode, setHighlightMode] = useState(false);
-  const [noteMode, setNoteMode] = useState(false);
-  const [drawMode, setDrawMode] = useState(false);
-  const [shapeMode, setShapeMode] = useState(false);
-  const [shapeKind, setShapeKind] = useState<ShapeKind>('square');
-  const [stampMode, setStampMode] = useState(false);
-  const [stampKind, setStampKind] = useState<StampKind>('text');
-  const [stampPreset, setStampPreset] = useState<string>(STAMP_PRESETS[0].id);
-  const [redactMode, setRedactMode] = useState(false);
-  const [imageInsertMode, setImageInsertMode] = useState(false);
-  const [textEditMode, setTextEditMode] = useState(false);
-  const [vectorEditMode, setVectorEditMode] = useState(false);
-  const [showPageTextModal, setShowPageTextModal] = useState(false);
-  const [showPageEditsModal, setShowPageEditsModal] = useState(false);
-  const [pendingTextPos, setPendingTextPos] = useState<{ x: number; y: number } | null>(null);
-  const [pageTextDraft, setPageTextDraft] = useState('');
-  const [pageTextFontSize, setPageTextFontSize] = useState('14');
-  const [editingTextIndex, setEditingTextIndex] = useState<number | null>(null);
-  const [pageTextEdits, setPageTextEdits] = useState<PageTextEdit[]>([]);
-  const [pageVectorEdits, setPageVectorEdits] = useState<PageVectorEdit[]>([]);
-  const [showImageInsertModal, setShowImageInsertModal] = useState(false);
-  const [imageSourcePath, setImageSourcePath] = useState('');
-  const [imageSourceDraft, setImageSourceDraft] = useState('');
-  const [showFormsPanel, setShowFormsPanel] = useState(false);
-  const [formFields, setFormFields] = useState<FormFieldData[]>([]);
-  const [formDrafts, setFormDrafts] = useState<Record<string, string>>({});
-  const [formAddMode, setFormAddMode] = useState(false);
-  const [showAddFormFieldModal, setShowAddFormFieldModal] = useState(false);
-  const [newFormFieldKind, setNewFormFieldKind] = useState<FormFieldKind>('text');
-  const [newFormFieldName, setNewFormFieldName] = useState('');
-  const [newFormFieldOptions, setNewFormFieldOptions] = useState('Option A, Option B');
-  const [newFormRadioGroup, setNewFormRadioGroup] = useState('');
-  const [newFormRadioOption, setNewFormRadioOption] = useState('');
-  const [newFormCheckboxChecked, setNewFormCheckboxChecked] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [noteDraft, setNoteDraft] = useState('');
-  const [pendingNotePos, setPendingNotePos] = useState<{ x: number; y: number } | null>(null);
+  const annotation = useAnnotationDraftState();
+  const {
+    highlightMode, setHighlightMode,
+    noteMode, setNoteMode,
+    drawMode, setDrawMode,
+    shapeMode, setShapeMode,
+    shapeKind, setShapeKind,
+    stampMode, setStampMode,
+    stampKind, setStampKind,
+    stampPreset, setStampPreset,
+    redactMode, setRedactMode,
+    imageInsertMode, setImageInsertMode,
+    textEditMode, setTextEditMode,
+    vectorEditMode, setVectorEditMode,
+    showPageTextModal, setShowPageTextModal,
+    showPageEditsModal, setShowPageEditsModal,
+    pendingTextPos, setPendingTextPos,
+    pageTextDraft, setPageTextDraft,
+    pageTextFontSize, setPageTextFontSize,
+    editingTextIndex, setEditingTextIndex,
+    pageTextEdits, setPageTextEdits,
+    pageVectorEdits, setPageVectorEdits,
+    showImageInsertModal, setShowImageInsertModal,
+    imageSourcePath, setImageSourcePath,
+    imageSourceDraft, setImageSourceDraft,
+    formAddMode, setFormAddMode,
+    showAddFormFieldModal, setShowAddFormFieldModal,
+    newFormFieldKind, setNewFormFieldKind,
+    newFormFieldName, setNewFormFieldName,
+    newFormFieldOptions, setNewFormFieldOptions,
+    newFormRadioGroup, setNewFormRadioGroup,
+    newFormRadioOption, setNewFormRadioOption,
+    newFormCheckboxChecked, setNewFormCheckboxChecked,
+    showNoteModal, setShowNoteModal,
+    noteDraft, setNoteDraft,
+    pendingNotePos, setPendingNotePos,
+  } = annotation;
   const {
     highlightStart,
     setHighlightStart,
@@ -219,110 +288,6 @@ function App() {
     setDrawing,
     cancelDrawing,
   } = useDrawingGesture();
-  // Modals
-  const [showOpenModal, setShowOpenModal] = useState(false);
-  const [openFilePath, setOpenFilePath] = useState<string>('');
-  const [recentPdfs, setRecentPdfs] = useState<string[]>(() => readStoredStringArray(RECENT_PDFS_KEY));
-  const [lastBrowserDir, setLastBrowserDir] = useState<string>(() => readStoredString(LAST_BROWSER_DIR_KEY));
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePageInput, setDeletePageInput] = useState('1');
-  const [showSplitModal, setShowSplitModal] = useState(false);
-  const [splitRanges, setSplitRanges] = useState<string>('');
-  const [showExtractModal, setShowExtractModal] = useState(false);
-  const [extractOutputPath, setExtractOutputPath] = useState('');
-  const [showExportPngModal, setShowExportPngModal] = useState(false);
-  const [pngExportOutputPath, setPngExportOutputPath] = useState('');
-  const [imageExportFormat, setImageExportFormat] = useState<ImageExportFormat>('png');
-  const [showDeleteRangeModal, setShowDeleteRangeModal] = useState(false);
-  const [showPageNumbersModal, setShowPageNumbersModal] = useState(false);
-  const [pageNumbersPrefix, setPageNumbersPrefix] = useState('Page ');
-  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
-  const [watermarkText, setWatermarkText] = useState('DRAFT');
-  const [showCropModal, setShowCropModal] = useState(false);
-  const [cropMarginTop, setCropMarginTop] = useState(50);
-  const [cropMarginRight, setCropMarginRight] = useState(50);
-  const [cropMarginBottom, setCropMarginBottom] = useState(50);
-  const [cropMarginLeft, setCropMarginLeft] = useState(50);
-  const [showFlattenModal, setShowFlattenModal] = useState(false);
-  const [showAddBookmarkModal, setShowAddBookmarkModal] = useState(false);
-  const [bookmarkTitle, setBookmarkTitle] = useState('');
-  const [showRenameBookmarkModal, setShowRenameBookmarkModal] = useState(false);
-  const [renameBookmarkIndex, setRenameBookmarkIndex] = useState(0);
-  const [renameBookmarkTitle, setRenameBookmarkTitle] = useState('');
-  const [showDuplicateRangeModal, setShowDuplicateRangeModal] = useState(false);
-  const [cropApplyAll, setCropApplyAll] = useState(false);
-  const [pageSizes, setPageSizes] = useState<PdfPageSize[]>([]);
-  const [showPageHeaderModal, setShowPageHeaderModal] = useState(false);
-  const [pageHeaderText, setPageHeaderText] = useState('DRAFT');
-  const [showInsertImagePageModal, setShowInsertImagePageModal] = useState(false);
-  const [insertImagePagePath, setInsertImagePagePath] = useState('');
-  const [insertImageAtIndex, setInsertImageAtIndex] = useState(0);
-  const [showExportPagePdfModal, setShowExportPagePdfModal] = useState(false);
-  const [exportPagePdfPath, setExportPagePdfPath] = useState('');
-  const [showExportPagesPdfModal, setShowExportPagesPdfModal] = useState(false);
-  const [exportPagesPdfOutputDir, setExportPagesPdfOutputDir] = useState('');
-  const [showPageFooterModal, setShowPageFooterModal] = useState(false);
-  const [pageFooterText, setPageFooterText] = useState('Confidential');
-  const [showSwapPagesModal, setShowSwapPagesModal] = useState(false);
-  const [swapPageA, setSwapPageA] = useState(0);
-  const [swapPageB, setSwapPageB] = useState(1);
-  const [showReplacePageModal, setShowReplacePageModal] = useState(false);
-  const [replaceSourcePath, setReplaceSourcePath] = useState('');
-  const [replaceSourcePage, setReplaceSourcePage] = useState(0);
-  const [replaceSourcePageCount, setReplaceSourcePageCount] = useState<number | null>(null);
-  const [showInterleaveModal, setShowInterleaveModal] = useState(false);
-  const [interleaveFilePath, setInterleaveFilePath] = useState('');
-  const [interleaveSourcePageCount, setInterleaveSourcePageCount] = useState<number | null>(null);
-  const [showPageSizeModal, setShowPageSizeModal] = useState(false);
-  const [pageSizePreset, setPageSizePreset] = useState<PageSizePreset>('letter');
-  const [showDecryptModal, setShowDecryptModal] = useState(false);
-  const [decryptPassword, setDecryptPassword] = useState('');
-  const [showRotateRangeModal, setShowRotateRangeModal] = useState(false);
-  const [showKeepRangeModal, setShowKeepRangeModal] = useState(false);
-  const [showMoveRangeModal, setShowMoveRangeModal] = useState(false);
-  const [moveRangeToIndex, setMoveRangeToIndex] = useState(0);
-  const [showPrependModal, setShowPrependModal] = useState(false);
-  const [prependFilePath, setPrependFilePath] = useState('');
-  const [prependSourcePageCount, setPrependSourcePageCount] = useState<number | null>(null);
-  const [showSplitEveryModal, setShowSplitEveryModal] = useState(false);
-  const [splitEveryN, setSplitEveryN] = useState(2);
-  const [showPageBorderModal, setShowPageBorderModal] = useState(false);
-  const [pageBorderInset, setPageBorderInset] = useState(20);
-  const [showBookmarkAllModal, setShowBookmarkAllModal] = useState(false);
-  const [bookmarkAllPrefix, setBookmarkAllPrefix] = useState('Page ');
-  const [showExpandMarginsModal, setShowExpandMarginsModal] = useState(false);
-  const [expandMarginTop, setExpandMarginTop] = useState(20);
-  const [expandMarginRight, setExpandMarginRight] = useState(20);
-  const [expandMarginBottom, setExpandMarginBottom] = useState(20);
-  const [expandMarginLeft, setExpandMarginLeft] = useState(20);
-  const [showShrinkMarginsModal, setShowShrinkMarginsModal] = useState(false);
-  const [shrinkMarginTop, setShrinkMarginTop] = useState(20);
-  const [shrinkMarginRight, setShrinkMarginRight] = useState(20);
-  const [shrinkMarginBottom, setShrinkMarginBottom] = useState(20);
-  const [shrinkMarginLeft, setShrinkMarginLeft] = useState(20);
-  const [showDeleteNthModal, setShowDeleteNthModal] = useState(false);
-  const [deleteNthValue, setDeleteNthValue] = useState(2);
-  const [showExtractOddModal, setShowExtractOddModal] = useState(false);
-  const [extractOddOutputPath, setExtractOddOutputPath] = useState('');
-  const [showExtractEvenModal, setShowExtractEvenModal] = useState(false);
-  const [extractEvenOutputPath, setExtractEvenOutputPath] = useState('');
-  const [showSplitAtModal, setShowSplitAtModal] = useState(false);
-  const [splitAtPage, setSplitAtPage] = useState(1);
-  const [showReverseRangeModal, setShowReverseRangeModal] = useState(false);
-  const [showInsertBlankPagesModal, setShowInsertBlankPagesModal] = useState(false);
-  const [insertBlankCount, setInsertBlankCount] = useState(1);
-  const [insertBlankAtIndex, setInsertBlankAtIndex] = useState(0);
-  const [showCropRangeModal, setShowCropRangeModal] = useState(false);
-  const [showParityRangeModal, setShowParityRangeModal] = useState(false);
-  const [parityRangeCommand, setParityRangeCommand] = useState('rotate_odd_pages_in_range');
-  const [parityRangeOutputPath, setParityRangeOutputPath] = useState('');
-  const [showInsertModal, setShowInsertModal] = useState(false);
-  const [insertFilePath, setInsertFilePath] = useState<string>('');
-  const [insertAtPage, setInsertAtPage] = useState<number>(0);
-  const [insertSourcePageCount, setInsertSourcePageCount] = useState<number | null>(null);
-  const [showMergeModal, setShowMergeModal] = useState(false);
-  const [mergeFilePath, setMergeFilePath] = useState('');
-  const [mergeSourcePageCount, setMergeSourcePageCount] = useState<number | null>(null);
   // When a source PDF is chosen for Insert, load *its* page count so the From/To
   // range reflects the source document (not the currently open one) and defaults
   // to inserting the whole file.
@@ -643,49 +608,38 @@ function App() {
 
   const {
     defaultExtractOutputPath,
+    defaultImageExportOutput,
+    handleSave,
+    openSaveAs,
+    handleRotatePage,
+    handleDuplicatePage,
+    handleDuplicatePageBefore,
+    handleDuplicatePageToEnd,
+    handleDeletePage,
+    handleSplitPdf,
+    handleExtractPdf,
+    handleInsertPdf,
+    handleMergePdf,
+    openMergeModal,
+    handleOptimizePdf,
+    handleExportPng,
+    openExportPngModal,
+    closePasswordModal,
+    submitTextNote,
+    applyFormField,
+    openAddBookmarkModal,
+    handleAddBookmark,
+    openRenameBookmarkModal,
+    handleRenameBookmark,
+    handleRemoveBookmark,
+    openBookmarkAllModal,
+    handleBookmarkAllPages,
+    handleBookmarkOddPages,
+    handleBookmarkEvenPages,
     openDeleteModal,
     openInsertModal,
     openSplitModal,
     openExtractModal,
-  } = usePdfModalOpeners({
-    filePath,
-    originalPath,
-    currentPage,
-    pageCount,
-    extractRange,
-    setDeletePageInput,
-    setShowDeleteModal,
-    setShowInsertModal,
-    setShowSplitModal,
-    setExtractOutputPath,
-    setShowExtractModal,
-  });
-
-  const { defaultImageExportOutput, openExportPngModal, handleExportPng } = useImageExportActions({
-    filePath,
-    originalPath,
-    currentPage,
-    pageCount,
-    imageExportFormat,
-    pngExportOutputPath,
-    pngExportRange,
-    withLoading,
-    showToast,
-    setPngExportOutputPath,
-    setShowExportPngModal,
-  });
-
-  const runEdit = useStructuralEdit({
-    filePath,
-    currentPage,
-    withLoading,
-    markPdfEdited,
-    reloadOpenPdf,
-    showToast,
-  });
-
-
-  const {
     handleRotatePageCcw,
     handleResetPageRotation,
     handleResetAllRotations,
@@ -701,17 +655,11 @@ function App() {
     handleClearAllBookmarks,
     handleMovePageUp,
     handleMovePageDown,
-  } = useSinglePageEditActions({ filePath, currentPage, pageCount, runEdit, loadPdfBookmarks });
-
-  const {
     openDuplicateRangeModal,
     handleDuplicatePageRange,
     handleDuplicatePageRangeToEnd,
     handleDuplicatePageRangeToStart,
     handleDuplicatePageRangeBefore,
-  } = useDuplicateRangeActions({ filePath, pageCount, currentPage, duplicateRange, runEdit, setShowDuplicateRangeModal });
-
-  const {
     openPageHeaderModal,
     handleAddPageHeader,
     handleAddPageHeaderOddPages,
@@ -720,21 +668,6 @@ function App() {
     handleAddPageFooter,
     handleAddPageFooterOddPages,
     handleAddPageFooterEvenPages,
-  } = usePageHeaderFooterActions({
-    filePath,
-    pageCount,
-    pageHeaderText,
-    pageFooterText,
-    pageHeaderRange,
-    pageFooterRange,
-    runEdit,
-    setPageHeaderText,
-    setPageFooterText,
-    setShowPageHeaderModal,
-    setShowPageFooterModal,
-  });
-
-  const {
     openSwapPagesModal,
     handleSwapPages,
     openReplacePageModal,
@@ -743,106 +676,22 @@ function App() {
     openInterleaveModal,
     handleInterleaveSourcePathChange,
     handleInterleavePdf,
-  } = useSwapReplaceInterleaveActions({
-    filePath,
-    pageCount,
-    currentPage,
-    swapPageA,
-    swapPageB,
-    replaceSourcePath,
-    replaceSourcePage,
-    interleaveFilePath,
-    interleaveRange,
-    runEdit,
-    showToast,
-    setSwapPageA,
-    setSwapPageB,
-    setShowSwapPagesModal,
-    setReplaceSourcePath,
-    setReplaceSourcePage,
-    setReplaceSourcePageCount,
-    setShowReplacePageModal,
-    setInterleaveFilePath,
-    setInterleaveSourcePageCount,
-    setShowInterleaveModal,
-  });
-
-  const {
     handleSplitOddEven,
     handleDuplicateAllPages,
     openPageSizeModal,
     handleSetPageSize,
     handleSetPageSizeOddPages,
     handleSetPageSizeEvenPages,
-  } = usePageSizeActions({
-    filePath,
-    pageCount,
-    pageSizePreset,
-    pageSizeRange,
-    runEdit,
-    withLoading,
-    showToast,
-    setPageSizePreset,
-    setShowPageSizeModal,
-  });
-
-  const {
     openExportPagesPdfModal,
     handleExportPagesPdf,
     handleExportOddPagesAsPdf,
     handleExportEvenPagesAsPdf,
     openExportPagePdfModal,
     handleExportPagePdf,
-  } = useExportPagesActions({
-    filePath,
-    originalPath,
-    pageCount,
-    currentPage,
-    exportPagesPdfOutputDir,
-    exportPagePdfPath,
-    exportPagesPdfRange,
-    withLoading,
-    showToast,
-    setExportPagesPdfOutputDir,
-    setExportPagePdfPath,
-    setShowExportPagesPdfModal,
-    setShowExportPagePdfModal,
-  });
-
-  const {
     openParityRangeModal,
     handleParityRangeAction,
     handleExportOddPagesImage,
     handleExportEvenPagesImage,
-  } = useParityExportActions({
-    filePath,
-    pageCount,
-    currentPage,
-    parityRange,
-    parityRangeCommand,
-    parityRangeOutputPath,
-    cropMarginTop,
-    cropMarginRight,
-    cropMarginBottom,
-    cropMarginLeft,
-    watermarkText,
-    pageHeaderText,
-    pageFooterText,
-    pageBorderInset,
-    pageSizePreset,
-    pageNumbersPrefix,
-    pngExportOutputPath,
-    imageExportFormat,
-    withLoading,
-    markPdfEdited,
-    reloadOpenPdf,
-    showToast,
-    setParityRangeCommand,
-    setShowParityRangeModal,
-    setShowExportPngModal,
-  });
-
-  const {
     openRotateRangeModal,
     handleRotatePageRange,
     handleResetRotationRange,
@@ -864,53 +713,6 @@ function App() {
     handleMovePageRangeToEnd,
     openDeleteRangeModal,
     handleDeletePageRange,
-  } = useRangeModalActions({
-    filePath,
-    pageCount,
-    currentPage,
-    rotateRange,
-    reverseRange,
-    cropRange,
-    keepRange,
-    moveRange,
-    deleteRange,
-    insertBlankCount,
-    insertBlankAtIndex,
-    moveRangeToIndex,
-    cropMarginTop,
-    cropMarginRight,
-    cropMarginBottom,
-    cropMarginLeft,
-    runEdit,
-    withLoading,
-    markPdfEdited,
-    reloadOpenPdf,
-    showToast,
-    setInsertBlankCount,
-    setInsertBlankAtIndex,
-    setMoveRangeToIndex,
-    setCropMarginTop,
-    setCropMarginRight,
-    setCropMarginBottom,
-    setCropMarginLeft,
-    setMetadataTitle,
-    setMetadataAuthor,
-    setMetadataSubject,
-    setMetadataKeywords,
-    setMetadataCreator,
-    setMetadataProducer,
-    setMetadataCreationDate,
-    setMetadataModDate,
-    setShowRotateRangeModal,
-    setShowReverseRangeModal,
-    setShowInsertBlankPagesModal,
-    setShowCropRangeModal,
-    setShowKeepRangeModal,
-    setShowMoveRangeModal,
-    setShowDeleteRangeModal,
-  });
-
-  const {
     handleRotateOddPages,
     handleRotateEvenPages,
     handleRotateOddPagesCcw,
@@ -935,20 +737,6 @@ function App() {
     handleExpandEvenPages,
     handleShrinkOddPages,
     handleShrinkEvenPages,
-  } = useOddEvenPageActions({
-    filePath,
-    pageCount,
-    currentPage,
-    cropMargins: { marginTop: cropMarginTop, marginRight: cropMarginRight, marginBottom: cropMarginBottom, marginLeft: cropMarginLeft },
-    expandMargins: { marginTop: expandMarginTop, marginRight: expandMarginRight, marginBottom: expandMarginBottom, marginLeft: expandMarginLeft },
-    shrinkMargins: { marginTop: shrinkMarginTop, marginRight: shrinkMarginRight, marginBottom: shrinkMarginBottom, marginLeft: shrinkMarginLeft },
-    runEdit,
-    setShowCropRangeModal,
-    setShowExpandMarginsModal,
-    setShowShrinkMarginsModal,
-  });
-
-  const {
     handleReverseOddPages,
     handleReverseEvenPages,
     handleMoveOddPagesToStart,
@@ -964,18 +752,6 @@ function App() {
     handleSortOddPagesBySize,
     handleSortEvenPagesBySize,
     handleSortPagesByRotation,
-  } = useOddEvenExtendedActions({
-    filePath,
-    pageCount,
-    runEdit,
-    withLoading,
-    markPdfEdited,
-    reloadOpenPdf,
-    showToast,
-    setShowCropModal,
-  });
-
-  const {
     openSplitAtModal,
     handleSplitPdfAtPage,
     openDeleteNthModal,
@@ -989,39 +765,6 @@ function App() {
     handlePrependPdf,
     openSplitEveryModal,
     handleSplitEveryN,
-  } = useSplitExtractPrependActions({
-    filePath,
-    originalPath,
-    pageCount,
-    currentPage,
-    splitAtPage,
-    deleteNthValue,
-    extractOddOutputPath,
-    extractEvenOutputPath,
-    prependFilePath,
-    prependRange,
-    splitEveryN,
-    runEdit,
-    withLoading,
-    markPdfEdited,
-    reloadOpenPdf,
-    showToast,
-    setSplitAtPage,
-    setDeleteNthValue,
-    setExtractOddOutputPath,
-    setExtractEvenOutputPath,
-    setPrependFilePath,
-    setPrependSourcePageCount,
-    setSplitEveryN,
-    setShowSplitAtModal,
-    setShowDeleteNthModal,
-    setShowExtractOddModal,
-    setShowExtractEvenModal,
-    setShowPrependModal,
-    setShowSplitEveryModal,
-  });
-
-  const {
     openPageBorderModal,
     handleAddPageBorder,
     handleAddPageBorderOddPages,
@@ -1053,167 +796,6 @@ function App() {
     handleClearPageCrop,
     openFlattenModal,
     handleFlattenAnnotations,
-  } = usePageDecorActions({
-    filePath,
-    pageCount,
-    currentPage,
-    pageBorderRange,
-    expandMarginsRange,
-    shrinkMarginsRange,
-    pageNumbersRange,
-    watermarkRange,
-    flattenRange,
-    pageBorderInset,
-    expandMarginTop,
-    expandMarginRight,
-    expandMarginBottom,
-    expandMarginLeft,
-    shrinkMarginTop,
-    shrinkMarginRight,
-    shrinkMarginBottom,
-    shrinkMarginLeft,
-    cropMarginTop,
-    cropMarginRight,
-    cropMarginBottom,
-    cropMarginLeft,
-    cropApplyAll,
-    pageNumbersPrefix,
-    watermarkText,
-    insertImageAtIndex,
-    insertImagePagePath,
-    runEdit,
-    withLoading,
-    markPdfEdited,
-    reloadOpenPdf,
-    loadPageSizes,
-    showToast,
-    setPageBorderInset,
-    setExpandMarginTop,
-    setExpandMarginRight,
-    setExpandMarginBottom,
-    setExpandMarginLeft,
-    setShrinkMarginTop,
-    setShrinkMarginRight,
-    setShrinkMarginBottom,
-    setShrinkMarginLeft,
-    setCropMarginTop,
-    setCropMarginRight,
-    setCropMarginBottom,
-    setCropMarginLeft,
-    setCropApplyAll,
-    setPageNumbersPrefix,
-    setWatermarkText,
-    setInsertImageAtIndex,
-    setInsertImagePagePath,
-    setShowPageBorderModal,
-    setShowExpandMarginsModal,
-    setShowShrinkMarginsModal,
-    setShowInsertImagePageModal,
-    setShowPageNumbersModal,
-    setShowWatermarkModal,
-    setShowCropModal,
-    setShowFlattenModal,
-  });
-
-  const bookmarkActions = useBookmarkActions({
-    filePath,
-    currentPage,
-    bookmarkTitle,
-    bookmarkAllPrefix,
-    renameBookmarkIndex,
-    renameBookmarkTitle,
-    runEdit,
-    loadPdfBookmarks,
-    setBookmarkTitle,
-    setBookmarkAllPrefix,
-    setRenameBookmarkIndex,
-    setRenameBookmarkTitle,
-    setShowAddBookmarkModal,
-    setShowRenameBookmarkModal,
-    setShowBookmarkAllModal,
-  });
-  const {
-    openAddBookmarkModal,
-    handleAddBookmark,
-    openRenameBookmarkModal,
-    handleRenameBookmark,
-    handleRemoveBookmark,
-    openBookmarkAllModal,
-    handleBookmarkAllPages,
-    handleBookmarkOddPages,
-    handleBookmarkEvenPages,
-  } = bookmarkActions;
-
-  const { openMergeModal, handleSplitPdf, handleDeletePage, handleExtractPdf, handleInsertPdf, handleMergePdf, handleOptimizePdf } = usePdfFileOpsActions({
-    filePath,
-    pageCount,
-    currentPage,
-    deletePageInput,
-    splitRanges,
-    insertFilePath,
-    insertAtPage,
-    mergeFilePath,
-    extractOutputPath,
-    insertRange,
-    mergeRange,
-    extractRange,
-    withLoading,
-    markPdfEdited,
-    loadThumbnails,
-    renderPage,
-    showToast,
-    setPageCount,
-    setCurrentPage,
-    setDeletePageInput,
-    setShowDeleteModal,
-    setShowSplitModal,
-    setSplitRanges,
-    setShowInsertModal,
-    setInsertFilePath,
-    setInsertAtPage,
-    setShowMergeModal,
-    setMergeFilePath,
-    setShowExtractModal,
-  });
-
-  const { handleRotatePage, handleDuplicatePageBefore, handleDuplicatePage, handleDuplicatePageToEnd } = usePageDuplicateActions({
-    filePath,
-    currentPage,
-    pageInput,
-    withLoading,
-    markPdfEdited,
-    loadThumbnails,
-    renderPage,
-    runEdit,
-    showToast,
-    setPageCount,
-    setCurrentPage,
-    setPageInput,
-  });
-
-  const { applyFormField } = useFormFieldActions({
-    filePath,
-    formFields,
-    formDrafts,
-    withLoading,
-    markPdfEdited,
-    loadFormFields,
-    showToast,
-  });
-
-  usePdfRevisionSync({
-    filePath,
-    pdfRevision,
-    loadFormFields,
-    loadPdfSignatures,
-    loadPdfBookmarks,
-    loadPageSizes,
-  });
-
-  cancelDrawingRef.current = cancelDrawing;
-
-  const {
-    refreshAnnotations,
     handlePageClick,
     handlePageMouseMove,
     handleDrawMouseDown,
@@ -1224,64 +806,6 @@ function App() {
     removeInkStroke,
     removeHighlight,
     removeTextNote,
-  } = usePageInteraction({
-    filePath,
-    currentPage,
-    zoom,
-    imgRef,
-    withLoading,
-    markPdfEdited,
-    renderPage,
-    loadFormFields,
-    runEdit,
-    setAnnotations,
-    drawMode,
-    textEditMode,
-    vectorEditMode,
-    formAddMode,
-    imageInsertMode,
-    redactMode,
-    stampMode,
-    shapeMode,
-    noteMode,
-    highlightMode,
-    drawing,
-    highlightStart,
-    inkDrawing,
-    inkDraft,
-    shapeKind,
-    stampKind,
-    stampPreset,
-    imageSourcePath,
-    newFormFieldKind,
-    newFormFieldName,
-    newFormFieldOptions,
-    newFormRadioGroup,
-    newFormRadioOption,
-    newFormCheckboxChecked,
-    cancelDrawing,
-    setHighlightStart,
-    setHighlightRect,
-    setDrawing,
-    setShapeLineEnd,
-    setInkDrawing,
-    setInkDraft,
-    setPendingTextPos,
-    setPageTextDraft,
-    setEditingTextIndex,
-    setShowPageTextModal,
-    setPendingNotePos,
-    setNoteDraft,
-    setShowNoteModal,
-    setFormAddMode,
-    setShowAddFormFieldModal,
-    setNewFormFieldName,
-    setNewFormRadioGroup,
-    setNewFormRadioOption,
-    showToast,
-  });
-
-  const {
     openImageInsertModal,
     confirmImageSource,
     toggleImageInsertMode,
@@ -1304,45 +828,6 @@ function App() {
     exitRedactMode,
     exitNoteMode,
     toggleFormsPanel,
-  } = useAnnotationModes({
-    cancelDrawing,
-    setHighlightMode,
-    setNoteMode,
-    setDrawMode,
-    setShapeMode,
-    setStampMode,
-    setRedactMode,
-    setImageInsertMode,
-    setFormAddMode,
-    setTextEditMode,
-    setVectorEditMode,
-    setShowNoteModal,
-    setPendingNotePos,
-    setNoteDraft,
-    filePath,
-    imageSourcePath,
-    imageSourceDraft,
-    newFormFieldKind,
-    newFormFieldName,
-    newFormFieldOptions,
-    newFormRadioGroup,
-    newFormRadioOption,
-    newFormCheckboxChecked,
-    showToast,
-    setImageSourceDraft,
-    setImageSourcePath,
-    setShowImageInsertModal,
-    setShowAddFormFieldModal,
-    setNewFormFieldKind,
-    setNewFormFieldName,
-    setNewFormFieldOptions,
-    setNewFormRadioGroup,
-    setNewFormRadioOption,
-    setNewFormCheckboxChecked,
-    setShowFormsPanel,
-  });
-
-  const {
     submitPageText,
     startEditPageText,
     closePageTextModal,
@@ -1350,106 +835,14 @@ function App() {
     exitVectorEditMode,
     removePageTextEdit,
     removePageVectorEdit,
-  } = usePageTextEdits({
-    filePath,
-    currentPage,
-    pageTextDraft,
-    pageTextFontSize,
-    pendingTextPos,
-    editingTextIndex,
-    withLoading,
-    markPdfEdited,
-    renderPage,
-    showToast,
-    setShowPageTextModal,
-    setShowPageEditsModal,
-    setPendingTextPos,
-    setEditingTextIndex,
-    setPageTextDraft,
-    setPageTextFontSize,
-    setTextEditMode,
-    setVectorEditMode,
-    cancelDrawing,
-  });
-
-  const { closePasswordModal, submitTextNote } = useNotePasswordActions({
-    filePath,
-    currentPage,
-    noteDraft,
-    pendingNotePos,
-    withLoading,
-    markPdfEdited,
-    refreshAnnotations,
-    exitNoteMode,
-    showToast,
-    setShowPasswordModal,
-    setPendingEncryptedPath,
-    setPdfPasswordDraft,
-  });
-
-  const {
     chooseOpenPdfNative,
     chooseInsertPdfNative,
     chooseMergePdfNative,
     handleSaveAs,
-    saveAsViaNativeDialog,
     chooseSaveAsNative,
     chooseExtractOutputNative,
     chooseExportPngOutputNative,
     chooseSignCertNative,
-  } = useNativeFilePickers({
-    filePath,
-    originalPath,
-    openFilePath,
-    insertFilePath,
-    mergeFilePath,
-    saveAsPath,
-    extractOutputPath,
-    pngExportOutputPath,
-    signCertPath,
-    lastBrowserDir,
-    imageExportFormat,
-    pngExportScope: pngExportRange.scope,
-    pngExportStartPage: pngExportRange.startPage,
-    pngExportEndPage: pngExportRange.endPage,
-    extractStartPage: extractRange.startPage,
-    extractEndPage: extractRange.endPage,
-    currentPage,
-    withLoading,
-    loadPdfFromPath,
-    rememberOpenedPdf,
-    rememberBrowserDirectory,
-    markSaved,
-    defaultExtractOutputPath,
-    defaultImageExportOutput,
-    setOpenFilePath,
-    setShowOpenModal,
-    setInsertFilePath,
-    setMergeFilePath,
-    setSaveAsPath,
-    setShowSaveAsModal,
-    setOriginalPath,
-    setExtractOutputPath,
-    setPngExportOutputPath,
-    setSignCertPath,
-    showToast,
-  });
-
-  const { handleSave, openSaveAs } = useSaveActions({
-    filePath,
-    originalPath,
-    nativeDialogs,
-    withLoading,
-    markSaved,
-    showToast,
-    saveAsViaNativeDialog,
-    setSaveAsPath,
-    setShowSaveAsModal,
-  });
-  handleSaveRef.current = handleSave;
-
-  const {
-    handleMarkdownView,
     toggleMarkdownView,
     handleMarkdownSaveAs,
     chooseMarkdownSaveAsNative,
@@ -1457,36 +850,6 @@ function App() {
     handleSummarizePdf,
     handleCopySummary,
     handleSaveSummary,
-  } = useMarkdownFlow({
-    filePath,
-    originalPath,
-    viewMode,
-    markdownText,
-    markdownPath,
-    markdownSaveAsPath,
-    pdfRevision,
-    markdownRevision,
-    nativeDialogs,
-    pdfSummary,
-    withLoading,
-    shouldShowTesseractReminder,
-    setViewMode,
-    setMarkdownText,
-    setMarkdownPath,
-    setMarkdownRevision,
-    setMarkdownOcrNotice,
-    setShowMarkdownSaveAsModal,
-    setMarkdownSaveAsPath,
-    setTesseractReminderSource,
-    setShowTesseractModal,
-    setPdfSummary,
-    setShowSummaryModal,
-    showToast,
-  });
-  handleMarkdownViewRef.current = handleMarkdownView;
-
-
-  const {
     openProtectModal,
     openDecryptModal,
     handleRemovePdfPassword,
@@ -1496,50 +859,362 @@ function App() {
     openSignModal,
     handleSignPdf,
     toggleSignaturesPanel,
-  } = useSecurityDocumentActions({
+  } = useAppPdfActions({
+    bookmarkAllPrefix,
+    bookmarkTitle,
+    cancelDrawing,
+    cancelDrawingRef,
+    cropApplyAll,
+    cropMarginBottom,
+    cropMarginLeft,
+    cropMarginRight,
+    cropMarginTop,
+    cropMargins: {
+      marginTop: cropMarginTop,
+      marginRight: cropMarginRight,
+      marginBottom: cropMarginBottom,
+      marginLeft: cropMarginLeft,
+    },
+    cropRange,
+    currentPage,
+    decryptPassword,
+    deleteNthValue,
+    deletePageInput,
+    deleteRange,
+    duplicateRange,
+    drawMode,
+    drawing,
+    editingTextIndex,
+    expandMarginBottom,
+    expandMarginLeft,
+    expandMarginRight,
+    expandMarginTop,
+    expandMargins: {
+      marginTop: expandMarginTop,
+      marginRight: expandMarginRight,
+      marginBottom: expandMarginBottom,
+      marginLeft: expandMarginLeft,
+    },
+    expandMarginsRange,
+    exportPagePdfPath,
+    exportPagesPdfOutputDir,
+    exportPagesPdfRange,
+    extractEndPage: extractRange.endPage,
+    extractEvenOutputPath,
+    extractOddOutputPath,
+    extractOutputPath,
+    extractRange,
+    extractStartPage: extractRange.startPage,
     filePath,
+    flattenRange,
+    formAddMode,
+    formDrafts,
+    formFields,
+    handleMarkdownViewRef,
+    handleSaveRef,
+    highlightMode,
+    highlightStart,
+    imageExportFormat,
+    imageInsertMode,
+    imageSourceDraft,
+    imageSourcePath,
+    imgRef,
+    inkDraft,
+    inkDrawing,
+    insertAtPage,
+    insertBlankAtIndex,
+    insertBlankCount,
+    insertFilePath,
+    insertImageAtIndex,
+    insertImagePagePath,
+    insertRange,
+    interleaveFilePath,
+    interleaveRange,
+    keepRange,
+    lastBrowserDir,
+    loadFormFields,
+    loadPageSizes,
+    loadPdfBookmarks,
+    loadPdfFromPath,
+    loadPdfSignatures,
+    loadThumbnails,
+    markPdfEdited,
+    markSaved,
+    markdownPath,
+    markdownRevision,
+    markdownSaveAsPath,
+    markdownText,
+    mergeFilePath,
+    mergeRange,
+    metadataAuthor,
+    metadataCreator,
+    metadataKeywords,
+    metadataProducer,
+    metadataSubject,
+    metadataTitle,
+    moveRange,
+    moveRangeToIndex,
+    nativeDialogs,
+    newFormCheckboxChecked,
+    newFormFieldKind,
+    newFormFieldName,
+    newFormFieldOptions,
+    newFormRadioGroup,
+    newFormRadioOption,
+    noteDraft,
+    noteMode,
+    openFilePath,
     originalPath,
+    pageBorderInset,
+    pageBorderRange,
+    pageCount,
+    pageFooterRange,
+    pageFooterText,
+    pageHeaderRange,
+    pageHeaderText,
+    pageInput,
+    pageNumbersPrefix,
+    pageNumbersRange,
+    pageSizePreset,
+    pageSizeRange,
+    pageTextDraft,
+    pageTextFontSize,
+    parityRange,
+    parityRangeCommand,
+    parityRangeOutputPath,
+    pdfRevision,
+    pdfSummary,
+    pendingNotePos,
+    pendingTextPos,
+    pngExportEndPage: pngExportRange.endPage,
+    pngExportOutputPath,
+    pngExportRange,
+    pngExportScope: pngExportRange.scope,
+    pngExportStartPage: pngExportRange.startPage,
+    prependFilePath,
+    prependRange,
+    protectOwnerPassword,
     protectUserPassword,
     protectUserPasswordConfirm,
-    protectOwnerPassword,
-    decryptPassword,
-    signCertPath,
-    signCertPassword,
-    signReason,
-    signLocation,
-    metadataTitle,
-    metadataAuthor,
-    metadataSubject,
-    metadataKeywords,
-    metadataCreator,
-    metadataProducer,
-    withLoading,
-    markPdfEdited,
-    runEdit,
-    loadPdfSignatures,
-    showToast,
+    redactMode,
+    reloadOpenPdf,
+    rememberBrowserDirectory,
+    rememberOpenedPdf,
+    renameBookmarkIndex,
+    renameBookmarkTitle,
+    renderPage,
+    replaceSourcePage,
+    replaceSourcePath,
+    reverseRange,
+    rotateRange,
+    saveAsPath,
+    setAnnotations,
+    setBookmarkAllPrefix,
+    setBookmarkTitle,
+    setCropApplyAll,
+    setCropMarginBottom,
+    setCropMarginLeft,
+    setCropMarginRight,
+    setCropMarginTop,
+    setCurrentPage,
+    setDecryptPassword,
+    setDeleteNthValue,
+    setDeletePageInput,
+    setDrawMode,
+    setDrawing,
+    setEditingTextIndex,
+    setExpandMarginBottom,
+    setExpandMarginLeft,
+    setExpandMarginRight,
+    setExpandMarginTop,
+    setExportPagePdfPath,
+    setExportPagesPdfOutputDir,
+    setExtractEvenOutputPath,
+    setExtractOddOutputPath,
+    setExtractOutputPath,
+    setFormAddMode,
+    setHighlightMode,
+    setHighlightRect,
+    setHighlightStart,
+    setImageInsertMode,
+    setImageSourceDraft,
+    setImageSourcePath,
+    setInkDraft,
+    setInkDrawing,
+    setInsertAtPage,
+    setInsertBlankAtIndex,
+    setInsertBlankCount,
+    setInsertFilePath,
+    setInsertImageAtIndex,
+    setInsertImagePagePath,
+    setInterleaveFilePath,
+    setInterleaveSourcePageCount,
+    setMarkdownOcrNotice,
+    setMarkdownPath,
+    setMarkdownRevision,
+    setMarkdownSaveAsPath,
+    setMarkdownText,
+    setMergeFilePath,
+    setMetadataAuthor,
+    setMetadataCreationDate,
+    setMetadataCreator,
+    setMetadataKeywords,
+    setMetadataModDate,
+    setMetadataProducer,
+    setMetadataSubject,
+    setMetadataTitle,
+    setMoveRangeToIndex,
+    setNewFormCheckboxChecked,
+    setNewFormFieldKind,
+    setNewFormFieldName,
+    setNewFormFieldOptions,
+    setNewFormRadioGroup,
+    setNewFormRadioOption,
+    setNoteDraft,
+    setNoteMode,
+    setOpenFilePath,
+    setOriginalPath,
+    setPageBorderInset,
+    setPageCount,
+    setPageFooterText,
+    setPageHeaderText,
+    setPageInput,
+    setPageNumbersPrefix,
+    setPageSizePreset,
+    setPageTextDraft,
+    setPageTextFontSize,
+    setParityRangeCommand,
+    setPdfPasswordDraft,
+    setPdfRevision,
+    setPdfSummary,
+    setPendingEncryptedPath,
+    setPendingNotePos,
+    setPendingTextPos,
+    setPngExportOutputPath,
+    setPrependFilePath,
+    setPrependSourcePageCount,
+    setProtectOwnerPassword,
     setProtectUserPassword,
     setProtectUserPasswordConfirm,
-    setProtectOwnerPassword,
-    setShowProtectModal,
-    setDecryptPassword,
+    setRedactMode,
+    setRenameBookmarkIndex,
+    setRenameBookmarkTitle,
+    setReplaceSourcePage,
+    setReplaceSourcePageCount,
+    setReplaceSourcePath,
+    setSaveAsPath,
+    setShapeLineEnd,
+    setShapeMode,
+    setShowAddBookmarkModal,
+    setShowAddFormFieldModal,
+    setShowBookmarkAllModal,
+    setShowCropModal,
+    setShowCropRangeModal,
     setShowDecryptModal,
-    setSignCertPath,
-    setSignCertPassword,
-    setSignReason,
-    setSignLocation,
-    setShowSignModal,
-    setPdfRevision,
-    setMetadataTitle,
-    setMetadataAuthor,
-    setMetadataSubject,
-    setMetadataKeywords,
-    setMetadataCreator,
-    setMetadataProducer,
-    setMetadataCreationDate,
-    setMetadataModDate,
+    setShowDeleteModal,
+    setShowDeleteNthModal,
+    setShowDeleteRangeModal,
+    setShowDuplicateRangeModal,
+    setShowExpandMarginsModal,
+    setShowExportPagePdfModal,
+    setShowExportPagesPdfModal,
+    setShowExportPngModal,
+    setShowExtractEvenModal,
+    setShowExtractModal,
+    setShowExtractOddModal,
+    setShowFlattenModal,
+    setShowFormsPanel,
+    setShowImageInsertModal,
+    setShowInsertBlankPagesModal,
+    setShowInsertImagePageModal,
+    setShowInsertModal,
+    setShowInterleaveModal,
+    setShowKeepRangeModal,
+    setShowMarkdownSaveAsModal,
+    setShowMergeModal,
     setShowMetadataModal,
+    setShowMoveRangeModal,
+    setShowNoteModal,
+    setShowOpenModal,
+    setShowPageBorderModal,
+    setShowPageEditsModal,
+    setShowPageFooterModal,
+    setShowPageHeaderModal,
+    setShowPageNumbersModal,
+    setShowPageSizeModal,
+    setShowPageTextModal,
+    setShowParityRangeModal,
+    setShowPasswordModal,
+    setShowPrependModal,
+    setShowProtectModal,
+    setShowRenameBookmarkModal,
+    setShowReplacePageModal,
+    setShowReverseRangeModal,
+    setShowRotateRangeModal,
+    setShowSaveAsModal,
+    setShowShrinkMarginsModal,
+    setShowSignModal,
     setShowSignaturesPanel,
+    setShowSplitAtModal,
+    setShowSplitEveryModal,
+    setShowSplitModal,
+    setShowSummaryModal,
+    setShowSwapPagesModal,
+    setShowTesseractModal,
+    setShowWatermarkModal,
+    setShrinkMarginBottom,
+    setShrinkMarginLeft,
+    setShrinkMarginRight,
+    setShrinkMarginTop,
+    setSignCertPassword,
+    setSignCertPath,
+    setSignLocation,
+    setSignReason,
+    setSplitAtPage,
+    setSplitEveryN,
+    setSplitRanges,
+    setStampMode,
+    setSwapPageA,
+    setSwapPageB,
+    setTesseractReminderSource,
+    setTextEditMode,
+    setVectorEditMode,
+    setViewMode,
+    setWatermarkText,
+    shapeKind,
+    shapeMode,
+    shouldShowTesseractReminder,
+    showToast,
+    shrinkMarginBottom,
+    shrinkMarginLeft,
+    shrinkMarginRight,
+    shrinkMarginTop,
+    shrinkMargins: {
+      marginTop: shrinkMarginTop,
+      marginRight: shrinkMarginRight,
+      marginBottom: shrinkMarginBottom,
+      marginLeft: shrinkMarginLeft,
+    },
+    shrinkMarginsRange,
+    signCertPassword,
+    signCertPath,
+    signLocation,
+    signReason,
+    splitAtPage,
+    splitEveryN,
+    splitRanges,
+    stampKind,
+    stampMode,
+    stampPreset,
+    swapPageA,
+    swapPageB,
+    textEditMode,
+    vectorEditMode,
+    viewMode,
+    watermarkRange,
+    watermarkText,
+    withLoading,
+    zoom,
   });
 
   const { zoomIn, zoomOut, resetZoom, commitZoom, commitPage } = usePageZoom({
@@ -2042,110 +1717,112 @@ function App() {
 
   return (
     <AppShell
-      windowTitle={windowTitle}
-      toast={toast}
-      loading={loading}
-      chrome={buildAppChromeSource({
-        menus: appMenus,
-        showCommandPalette,
-        showShortcutsHelp,
-        showLicenses,
-        showCredits,
-        showAbout,
-        setShowCommandPalette,
-        setShowShortcutsHelp,
-        setShowLicenses,
-        setShowCredits,
-        setShowAbout,
-        modeExtras: modeToolbarExtras,
-        pageCount,
-        viewMode,
-        currentPage,
-        pageInput,
-        pageSizes,
-        setPageInput,
-        commitPage,
-        goToPage,
-        zoom,
-        zoomInput,
-        setZoomInput,
-        commitZoom,
-        zoomIn,
-        zoomOut,
-        resetZoom,
+      {...buildAppShellSource({
+        windowTitle,
+        toast,
+        loading,
+        chrome: {
+          menus: appMenus,
+          showCommandPalette,
+          showShortcutsHelp,
+          showLicenses,
+          showCredits,
+          showAbout,
+          setShowCommandPalette,
+          setShowShortcutsHelp,
+          setShowLicenses,
+          setShowCredits,
+          setShowAbout,
+          modeExtras: modeToolbarExtras,
+          pageCount,
+          viewMode,
+          currentPage,
+          pageInput,
+          pageSizes,
+          setPageInput,
+          commitPage,
+          goToPage,
+          zoom,
+          zoomInput,
+          setZoomInput,
+          commitZoom,
+          zoomIn,
+          zoomOut,
+          resetZoom,
+        },
+        viewer: {
+          filePath,
+          thumbnails,
+          currentPage,
+          draggedIndex,
+          handleDragStart,
+          handleDragOver,
+          handleDrop,
+          goToPage,
+          showBookmarksPanel,
+          pdfBookmarks,
+          openAddBookmarkModal,
+          openBookmarkAllModal,
+          handleClearAllBookmarks,
+          loadPdfBookmarks,
+          openRenameBookmarkModal,
+          handleRemoveBookmark,
+          showSignaturesPanel,
+          pdfSignatures,
+          signatureVerification,
+          loadPdfSignatures,
+          showFormsPanel,
+          formFields,
+          formDrafts,
+          setFormDrafts,
+          openAddFormFieldModal,
+          applyFormField,
+          viewMode,
+          scrollRef,
+          handleWheel,
+          openPdf,
+          markdownOcrNotice,
+          markdownPath,
+          markdownText,
+          openMarkdownSaveAs,
+          zoom,
+          imageSrc,
+          imgRef,
+          handleImageLoad,
+          highlightMode,
+          noteMode,
+          drawMode,
+          shapeMode,
+          stampMode,
+          redactMode,
+          imageInsertMode,
+          textEditMode,
+          vectorEditMode,
+          formAddMode,
+          handlePageClick,
+          handleDrawMouseDown,
+          handlePageMouseMove,
+          handleDrawMouseUp,
+          activeSearchRect,
+          annotations,
+          shapeKind,
+          drawing,
+          highlightStart,
+          highlightRect,
+          shapeLineEnd,
+          inkDraft,
+          pageTextEdits,
+          pageVectorEdits,
+          removeHighlight,
+          removeRedaction,
+          removeStamp,
+          removeShape,
+          removeInkStroke,
+          removeTextNote,
+        },
+        modalCtx,
+        printPages,
       })}
-      body={buildAppViewerSource({
-        filePath,
-        thumbnails,
-        currentPage,
-        draggedIndex,
-        handleDragStart,
-        handleDragOver,
-        handleDrop,
-        goToPage,
-        showBookmarksPanel,
-        pdfBookmarks,
-        openAddBookmarkModal,
-        openBookmarkAllModal,
-        handleClearAllBookmarks,
-        loadPdfBookmarks,
-        openRenameBookmarkModal,
-        handleRemoveBookmark,
-        showSignaturesPanel,
-        pdfSignatures,
-        signatureVerification,
-        loadPdfSignatures,
-        showFormsPanel,
-        formFields,
-        formDrafts,
-        setFormDrafts,
-        openAddFormFieldModal,
-        applyFormField,
-        viewMode,
-        scrollRef,
-        handleWheel,
-        openPdf,
-        markdownOcrNotice,
-        markdownPath,
-        markdownText,
-        openMarkdownSaveAs,
-        zoom,
-        imageSrc,
-        imgRef,
-        handleImageLoad,
-        highlightMode,
-        noteMode,
-        drawMode,
-        shapeMode,
-        stampMode,
-        redactMode,
-        imageInsertMode,
-        textEditMode,
-        vectorEditMode,
-        formAddMode,
-        handlePageClick,
-        handleDrawMouseDown,
-        handlePageMouseMove,
-        handleDrawMouseUp,
-        activeSearchRect,
-        annotations,
-        shapeKind,
-        drawing,
-        highlightStart,
-        highlightRect,
-        shapeLineEnd,
-        inkDraft,
-        pageTextEdits,
-        pageVectorEdits,
-        removeHighlight,
-        removeRedaction,
-        removeStamp,
-        removeShape,
-        removeInkStroke,
-        removeTextNote,
-      })}
-      modals={{ ctx: modalCtx }}
-      printPages={printPages}
     />
   );
 }

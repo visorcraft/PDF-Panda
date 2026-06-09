@@ -16,7 +16,9 @@ use pdf::forms::{
     mark_acroform_need_appearances, push_acroform_field, set_btn_widget_checked, set_radio_group_checked,
     viewer_widget_rect, FormFieldData,
 };
+use pdf::history::HistorySnapshot;
 use pdf::import::{import_dict, import_object};
+use pdf::markdown::MarkdownSaveResult;
 use pdf::metadata::{current_pdf_mod_date, ensure_info_dict_id, read_info_string, write_info_text_field};
 use pdf::ocr::{
     build_tesseract_install_guide, ocr_language, ocr_page_segmentation_mode, os_release_value, resolve_tesseract,
@@ -30,21 +32,15 @@ use pdf::pdfium_bind::{
 };
 use pdf::rotation::{page_rotation, reset_page_rotation_at, rotate_all_pages_by, rotate_page_at, set_page_rotation};
 use pdf::search::{search_pdf_text as search_pdf_text_impl, PdfTextSearchMatch};
+use pdf::security::{PdfSignatureInfo, PdfSignatureVerificationSummary};
 
-use lopdf::{Dictionary, Document, EncryptionState, EncryptionVersion, Object, ObjectId, Permissions, Stream};
+use lopdf::{Dictionary, Document, Object, ObjectId, Stream};
 use pdfium_render::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::OnceLock;
-use underskrift::inspect::signatures::inspect_signatures;
-use underskrift::trust::{TrustStore, TrustStoreSet};
-use underskrift::verify::report::SignatureStatus;
-use underskrift::verify::SignatureVerifier;
-use underskrift::{PdfSigner, SigningOptions, SoftwareSigner, SubFilter};
 
 #[tauri::command]
 fn get_pdf_page_count(path: String) -> Result<u32, String> {
@@ -1060,17 +1056,7 @@ fn set_page_size(path: String, start_page: u32, end_page: u32, preset: String) -
 /// Write a decrypted sibling `<stem>_decrypted.pdf` next to an encrypted `path`.
 #[tauri::command]
 fn remove_pdf_password(path: String, password: String) -> Result<String, String> {
-    if password.is_empty() {
-        return Err("Password is required".to_string());
-    }
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load_with_password(&path, &password).map_err(|_| "Incorrect password".to_string())?;
-    if doc.is_encrypted() {
-        doc.decrypt(&password).map_err(|e| e.to_string())?;
-    }
-    let output_path = path.with_file_name(format!("{}_decrypted.pdf", path.file_stem().unwrap().to_string_lossy()));
-    doc.save(&output_path).map_err(|e| e.to_string())?;
-    Ok(output_path.to_string_lossy().into_owned())
+    pdf::security::remove_pdf_password(path, password)
 }
 
 /// Export each page in the range as a separate single-page PDF in `output_dir`.
@@ -6459,86 +6445,6 @@ fn convert_pdf_to_markdown(path: String) -> Result<String, String> {
     pdf_to_markdown(&PathBuf::from(path), None, None)
 }
 
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MarkdownSaveResult {
-    markdown: String,
-    markdown_path: String,
-    written: bool,
-    conflict: bool,
-    ocr_available: bool,
-    ocr_language: String,
-    /// Scanned or sparse-text pages where OCR was attempted during export.
-    pages_needing_ocr: u32,
-    ocr_text_blocks: u32,
-    ocr_missing_hints: u32,
-}
-
-fn write_markdown_file(markdown_path: &Path, markdown: &str, overwrite: bool) -> Result<MarkdownSaveResult, String> {
-    if markdown_path.exists() {
-        let existing = std::fs::read(markdown_path).map_err(|e| e.to_string())?;
-        if existing == markdown.as_bytes() {
-            return Ok(MarkdownSaveResult {
-                markdown: markdown.to_string(),
-                markdown_path: markdown_path.to_string_lossy().to_string(),
-                written: false,
-                conflict: false,
-                ocr_available: false,
-                ocr_language: ocr_language(),
-                pages_needing_ocr: 0,
-                ocr_text_blocks: 0,
-                ocr_missing_hints: 0,
-            });
-        }
-        if !overwrite {
-            return Ok(MarkdownSaveResult {
-                markdown: markdown.to_string(),
-                markdown_path: markdown_path.to_string_lossy().to_string(),
-                written: false,
-                conflict: true,
-                ocr_available: false,
-                ocr_language: ocr_language(),
-                pages_needing_ocr: 0,
-                ocr_text_blocks: 0,
-                ocr_missing_hints: 0,
-            });
-        }
-    }
-
-    std::fs::write(markdown_path, markdown).map_err(|e| e.to_string())?;
-    Ok(MarkdownSaveResult {
-        markdown: markdown.to_string(),
-        markdown_path: markdown_path.to_string_lossy().to_string(),
-        written: true,
-        conflict: false,
-        ocr_available: false,
-        ocr_language: ocr_language(),
-        pages_needing_ocr: 0,
-        ocr_text_blocks: 0,
-        ocr_missing_hints: 0,
-    })
-}
-
-fn markdown_save_result(
-    markdown: String,
-    markdown_path: &Path,
-    written: bool,
-    conflict: bool,
-    stats: &OcrExportStats,
-) -> MarkdownSaveResult {
-    MarkdownSaveResult {
-        markdown,
-        markdown_path: markdown_path.to_string_lossy().into_owned(),
-        written,
-        conflict,
-        ocr_available: stats.available,
-        ocr_language: stats.language.clone(),
-        pages_needing_ocr: stats.scanned_pages + stats.sparse_supplements,
-        ocr_text_blocks: stats.text_blocks,
-        ocr_missing_hints: stats.missing_install_hints,
-    }
-}
-
 #[tauri::command]
 fn save_pdf_markdown(path: String, overwrite: bool, output_path: Option<String>) -> Result<MarkdownSaveResult, String> {
     let pdf_path = PathBuf::from(path);
@@ -6551,8 +6457,14 @@ fn save_pdf_markdown(path: String, overwrite: bool, output_path: Option<String>)
     let sink = MarkdownImageSink { assets_dir: &assets_dir, rel_prefix: &assets_folder };
     let mut stats = OcrExportStats::default();
     let markdown = pdf_to_markdown(&pdf_path, Some(&sink), Some(&mut stats))?;
-    let file_result = write_markdown_file(&markdown_path, &markdown, overwrite)?;
-    Ok(markdown_save_result(file_result.markdown, &markdown_path, file_result.written, file_result.conflict, &stats))
+    let file_result = pdf::markdown::write_markdown_file(&markdown_path, &markdown, overwrite)?;
+    Ok(pdf::markdown::markdown_save_result(
+        file_result.markdown,
+        &markdown_path,
+        file_result.written,
+        file_result.conflict,
+        &stats,
+    ))
 }
 
 #[tauri::command]
@@ -6751,234 +6663,39 @@ fn optimize_pdf(path: String) -> Result<String, String> {
     ))
 }
 
-/// True when the file has an encryption dictionary (may still require a password to open).
 #[tauri::command]
 fn pdf_is_encrypted(path: String) -> Result<bool, String> {
-    let path = PathBuf::from(&path);
-    match Document::load(&path) {
-        Ok(doc) => Ok(doc.is_encrypted()),
-        Err(lopdf::Error::InvalidPassword) => Ok(true),
-        Err(lopdf::Error::Unimplemented(_)) => Ok(true),
-        Err(e) => Err(e.to_string()),
-    }
+    pdf::security::pdf_is_encrypted(path)
 }
 
-/// Verify that `password` unlocks an encrypted PDF.
 #[tauri::command]
 fn verify_pdf_password(path: String, password: String) -> Result<(), String> {
-    Document::load_with_password(PathBuf::from(&path), &password).map_err(|_| "Incorrect password".to_string())?;
-    Ok(())
+    pdf::security::verify_pdf_password(path, password)
 }
 
-/// Copy an encrypted PDF into a decrypted working copy for editing.
 #[tauri::command]
 fn open_working_copy_with_password(original: String, password: String) -> Result<String, String> {
-    let original = PathBuf::from(&original);
-    let mut doc = Document::load_with_password(&original, &password).map_err(|e| e.to_string())?;
-    if doc.is_encrypted() {
-        doc.decrypt(&password).map_err(|e| e.to_string())?;
-    }
-    let stem = original.file_stem().and_then(|s| s.to_str()).unwrap_or("document");
-    let working = std::env::temp_dir().join(format!("pdf_panda_work_{}_{}.pdf", std::process::id(), stem));
-    doc.save(&working).map_err(|e| e.to_string())?;
-    Ok(working.to_string_lossy().into_owned())
+    pdf::security::open_working_copy_with_password(original, password)
 }
 
-fn ensure_pdf_file_id(doc: &mut Document) {
-    if doc.trailer.get(b"ID").is_ok() {
-        return;
-    }
-    let id = vec![0xA1u8; 16];
-    doc.trailer.set(
-        b"ID",
-        Object::Array(vec![
-            Object::String(id.clone(), lopdf::StringFormat::Hexadecimal),
-            Object::String(id, lopdf::StringFormat::Hexadecimal),
-        ]),
-    );
-}
-
-/// Write a password-protected sibling `<stem>_protected.pdf` next to `path`.
 #[tauri::command]
 fn protect_pdf(path: String, user_password: String, owner_password: Option<String>) -> Result<String, String> {
-    if user_password.is_empty() {
-        return Err("User password is required".to_string());
-    }
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    if doc.is_encrypted() {
-        return Err("PDF is already encrypted".to_string());
-    }
-    ensure_pdf_file_id(&mut doc);
-
-    let owner = owner_password.filter(|value| !value.is_empty()).unwrap_or_else(|| user_password.clone());
-    let version = EncryptionVersion::V2 {
-        document: &doc,
-        owner_password: &owner,
-        user_password: &user_password,
-        key_length: 128,
-        permissions: Permissions::all(),
-    };
-    let state = EncryptionState::try_from(version).map_err(|e| e.to_string())?;
-    doc.encrypt(&state).map_err(|e| e.to_string())?;
-
-    let output_path = path.with_file_name(format!("{}_protected.pdf", path.file_stem().unwrap().to_string_lossy()));
-    doc.save(&output_path).map_err(|e| e.to_string())?;
-
-    Ok(format!(
-        "Saved encrypted PDF to {}. Open it with the user password you set.",
-        output_path.file_name().unwrap().to_string_lossy()
-    ))
+    pdf::security::protect_pdf(path, user_password, owner_password)
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct PdfSignatureInfo {
-    field_name: String,
-    signer_name: Option<String>,
-    reason: Option<String>,
-    location: Option<String>,
-    signing_time: Option<String>,
-    sub_filter: Option<String>,
-    signed_percent: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct PdfSignatureVerificationEntry {
-    field_name: String,
-    status: String,
-    signer_name: Option<String>,
-    signing_time: Option<String>,
-    integrity_ok: bool,
-    modifications_after_signing: bool,
-    summary: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct PdfSignatureVerificationSummary {
-    signature_count: usize,
-    valid_count: usize,
-    invalid_count: usize,
-    document_modified: bool,
-    overall_valid: bool,
-    summary: String,
-    signatures: Vec<PdfSignatureVerificationEntry>,
-}
-
-fn pdf_sign_runtime() -> &'static tokio::runtime::Runtime {
-    static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-    RT.get_or_init(|| tokio::runtime::Runtime::new().expect("tokio runtime for PDF signing"))
-}
-
-fn read_pdf_bytes_for_signing(path: &Path) -> Result<Vec<u8>, String> {
-    let path_str = path.to_string_lossy().into_owned();
-    if pdf_is_encrypted(path_str)? {
-        return Err("Cannot sign an encrypted PDF. Save an unencrypted copy first.".to_string());
-    }
-    fs::read(path).map_err(|e| e.to_string())
-}
-
-fn signature_info_from_field(field: &underskrift::inspect::signatures::SignatureFieldInfo) -> PdfSignatureInfo {
-    let field_name = field.field_name.clone().unwrap_or_else(|| format!("Signature{}", field.obj_num.unwrap_or(0)));
-    PdfSignatureInfo {
-        field_name,
-        signer_name: field.name.clone(),
-        reason: field.reason.clone(),
-        location: field.location.clone(),
-        signing_time: field.signing_time.clone(),
-        sub_filter: field.sub_filter.clone(),
-        signed_percent: field.coverage.as_ref().map(|coverage| coverage.percentage),
-    }
-}
-
-fn next_signature_field_name(inspection: &underskrift::inspect::signatures::PdfSignatureInspection) -> String {
-    let mut index = 1u32;
-    loop {
-        let candidate = format!("Signature{index}");
-        let taken = inspection.signatures.iter().any(|field| field.field_name.as_deref() == Some(candidate.as_str()));
-        if !taken {
-            return candidate;
-        }
-        index += 1;
-    }
-}
-
-fn signature_status_label(status: &SignatureStatus) -> &'static str {
-    match status {
-        SignatureStatus::Valid => "valid",
-        SignatureStatus::ValidButUntrusted => "valid_untrusted",
-        SignatureStatus::Invalid => "invalid",
-        SignatureStatus::Indeterminate => "indeterminate",
-    }
-}
-
-fn build_trust_store_set(trust_pem_path: Option<&Path>) -> Result<TrustStoreSet, String> {
-    let mut trust_set = TrustStoreSet::new();
-    if let Some(path) = trust_pem_path {
-        let store = TrustStore::from_pem_file(path).map_err(|e| e.to_string())?;
-        trust_set = trust_set.with_sig_store(store);
-    }
-    Ok(trust_set)
-}
-
-/// List digital signature fields embedded in a PDF.
 #[tauri::command]
 fn list_pdf_signatures(path: String) -> Result<Vec<PdfSignatureInfo>, String> {
-    let path = PathBuf::from(path);
-    let bytes = read_pdf_bytes_for_signing(&path)?;
-    let inspection = inspect_signatures(&bytes).map_err(|e| e.to_string())?;
-    Ok(inspection.signatures.iter().map(signature_info_from_field).collect())
+    pdf::security::list_pdf_signatures(path)
 }
 
-/// Verify cryptographic integrity and certificate chains for all PDF signatures.
 #[tauri::command]
 fn verify_pdf_signatures(
     path: String,
     trust_pem_path: Option<String>,
 ) -> Result<PdfSignatureVerificationSummary, String> {
-    let path = PathBuf::from(path);
-    let bytes = read_pdf_bytes_for_signing(&path)?;
-    let inspection = inspect_signatures(&bytes).map_err(|e| e.to_string())?;
-    if !inspection.has_signatures {
-        return Ok(PdfSignatureVerificationSummary {
-            signature_count: 0,
-            valid_count: 0,
-            invalid_count: 0,
-            document_modified: false,
-            overall_valid: false,
-            summary: "No digital signatures found.".to_string(),
-            signatures: vec![],
-        });
-    }
-    let trust_path = trust_pem_path.map(PathBuf::from);
-    let trust_set = build_trust_store_set(trust_path.as_deref())?;
-    let verifier = SignatureVerifier::new(&trust_set);
-    let report = verifier.verify_pdf(&bytes).map_err(|e| e.to_string())?;
-    let signatures = report
-        .signatures
-        .iter()
-        .map(|sig| PdfSignatureVerificationEntry {
-            field_name: sig.field_name.clone(),
-            status: signature_status_label(&sig.status).to_string(),
-            signer_name: sig.signer_name.clone(),
-            signing_time: sig.signing_time.clone(),
-            integrity_ok: sig.integrity_ok,
-            modifications_after_signing: sig.modifications_after_signing,
-            summary: sig.summary.clone(),
-        })
-        .collect();
-    Ok(PdfSignatureVerificationSummary {
-        signature_count: report.signatures.len(),
-        valid_count: report.valid_count,
-        invalid_count: report.invalid_count,
-        document_modified: report.document_modified,
-        overall_valid: report.all_valid(),
-        summary: report.summary,
-        signatures,
-    })
+    pdf::security::verify_pdf_signatures(path, trust_pem_path)
 }
 
-/// Digitally sign a PDF with a PKCS#12 (.p12/.pfx) identity. Writes back to `path`
-/// unless `output_path` is set.
 #[tauri::command]
 fn sign_pdf(
     path: String,
@@ -6989,33 +6706,47 @@ fn sign_pdf(
     field_name: Option<String>,
     output_path: Option<String>,
 ) -> Result<String, String> {
-    if cert_password.is_empty() {
-        return Err("Certificate password is required".to_string());
-    }
-    let path = PathBuf::from(path);
-    let pdf_bytes = read_pdf_bytes_for_signing(&path)?;
-    let cert_path = PathBuf::from(cert_path);
-    if !cert_path.is_file() {
-        return Err("Certificate file not found".to_string());
-    }
-    let cert_bytes = fs::read(&cert_path).map_err(|e| e.to_string())?;
-    let signer = SoftwareSigner::from_pkcs12_data(&cert_bytes, &cert_password).map_err(|e| e.to_string())?;
-    let inspection = inspect_signatures(&pdf_bytes).map_err(|e| e.to_string())?;
-    let field =
-        field_name.filter(|value| !value.trim().is_empty()).unwrap_or_else(|| next_signature_field_name(&inspection));
-    let options = SigningOptions {
-        sub_filter: SubFilter::Pades,
-        field_name: field,
-        reason: reason.filter(|value| !value.trim().is_empty()),
-        location: location.filter(|value| !value.trim().is_empty()),
-        ..Default::default()
-    };
-    let signed = pdf_sign_runtime()
-        .block_on(PdfSigner::new().options(options).sign(&pdf_bytes, &signer))
-        .map_err(|e| e.to_string())?;
-    let output = output_path.map(PathBuf::from).unwrap_or(path);
-    fs::write(&output, signed).map_err(|e| e.to_string())?;
-    Ok(format!("Signed PDF saved to {}", output.file_name().unwrap_or_default().to_string_lossy()))
+    pdf::security::sign_pdf(path, cert_path, cert_password, reason, location, field_name, output_path)
+}
+
+#[tauri::command]
+fn open_working_copy(original: String) -> Result<String, String> {
+    pdf::history::open_working_copy(original)
+}
+
+#[tauri::command]
+fn save_working_copy(working: String, target: String) -> Result<(), String> {
+    pdf::history::save_working_copy(working, target)
+}
+
+#[tauri::command]
+fn discard_working_copy(working: String) -> Result<(), String> {
+    pdf::history::discard_working_copy(working)
+}
+
+#[tauri::command]
+fn snapshot_pdf(source: String) -> Result<String, String> {
+    pdf::history::snapshot_pdf(source)
+}
+
+#[tauri::command]
+fn snapshot_pdf_entry(history: Vec<HistorySnapshot>, source: String) -> Result<HistorySnapshot, String> {
+    pdf::history::snapshot_pdf_entry(history, source)
+}
+
+#[tauri::command]
+fn restore_history_entry(history: Vec<HistorySnapshot>, index: usize, target: String) -> Result<(), String> {
+    pdf::history::restore_history_entry(history, index, target)
+}
+
+#[tauri::command]
+fn discard_history_entry(entry: HistorySnapshot) -> Result<(), String> {
+    pdf::history::discard_history_entry(entry)
+}
+
+#[tauri::command]
+fn prune_history_entry(history: Vec<HistorySnapshot>, drop_index: usize) -> Result<Vec<HistorySnapshot>, String> {
+    pdf::history::prune_history_entry(history, drop_index)
 }
 
 #[tauri::command]
@@ -7888,300 +7619,6 @@ fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>,
 /// Copy `original` to a fresh temp working file so edits never touch the user's
 /// file until they explicitly save. Returns the working-copy path.
 #[tauri::command]
-fn open_working_copy(original: String) -> Result<String, String> {
-    let original = PathBuf::from(&original);
-    let stem = original.file_stem().and_then(|s| s.to_str()).unwrap_or("document");
-    let working = std::env::temp_dir().join(format!("pdf_panda_work_{}_{}.pdf", std::process::id(), stem));
-    fs::copy(&original, &working).map_err(|e| e.to_string())?;
-    Ok(working.to_string_lossy().into_owned())
-}
-
-/// Commit the working copy to `target` (Save: target = original; Save As: a new
-/// path). The working copy stays put so editing can continue afterwards.
-#[tauri::command]
-fn save_working_copy(working: String, target: String) -> Result<(), String> {
-    fs::copy(PathBuf::from(&working), PathBuf::from(&target)).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-/// Best-effort removal of a working copy when its document is closed/discarded.
-#[tauri::command]
-fn discard_working_copy(working: String) -> Result<(), String> {
-    let working = PathBuf::from(&working);
-    if working.exists() {
-        fs::remove_file(&working).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-/// Monotonic counter so each undo/redo history snapshot gets a unique filename.
-static SNAPSHOT_SEQ: AtomicU64 = AtomicU64::new(0);
-
-const HISTORY_DELTA_MAGIC: &[u8] = b"PPDFDELTA1\n";
-
-/// Whole-file snapshots are used below this size; larger working copies store
-/// binary deltas against the previous history entry.
-fn history_large_file_bytes() -> u64 {
-    #[cfg(test)]
-    {
-        100
-    }
-    #[cfg(not(test))]
-    {
-        32 * 1024 * 1024
-    }
-}
-
-/// Fall back to a whole-file snapshot when a delta grows past this size.
-fn history_delta_fallback_bytes() -> u64 {
-    #[cfg(test)]
-    {
-        1_000_000
-    }
-    #[cfg(not(test))]
-    {
-        32 * 1024 * 1024
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct HistorySnapshot {
-    kind: String,
-    path: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    base_index: Option<usize>,
-    size: u64,
-}
-
-fn temp_hist_path(tag: &str, ext: &str) -> PathBuf {
-    let seq = SNAPSHOT_SEQ.fetch_add(1, Ordering::Relaxed);
-    std::env::temp_dir().join(format!("pdf_panda_hist_{}_{}_{}.{}", std::process::id(), tag, seq, ext))
-}
-
-fn write_full_snapshot(source: &Path) -> Result<String, String> {
-    let snapshot = temp_hist_path("full", "pdf");
-    fs::copy(source, &snapshot).map_err(|e| e.to_string())?;
-    Ok(snapshot.to_string_lossy().into_owned())
-}
-
-fn write_delta_snapshot(bytes: &[u8]) -> Result<String, String> {
-    let path = temp_hist_path("delta", "ppdelta");
-    fs::write(&path, bytes).map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().into_owned())
-}
-
-fn byte_eq_at(base: &[u8], current: &[u8], i: usize) -> bool {
-    match (base.get(i), current.get(i)) {
-        (Some(a), Some(b)) => a == b,
-        (None, None) => true,
-        _ => false,
-    }
-}
-
-fn encode_pdf_delta(base: &[u8], current: &[u8]) -> Result<Vec<u8>, String> {
-    let max_len = base.len().max(current.len());
-    let mut patches: Vec<(u64, Vec<u8>)> = Vec::new();
-    let mut i = 0usize;
-    while i < max_len {
-        while i < max_len && byte_eq_at(base, current, i) {
-            i += 1;
-        }
-        if i >= max_len {
-            break;
-        }
-        let start = i;
-        while i < max_len && !byte_eq_at(base, current, i) {
-            i += 1;
-        }
-        let data: Vec<u8> = (start..i).map(|j| current.get(j).copied().unwrap_or(0)).collect();
-        patches.push((start as u64, data));
-    }
-
-    let mut out = Vec::new();
-    out.extend_from_slice(HISTORY_DELTA_MAGIC);
-    out.extend_from_slice(&(base.len() as u64).to_le_bytes());
-    out.extend_from_slice(&(current.len() as u64).to_le_bytes());
-    out.extend_from_slice(&(patches.len() as u32).to_le_bytes());
-    for (offset, data) in patches {
-        out.extend_from_slice(&offset.to_le_bytes());
-        out.extend_from_slice(&(data.len() as u32).to_le_bytes());
-        out.extend_from_slice(&data);
-    }
-    Ok(out)
-}
-
-fn read_u64_le(buf: &[u8], pos: &mut usize) -> Result<u64, String> {
-    if *pos + 8 > buf.len() {
-        return Err("truncated delta".into());
-    }
-    let v = u64::from_le_bytes(buf[*pos..*pos + 8].try_into().unwrap());
-    *pos += 8;
-    Ok(v)
-}
-
-fn read_u32_le(buf: &[u8], pos: &mut usize) -> Result<u32, String> {
-    if *pos + 4 > buf.len() {
-        return Err("truncated delta".into());
-    }
-    let v = u32::from_le_bytes(buf[*pos..*pos + 4].try_into().unwrap());
-    *pos += 4;
-    Ok(v)
-}
-
-fn apply_pdf_delta(base: &[u8], delta: &[u8]) -> Result<Vec<u8>, String> {
-    if !delta.starts_with(HISTORY_DELTA_MAGIC) {
-        return Err("invalid delta magic".into());
-    }
-    let mut pos = HISTORY_DELTA_MAGIC.len();
-    let base_size = read_u64_le(delta, &mut pos)? as usize;
-    let current_size = read_u64_le(delta, &mut pos)? as usize;
-    let patch_count = read_u32_le(delta, &mut pos)? as usize;
-
-    let mut out = base.to_vec();
-    if out.len() < base_size {
-        out.resize(base_size, 0);
-    } else if out.len() > base_size {
-        out.truncate(base_size);
-    }
-
-    for _ in 0..patch_count {
-        let offset = read_u64_le(delta, &mut pos)? as usize;
-        let len = read_u32_le(delta, &mut pos)? as usize;
-        if pos + len > delta.len() {
-            return Err("truncated delta patch".into());
-        }
-        let data = &delta[pos..pos + len];
-        pos += len;
-        if offset + len > out.len() {
-            out.resize(offset + len, 0);
-        }
-        out[offset..offset + len].copy_from_slice(data);
-    }
-
-    if out.len() < current_size {
-        out.resize(current_size, 0);
-    } else if out.len() > current_size {
-        out.truncate(current_size);
-    }
-    Ok(out)
-}
-
-fn materialize_history_index(history: &[HistorySnapshot], index: usize, into: &Path) -> Result<(), String> {
-    let entry = history.get(index).ok_or_else(|| "history index out of bounds".to_string())?;
-    match entry.kind.as_str() {
-        "full" => {
-            fs::copy(&entry.path, into).map_err(|e| e.to_string())?;
-            Ok(())
-        }
-        "delta" => {
-            let base_index = entry.base_index.ok_or_else(|| "delta snapshot missing base_index".to_string())?;
-            let base_temp = temp_hist_path("mat", "pdf");
-            materialize_history_index(history, base_index, &base_temp)?;
-            let base_bytes = fs::read(&base_temp).map_err(|e| e.to_string())?;
-            let _ = fs::remove_file(&base_temp);
-            let delta_bytes = fs::read(&entry.path).map_err(|e| e.to_string())?;
-            let restored = apply_pdf_delta(&base_bytes, &delta_bytes)?;
-            fs::write(into, restored).map_err(|e| e.to_string())
-        }
-        other => Err(format!("unknown snapshot kind: {other}")),
-    }
-}
-
-/// Copy the working copy to a fresh temp snapshot, used to build the undo/redo
-/// history. Returns the snapshot path (restored later via `save_working_copy`).
-#[tauri::command]
-fn snapshot_pdf(source: String) -> Result<String, String> {
-    write_full_snapshot(Path::new(&source))
-}
-
-/// Append a history entry for `source`. Small files get a full snapshot; large
-/// files store a compact binary delta against the previous history entry.
-#[tauri::command]
-fn snapshot_pdf_entry(history: Vec<HistorySnapshot>, source: String) -> Result<HistorySnapshot, String> {
-    let source_path = PathBuf::from(&source);
-    let current = fs::read(&source_path).map_err(|e| e.to_string())?;
-    let size = current.len() as u64;
-    let threshold = history_large_file_bytes();
-
-    if size <= threshold || history.is_empty() {
-        let path = write_full_snapshot(&source_path)?;
-        return Ok(HistorySnapshot { kind: "full".into(), path, base_index: None, size });
-    }
-
-    let base_index = history.len() - 1;
-    let base_temp = temp_hist_path("base", "pdf");
-    materialize_history_index(&history, base_index, &base_temp)?;
-    let base_bytes = fs::read(&base_temp).map_err(|e| e.to_string())?;
-    let _ = fs::remove_file(&base_temp);
-
-    let delta_bytes = encode_pdf_delta(&base_bytes, &current)?;
-    if delta_bytes.len() as u64 > history_delta_fallback_bytes() {
-        let path = write_full_snapshot(&source_path)?;
-        return Ok(HistorySnapshot { kind: "full".into(), path, base_index: None, size });
-    }
-
-    let path = write_delta_snapshot(&delta_bytes)?;
-    Ok(HistorySnapshot { kind: "delta".into(), path, base_index: Some(base_index), size })
-}
-
-/// Materialize `history[index]` and write it to `target` (the live working copy).
-#[tauri::command]
-fn restore_history_entry(history: Vec<HistorySnapshot>, index: usize, target: String) -> Result<(), String> {
-    materialize_history_index(&history, index, Path::new(&target))
-}
-
-/// Remove a history snapshot file from disk.
-#[tauri::command]
-fn discard_history_entry(entry: HistorySnapshot) -> Result<(), String> {
-    let path = PathBuf::from(&entry.path);
-    if path.exists() {
-        fs::remove_file(path).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-/// Drop `drop_index` from the undo stack, rematerializing any delta entries that
-/// depended on it while the parent snapshot is still available.
-#[tauri::command]
-fn prune_history_entry(mut history: Vec<HistorySnapshot>, drop_index: usize) -> Result<Vec<HistorySnapshot>, String> {
-    if drop_index >= history.len() {
-        return Err("history index out of bounds".into());
-    }
-
-    let orphans: Vec<usize> = history
-        .iter()
-        .enumerate()
-        .filter(|(idx, entry)| *idx != drop_index && entry.base_index == Some(drop_index))
-        .map(|(idx, _)| idx)
-        .collect();
-
-    for idx in orphans {
-        let entry = history[idx].clone();
-        let materialized = temp_hist_path("prune", "pdf");
-        materialize_history_index(&history, idx, &materialized)?;
-        let _ = fs::remove_file(&entry.path);
-        history[idx] = HistorySnapshot {
-            kind: "full".into(),
-            path: materialized.to_string_lossy().into_owned(),
-            base_index: None,
-            size: entry.size,
-        };
-    }
-
-    let dropped = history.remove(drop_index);
-    discard_history_entry(dropped)?;
-
-    for entry in &mut history {
-        if let Some(base_index) = entry.base_index.as_mut() {
-            if *base_index > drop_index {
-                *base_index -= 1;
-            }
-        }
-    }
-
-    Ok(history)
-}
 
 fn main() {
     // webkit2gtk's DMABUF renderer aborts with `Gdk Error 71 (Protocol error)
@@ -27578,7 +27015,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         let _ = std::fs::remove_file(&md_path);
 
-        let result = write_markdown_file(&md_path, "# Test\n", false).unwrap();
+        let result = pdf::markdown::write_markdown_file(&md_path, "# Test\n", false).unwrap();
 
         assert!(result.written);
         assert!(!result.conflict);
@@ -27593,7 +27030,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         std::fs::write(&md_path, "# Existing\n").unwrap();
 
-        let result = write_markdown_file(&md_path, "# New\n", false).unwrap();
+        let result = pdf::markdown::write_markdown_file(&md_path, "# New\n", false).unwrap();
 
         assert!(!result.written);
         assert!(result.conflict);
@@ -27607,7 +27044,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         std::fs::write(&md_path, "# Existing\n").unwrap();
 
-        let result = write_markdown_file(&md_path, "# New\n", true).unwrap();
+        let result = pdf::markdown::write_markdown_file(&md_path, "# New\n", true).unwrap();
 
         assert!(result.written);
         assert!(!result.conflict);
@@ -27621,7 +27058,7 @@ mod tests {
         let md_path = pdf_path.with_extension("md");
         std::fs::write(&md_path, "# Same\n").unwrap();
 
-        let result = write_markdown_file(&md_path, "# Same\n", false).unwrap();
+        let result = pdf::markdown::write_markdown_file(&md_path, "# Same\n", false).unwrap();
 
         assert!(!result.written);
         assert!(!result.conflict);
@@ -27634,7 +27071,7 @@ mod tests {
         let custom = std::env::temp_dir().join(format!("pp_md_custom_{}.md", std::process::id()));
         let _ = std::fs::remove_file(&custom);
 
-        let result = write_markdown_file(&custom, "# Custom\n", false).unwrap();
+        let result = pdf::markdown::write_markdown_file(&custom, "# Custom\n", false).unwrap();
 
         assert!(result.written);
         assert!(!result.conflict);
@@ -27874,8 +27311,8 @@ mod tests {
         current[5] = b'x';
         current[12] = b'y';
         current.extend_from_slice(b"EEEEE");
-        let delta = encode_pdf_delta(&base, &current).unwrap();
-        let restored = apply_pdf_delta(&base, &delta).unwrap();
+        let delta = pdf::history::encode_pdf_delta(&base, &current).unwrap();
+        let restored = pdf::history::apply_pdf_delta(&base, &delta).unwrap();
         assert_eq!(restored, current);
     }
 
