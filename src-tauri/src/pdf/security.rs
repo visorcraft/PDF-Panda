@@ -128,8 +128,7 @@ pub fn pdf_sign_runtime() -> &'static tokio::runtime::Runtime {
 }
 
 pub fn read_pdf_bytes_for_signing(path: &Path) -> Result<Vec<u8>, String> {
-    let path_str = path.to_string_lossy().into_owned();
-    if is_encrypted(&path)? {
+    if is_encrypted(path)? {
         return Err("Cannot sign an encrypted PDF. Save an unencrypted copy first.".to_string());
     }
     fs::read(path).map_err(|e| e.to_string())

@@ -93,7 +93,7 @@ that PDF-Panda links against or bundles in packaged builds.\n\n",
         out.push_str(spdx);
         out.push_str(" — applies to: ");
         out.push_str(&applies_to.join(", "));
-        out.push_str("\n");
+        out.push('\n');
         out.push_str(RULE);
         out.push_str("\n\n");
         out.push_str(body);

@@ -76,6 +76,7 @@ pub fn export_pdf_page(
 }
 
 /// Render a page range to `output_dir/page-NNN.<ext>` files.
+#[allow(clippy::too_many_arguments)]
 pub fn export_pdf_pages(
     path: &Path,
     start_page: u32,

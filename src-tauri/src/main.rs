@@ -3,10 +3,10 @@
 mod licenses;
 mod pdf;
 
-use pdf::annotations::append_page_annotation;
+use pdf::annotations::{annot_is_redaction, annot_panda_stamp_kind, append_page_annotation};
 use pdf::bookmarks::{collect_outline_items, flat_outline_ids, remove_outline_item, PdfBookmarkEntry};
 use pdf::content::{append_page_content, embed_jpeg_xobject, next_image_xobject_name};
-use pdf::coords::{obj_to_f64, page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
+use pdf::coords::{page_media_box, viewer_rect_to_pdf, VIEWER_PAGE_H, VIEWER_PAGE_W};
 use pdf::export::{validate_page_range, write_image_output as write_png_output, ExportImageKind, ParityPageRenderFn};
 use pdf::fonts::dedup_fonts_after_insert;
 use pdf::form_merge::merge_acroform_after_insert;
@@ -21,10 +21,13 @@ use pdf::import::{import_dict, import_object};
 use pdf::markdown::MarkdownSaveResult;
 use pdf::metadata::{current_pdf_mod_date, ensure_info_dict_id, read_info_string, write_info_text_field};
 use pdf::ocr::{
-    build_tesseract_install_guide, ocr_language, ocr_page_segmentation_mode, os_release_value, resolve_tesseract,
-    OcrExportStats, OcrStatus, TesseractInstallGuide, OCR_RENDER_H, OCR_RENDER_W,
+    build_tesseract_install_guide, ocr_language, resolve_tesseract, OcrExportStats, OcrStatus, TesseractInstallGuide,
+    OCR_RENDER_H, OCR_RENDER_W,
 };
-use pdf::page_text::{ensure_helvetica_font, escape_pdf_literal_string, viewer_point_to_pdf};
+#[cfg(test)]
+use pdf::ocr::{ocr_page_segmentation_mode, os_release_value};
+use pdf::page_decor::{append_outline_item, build_page_number_ops, build_watermark_ops, create_blank_page};
+use pdf::page_text::{ensure_helvetica_font, viewer_point_to_pdf};
 use pdf::page_tree::{delete_kids_in_range, flatten_pages, get_pages_kids, inherited_page_attr, set_pages_kids};
 use pdf::pdfium_bind::{
     get_pdfium, render_page_bmp, render_page_gif, render_page_ico, render_page_image, render_page_jpeg,
@@ -41,6 +44,7 @@ use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(test)]
 use std::process::Command;
 
 #[tauri::command]
@@ -330,20 +334,6 @@ fn reverse_pages(path: String) -> Result<(), String> {
     Ok(())
 }
 
-fn create_blank_page(doc: &mut Document, pages_ref: ObjectId) -> ObjectId {
-    let mut page = Dictionary::new();
-    page.set("Type", Object::Name(b"Page".to_vec()));
-    page.set("Parent", Object::Reference(pages_ref));
-    page.set("Resources", Object::Dictionary(Dictionary::new()));
-    page.set(
-        "MediaBox",
-        Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Integer(612), Object::Integer(792)]),
-    );
-    let content_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), Vec::new())));
-    page.set("Contents", Object::Reference(content_id));
-    doc.add_object(Object::Dictionary(page))
-}
-
 /// Insert a blank page before `at_index` (0 = first page).
 #[tauri::command]
 fn add_blank_page(path: String, at_index: u32) -> Result<u32, String> {
@@ -369,62 +359,6 @@ fn delete_page_range(path: String, start_page: u32, end_page: u32) -> Result<u32
     pdf::io::mutate_pdf(&path, |doc| delete_kids_in_range(doc, start_page, end_page))
 }
 
-fn append_outline_item(doc: &mut Document, title: &str, page_id: ObjectId) -> Result<(), String> {
-    let catalog_id = doc.trailer.get(b"Root").map_err(|e| e.to_string())?.as_reference().map_err(|_| "Bad Root")?;
-    let existing_outlines = doc
-        .get_dictionary(catalog_id)
-        .map_err(|e| e.to_string())?
-        .get(b"Outlines")
-        .ok()
-        .and_then(|o| o.as_reference().ok());
-
-    let mut item = Dictionary::new();
-    item.set("Title", Object::String(title.as_bytes().to_vec(), lopdf::StringFormat::Literal));
-    item.set("Dest", Object::Array(vec![Object::Reference(page_id), Object::Name(b"Fit".to_vec())]));
-    let item_id = doc.add_object(Object::Dictionary(item));
-
-    if let Some(outlines_id) = existing_outlines {
-        let (last_id, count) = {
-            let outlines = doc.get_dictionary(outlines_id).map_err(|e| e.to_string())?;
-            (
-                outlines.get(b"Last").ok().and_then(|o| o.as_reference().ok()),
-                outlines.get(b"Count").ok().and_then(|o| o.as_i64().ok()).unwrap_or(0),
-            )
-        };
-        if let Some(last_id) = last_id {
-            if let Ok(Object::Dictionary(last)) = doc.get_object_mut(last_id) {
-                last.set("Next", Object::Reference(item_id));
-            }
-            if let Ok(Object::Dictionary(item)) = doc.get_object_mut(item_id) {
-                item.set("Parent", Object::Reference(outlines_id));
-                item.set("Prev", Object::Reference(last_id));
-            }
-        } else if let Ok(Object::Dictionary(item)) = doc.get_object_mut(item_id) {
-            item.set("Parent", Object::Reference(outlines_id));
-        }
-        if let Ok(Object::Dictionary(outlines)) = doc.get_object_mut(outlines_id) {
-            if last_id.is_none() {
-                outlines.set("First", Object::Reference(item_id));
-            }
-            outlines.set("Last", Object::Reference(item_id));
-            outlines.set("Count", Object::Integer(count + 1));
-        }
-    } else {
-        let outlines_id = doc.new_object_id();
-        if let Ok(Object::Dictionary(item)) = doc.get_object_mut(item_id) {
-            item.set("Parent", Object::Reference(outlines_id));
-        }
-        let mut outlines = Dictionary::new();
-        outlines.set("Type", Object::Name(b"Outlines".to_vec()));
-        outlines.set("First", Object::Reference(item_id));
-        outlines.set("Last", Object::Reference(item_id));
-        outlines.set("Count", Object::Integer(1));
-        doc.objects.insert(outlines_id, Object::Dictionary(outlines));
-        doc.get_dictionary_mut(catalog_id).map_err(|e| e.to_string())?.set("Outlines", Object::Reference(outlines_id));
-    }
-    Ok(())
-}
-
 /// Append a bookmark pointing at `page_index`.
 #[tauri::command]
 fn add_pdf_bookmark(path: String, title: String, page_index: u32) -> Result<(), String> {
@@ -440,105 +374,22 @@ fn add_pdf_bookmark(path: String, title: String, page_index: u32) -> Result<(), 
     Ok(())
 }
 
-fn build_page_number_ops(font_name: &str, label: &str, px: f64, py: f64, font_size: f64) -> String {
-    let escaped = escape_pdf_literal_string(label);
-    format!(
-        "\nBT /{font_name} {font_size} Tf 1 0 0 1 {px} {py} Tm ({escaped}) Tj ET\n",
-        font_name = font_name,
-        font_size = font_size,
-        px = px,
-        py = py,
-        escaped = escaped
-    )
-}
-
 /// Stamp page numbers on the footer of each page in the range (1-based labels).
 #[tauri::command]
 fn add_page_numbers(path: String, start_page: u32, end_page: u32, prefix: Option<String>) -> Result<u32, String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let prefix = prefix.unwrap_or_default();
-    let mut stamped = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
-        let label = format!("{prefix}{}", page_index + 1);
-        let ops = build_page_number_ops(&font_name, &label, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(stamped)
-}
-
-fn build_watermark_ops(font_name: &str, text: &str, cx: f64, cy: f64) -> String {
-    let escaped = escape_pdf_literal_string(text);
-    format!(
-        "\nq 0.35 g BT /{font_name} 42 Tf 0.7071 0.7071 -0.7071 0.7071 {cx} {cy} Tm ({escaped}) Tj ET Q\n",
-        font_name = font_name,
-        cx = cx,
-        cy = cy,
-        escaped = escaped
-    )
+    pdf::page_decor::add_page_numbers(&PathBuf::from(path), start_page, end_page, prefix)
 }
 
 /// Add a diagonal text watermark to each page in the range.
 #[tauri::command]
 fn add_text_watermark(path: String, text: String, start_page: u32, end_page: u32) -> Result<u32, String> {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Err("Watermark text cannot be empty".to_string());
-    }
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut stamped = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = pdf::page_text::ensure_helvetica_font(&mut doc, page_id)?;
-        let (cx, cy) = viewer_point_to_pdf(&doc, page_id, 400.0, 566.0)?;
-        let ops = build_watermark_ops(&font_name, trimmed, cx, cy);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(stamped)
+    pdf::page_decor::add_text_watermark(&PathBuf::from(path), &text, start_page, end_page)
 }
 
 /// Remove all annotation dictionaries from pages in the range (flatten markup).
 #[tauri::command]
 fn flatten_annotations(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
-    let path = PathBuf::from(path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut removed = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let count = doc
-            .get_dictionary(page_id)
-            .ok()
-            .and_then(|d| d.get(b"Annots").ok())
-            .and_then(|o| o.as_array().ok())
-            .map(|a| a.len() as u32)
-            .unwrap_or(0);
-        if count > 0 {
-            doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.remove(b"Annots");
-            removed += count;
-        }
-    }
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(removed)
+    pdf::page_decor::flatten_annotations(&PathBuf::from(path), start_page, end_page)
 }
 
 /// Crop `page_index` by viewer-pixel margins (top/right/bottom/left).
@@ -586,7 +437,7 @@ fn reset_page_rotation(path: String, page_index: u32) -> Result<(), String> {
 #[tauri::command]
 fn reset_all_page_rotations(path: String) -> Result<u32, String> {
     let path = PathBuf::from(path);
-    pdf::io::mutate_pdf(&path, |doc| pdf::rotation::reset_all_page_rotations(doc))
+    pdf::io::mutate_pdf(&path, pdf::rotation::reset_all_page_rotations)
 }
 
 /// Deep-copy `start_page`..=`end_page` and insert the copies immediately after the range.
@@ -6070,71 +5921,13 @@ fn save_pdf_markdown(path: String, overwrite: bool, output_path: Option<String>)
 
 #[tauri::command]
 fn split_pdf(path: String, page_ranges: Vec<(u32, u32)>) -> Result<Vec<String>, String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    if page_ranges.is_empty() {
-        return Err("At least one page range is required".to_string());
-    }
-
-    let (all_kids, pages_ref) = get_pages_kids(&doc)?;
-    let total_pages = all_kids.len() as u32;
-
-    for (start, end) in &page_ranges {
-        if *start >= total_pages || *end >= total_pages || *start > *end {
-            return Err(format!("Invalid page range: {}-{}", start, end));
-        }
-    }
-
-    let mut output_paths = Vec::new();
-
-    for (i, (start, end)) in page_ranges.iter().enumerate() {
-        let range_kids: Vec<Object> = all_kids[*start as usize..=*end as usize].to_vec();
-        set_pages_kids(&mut doc, pages_ref, range_kids)?;
-
-        // Drop the pages (and their now-orphaned content/resources) that aren't
-        // part of this range so each split file is actually smaller rather than
-        // a full copy with a trimmed page list.
-        doc.prune_objects();
-
-        let output_path =
-            path.with_file_name(format!("{}_part{}.pdf", path.file_stem().unwrap().to_string_lossy(), i + 1));
-        doc.save(&output_path).map_err(|e| e.to_string())?;
-        output_paths.push(output_path.to_string_lossy().to_string());
-
-        doc = Document::load(&path).map_err(|e| e.to_string())?;
-    }
-
-    Ok(output_paths)
+    pdf::merge_split::split_pdf(&PathBuf::from(path), page_ranges)
 }
 
 /// Write a new PDF containing only `start_page`..=`end_page` from `path`.
 #[tauri::command]
 fn extract_pdf_pages(path: String, output_path: String, start_page: u32, end_page: u32) -> Result<String, String> {
-    let path = PathBuf::from(&path);
-    let output_path = PathBuf::from(&output_path);
-    if path == output_path {
-        return Err("Output path must differ from the source PDF".to_string());
-    }
-
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let (all_kids, pages_ref) = get_pages_kids(&doc)?;
-    let total_pages = all_kids.len() as u32;
-    if start_page >= total_pages || end_page >= total_pages || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-
-    let range_kids: Vec<Object> = all_kids[start_page as usize..=end_page as usize].to_vec();
-    set_pages_kids(&mut doc, pages_ref, range_kids)?;
-    doc.prune_objects();
-
-    if let Some(parent) = output_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-    }
-    doc.save(&output_path).map_err(|e| e.to_string())?;
-    Ok(output_path.to_string_lossy().into_owned())
+    pdf::merge_split::extract_pdf_pages(&PathBuf::from(path), &PathBuf::from(output_path), start_page, end_page)
 }
 
 #[tauri::command]
@@ -6145,46 +5938,7 @@ fn insert_pdf(
     insert_start: u32,
     insert_end: u32,
 ) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let insert_path_buf = PathBuf::from(&insert_path);
-
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-    let insert_doc = Document::load(&insert_path_buf).map_err(|e| e.to_string())?;
-
-    // Flatten the destination so /Kids is a flat leaf list we can index into.
-    let pages_ref = flatten_pages(&mut doc)?;
-    let (mut source_kids, _) = get_pages_kids(&doc)?;
-
-    // Resolve source pages through their (possibly nested) tree, in page order.
-    let source_pages: Vec<ObjectId> = insert_doc.get_pages().into_values().collect();
-    let insert_start = insert_start as usize;
-    let insert_end = insert_end as usize;
-    if insert_start > insert_end || insert_end >= source_pages.len() {
-        return Err("Invalid insert page range".to_string());
-    }
-    let at = at_index as usize;
-    if at > source_kids.len() {
-        return Err("Insert index out of bounds".to_string());
-    }
-
-    // Deep-copy the selected pages (and their content/resources) into `doc` so
-    // the saved file is self-contained — the old code copied bare references that
-    // dangled. `remap` is shared so resources common to several pages are copied
-    // once.
-    let mut remap = BTreeMap::new();
-    let new_page_ids: Vec<ObjectId> = source_pages[insert_start..=insert_end]
-        .iter()
-        .map(|&src_page| import_object(&mut doc, &insert_doc, src_page, pages_ref, &mut remap))
-        .collect();
-    for (offset, page_id) in new_page_ids.iter().enumerate() {
-        source_kids.insert(at + offset, Object::Reference(*page_id));
-    }
-
-    set_pages_kids(&mut doc, pages_ref, source_kids)?;
-    merge_acroform_after_insert(&mut doc, &insert_doc, &new_page_ids, &remap)?;
-    dedup_fonts_after_insert(&mut doc, &new_page_ids)?;
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::merge_split::insert_pdf(&PathBuf::from(path), &PathBuf::from(insert_path), at_index, insert_start, insert_end)
 }
 
 #[tauri::command]
@@ -6291,97 +6045,15 @@ fn remove_highlight(path: String, page_index: u32, index: u32) -> Result<(), Str
     pdf::annotations::remove_highlight(&PathBuf::from(path), page_index, index)
 }
 
-const TEXT_NOTE_WIDTH: f64 = 140.0;
-const TEXT_NOTE_HEIGHT: f64 = 80.0;
-
 #[tauri::command]
 fn add_text_note(path: String, page_index: u32, x: f64, y: f64, content: String) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let x2 = x + TEXT_NOTE_WIDTH;
-    let y2 = y + TEXT_NOTE_HEIGHT;
-    let annot = doc.add_object(Object::Dictionary(lopdf::Dictionary::from_iter(vec![
-        (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
-        (b"Subtype".to_vec(), Object::Name(b"Text".to_vec())),
-        (
-            b"Rect".to_vec(),
-            Object::Array(vec![
-                Object::Real(x as f32),
-                Object::Real(y as f32),
-                Object::Real(x2 as f32),
-                Object::Real(y2 as f32),
-            ]),
-        ),
-        (b"Contents".to_vec(), Object::String(content.into_bytes(), lopdf::StringFormat::Literal)),
-        (b"Open".to_vec(), Object::Boolean(false)),
-        (b"C".to_vec(), Object::Array(vec![Object::Real(1.0), Object::Real(1.0), Object::Real(0.6)])),
-    ])));
-
-    let annots = doc.get_dictionary_mut(*page_id).map_err(|e| e.to_string())?.get_mut(b"Annots");
-
-    match annots {
-        Ok(Object::Array(ref mut arr)) => {
-            arr.push(Object::Reference(annot));
-        }
-        _ => {
-            doc.get_dictionary_mut(*page_id)
-                .map_err(|e| e.to_string())?
-                .set(b"Annots", Object::Array(vec![Object::Reference(annot)]));
-        }
-    }
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotations::add_text_note(&PathBuf::from(path), page_index, x, y, content)
 }
 
 /// Remove the `index`-th text-note annotation (0-based among `Text` subtypes).
 #[tauri::command]
 fn remove_text_note(path: String, page_index: u32, index: u32) -> Result<(), String> {
-    let path = PathBuf::from(&path);
-    let mut doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = *pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
-        Ok(Object::Array(arr)) => arr.clone(),
-        _ => return Err("No annotations on this page".to_string()),
-    };
-
-    let mut note_count = 0u32;
-    let mut target_pos: Option<usize> = None;
-    for (pos, annot_ref) in annots.iter().enumerate() {
-        let Object::Reference(id) = annot_ref else {
-            continue;
-        };
-        let is_text = doc
-            .get_object(*id)
-            .ok()
-            .and_then(|o| o.as_dict().ok())
-            .and_then(|d| d.get(b"Subtype").ok())
-            .and_then(|o| o.as_name().ok())
-            .map(|n| String::from_utf8_lossy(n) == "Text")
-            .unwrap_or(false);
-        if is_text {
-            if note_count == index {
-                target_pos = Some(pos);
-                break;
-            }
-            note_count += 1;
-        }
-    }
-
-    let pos = target_pos.ok_or("Text note not found".to_string())?;
-    let mut new_annots = annots;
-    new_annots.remove(pos);
-    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Annots", Object::Array(new_annots));
-
-    doc.save(&path).map_err(|e| e.to_string())?;
-    Ok(())
+    pdf::annotations::remove_text_note(&PathBuf::from(path), page_index, index)
 }
 
 fn ink_bbox(points: &[f64]) -> [f64; 4] {
@@ -6707,14 +6379,6 @@ fn stamp_text_default_appearance(preset: &str) -> &'static str {
     }
 }
 
-fn annot_panda_stamp(dict: &lopdf::Dictionary) -> Option<String> {
-    dict.get(b"PandaStamp").ok().and_then(|o| o.as_name().ok()).map(|b| String::from_utf8_lossy(b).to_string())
-}
-
-fn annot_panda_stamp_kind(dict: &lopdf::Dictionary) -> Option<String> {
-    dict.get(b"PandaStampKind").ok().and_then(|o| o.as_name().ok()).map(|b| String::from_utf8_lossy(b).to_string())
-}
-
 fn remove_panda_stamp(doc: &mut Document, page_id: ObjectId, kind: &str, index: u32) -> Result<(), String> {
     let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
         Ok(Object::Array(arr)) => arr.clone(),
@@ -6890,10 +6554,6 @@ fn remove_image_stamp(path: String, page_index: u32, index: u32) -> Result<(), S
     Ok(())
 }
 
-fn annot_is_redaction(dict: &lopdf::Dictionary) -> bool {
-    dict.get(b"PandaRedact").ok().and_then(|o| o.as_bool().ok()).unwrap_or(false)
-}
-
 fn remove_redaction_at_index(doc: &mut Document, page_id: ObjectId, index: u32) -> Result<(), String> {
     let annots = match doc.get_dictionary(page_id).map_err(|e| e.to_string())?.get(b"Annots") {
         Ok(Object::Array(arr)) => arr.clone(),
@@ -6956,105 +6616,9 @@ fn remove_redaction(path: String, page_index: u32, index: u32) -> Result<(), Str
     Ok(())
 }
 
-#[derive(serde::Serialize)]
-struct AnnotationData {
-    subtype: String,
-    rect: [f64; 4],
-    color: Option<[f64; 3]>,
-    contents: Option<String>,
-    ink_points: Option<Vec<f64>>,
-    line_endpoints: Option<[f64; 4]>,
-    stamp_kind: Option<String>,
-    stamp_preset: Option<String>,
-    is_redaction: bool,
-}
-
-fn annot_contents(dict: &lopdf::Dictionary) -> Option<String> {
-    dict.get(b"Contents").ok().and_then(|o| match o {
-        Object::String(bytes, _) => Some(String::from_utf8_lossy(bytes).to_string()),
-        _ => None,
-    })
-}
-
 #[tauri::command]
-fn get_annotations(path: String, page_index: u32) -> Result<Vec<AnnotationData>, String> {
-    let path = PathBuf::from(&path);
-    let doc = Document::load(&path).map_err(|e| e.to_string())?;
-
-    let pages = doc.get_pages();
-    let page_id = pages.get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-
-    let page_dict = doc.get_dictionary(*page_id).map_err(|e| e.to_string())?;
-    let mut result = Vec::new();
-
-    if let Ok(Object::Array(arr)) = page_dict.get(b"Annots") {
-        for annot_ref in arr {
-            let id = match annot_ref {
-                Object::Reference(id) => *id,
-                _ => continue,
-            };
-            if let Ok(annot_obj) = doc.get_object(id) {
-                if let Ok(annot_dict) = annot_obj.as_dict() {
-                    let subtype = annot_dict
-                        .get(b"Subtype")
-                        .ok()
-                        .and_then(|o| o.as_name().ok())
-                        .map(|b| String::from_utf8_lossy(b).to_string())
-                        .unwrap_or_default();
-
-                    let rect = if let Ok(Object::Array(rect_arr)) = annot_dict.get(b"Rect") {
-                        let get = |i: usize| rect_arr.get(i).map(obj_to_f64).unwrap_or(0.0);
-                        [get(0), get(1), get(2), get(3)]
-                    } else {
-                        [0.0; 4]
-                    };
-
-                    let color = annot_dict.get(b"C").ok().and_then(|o| {
-                        o.as_array().ok().map(|arr| {
-                            let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
-                            [get(0), get(1), get(2)]
-                        })
-                    });
-
-                    let contents = annot_contents(annot_dict);
-                    let ink_points = if subtype == "Ink" {
-                        annot_dict.get(b"InkList").ok().and_then(|o| o.as_array().ok()).and_then(|strokes| {
-                            strokes
-                                .first()
-                                .and_then(|stroke| stroke.as_array().ok())
-                                .map(|coords| coords.iter().map(obj_to_f64).collect::<Vec<_>>())
-                        })
-                    } else {
-                        None
-                    };
-                    let line_endpoints = if subtype == "Line" {
-                        annot_dict.get(b"L").ok().and_then(|o| o.as_array().ok()).map(|arr| {
-                            let get = |i: usize| arr.get(i).map(obj_to_f64).unwrap_or(0.0);
-                            [get(0), get(1), get(2), get(3)]
-                        })
-                    } else {
-                        None
-                    };
-                    let stamp_kind = annot_panda_stamp_kind(annot_dict);
-                    let stamp_preset = annot_panda_stamp(annot_dict);
-                    let is_redaction = annot_is_redaction(annot_dict);
-                    result.push(AnnotationData {
-                        subtype,
-                        rect,
-                        color,
-                        contents,
-                        ink_points,
-                        line_endpoints,
-                        stamp_kind,
-                        stamp_preset,
-                        is_redaction,
-                    });
-                }
-            }
-        }
-    }
-
-    Ok(result)
+fn get_annotations(path: String, page_index: u32) -> Result<Vec<pdf::annotations::AnnotationData>, String> {
+    pdf::annotations::get_annotations(&PathBuf::from(path), page_index)
 }
 
 /// Copy `original` to a fresh temp working file so edits never touch the user's

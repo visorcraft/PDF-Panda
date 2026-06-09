@@ -77,6 +77,8 @@ function call<H extends (opts: never) => unknown>(hook: H, input: object): Retur
   return hook(input as Parameters<H>[0]) as ReturnType<H>;
 }
 
+export type AppPdfActions = ReturnType<typeof useAppPdfActions>;
+
 export function useAppPdfActions(input: UseAppPdfActionsInput) {
   const modalOpeners = call(usePdfModalOpeners, input);
   const imageExport = call(useImageExportActions, input);
