@@ -1,6 +1,6 @@
 # AGENTS.md — PDF-Panda
 
-Agent context. User docs: `README.md`. Feature matrix: gitignored `PLAN.md`. `CLAUDE.md` → symlink here.
+Agent context. User docs: `README.md`. `CLAUDE.md` → symlink here.
 
 ## Style
 
@@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`, 
 
 ## Stack & build
 
-Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.0** · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.0** (shipped 2026-06-10: tag + GitHub release + signed `latest.json` live) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
 
@@ -44,7 +44,7 @@ Run from `src-tauri/` unless noted.
 | TS | `npx tsc --noEmit` | clean |
 | Smoke | `scripts/smoke-test.sh` | pass |
 
-CI fetches PDFium (`fetch-pdfium.sh` step); ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab`, ~20 s, green.
+CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab`, ~20 s, green.
 
 ## Frontend (`src/`)
 
@@ -119,20 +119,8 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 
 ## On change
 
-Update this file + `PLAN.md` when features, deps, or gate counts change.
+Update this file when features, deps, or gate counts change.
 
 ## Prompt-file hygiene for subagents & peer reviewers (MANDATORY)
 
-NEVER write prompts for subagents or peer code reviewers (e.g. `opencode run "$(cat ...)"`)
-to the shared generic path `/tmp/prompt.txt`. Multiple agent sessions run concurrently on
-this machine and follow the same conventions; a shared path WILL be clobbered between
-writing the prompt and the consumer reading it at launch, silently running the review or
-task against another project's brief (this has actually happened).
-
-Required: use a collision-proof path —
-- per-repo: `/tmp/pdf_panda-prompt.txt`, or
-- better, a unique random path so multiple subagents can work on this repo concurrently
-  with varying prompts: `PROMPT_FILE=$(mktemp /tmp/pdf_panda-prompt-XXXXXXXX.txt)`
-
-The same rule applies to any scratch file consumed via `$(cat ...)` or read by the
-subagent at launch time (review diffs, briefs, fixture lists).
+NEVER write prompts for subagents or peer reviewers (e.g. `opencode run "$(cat ...)"`) to the shared path `/tmp/prompt.txt` — concurrent agent sessions on this machine clobber it, silently running the task against another project's brief (has happened). Use a collision-proof path: `PROMPT_FILE=$(mktemp /tmp/pdf_panda-prompt-XXXXXXXX.txt)`. Same rule for any scratch file read by the subagent at launch (review diffs, briefs, fixture lists).
