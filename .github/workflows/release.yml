@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (must already exist, e.g. v0.5.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -48,6 +53,8 @@ jobs:
       - name: Build deb, rpm, and AppImage packages
         env:
           NO_STRIP: 1
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx tauri build --bundles deb,rpm,appimage
 
       - name: Upload Linux bundles
@@ -86,6 +93,9 @@ jobs:
         run: scripts/fetch-pdfium.sh
 
       - name: Build macOS bundles
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx tauri build
 
       - name: Import Apple signing certificate
@@ -148,6 +158,9 @@ jobs:
         run: scripts/fetch-pdfium.sh
 
       - name: Build Windows bundles
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx tauri build
 
       - name: Sign Windows bundles
@@ -187,12 +200,18 @@ jobs:
           path: release-artifacts
           merge-multiple: true
 
+      - name: Generate updater manifest (latest.json)
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/generate-latest-json.py release-artifacts "$RELEASE_TAG"
+
       - name: Generate SHA256 checksums
         run: scripts/release-checksums.sh release-artifacts
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
           files: |
             release-artifacts/**
           generate_release_notes: true

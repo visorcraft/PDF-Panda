@@ -35,6 +35,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Configure sccache
+        shell: bash
         run: |
           echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
           echo "SCCACHE_CACHE_SIZE=2G" >> $GITHUB_ENV
@@ -47,6 +48,10 @@ jobs:
 
       - name: Install npm deps
         run: npm ci
+
+      - name: Fetch PDFium
+        shell: bash
+        run: scripts/fetch-pdfium.sh
 
       - name: TypeScript check
         run: npx tsc --noEmit
@@ -82,6 +87,15 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure sccache
+        shell: bash
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "SCCACHE_CACHE_SIZE=2G" >> $GITHUB_ENV
 
       - name: Install Linux system deps
         run: |

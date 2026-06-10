@@ -28,16 +28,13 @@
       "endpoints": [
         "https://github.com/visorcraft/PDF-Panda/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2RUY5M0Q2M0E2QjY5NjkKUldUWlZqV1JtTlRrMUpUVTFKTlRrMUpUVTFKTWZvMWJtTnZiSFZ6Y0dVa0lDMWdaWEp6YVc1blgybHVkR1Z5Y3c9PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcCBnZW5lcmljIHVwZGF0ZXIga2V5ClJlU3RFYlZrWkRVMU5QUTA5R1ZrVkJRVlZGUTBGQlFVRkJRVUZCUVVGQlFVRkJRVUZCUVVGQlFVRkJRQT09Cg=="
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVEOTQyQzZBNkMxN0Q0MTQKUldRVTFCZHNhaXlVWFNSZFlQM3VxOXptalpzN3ZwQzJjUXRaRWVwOWtaTHBPR21hVncyd0JtcGUK"
     }
   },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
-    "resources": {
-      "vendor/pdfium/libpdfium.so": "vendor/pdfium/libpdfium.so"
-    },
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",

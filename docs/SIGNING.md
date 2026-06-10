@@ -8,17 +8,31 @@ artifacts automatically before publishing.
 
 Run the **Release** workflow manually (**Actions → Release → Run workflow**). The pipeline:
 
-1. Builds Linux deb/rpm, macOS `.app`/`.dmg`, and Windows `.msi`/`.exe` packages.
+1. Builds Linux deb/rpm/AppImage, macOS `.app`/`.dmg`, and Windows `.msi`/`.exe` packages,
+   plus minisign-signed updater artifacts (`createUpdaterArtifacts`).
 2. Signs macOS and Windows artifacts when the secrets below are present.
-3. Writes `SHA256SUMS.txt` for all uploaded files.
-4. Publishes a GitHub Release with every artifact attached.
+3. Generates the updater manifest `latest.json` (`scripts/generate-latest-json.py`)
+   pointing at the tagged release's assets.
+4. Writes `SHA256SUMS.txt` for all uploaded files.
+5. Publishes a GitHub Release for the `tag` input with every artifact attached.
 
 Workflow file: `.github/workflows/release.yml`
+
+## Updater key (Tauri updater)
+
+In-app updates verify a minisign signature against the public key embedded in
+`src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). The matching private key lives at
+`~/.tauri/pdf-panda.key` (generated with `npx tauri signer generate -w ~/.tauri/pdf-panda.key`,
+no password). It is **not** in the repo; if it is lost, generate a new pair and update the
+pubkey — older installs will then refuse updates until reinstalled. The key and its password
+must be set as the `TAURI_SIGNING_*` secrets below before running the Release workflow.
 
 ### Required GitHub secrets
 
 | Secret | Platform | Purpose |
 | --- | --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | all | Tauri updater private key (contents of `~/.tauri/pdf-panda.key`) — **required**; builds fail without it because `createUpdaterArtifacts` is enabled |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | all | Password for the updater key (empty string if the key has none) |
 | `APPLE_CERTIFICATE_BASE64` | macOS | Base64-encoded `.p12` Developer ID Application certificate |
 | `APPLE_CERTIFICATE_PASSWORD` | macOS | Password for the `.p12` import |
 | `APPLE_SIGNING_IDENTITY` | macOS | `codesign` identity string (e.g. `Developer ID Application: …`) |

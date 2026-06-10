@@ -28,6 +28,11 @@ tauri-plugin-updater = "2"
 underskrift = "0.1.4"
 tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
 
+# underskrift → josekit needs OpenSSL; Windows has no system copy, so build it
+# from source there (Linux/macOS keep using the platform OpenSSL).
+[target.'cfg(windows)'.dependencies]
+openssl-sys = { version = "0.9", features = ["vendored"] }
+
 # Optimized release profile for fast, compact production builds. `panic` is left
 # as the default (unwind) so Tauri can still catch and surface command panics.
 [profile.release]
