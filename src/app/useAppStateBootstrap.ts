@@ -90,6 +90,7 @@ export function useAppStateBootstrap() {
     updateSession: doc.updateSession,
     ensureSessionForOpen: doc.ensureSessionForOpen,
     loadPdfFromPath: lifecycle.loadPdfFromPath,
+    setActiveSession: doc.setActiveSession,
     showToast,
   });
 

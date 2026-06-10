@@ -18,8 +18,8 @@ export interface SessionState {
 }
 
 const SAVE_DEBOUNCE_MS = 200;
-// Session restore is controlled by the PDF_PANDA_NO_RESTORE=1 env var on the backend.
-// The frontend always attempts to save/restore; the backend silently no-ops when disabled.
+const VALID_VIEW_MODES: ViewMode[] = ['pdf', 'markdown'];
+const VALID_SCROLL_MODES: Array<'single' | 'continuous'> = ['single', 'continuous'];
 
 function toState(sessions: DocumentSessionData[], activeId: string | null): SessionState | null {
   const withPath = sessions.filter((s) => s.originalPath);
@@ -38,12 +38,21 @@ function toState(sessions: DocumentSessionData[], activeId: string | null): Sess
   };
 }
 
+function validateViewMode(v: string): ViewMode {
+  return VALID_VIEW_MODES.includes(v as ViewMode) ? (v as ViewMode) : 'pdf';
+}
+
+function validateScrollMode(v: string): 'single' | 'continuous' {
+  return VALID_SCROLL_MODES.includes(v as 'single' | 'continuous') ? (v as 'single' | 'continuous') : 'single';
+}
+
 export function useSessionPersistence({
   sessions,
   activeId,
   updateSession,
   ensureSessionForOpen,
   loadPdfFromPath,
+  setActiveSession,
   showToast,
 }: {
   sessions: DocumentSessionData[];
@@ -51,6 +60,7 @@ export function useSessionPersistence({
   updateSession: (id: string, patch: Partial<DocumentSessionData>) => void;
   ensureSessionForOpen: (originalPath: string) => string | null;
   loadPdfFromPath: (path: string) => Promise<boolean>;
+  setActiveSession: (id: string) => void;
   showToast: (msg: string, kind?: 'error') => void;
 }) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,6 +87,19 @@ export function useSessionPersistence({
     };
   }, [sessions, activeId, saveSessions]);
 
+  // Flush pending save before window closes.
+  useEffect(() => {
+    const handler = () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      void saveSessions();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saveSessions]);
+
   const restoreSessions = useCallback(async () => {
     try {
       const state = await invoke<SessionState | null>('load_session_state');
@@ -93,8 +116,8 @@ export function useSessionPersistence({
               sessionId: existing.id,
               page: s.page,
               zoom: s.zoom,
-              viewMode: s.view_mode as ViewMode,
-              scrollViewMode: s.scroll_view_mode as 'single' | 'continuous',
+              viewMode: validateViewMode(s.view_mode),
+              scrollViewMode: validateScrollMode(s.scroll_view_mode),
             });
           }
           continue;
@@ -106,9 +129,11 @@ export function useSessionPersistence({
               sessionId,
               page: s.page,
               zoom: s.zoom,
-              viewMode: s.view_mode as ViewMode,
-              scrollViewMode: s.scroll_view_mode as 'single' | 'continuous',
+              viewMode: validateViewMode(s.view_mode),
+              scrollViewMode: validateScrollMode(s.scroll_view_mode),
             });
+          } else {
+            showToast(`Skipped restore for ${s.original_path}`, 'error');
           }
         } catch {
           showToast(`Could not restore ${s.original_path}`, 'error');
@@ -125,11 +150,16 @@ export function useSessionPersistence({
           zoomInput: String(Math.round(o.zoom * 100)),
         });
       }
+      // Restore the previously active tab.
+      const target = opened[state.active_index] ?? opened[0];
+      if (target) {
+        setActiveSession(target.sessionId);
+      }
       isRestoringRef.current = false;
     } catch {
       isRestoringRef.current = false;
     }
-  }, [ensureSessionForOpen, loadPdfFromPath, updateSession, showToast, sessions]);
+  }, [ensureSessionForOpen, loadPdfFromPath, updateSession, setActiveSession, showToast, sessions]);
 
   return { restoreSessions };
 }

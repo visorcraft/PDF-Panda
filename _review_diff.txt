@@ -1,0 +1,420 @@
+AGENTS.md                                    |  11 ++-
+ e2e/specs/restore-setup.spec.ts              |  35 +++++++
+ e2e/specs/restore.spec.ts                    |  27 ++++++
+ e2e/wdio.conf.ts                             |   2 +
+ src-tauri/src/commands/invoke_handler.inc.rs |   2 +
+ src-tauri/src/commands/wrappers_doc.inc.rs   |   8 ++
+ src-tauri/src/pdf/io.rs                      | 105 ++++++++++++++++++++-
+ src/app/useAppRuntimeWiring.ts               |   8 ++
+ src/app/useAppStateBootstrap.ts              |  11 +++
+ src/app/useSessionPersistence.ts             | 135 +++++++++++++++++++++++++++
+ 10 files changed, 340 insertions(+), 4 deletions(-)
+
+--- Changes ---
+
+AGENTS.md
+  @@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`,
+  -Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.0** (shipped 2026-06-10: tag + GitHub release + signed `latest.json` live) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+  +Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.1-dev** (v0.5.0 shipped 2026-06-10) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+   
+   **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
+   
+  @@ -38,13 +38,13 @@ Run from `src-tauri/` unless noted.
+  -| Tests | `cargo test` | **2126** pass / **20** ignored |
+  +| Tests | `cargo test` | **2128** pass / **20** ignored |
+   | Clippy | `RUSTFLAGS=-Dwarnings cargo clippy --all-targets` | clean |
+   | Format | `cargo fmt --check` | clean |
+   | TS | `npx tsc --noEmit` | clean |
+   | Smoke | `scripts/smoke-test.sh` | pass |
+   
+  -CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab`, ~20 s, green.
+  +CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab` + `restore`, ~26 s, green.
+   
+   ## Frontend (`src/`)
+   
+  @@ -98,6 +98,10 @@ Parity (0-based): global/local odd-even; in-range/doc-wide mod-3…mod-6; half/t
+  +## v0.5.1 (in progress)
+  +
+  +- **Session restore** — relaunch reopens previous tabs (original paths) with per-tab page, zoom, and view mode.
+  +
+   **Gotchas:** Markdown view → PDF thumbnail: switch to PDF mode first (rAF defer). After structural edits: `reloadOpenPdf()` + dirty flag. Credits: `scripts/generate-credits.sh` (6 shipped npm packages in license tests).
+   
+   ## Env
+  @@ -116,6 +120,7 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
+  +| `PDF_PANDA_NO_RESTORE` | `1` = skip session restore on launch |
+   
+   ## On change
+   
+  +8 -3
+
+e2e/specs/restore-setup.spec.ts
+  @@ -0,0 +1,35 @@
+  +import {
+  +  countDocTabs,
+  +  getZoomInput,
+  +  openPdfViaPathModal,
+  +  resetToWelcome,
+  +  selectTab,
+  +  setZoomPercent,
+  +  waitForPageCount,
+  +  waitForPdfOpen,
+  +  waitForShell,
+  +} from '../support/helpers';
+  +
+  +describe('session restore setup', () => {
+  +  before(async () => {
+  +    await waitForShell();
+  +    await resetToWelcome();
+  +  });
+  +
+  +  it('opens two documents with independent zoom for restore test', async () => {
+  +    await openPdfViaPathModal(await import('../support/helpers').then((m) => m.fixturePdf));
+  +    await waitForPageCount('/ 1');
+  +    await setZoomPercent('150');
+  +    await openPdfViaPathModal(await import('../support/helpers').then((m) => m.fixturePdfB));
+  +    await waitForPageCount('/ 1');
+  +    await browser.waitUntil(
+  +      async () => (await countDocTabs()) === 2,
+  +      { timeout: 15_000, timeoutMsg: 'expected two document tabs' },
+  +    );
+  +    expect(await getZoomInput()).toBe('100');
+  +    await selectTab('sample');
+  +    expect(await getZoomInput()).toBe('150');
+  +    // Allow the debounced session-state save to flush before WDIO kills the app.
+  +    await browser.pause(500);
+  +  });
+  +});
+  +35 -0
+
+e2e/specs/restore.spec.ts
+  @@ -0,0 +1,27 @@
+  +import {
+  +  countDocTabs,
+  +  getZoomInput,
+  +  selectTab,
+  +  waitForPageCount,
+  +  waitForPdfOpen,
+  +  waitForShell,
+  +} from '../support/helpers';
+  +
+  +describe('session restore', () => {
+  +  before(async () => {
+  +    await waitForShell();
+  +  });
+  +
+  +  it('restores previous tabs with zoom after app restart', async () => {
+  +    await browser.waitUntil(
+  +      async () => (await countDocTabs()) === 2,
+  +      { timeout: 15_000, timeoutMsg: 'expected two restored document tabs' },
+  +    );
+  +    await waitForPdfOpen();
+  +    await waitForPageCount('/ 1');
+  +    // Active tab should be the first one (sample) with 150% zoom.
+  +    expect(await getZoomInput()).toBe('150');
+  +    await selectTab('sample-b');
+  +    expect(await getZoomInput()).toBe('100');
+  +  });
+  +});
+  +27 -0
+
+e2e/wdio.conf.ts
+  @@ -20,6 +20,8 @@ export const config = {
+  +    path.join(root, 'e2e', 'specs', 'restore-setup.spec.ts'),
+  +    path.join(root, 'e2e', 'specs', 'restore.spec.ts'),
+     ],
+     maxInstances: 1,
+     logLevel: 'info',
+  +2 -0
+
+src-tauri/src/commands/invoke_handler.inc.rs
+  @@ -1984,6 +1984,8 @@ tauri::generate_handler![
+  +            save_session_state,
+  +            load_session_state,
+               protect_pdf,
+               list_pdf_signatures,
+               verify_pdf_signatures,
+  +2 -0
+
+src-tauri/src/commands/wrappers_doc.inc.rs
+  @@ -241,3 +241,11 @@ fn verify_pdf_password(path: String, password: String) -> Result<(), String> {
+  +#[tauri::command]
+  +fn save_session_state(app: tauri::AppHandle, state: pdf::io::SessionState) -> Result<(), String> {
+  +    pdf::io::save_session_state(&app, &state)
+  +}
+  +#[tauri::command]
+  +fn load_session_state(app: tauri::AppHandle) -> Result<Option<pdf::io::SessionState>, String> {
+  +    pdf::io::load_session_state(&app)
+  +}
+  +8 -0
+
+src-tauri/src/pdf/io.rs
+  @@ -1,5 +1,7 @@
+  -use std::path::Path;
+  +use serde::{Deserialize, Serialize};
+  +use std::path::{Path, PathBuf};
+  +use tauri::Manager;
+   
+   /// Load a PDF, run `f`, save back to the same path, and return `f`'s result.
+   pub fn mutate_pdf<T, F>(path: &Path, f: F) -> Result<T, String>
+  @@ -17,6 +19,74 @@ pub fn page_count(path: &Path) -> Result<usize, String> {
+  +#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+  +pub struct PersistedSession {
+  +    pub original_path: String,
+  +    pub page: u32,
+  +    pub zoom: f64,
+  +    pub view_mode: String,
+  +    pub scroll_view_mode: String,
+  +}
+  +
+  +#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+  +pub struct SessionState {
+  +    pub version: u32,
+  +    pub active_index: usize,
+  +    pub sessions: Vec<PersistedSession>,
+  +}
+  +
+  +impl SessionState {
+  +    const CURRENT_VERSION: u32 = 1;
+  +
+  +    #[allow(dead_code)]
+  +    pub fn new(active_index: usize, sessions: Vec<PersistedSession>) -> Self {
+  +        Self { version: Self::CURRENT_VERSION, active_index, sessions }
+  +    }
+  +
+  +    pub fn validate(self) -> Result<Self, String> {
+  +        if self.version != Self::CURRENT_VERSION {
+  +            return Err(format!("unsupported session state version {}", self.version));
+  +        }
+  +        Ok(self)
+  +    }
+  +}
+  +
+  +fn session_state_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+  +    let config_dir = app.path().app_config_dir().map_err(|e| format!("failed to get app config dir: {e}"))?;
+  +    std::fs::create_dir_all(&config_dir).map_err(|e| format!("failed to create config dir: {e}"))?;
+  +    Ok(config_dir.join("sessions.json"))
+  +}
+  +
+  +fn no_restore_env() -> bool {
+  +    std::env::var("PDF_PANDA_NO_RESTORE").ok().as_deref() == Some("1")
+  +}
+  +
+  +pub fn save_session_state(app: &tauri::AppHandle, state: &SessionState) -> Result<(), String> {
+  +    if no_restore_env() {
+  +        return Ok(());
+  +    }
+  +    let path = session_state_path(app)?;
+  +    let json = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
+  +    std::fs::write(&path, json).map_err(|e| format!("failed to write session state: {e}"))?;
+  +    Ok(())
+  +}
+  +
+  +pub fn load_session_state(app: &tauri::AppHandle) -> Result<Option<SessionState>, String> {
+  +    if no_restore_env() {
+  +        return Ok(None);
+  +    }
+  +    let path = session_state_path(app)?;
+  +    if !path.is_file() {
+  +        return Ok(None);
+  +    }
+  +    let json = std::fs::read_to_string(&path).map_err(|e| format!("failed to read session state: {e}"))?;
+  +    let state: SessionState = serde_json::from_str(&json).map_err(|e| format!("failed to parse session state: {e}"))?;
+  +    match state.validate() {
+  +        Ok(s) => Ok(Some(s)),
+  +        Err(_) => Ok(None),
+  +    }
+  +}
+  +
+   #[cfg(test)]
+   mod tests {
+       use super::*;
+  @@ -94,4 +164,37 @@ mod tests {
+  +
+  +    #[test]
+  +    fn session_state_round_trip() {
+  +        let state = SessionState::new(
+  +            1,
+  +            vec![
+  +                PersistedSession {
+  +                    original_path: "/tmp/a.pdf".to_string(),
+  +                    page: 3,
+  +                    zoom: 1.5,
+  +                    view_mode: "pdf".to_string(),
+  +                    scroll_view_mode: "continuous".to_string(),
+  +                },
+  +                PersistedSession {
+  +                    original_path: "/tmp/b.pdf".to_string(),
+  +                    page: 0,
+  +                    zoom: 2.0,
+  +                    view_mode: "markdown".to_string(),
+  +                    scroll_view_mode: "single".to_string(),
+  +                },
+  +            ],
+  +        );
+  +        let json = serde_json::to_string_pretty(&state).unwrap();
+  +        let loaded: SessionState = serde_json::from_str(&json).unwrap();
+  +        assert_eq!(loaded, state);
+  +    }
+  +
+  +    #[test]
+  +    fn session_state_unknown_version_returns_error() {
+  +        let json = r#"{"version":99,"active_index":0,"sessions":[]}"#;
+  +        let state: SessionState = serde_json::from_str(json).unwrap();
+  +        assert!(state.validate().is_err());
+  +    }
+   }
+  +104 -1
+
+src/app/useAppRuntimeWiring.ts
+  @@ -1,3 +1,4 @@
+  +import { useEffect } from 'react';
+   import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
+   import { useAppChromeBindings } from './useAppChromeBindings';
+   import { useAppModalCtxBinding } from './useAppModalCtxBinding';
+  @@ -24,6 +25,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
+  +    persistence,
+     } = bootstrap;
+   
+     const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
+  @@ -139,6 +141,12 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
+  +  useEffect(() => {
+  +    if (persistence?.restoreSessions) {
+  +      void persistence.restoreSessions();
+  +    }
+  +  }, []);
+  +
+     return useAppShellBinding({
+       doc,
+       modal,
+  +8 -0
+
+src/app/useAppStateBootstrap.ts
+  @@ -13,6 +13,7 @@ import { useAppLifecycleHooks } from './useAppLifecycleHooks';
+  +import { useSessionPersistence } from './useSessionPersistence';
+   
+   export function useAppStateBootstrap() {
+     const doc = useAppDocumentState();
+  @@ -83,6 +84,15 @@ export function useAppStateBootstrap() {
+  +  const persistence = useSessionPersistence({
+  +    sessions: doc.sessions,
+  +    activeId: doc.activeId,
+  +    updateSession: doc.updateSession,
+  +    ensureSessionForOpen: doc.ensureSessionForOpen,
+  +    loadPdfFromPath: lifecycle.loadPdfFromPath,
+  +    showToast,
+  +  });
+  +
+     return {
+       doc,
+       modal,
+  @@ -99,5 +109,6 @@ export function useAppStateBootstrap() {
+  +    persistence,
+     };
+   }
+  +11 -0
+
+src/app/useSessionPersistence.ts
+  @@ -0,0 +1,135 @@
+  +import { useCallback, useEffect, useRef } from 'react';
+  +import { invoke } from '@tauri-apps/api/core';
+  +import type { DocumentSessionData } from './documentSessionTypes';
+  +import type { ViewMode } from './types';
+  +
+  +export interface PersistedSession {
+  +  original_path: string;
+  +  page: number;
+  +  zoom: number;
+  +  view_mode: string;
+  +  scroll_view_mode: string;
+  +}
+  +
+  +export interface SessionState {
+  +  version: number;
+  +  active_index: number;
+  +  sessions: PersistedSession[];
+  +}
+  +
+  +const SAVE_DEBOUNCE_MS = 200;
+  +// Session restore is controlled by the PDF_PANDA_NO_RESTORE=1 env var on the backend.
+  +// The frontend always attempts to save/restore; the backend silently no-ops when disabled.
+  +
+  +function toState(sessions: DocumentSessionData[], activeId: string | null): SessionState | null {
+  +  const withPath = sessions.filter((s) => s.originalPath);
+  +  if (withPath.length === 0) return null;
+  +  const activeIndex = activeId ? withPath.findIndex((s) => s.id === activeId) : 0;
+  +  return {
+  +    version: 1,
+  +    active_index: Math.max(0, activeIndex),
+  +    sessions: withPath.map((s) => ({
+  +      original_path: s.originalPath,
+  +      page: s.currentPage,
+  +      zoom: s.zoom,
+  +      view_mode: s.viewMode,
+  +      scroll_view_mode: s.scrollViewMode,
+  +    })),
+  +  };
+  +}
+  +
+  +export function useSessionPersistence({
+  +  sessions,
+  +  activeId,
+  +  updateSession,
+  +  ensureSessionForOpen,
+  +  loadPdfFromPath,
+  +  showToast,
+  +}: {
+  +  sessions: DocumentSessionData[];
+  +  activeId: string | null;
+  +  updateSession: (id: string, patch: Partial<DocumentSessionData>) => void;
+  +  ensureSessionForOpen: (originalPath: string) => string | null;
+  +  loadPdfFromPath: (path: string) => Promise<boolean>;
+  +  showToast: (msg: string, kind?: 'error') => void;
+  +}) {
+  +  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  +  const isRestoringRef = useRef(false);
+  +
+  +  const saveSessions = useCallback(async () => {
+  +    if (isRestoringRef.current) return;
+  +    const state = toState(sessions, activeId);
+  +    if (!state) return;
+  +    try {
+  +      await invoke('save_session_state', { state });
+  +    } catch {
+  +      // Silent fail — session restore is best-effort.
+  +    }
+  +  }, [sessions, activeId]);
+  +
+  +  useEffect(() => {
+  +    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  +    saveTimerRef.current = setTimeout(() => {
+  +      void saveSessions();
+  +    }, SAVE_DEBOUNCE_MS);
+  +    return () => {
+  +      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  +    };
+  +  }, [sessions, activeId, saveSessions]);
+  +
+  +  const restoreSessions = useCallback(async () => {
+  +    try {
+  +      const state = await invoke<SessionState | null>('load_session_state');
+  +      if (!state || !state.sessions.length) return;
+  +      isRestoringRef.current = true;
+  +      const opened: { sessionId: string; page: number; zoom: number; viewMode: ViewMode; scrollViewMode: 'single' | 'continuous' }[] = [];
+  +      for (const s of state.sessions) {
+  +        const sessionId = ensureSessionForOpen(s.original_path);
+  +        if (sessionId === null) {
+  +          // Already open — update its target state for later.
+  +          const existing = sessions.find((es) => es.originalPath === s.original_path);
+  +          if (existing) {
+  +            opened.push({
+  +              sessionId: existing.id,
+  +              page: s.page,
+  +              zoom: s.zoom,
+  +              viewMode: s.view_mode as ViewMode,
+  +              scrollViewMode: s.scroll_view_mode as 'single' | 'continuous',
+  +            });
+  +          }
+  +          continue;
+  ... (35 lines truncated)
+  +135 -0
+[full diff: rtk git diff --no-compact]
