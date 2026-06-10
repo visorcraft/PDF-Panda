@@ -22,7 +22,7 @@ Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.0** (shipped 2026-06-
 | E2E | `npm run test:e2e` (`e2e/package.json`; script runs `npm ci --prefix e2e`) |
 | Release (CI) | `release.yml` `workflow_dispatch` + `tag` input → signed updater artifacts + `latest.json` (`scripts/generate-latest-json.py`); needs `TAURI_SIGNING_PRIVATE_KEY{,_PASSWORD}` secrets (`docs/SIGNING.md`) |
 
-npm: 6 prod + 6 dev roots (`@tauri-apps/plugin-updater` / `plugin-process` for in-app updates). PDFium bundle resource is per-platform: `tauri.{linux,macos,windows}.conf.json` (base `tauri.conf.json` has none).
+npm: 6 prod + 7 dev roots (`@tauri-apps/plugin-updater` / `plugin-process` for in-app updates). PDFium bundle resource is per-platform: `tauri.{linux,macos,windows}.conf.json` (base `tauri.conf.json` has none).
 
 ## PDFium & platform
 
