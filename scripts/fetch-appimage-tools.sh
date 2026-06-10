@@ -37,12 +37,13 @@ fetch() {
   curl -fSL "$url" -o "$dest"
 }
 
-base="https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy"
-fetch "$base/linuxdeploy-${ldarch}.AppImage" "$cache/linuxdeploy-${ldarch}.AppImage"
-fetch "$base/linuxdeploy-plugin-appimage.AppImage" "$cache/linuxdeploy-plugin-appimage.AppImage"
-fetch "$base/linuxdeploy-plugin-gtk.sh" "$cache/linuxdeploy-plugin-gtk.sh"
-fetch "$base/linuxdeploy-plugin-gstreamer.sh" "$cache/linuxdeploy-plugin-gstreamer.sh"
-fetch "https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-${ldarch}" "$cache/AppRun-${ldarch}"
+# URLs mirror what tauri-bundler downloads (appimage/linuxdeploy.rs); cache
+# filenames must match exactly so the bundler skips its own download step.
+fetch "https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy/linuxdeploy-${ldarch}.AppImage" "$cache/linuxdeploy-${ldarch}.AppImage"
+fetch "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-${ldarch}.AppImage" "$cache/linuxdeploy-plugin-appimage.AppImage"
+fetch "https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" "$cache/linuxdeploy-plugin-gtk.sh"
+fetch "https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gstreamer/master/linuxdeploy-plugin-gstreamer.sh" "$cache/linuxdeploy-plugin-gstreamer.sh"
+fetch "https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-${ldarch}" "$cache/AppRun-${ldarch}"
 
 chmod +x \
   "$cache/linuxdeploy-${ldarch}.AppImage" \
