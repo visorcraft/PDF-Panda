@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useCallback } from 'react';
+import type { DocumentSessionData } from './documentSessionTypes';
 import type { ViewMode } from './types';
 
 type UsePdfOpenOptions = {
@@ -9,26 +10,16 @@ type UsePdfOpenOptions = {
   pendingEncryptedPath: string;
   pdfPasswordDraft: string;
   withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  resetHistoryForOpen: (working: string) => Promise<void>;
+  resetHistoryForOpen: (working: string, sessionId?: string) => Promise<void>;
   renderPage: (path: string, page: number) => Promise<void>;
   loadThumbnails: (path: string) => Promise<void>;
   loadFormFields: (path: string) => Promise<void>;
   rememberOpenedPdf: (path: string) => void;
   cancelDrawing: () => void;
   guardUnsaved: (fn: () => void) => void;
-  ensureSessionForOpen: (originalPath: string) => boolean;
+  ensureSessionForOpen: (originalPath: string) => string | null;
+  updateSession: (sessionId: string, patch: Partial<DocumentSessionData>) => void;
   showToast: (msg: string, kind?: 'error') => void;
-  setOriginalPath: (path: string) => void;
-  setFilePath: (path: string) => void;
-  setViewMode: (mode: ViewMode) => void;
-  setMarkdownText: (text: string) => void;
-  setMarkdownPath: (path: string) => void;
-  setMarkdownOcrNotice: (notice: null) => void;
-  setPdfRevision: (revision: number) => void;
-  setMarkdownRevision: (revision: null) => void;
-  setPageCount: (count: number) => void;
-  setCurrentPage: (page: number) => void;
-  setZoom: (zoom: number) => void;
   setOpenFilePath: (path: string) => void;
   setShowOpenModal: (open: boolean) => void;
   setPendingEncryptedPath: (path: string) => void;
@@ -51,18 +42,8 @@ export function usePdfOpen({
   cancelDrawing,
   guardUnsaved,
   ensureSessionForOpen,
+  updateSession,
   showToast,
-  setOriginalPath,
-  setFilePath,
-  setViewMode,
-  setMarkdownText,
-  setMarkdownPath,
-  setMarkdownOcrNotice,
-  setPdfRevision,
-  setMarkdownRevision,
-  setPageCount,
-  setCurrentPage,
-  setZoom,
   setOpenFilePath,
   setShowOpenModal,
   setPendingEncryptedPath,
@@ -70,7 +51,8 @@ export function usePdfOpen({
   setShowPasswordModal,
 }: UsePdfOpenOptions) {
   const loadPdfFromPath = useCallback(async (path: string, password?: string) => {
-    if (!ensureSessionForOpen(path)) {
+    const sessionId = ensureSessionForOpen(path);
+    if (sessionId === null) {
       return true;
     }
     const loaded = await withLoading(async () => {
@@ -86,19 +68,24 @@ export function usePdfOpen({
         ? await invoke<string>('open_working_copy_with_password', { original: path, password })
         : await invoke<string>('open_working_copy', { original: path });
       const count = await invoke<number>('get_pdf_page_count', { path: working });
-      setOriginalPath(path);
-      setFilePath(working);
-      await resetHistoryForOpen(working);
-      setViewMode('pdf');
-      setMarkdownText('');
-      setMarkdownPath('');
-      setMarkdownOcrNotice(null);
-      setPdfRevision(0);
-      setMarkdownRevision(null);
+      updateSession(sessionId, {
+        originalPath: path,
+        filePath: working,
+        viewMode: 'pdf' as ViewMode,
+        markdownText: '',
+        markdownPath: '',
+        markdownOcrNotice: null,
+        pdfRevision: 0,
+        markdownRevision: null,
+        pageCount: count,
+        currentPage: 0,
+        zoom: 1,
+        pageInput: '1',
+        zoomInput: '100',
+        isDirty: false,
+      });
+      await resetHistoryForOpen(working, sessionId);
       cancelDrawing();
-      setPageCount(count);
-      setCurrentPage(0);
-      setZoom(1);
       await renderPage(working, 0);
       await loadThumbnails(working);
       await loadFormFields(working);
@@ -109,6 +96,8 @@ export function usePdfOpen({
     return loaded === true;
   }, [
     filePath,
+    ensureSessionForOpen,
+    updateSession,
     withLoading,
     resetHistoryForOpen,
     renderPage,
@@ -116,17 +105,6 @@ export function usePdfOpen({
     loadFormFields,
     rememberOpenedPdf,
     cancelDrawing,
-    setOriginalPath,
-    setFilePath,
-    setViewMode,
-    setMarkdownText,
-    setMarkdownPath,
-    setMarkdownOcrNotice,
-    setPdfRevision,
-    setMarkdownRevision,
-    setPageCount,
-    setCurrentPage,
-    setZoom,
     setPendingEncryptedPath,
     setPdfPasswordDraft,
     setShowPasswordModal,

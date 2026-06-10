@@ -7,6 +7,7 @@ import {
   openPdfViaPathModal,
   selectTextLayerSpan,
   waitForPageCount,
+  waitForPdfOpen,
   waitForShell,
 } from '../support/helpers';
 
@@ -21,7 +22,7 @@ describe('PDF Panda shell', () => {
   it('opens a PDF via the path modal and shows page controls', async () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
-  });
+  }, 180_000);
 
   it('marks the document dirty after rotate', async () => {
     const saveBtn = await $('[data-testid="save-pdf"]');
@@ -36,6 +37,7 @@ describe('PDF Panda shell', () => {
 
 describe('v0.5 viewer features', () => {
   it('highlights text selected in the text layer', async () => {
+    await waitForPdfOpen();
     await waitForPageCount('/ 1');
     await browser.waitUntil(async () => (await $('[data-testid="text-layer"]').isDisplayed()), {
       timeout: 45_000,

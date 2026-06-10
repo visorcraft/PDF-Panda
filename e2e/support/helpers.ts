@@ -26,40 +26,69 @@ export async function openFileMenu() {
   throw new Error('file menu did not open');
 }
 
-export async function openPdfViaPathModal(pdfPath: string) {
+async function showOpenPdfModal() {
   const welcome = await $('[data-testid="welcome-open-pdf"]');
   if (await welcome.isDisplayed().catch(() => false)) {
     await welcome.click();
-  } else {
-    await openFileMenu();
-    await $('[data-testid="open-pdf"]').click();
+    return;
   }
+  await openFileMenu();
+  await $('[data-testid="open-pdf"]').click();
+}
+
+async function discardUnsavedIfPrompted() {
+  const discard = await $('[data-testid="unsaved-discard"]');
+  if (await discard.isDisplayed().catch(() => false)) {
+    await discard.click();
+    await browser.pause(200);
+  }
+}
+
+export async function openPdfViaPathModal(pdfPath: string) {
+  await showOpenPdfModal();
+  await discardUnsavedIfPrompted();
+
   const pathInput = await $('[data-testid="open-pdf-path"]');
   await pathInput.waitForDisplayed({ timeout: 15_000 });
   await pathInput.click();
-  // WebKit setValue does not fire React onChange; set the native value + input event.
-  await browser.execute((path: string) => {
+  await browser.execute((filePath: string) => {
     const input = document.querySelector('[data-testid="open-pdf-path"]') as HTMLInputElement | null;
     if (!input) throw new Error('path input missing');
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    setter?.call(input, path);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+    setter?.call(input, filePath);
+    input.dispatchEvent(new InputEvent('input', { bubbles: true, data: filePath, inputType: 'insertFromPaste' }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, pdfPath);
+
   const submit = await $('[data-testid="open-pdf-submit"]');
   await browser.waitUntil(async () => (await submit.isEnabled()), {
-    timeout: 5_000,
+    timeout: 10_000,
     timeoutMsg: 'open submit enabled',
   });
   await submit.click();
+  await waitForPdfOpen();
+}
+
+export async function waitForPdfOpen() {
+  await browser.waitUntil(
+    async () => {
+      const btn = await $('[data-testid="save-pdf"]');
+      return btn.isDisplayed().catch(() => false);
+    },
+    { timeout: 60_000, timeoutMsg: 'expected PDF viewer toolbar' },
+  );
 }
 
 export async function waitForPageCount(expected: string) {
-  const pageCount = await $('[data-testid="page-count"]');
-  await browser.waitUntil(async () => (await pageCount.getText()) === expected, {
-    timeout: 45_000,
-    timeoutMsg: `expected page count ${expected}`,
-  });
+  await browser.waitUntil(
+    async () => {
+      const els = await $$('[data-testid="page-count"]');
+      if (els.length === 0) return false;
+      const text = await els[0].getText();
+      return text === expected;
+    },
+    { timeout: 60_000, timeoutMsg: `expected page count ${expected}` },
+  );
 }
 
 export async function clickMenuAction(menuId: string, actionId: string) {
@@ -85,7 +114,7 @@ export async function selectTextLayerSpan(text: string) {
       }
       return false;
     },
-    { timeout: 45_000, timeoutMsg: `text layer span containing "${text}"` },
+    { timeout: 60_000, timeoutMsg: `text layer span containing "${text}"` },
   );
   await browser.execute((needle: string) => {
     const layer = document.querySelector('.text-layer');

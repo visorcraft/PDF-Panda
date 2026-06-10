@@ -262,18 +262,28 @@ export function useDocumentSessions() {
     getUndoRefs(data.id);
   }, [getUndoRefs]);
 
+  const findReusableEmptySession = useCallback(() => {
+    return sessions.find((s) => !s.filePath && !s.originalPath) ?? null;
+  }, [sessions]);
+
+  /** Focus an already-open path, or return the session id to load into. */
   const ensureSessionForOpen = useCallback(
-    (originalPath: string): boolean => {
+    (originalPath: string): string | null => {
       const existing = findSessionByOriginal(originalPath);
       if (existing) {
         setActiveId(existing.id);
-        return false;
+        return null;
+      }
+      const reusable = findReusableEmptySession();
+      if (reusable) {
+        setActiveId(reusable.id);
+        return reusable.id;
       }
       const id = nextSessionId();
       addSession(createEmptySessionData(id));
-      return true;
+      return id;
     },
-    [findSessionByOriginal, addSession],
+    [findSessionByOriginal, findReusableEmptySession, addSession],
   );
 
   const removeSession = useCallback((id: DocumentSessionId) => {
