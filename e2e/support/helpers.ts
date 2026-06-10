@@ -273,31 +273,152 @@ export async function setZoomPercent(value: string) {
 export async function drawRedactionOverText() {
   await waitForPageRendered();
   await clickMenuAction('annotate', 'redact');
-  // Two separate executes: the first click arms the drag state and React must
-  // flush it before the second click lands, or both register as "first click".
-  const clickAt = (xFrac: number, yFrac: number) =>
-    browser.execute(
-      (fx: number, fy: number) => {
-        const container = document.querySelector('[data-testid="page-container"]');
-        const img = document.querySelector('.page-image') as HTMLImageElement | null;
-        if (!container || !img) throw new Error('page container missing');
-        const rect = img.getBoundingClientRect();
-        container.dispatchEvent(
-          new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            clientX: rect.left + rect.width * fx,
-            clientY: rect.top + rect.height * fy,
-            button: 0,
-          }),
-        );
-      },
-      xFrac,
-      yFrac,
-    );
-  await clickAt(0.2, 0.12);
+
+  // mousedown
+  await browser.execute(
+    (x1: number, y1: number) => {
+      const container = document.querySelector('[data-testid="page-container"]');
+      const img = document.querySelector('.page-image') as HTMLImageElement | null;
+      if (!container || !img) throw new Error('page container missing');
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width * x1;
+      const cy = rect.top + rect.height * y1;
+      container.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+    },
+    0.2, 0.12,
+  );
+  await browser.pause(100);
+
+  // mousemove
+  await browser.execute(
+    (x2: number, y2: number) => {
+      const container = document.querySelector('[data-testid="page-container"]');
+      const img = document.querySelector('.page-image') as HTMLImageElement | null;
+      if (!container || !img) throw new Error('page container missing');
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width * x2;
+      const cy = rect.top + rect.height * y2;
+      container.dispatchEvent(
+        new MouseEvent('mousemove', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+    },
+    0.75, 0.18,
+  );
+  await browser.pause(100);
+
+  // mouseup
+  await browser.execute(
+    (x2: number, y2: number) => {
+      const container = document.querySelector('[data-testid="page-container"]');
+      const img = document.querySelector('.page-image') as HTMLImageElement | null;
+      if (!container || !img) throw new Error('page container missing');
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width * x2;
+      const cy = rect.top + rect.height * y2;
+      container.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+    },
+    0.75, 0.18,
+  );
+  await browser.pause(400);
+}
+
+export async function drawRedactionOverTextByClicks() {
+  await waitForPageRendered();
+  await clickMenuAction('annotate', 'redact');
+
+  // First click: mousedown + click (arms)
+  await browser.execute(
+    (fx: number, fy: number) => {
+      const container = document.querySelector('[data-testid="page-container"]');
+      const img = document.querySelector('.page-image') as HTMLImageElement | null;
+      if (!container || !img) throw new Error('page container missing');
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width * fx;
+      const cy = rect.top + rect.height * fy;
+      container.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+      container.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+    },
+    0.2, 0.12,
+  );
   await browser.pause(150);
-  await clickAt(0.75, 0.18);
+
+  // Second click: mousedown + mouseup + click (commits)
+  await browser.execute(
+    (fx: number, fy: number) => {
+      const container = document.querySelector('[data-testid="page-container"]');
+      const img = document.querySelector('.page-image') as HTMLImageElement | null;
+      if (!container || !img) throw new Error('page container missing');
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width * fx;
+      const cy = rect.top + rect.height * fy;
+      container.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+      container.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+      container.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          clientX: cx,
+          clientY: cy,
+          button: 0,
+        }),
+      );
+    },
+    0.75, 0.18,
+  );
   await browser.pause(400);
 }
 

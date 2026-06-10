@@ -2,6 +2,7 @@ import {
   applyRedactions,
   clickMenuAction,
   drawRedactionOverText,
+  drawRedactionOverTextByClicks,
   findText,
   fixturePdf,
   fixturePdf3p,
@@ -56,6 +57,19 @@ describe('v0.5 viewer features', () => {
     await waitForSearchResults(1);
     await browser.keys('Escape');
     await drawRedactionOverText();
+    await applyRedactions();
+    await findText('Hello');
+    await waitForNoSearchResults();
+  });
+
+  it('apply redactions via click-click fallback removes searchable text', async () => {
+    await resetToWelcome();
+    await openPdfViaPathModal(fixturePdf);
+    await waitForPdfOpen();
+    await findText('Hello');
+    await waitForSearchResults(1);
+    await browser.keys('Escape');
+    await drawRedactionOverTextByClicks();
     await applyRedactions();
     await findText('Hello');
     await waitForNoSearchResults();

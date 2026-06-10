@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { FormFieldKind } from '../modals/AddFormFieldModal';
 import type { ShapeKind, StampKind } from '../app/constants';
 import type { createStructuralEditRunner } from '../pdf/runStructuralEdit';
@@ -69,24 +69,181 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
     [opts.imgRef, opts.zoom],
   );
 
-  const handleDrawMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!opts.drawMode) return;
-    e.preventDefault();
-    const coords = getImageCoords(e.clientX, e.clientY);
-    opts.setInkDrawing(true);
-    opts.setInkDraft([coords.x, coords.y]);
-  }, [opts.drawMode, getImageCoords, opts.setInkDrawing, opts.setInkDraft]);
+  const dragStateRef = useRef<{ phase: 'idle' | 'armed' | 'dragging'; armedByThisDown: boolean }>({
+    phase: 'idle',
+    armedByThisDown: false,
+  });
 
-  const handleDrawMouseUp = useCallback(() => {
-    if (!opts.drawMode || !opts.inkDrawing) return;
-    opts.setInkDrawing(false);
-    const points = opts.inkDraft;
-    opts.setInkDraft([]);
-    opts.commitInkStroke(points);
-  }, [opts.drawMode, opts.inkDrawing, opts.inkDraft, opts.setInkDrawing, opts.setInkDraft, opts.commitInkStroke]);
+  useEffect(() => {
+    if (!opts.drawing) {
+      dragStateRef.current.phase = 'idle';
+      dragStateRef.current.armedByThisDown = false;
+    }
+  }, [opts.drawing]);
+
+  const handleDrawMouseDown = useCallback((e: React.MouseEvent) => {
+    if (opts.drawMode) {
+      e.preventDefault();
+      const coords = getImageCoords(e.clientX, e.clientY);
+      opts.setInkDrawing(true);
+      opts.setInkDraft([coords.x, coords.y]);
+      return;
+    }
+
+    const isRectMode = opts.highlightMode || opts.shapeMode || opts.redactMode || opts.imageInsertMode || opts.vectorEditMode || opts.formAddMode;
+    if (!isRectMode) return;
+
+    e.preventDefault();
+    dragStateRef.current.armedByThisDown = false;
+
+    if (dragStateRef.current.phase === 'idle') {
+      dragStateRef.current.phase = 'armed';
+      dragStateRef.current.armedByThisDown = true;
+      const coords = getImageCoords(e.clientX, e.clientY);
+      opts.setHighlightStart(coords);
+      if (opts.shapeMode && opts.shapeKind === 'line') {
+        opts.setShapeLineEnd(coords);
+      } else {
+        opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+      }
+      opts.setDrawing(true);
+    }
+  }, [opts.drawMode, opts.highlightMode, opts.shapeMode, opts.redactMode, opts.imageInsertMode, opts.vectorEditMode, opts.formAddMode, opts.shapeKind, getImageCoords, opts.setHighlightStart, opts.setShapeLineEnd, opts.setHighlightRect, opts.setDrawing, opts.setInkDrawing, opts.setInkDraft]);
+
+  const handleDrawMouseUp = useCallback((e: React.MouseEvent) => {
+    if (opts.drawMode && opts.inkDrawing) {
+      opts.setInkDrawing(false);
+      const points = opts.inkDraft;
+      opts.setInkDraft([]);
+      opts.commitInkStroke(points);
+      return;
+    }
+
+    if (!opts.drawing || !opts.highlightStart) return;
+
+    const isRectMode = opts.highlightMode || opts.shapeMode || opts.redactMode || opts.imageInsertMode || opts.vectorEditMode || opts.formAddMode;
+    if (!isRectMode) return;
+
+    const coords = getImageCoords(e.clientX, e.clientY);
+    const start = opts.highlightStart;
+
+    if (dragStateRef.current.phase === 'dragging') {
+      // Drag commit
+      if (opts.shapeMode && opts.shapeKind === 'line') {
+        const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
+        opts.setDrawing(false);
+        opts.setHighlightStart(null);
+        opts.setShapeLineEnd(null);
+        dragStateRef.current.phase = 'idle';
+        dragStateRef.current.armedByThisDown = false;
+        if (dist >= 5) {
+          void opts.runEdit({
+            command: 'add_line',
+            args: { pageIndex: opts.currentPage, x1: start.x, y1: start.y, x2: coords.x, y2: coords.y },
+            afterEdit: async () => { await opts.refreshAnnotations(); },
+            toast: 'Line added',
+          });
+        }
+        return;
+      }
+
+      const rect = {
+        x: Math.min(start.x, coords.x),
+        y: Math.min(start.y, coords.y),
+        w: Math.abs(coords.x - start.x),
+        h: Math.abs(coords.y - start.y),
+      };
+
+      let minW = 5;
+      let minH = 5;
+      if (opts.formAddMode) { minW = 20; minH = 10; }
+      else if (opts.vectorEditMode) { minW = 4; minH = 4; }
+
+      opts.setDrawing(false);
+      opts.setHighlightStart(null);
+      opts.setHighlightRect(null);
+      dragStateRef.current.phase = 'idle';
+      dragStateRef.current.armedByThisDown = false;
+
+      if (rect.w < minW || rect.h < minH) return;
+
+      if (opts.redactMode) {
+        void opts.runEdit({
+          command: 'add_redaction',
+          args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: 'Redaction added',
+        });
+      } else if (opts.imageInsertMode) {
+        if (!opts.imageSourcePath) return;
+        void opts.runEdit({
+          command: 'add_page_image',
+          args: {
+            pageIndex: opts.currentPage,
+            x: rect.x,
+            y: rect.y,
+            width: rect.w,
+            height: rect.h,
+            imagePath: opts.imageSourcePath,
+          },
+          afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
+          toast: 'Image inserted',
+        });
+      } else if (opts.vectorEditMode) {
+        void opts.runEdit({
+          command: 'add_page_vector_rect',
+          args: { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h },
+          afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
+          toast: 'Vector shape added',
+        });
+      } else if (opts.formAddMode) {
+        if (!opts.newFormFieldName.trim()) return;
+        const base = { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h };
+        let command: string;
+        let args: Record<string, unknown>;
+        if (opts.newFormFieldKind === 'choice') {
+          const options = opts.newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
+          command = 'add_choice_form_field';
+          args = { ...base, name: opts.newFormFieldName.trim(), options, combo: true };
+        } else {
+          command = 'add_text_form_field';
+          args = { ...base, name: opts.newFormFieldName.trim() };
+        }
+        void opts.runEdit({
+          command,
+          args,
+          afterEdit: async () => {
+            opts.setFormAddMode(false);
+            opts.setShowAddFormFieldModal(false);
+            opts.setNewFormFieldName('');
+            await opts.loadFormFields(opts.filePath);
+          },
+          toast: 'Form field added',
+        });
+      } else if (opts.highlightMode) {
+        void opts.runEdit({
+          command: 'add_highlight',
+          args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: 'Highlight added',
+        });
+      } else if (opts.shapeMode) {
+        void opts.runEdit({
+          command: opts.shapeKind === 'circle' ? 'add_circle' : 'add_square',
+          args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: opts.shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added',
+        });
+      }
+    } else if (dragStateRef.current.phase === 'armed') {
+      // No significant drag - stay armed for click-click fallback
+      // Do NOT disarm; the next click (handled in handlePageClick) will commit
+    }
+  }, [opts, getImageCoords]);
 
   const handlePageClick = useCallback((e: React.MouseEvent) => {
     if (opts.drawMode) return;
+
     if (opts.editTextRunMode && opts.handleEditTextRunClick) {
       const coords = getImageCoords(e.clientX, e.clientY);
       if (opts.handleEditTextRunClick(coords.x, coords.y)) return;
@@ -99,48 +256,80 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
       opts.setShowPageTextModal(true);
       return;
     }
-    if (opts.vectorEditMode) {
+
+    // Rect modes: click-click fallback (second click commits)
+    const isRectMode = opts.highlightMode || opts.shapeMode || opts.redactMode || opts.imageInsertMode || opts.vectorEditMode || opts.formAddMode;
+    if (isRectMode) {
+      if (!opts.drawing || !opts.highlightStart) return;
       const coords = getImageCoords(e.clientX, e.clientY);
-      if (!opts.drawing) {
-        opts.setHighlightStart(coords);
-        opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        opts.setDrawing(true);
+      const start = opts.highlightStart;
+
+      if (opts.shapeMode && opts.shapeKind === 'line') {
+        const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
+        opts.cancelDrawing();
+        if (dist < 5) return;
+        void opts.runEdit({
+          command: 'add_line',
+          args: { pageIndex: opts.currentPage, x1: start.x, y1: start.y, x2: coords.x, y2: coords.y },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: 'Line added',
+        });
         return;
       }
-      const start = opts.highlightStart;
-      opts.cancelDrawing();
-      if (!start) return;
+
       const rect = {
         x: Math.min(start.x, coords.x),
         y: Math.min(start.y, coords.y),
         w: Math.abs(coords.x - start.x),
         h: Math.abs(coords.y - start.y),
       };
-      if (rect.w < 4 || rect.h < 4) return;
-      void opts.runEdit({
-        command: 'add_page_vector_rect',
-        args: { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h },
-        afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
-        toast: 'Vector shape added',
-      });
-      return;
-    }
-    if (opts.formAddMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      const placeFormField = (rect: { x: number; y: number; w: number; h: number }) => {
+
+      let minW = 5;
+      let minH = 5;
+      if (opts.formAddMode) { minW = 20; minH = 10; }
+      else if (opts.vectorEditMode) { minW = 4; minH = 4; }
+
+      opts.cancelDrawing();
+      if (rect.w < minW || rect.h < minH) return;
+
+      if (opts.redactMode) {
+        void opts.runEdit({
+          command: 'add_redaction',
+          args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: 'Redaction added',
+        });
+      } else if (opts.imageInsertMode) {
+        if (!opts.imageSourcePath) return;
+        void opts.runEdit({
+          command: 'add_page_image',
+          args: {
+            pageIndex: opts.currentPage,
+            x: rect.x,
+            y: rect.y,
+            width: rect.w,
+            height: rect.h,
+            imagePath: opts.imageSourcePath,
+          },
+          afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
+          toast: 'Image inserted',
+        });
+      } else if (opts.vectorEditMode) {
+        void opts.runEdit({
+          command: 'add_page_vector_rect',
+          args: { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h },
+          afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
+          toast: 'Vector shape added',
+        });
+      } else if (opts.formAddMode) {
+        if (!opts.newFormFieldName.trim()) return;
         const base = { pageIndex: opts.currentPage, x: rect.x, y: rect.y, width: rect.w, height: rect.h };
         let command: string;
         let args: Record<string, unknown>;
-        if (opts.newFormFieldKind === 'checkbox') {
-          command = 'add_checkbox_form_field';
-          args = { ...base, name: opts.newFormFieldName.trim(), checked: opts.newFormCheckboxChecked };
-        } else if (opts.newFormFieldKind === 'choice') {
+        if (opts.newFormFieldKind === 'choice') {
           const options = opts.newFormFieldOptions.split(',').map((o) => o.trim()).filter(Boolean);
           command = 'add_choice_form_field';
           args = { ...base, name: opts.newFormFieldName.trim(), options, combo: true };
-        } else if (opts.newFormFieldKind === 'radio') {
-          command = 'add_radio_form_field';
-          args = { ...base, groupName: opts.newFormRadioGroup.trim(), optionName: opts.newFormRadioOption.trim() };
         } else {
           command = 'add_text_form_field';
           args = { ...base, name: opts.newFormFieldName.trim() };
@@ -152,99 +341,28 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
             opts.setFormAddMode(false);
             opts.setShowAddFormFieldModal(false);
             opts.setNewFormFieldName('');
-            opts.setNewFormRadioGroup('');
-            opts.setNewFormRadioOption('');
             await opts.loadFormFields(opts.filePath);
           },
           toast: 'Form field added',
         });
-      };
+      } else if (opts.highlightMode) {
+        void opts.runEdit({
+          command: 'add_highlight',
+          args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: 'Highlight added',
+        });
+      } else if (opts.shapeMode) {
+        void opts.runEdit({
+          command: opts.shapeKind === 'circle' ? 'add_circle' : 'add_square',
+          args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
+          afterEdit: async () => { await opts.refreshAnnotations(); },
+          toast: opts.shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added',
+        });
+      }
+      return;
+    }
 
-      if (opts.newFormFieldKind === 'checkbox' || opts.newFormFieldKind === 'radio') {
-        const size = 18;
-        placeFormField({ x: coords.x, y: coords.y, w: size, h: size });
-        opts.cancelDrawing();
-        return;
-      }
-
-      if (!opts.drawing) {
-        opts.setHighlightStart(coords);
-        opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        opts.setDrawing(true);
-        return;
-      }
-      const start = opts.highlightStart;
-      opts.cancelDrawing();
-      if (!start || !opts.newFormFieldName.trim()) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 20 || rect.h < 10) return;
-      placeFormField(rect);
-      return;
-    }
-    if (opts.imageInsertMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!opts.drawing) {
-        opts.setHighlightStart(coords);
-        opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        opts.setDrawing(true);
-        return;
-      }
-      const start = opts.highlightStart;
-      opts.cancelDrawing();
-      if (!start || !opts.imageSourcePath) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 5 || rect.h < 5) return;
-      void opts.runEdit({
-        command: 'add_page_image',
-        args: {
-          pageIndex: opts.currentPage,
-          x: rect.x,
-          y: rect.y,
-          width: rect.w,
-          height: rect.h,
-          imagePath: opts.imageSourcePath,
-        },
-        afterEdit: async () => { await opts.renderPage(opts.filePath, opts.currentPage); },
-        toast: 'Image inserted',
-      });
-      return;
-    }
-    if (opts.redactMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!opts.drawing) {
-        opts.setHighlightStart(coords);
-        opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        opts.setDrawing(true);
-        return;
-      }
-      const start = opts.highlightStart;
-      opts.cancelDrawing();
-      if (!start) return;
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 5 || rect.h < 5) return;
-      void opts.runEdit({
-        command: 'add_redaction',
-        args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
-        afterEdit: async () => { await opts.refreshAnnotations(); },
-        toast: 'Redaction added',
-      });
-      return;
-    }
     if (opts.stampMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       void opts.runEdit({
@@ -255,44 +373,6 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
       });
       return;
     }
-    if (opts.shapeMode) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (!opts.drawing) {
-        opts.setHighlightStart(coords);
-        opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-        opts.setShapeLineEnd(coords);
-        opts.setDrawing(true);
-        return;
-      }
-      const start = opts.highlightStart;
-      opts.cancelDrawing();
-      if (!start) return;
-      if (opts.shapeKind === 'line') {
-        const dist = Math.hypot(coords.x - start.x, coords.y - start.y);
-        if (dist < 5) return;
-        void opts.runEdit({
-          command: 'add_line',
-          args: { pageIndex: opts.currentPage, x1: start.x, y1: start.y, x2: coords.x, y2: coords.y },
-          afterEdit: async () => { await opts.refreshAnnotations(); },
-          toast: 'Line added',
-        });
-        return;
-      }
-      const rect = {
-        x: Math.min(start.x, coords.x),
-        y: Math.min(start.y, coords.y),
-        w: Math.abs(coords.x - start.x),
-        h: Math.abs(coords.y - start.y),
-      };
-      if (rect.w < 5 || rect.h < 5) return;
-      void opts.runEdit({
-        command: opts.shapeKind === 'circle' ? 'add_circle' : 'add_square',
-        args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
-        afterEdit: async () => { await opts.refreshAnnotations(); },
-        toast: opts.shapeKind === 'circle' ? 'Ellipse added' : 'Rectangle added',
-      });
-      return;
-    }
     if (opts.noteMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       opts.setPendingNotePos(coords);
@@ -300,30 +380,6 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
       opts.setShowNoteModal(true);
       return;
     }
-    if (!opts.highlightMode) return;
-    const coords = getImageCoords(e.clientX, e.clientY);
-    if (!opts.drawing) {
-      opts.setHighlightStart(coords);
-      opts.setHighlightRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
-      opts.setDrawing(true);
-      return;
-    }
-    const start = opts.highlightStart;
-    opts.cancelDrawing();
-    if (!start) return;
-    const rect = {
-      x: Math.min(start.x, coords.x),
-      y: Math.min(start.y, coords.y),
-      w: Math.abs(coords.x - start.x),
-      h: Math.abs(coords.y - start.y),
-    };
-    if (rect.w < 5 || rect.h < 5) return;
-    void opts.runEdit({
-      command: 'add_highlight',
-      args: { pageIndex: opts.currentPage, x1: rect.x, y1: rect.y, x2: rect.x + rect.w, y2: rect.y + rect.h },
-      afterEdit: async () => { await opts.refreshAnnotations(); },
-      toast: 'Highlight added',
-    });
   }, [opts, getImageCoords]);
 
   const handlePageMouseMove = useCallback((e: React.MouseEvent) => {
@@ -338,22 +394,28 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
       });
       return;
     }
-    if ((opts.shapeMode || opts.redactMode || opts.imageInsertMode || opts.vectorEditMode || opts.formAddMode) && opts.drawing && opts.highlightStart) {
-      const coords = getImageCoords(e.clientX, e.clientY);
-      if (opts.shapeMode && opts.shapeKind === 'line') {
-        opts.setShapeLineEnd(coords);
-        return;
+
+    const isRectDrawing = opts.drawing && opts.highlightStart && (
+      opts.shapeMode || opts.redactMode || opts.imageInsertMode || opts.vectorEditMode || opts.formAddMode || opts.highlightMode
+    );
+    if (!isRectDrawing) return;
+
+    const coords = getImageCoords(e.clientX, e.clientY);
+
+    if (dragStateRef.current.phase === 'armed' && opts.highlightStart) {
+      const dx = coords.x - opts.highlightStart.x;
+      const dy = coords.y - opts.highlightStart.y;
+      if (Math.hypot(dx, dy) > 2) {
+        dragStateRef.current.phase = 'dragging';
       }
-      opts.setHighlightRect({
-        x: Math.min(opts.highlightStart.x, coords.x),
-        y: Math.min(opts.highlightStart.y, coords.y),
-        w: Math.abs(coords.x - opts.highlightStart.x),
-        h: Math.abs(coords.y - opts.highlightStart.y),
-      });
+    }
+
+    if (opts.shapeMode && opts.shapeKind === 'line') {
+      opts.setShapeLineEnd(coords);
       return;
     }
-    if (!opts.highlightMode || !opts.drawing || !opts.highlightStart) return;
-    const coords = getImageCoords(e.clientX, e.clientY);
+
+    if (!opts.highlightStart) return;
     opts.setHighlightRect({
       x: Math.min(opts.highlightStart.x, coords.x),
       y: Math.min(opts.highlightStart.y, coords.y),
