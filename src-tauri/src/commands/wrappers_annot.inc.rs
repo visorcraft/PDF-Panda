@@ -156,6 +156,72 @@ fn updater_supported() -> bool {
         true
     }
 }
+
+#[tauri::command]
+fn fetch_latest_version() -> Result<LatestVersionInfo, String> {
+    const URL: &str = "https://github.com/visorcraft/PDF-Panda/releases/latest/download/latest.json";
+    let body = ureq::get(URL)
+        .call()
+        .map_err(|e| format!("Failed to fetch latest version: {}", e))?
+        .into_string()
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+    let json: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+    let version = json.get("version")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing version field")?
+        .to_string();
+    let notes = json.get("notes")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let current = env!("CARGO_PKG_VERSION").to_string();
+    let newer = version_newer(&version, &current);
+    Ok(LatestVersionInfo { version, notes, current, newer })
+}
+
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid URL scheme: only http and https are allowed".into());
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", ""])
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    Ok(())
+}
+
+pub fn version_newer(a: &str, b: &str) -> bool {
+    let a_parts: Vec<u32> = a.split('.').filter_map(|s| s.parse().ok()).collect();
+    let b_parts: Vec<u32> = b.split('.').filter_map(|s| s.parse().ok()).collect();
+    for (a_part, b_part) in a_parts.iter().zip(b_parts.iter()) {
+        match a_part.cmp(b_part) {
+            std::cmp::Ordering::Greater => return true,
+            std::cmp::Ordering::Less => return false,
+            std::cmp::Ordering::Equal => continue,
+        }
+    }
+    a_parts.len() > b_parts.len()
+}
+
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn replace_text_region(

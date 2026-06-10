@@ -19292,3 +19292,20 @@ fn render_real_pdf_smoke() {
     );
     eprintln!("markdown preview:\n{}", md.chars().take(400).collect::<String>());
 }
+
+#[test]
+fn version_newer_parses_semver() {
+    assert!(version_newer("0.5.1", "0.5.0"));
+    assert!(version_newer("0.6.0", "0.5.0"));
+    assert!(version_newer("1.0.0", "0.5.0"));
+    assert!(!version_newer("0.5.0", "0.5.0"));
+    assert!(!version_newer("0.4.9", "0.5.0"));
+    assert!(!version_newer("0.5.0", "0.5.1"));
+}
+
+#[test]
+fn version_newer_handles_unequal_parts() {
+    assert!(version_newer("0.5.0.1", "0.5.0"));
+    assert!(!version_newer("0.5", "0.5.0"));
+    assert!(!version_newer("0.5.0", "0.5.0.1"));
+}

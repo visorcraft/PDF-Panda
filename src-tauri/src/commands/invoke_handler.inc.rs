@@ -2028,6 +2028,8 @@ tauri::generate_handler![
             list_document_annotations,
             replace_text_region,
             updater_supported,
+            fetch_latest_version,
+            open_url,
             open_working_copy,
             save_working_copy,
             discard_working_copy,

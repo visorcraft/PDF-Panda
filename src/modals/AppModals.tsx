@@ -779,7 +779,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
       )}
       
       {ctx.showUpdateModal && (
-        <UpdateModal onClose={() => ctx.setShowUpdateModal(false)} />
+        <UpdateModal onClose={() => ctx.setShowUpdateModal(false)} updaterSupported={ctx.updaterSupported} />
       )}
 
       {ctx.showTesseractModal && (

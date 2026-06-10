@@ -45,9 +45,7 @@ export function buildHelpMenu(ctx: AppMenuContext): MenuRoot {
       act('licenses', 'Licenses…', ctx.openLicenses),
       act('credits', 'Credits…', ctx.openCredits),
       act('about', 'About PDF Panda…', ctx.openAbout),
-      ...(ctx.updaterSupported
-        ? [act('check-updates', 'Check for Updates…', ctx.openUpdateModal)]
-        : []),
+      act('check-updates', 'Check for Updates…', ctx.openUpdateModal),
     ],
   };
 }

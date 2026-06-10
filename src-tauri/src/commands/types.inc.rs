@@ -10,5 +10,13 @@ struct PdfDocumentMetadata {
     mod_date: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct LatestVersionInfo {
+    version: String,
+    notes: Option<String>,
+    current: String,
+    newer: bool,
+}
+
 const EXPORT_PNG_W: i32 = pdf::export::EXPORT_RENDER_W;
 const EXPORT_PNG_H: i32 = pdf::export::EXPORT_RENDER_H;

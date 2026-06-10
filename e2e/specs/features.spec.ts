@@ -74,4 +74,16 @@ describe('v0.5 viewer features', () => {
     await findText('Hello');
     await waitForNoSearchResults();
   });
+
+  it('check for updates menu item exists in Help menu', async () => {
+    await resetToWelcome();
+    const trigger = await $('[data-testid="menu-help"]');
+    await trigger.click();
+    const action = await $('[data-testid="check-updates"]');
+    if (!(await action.isDisplayed())) {
+      throw new Error('Expected Check for Updates menu item to be visible');
+    }
+    // Close menu without clicking (avoids network request in E2E)
+    await browser.keys('Escape');
+  });
 });

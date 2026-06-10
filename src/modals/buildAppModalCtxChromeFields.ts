@@ -25,6 +25,7 @@ export function modalCtxChromeFields(args: BuildAppModalCtxInputArgs) {
     showTesseractModal: args.help.showTesseractModal,
     showUpdateModal: args.help.showUpdateModal,
     setShowUpdateModal: args.help.setShowUpdateModal,
+    updaterSupported: args.help.updaterSupported,
     showToast: args.runtime.showToast,
     showUnsavedModal: args.unsaved.showUnsavedModal,
     stepSearchMatch: args.search.stepSearchMatch,
