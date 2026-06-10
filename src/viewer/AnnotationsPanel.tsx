@@ -60,14 +60,18 @@ export function AnnotationsPanel({
   if (!filePath) return null;
 
   return (
-    <div className="sidebar-panel annotations-panel">
+    <div className="sidebar-panel annotations-panel" data-testid="annotations-panel">
       <h3>Annotations</h3>
       {items.length === 0 ? (
-        <p className="muted">No annotations in this document.</p>
+        <p className="muted" data-testid="annotations-empty">No annotations in this document.</p>
       ) : (
         <ul className="annotation-list">
           {items.map((item, i) => (
-            <li key={`${item.page_index}-${item.index}-${item.data.subtype}-${i}`} className="annotation-row">
+            <li
+              key={`${item.page_index}-${item.index}-${item.data.subtype}-${i}`}
+              className="annotation-row"
+              data-testid="annotation-row"
+            >
               <button type="button" className="annotation-row-main" onClick={() => onGoToPage(item.page_index)}>
                 <span className="annotation-page">Page {item.page_index + 1}</span>
                 <span className="annotation-label">{annotLabel(item.data)}</span>

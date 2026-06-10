@@ -8,7 +8,7 @@ Concise; cap search/read (`head`/`tail`, `grep | head`). Never scan `node_module
 
 ## Stack & build
 
-Tauri 2 + Rust 2021 + Vite 8 / React 19 / TS 6. Tag **v0.4.0**. GPL v3, `visorcraft/PDF-Panda`. Rust: **lopdf**, **pdfium-render**, **fax**, **underskrift**, **image**, **tokio**. Linux: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 + Rust 2021 + Vite 8 / React 19 / TS 6. Tag **v0.5.0**. GPL v3, `visorcraft/PDF-Panda`. Rust: **lopdf**, **pdfium-render**, **fax**, **underskrift**, **image**, **tokio**, **tauri-plugin-updater** + **tauri-plugin-process**. Linux: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Tauri CLI only** — plain `cargo build --release` → dev binary → Vite `:5173`.
 
@@ -20,7 +20,7 @@ Tauri 2 + Rust 2021 + Vite 8 / React 19 / TS 6. Tag **v0.4.0**. GPL v3, `visorcr
 | macOS / Windows | `scripts/build-macos.sh` / `scripts/build-windows.sh` |
 | PDFium | `scripts/fetch-pdfium.sh` → `src-tauri/vendor/pdfium/` (gitignored) |
 
-**npm:** root has 11 direct deps. E2E in `e2e/package.json`; `npm run test:e2e` runs `npm ci --prefix e2e` first.
+**npm:** root has 6 production + 5 dev direct deps (`@tauri-apps/plugin-updater`, `@tauri-apps/plugin-process` for in-app updates). E2E in `e2e/package.json`; `npm run test:e2e` runs `npm ci --prefix e2e` first.
 
 ## PDFium & Linux
 
@@ -32,7 +32,7 @@ Linux: `WEBKIT_DISABLE_DMABUF_RENDERER=1` when unset (`main.rs`). Native dialogs
 
 | Gate | Command |
 | --- | --- |
-| Tests | `cargo test` — **2113** pass, **17** ignored |
+| Tests | `cargo test` — **2126** pass, **20** ignored |
 | Clippy | `cargo clippy --all-targets` (CI: `RUSTFLAGS=-Dwarnings`) |
 | Format | `cargo fmt --check` |
 | TS | `npx tsc --noEmit` |
@@ -47,9 +47,9 @@ Ignored tests need PDFium/Tesseract/files. CI has no PDFium. E2E: File → Open 
 | Area | Role |
 | --- | --- |
 | `App.tsx` (~11) | `useAppStateBootstrap` + `useAppRuntimeWiring` → `AppShell` |
-| `app/` | **`buildAppLifecycleInput`**; lifecycle **`useAppLifecycleOpen`** + **`useAppLifecycleBrowserSearch`** (input types in `appLifecycleTypes`); modal state → **File/PageOps/Range/MergeInsert**; **`useAnnotationModes`** → **Asset** + **Markup** + `annotationModeHelpers`; **`buildAppKeyboardActions`** + `useAppKeyboard` binding. State hooks export canonical `*State` aliases |
-| `chrome/` | `AppShell`, shell render/page-zoom/chrome input builders |
-| `viewer/` | `AppBody`, **`usePageInteraction`** → **`usePageInteractionAnnot`** + **`usePageInteractionHandlers`** (edits via `runEdit`), wheel/zoom/drawing |
+| `app/` | **`useDocumentSessions`** / **`useDocumentSession`** + `documentSessionTypes`; **`buildAppLifecycleInput`**; lifecycle **`useAppLifecycleOpen`** + **`useAppLifecycleBrowserSearch`**; modal state → **File/PageOps/Range/MergeInsert**; **`useAnnotationModes`** → **Asset** + **Markup** + `annotationModeHelpers`; **`buildAppKeyboardActions`** + `useAppKeyboard` binding. State hooks export canonical `*State` aliases |
+| `chrome/` | `AppShell`, **`TabBar`**, shell render/page-zoom/chrome input builders |
+| `viewer/` | `AppBody`, **`TextLayer`** + **`ContinuousViewer`**, **`AnnotationsPanel`**, **`TextEditOverlay`**; **`usePageInteraction`** → **`usePageInteractionAnnot`** + **`usePageInteractionHandlers`** (edits via `runEdit`), wheel/zoom/drawing |
 | `modals/` (~71) | Dialogs + `AppModals`; **`buildAppModalCtxInput`** composes **`buildAppModalCtx{File,Page,Security,Annot,Chrome}Fields`** (args type in `buildAppModalCtxArgs`); `AppModalsRuntime` derived from the field builders → ctx is fully type-checked |
 | `menu/` | Menus: **FileEdit/Pages/Document/Annot/Chrome** builders + shortcuts. Input composes **DocFields** + **PagesFields** (args in `buildAppMenuInputArgs`) → `buildAppMenuSource` (passthrough + 11 derivations) → context composes **PagesFields** + **DocAnnotFields**; shared types (`AppMenuContextSource`, handlers) in `types.ts`; `menuBuilders` has `voidRun`/`voidSort` |
 | `pdf/` | Action hooks, structural `runEdit`, document/undo/browser/print |
@@ -73,9 +73,13 @@ Structural edits: `runEdit({ command, args, reloadAt?, afterEdit?, toast })`.
 | `pdf/page_range.rs` | Range rotate/reset/reverse/crop/sort/odd-even/delete-nth/move-to-end, `duplicate_page_range_to_start` |
 | `pdf/page_images.rs` | `insert_image_page`, `add_page_image`, `get_image_dimensions`, `export_page_as_pdf` |
 | `pdf/annotation_markup.rs` | Ink, shapes, stamps, redactions |
-| `pdf/annotations.rs` | Highlights, text notes, `get_annotations` |
+| `pdf/annotations.rs` | Highlights, text notes, `get_annotations`, `list_document_annotations` |
+| `pdf/text_layer.rs` | PDFium char boxes → viewer runs; `get_page_text_layout` |
+| `pdf/ocr_layer.rs` | Tesseract TSV → invisible text layer; `make_pdf_searchable` |
+| `pdf/redact.rs` | Redaction inventory, burn-in render, `apply_redactions` |
+| `pdf/text_replace.rs` | Whiteout + replace; `replace_text_region` |
 | `pdf/page_margins.rs` | Page size presets, expand/shrink margins |
-| `pdf/page_decor.rs` | Blank page, numbers, watermark, header/footer/border, flatten |
+| `pdf/page_decor.rs` | Blank page, numbers, Bates, watermark, header/footer/border, flatten |
 | `pdf/page_ops.rs` | delete/move/duplicate/merge/reverse/blank |
 | `pdf/crop.rs` | Crop margins, clear crop |
 | `pdf/page_sizes.rs` | `PdfPageSize`, `get_pdf_page_sizes` |
@@ -109,13 +113,13 @@ Structural edits: `runEdit({ command, args, reloadAt?, afterEdit?, toast })`.
 
 ## Commands & parity
 
-**2011** registered Tauri commands: **245** hand-written + **1766** generated (`parity_batch{,_2,…,_8}_generated.inc.rs`, `parity_docmod_generated.inc.rs`). Regen: `scripts/gen-parity-batch*.py`, `scripts/gen-parity-docmod.py` → write the generated `.inc.rs` and patch between `PARITY_*_{HANDLERS,TESTS}_START/END` markers in `commands/invoke_handler.inc.rs` / `main_tests.rs` (+ `PARITY_*_INCLUDE` in `main.rs`) via `scripts/parity_patch.py` — missing markers abort. Run `cargo fmt` after regen. **Don't hand-edit generated `.inc.rs`.**
+**2014** registered Tauri commands: **248** hand-written + **1766** generated (`parity_batch{,_2,…,_8}_generated.inc.rs`, `parity_docmod_generated.inc.rs`). Regen: `scripts/gen-parity-batch*.py`, `scripts/gen-parity-docmod.py` → write the generated `.inc.rs` and patch between `PARITY_*_{HANDLERS,TESTS}_START/END` markers in `commands/invoke_handler.inc.rs` / `main_tests.rs` (+ `PARITY_*_INCLUDE` in `main.rs`) via `scripts/parity_patch.py` — missing markers abort. Run `cargo fmt` after regen. **Don't hand-edit generated `.inc.rs`.**
 
 Parity (0-based): global/local odd-even; in-range/doc-wide mod-3…mod-6; half/third-range; sort asc/`_desc`. UI: **Pages → Parity Range** (`parityPayload.ts`).
 
 ## UI & viewer
 
-`AppShell` = `TitleBar` + `Toast` + loading + `AppChrome` + `AppBody` + `AppModals` + `PrintSurface`. Annot coords natural px; zoom CSS. Render **800×1132**; export **1600×2264**. Working copy + undo (50 cap; ≤32 MB snapshot else deltas).
+`AppShell` = `TitleBar` + **`TabBar`** + `Toast` + loading + `AppChrome` + `AppBody` + `AppModals` + `PrintSurface`. Annot coords natural px; zoom CSS. Render **800×1132**; export **1600×2264**. Invisible **text layer** (`TextLayer.tsx`) for select/copy; **continuous scroll** virtualizes pages. Working copy + undo per tab (50 cap; ≤32 MB snapshot else deltas).
 
 ## Markdown & OCR
 
@@ -127,7 +131,7 @@ Bundled: `LICENSE`, `CREDITS.md`, `docs/credits-third-party.md`, `LICENSES/*.txt
 
 ## Shipped & gotchas
 
-Open/save/undo, menu-driven page/range/parity toolkit, 9 image formats, find, annotations, forms, Markdown+Summarize, optimize, encrypt/PAdES, print, in-app legal viewer.
+Open/save/undo, menu-driven page/range/parity toolkit, 9 image formats, find + **selectable text layer**, annotations + **annotations sidebar**, **continuous scroll**, **document tabs**, **OCR searchable PDF**, **Bates numbering**, **apply redactions**, **edit text (whiteout)**, forms, Markdown+Summarize, optimize, encrypt/PAdES, print, **Check for Updates** (AppImage/macOS/Windows), in-app legal viewer.
 
 **Gotchas:** Markdown → thumbnail: switch PDF mode first (rAF). Structural edits need `reloadOpenPdf()` + dirty. E2E build copies `e2e/capabilities/e2e.json` temporarily — don't commit `src-tauri/capabilities/e2e.json`.
 
@@ -144,6 +148,8 @@ Open/save/undo, menu-driven page/range/parity toolkit, 9 image formats, find, an
 | `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | `1` = in-app paths only |
 | `WEBKIT_DISABLE_DMABUF_RENDERER` | `1` = no DMABUF (auto on Linux) |
 | `PDF_PANDA_TEST_PDF` | `render_real_pdf_smoke` |
+| `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Release updater signing (CI secrets) |
+| `APPIMAGE` | Set in AppImage builds; enables in-app updater on Linux |
 | `NO_STRIP` | `1` in `build-appimage.sh` (glibc 2.38+) |
 
 ## On change

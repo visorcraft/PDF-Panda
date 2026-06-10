@@ -11,6 +11,7 @@ export function TextLayer({ runs, interactive }: TextLayerProps) {
   return (
     <div
       className="text-layer"
+      data-testid="text-layer"
       style={{
         position: 'absolute',
         left: 0,

@@ -66,7 +66,7 @@ function MenuDropdownItem({
       type="button"
       className={`menu-item${action.danger ? ' danger' : ''}${action.active ? ' active' : ''}`}
       disabled={action.disabled}
-      data-testid={action.id === 'open' ? 'open-pdf' : undefined}
+      data-testid={action.id === 'open' ? 'open-pdf' : action.id}
       onClick={() => {
         runAction(action);
         onClose();

@@ -330,9 +330,11 @@ mod tests {
     #[test]
     fn npm_credit_rows_include_shipped_frontend_packages() {
         let rows = npm_credit_rows();
-        assert_eq!(rows.len(), 4);
+        assert_eq!(rows.len(), 6);
         assert!(rows.iter().any(|row| row.name == "react" && row.license == "MIT"));
         assert!(rows.iter().any(|row| row.name == "@tauri-apps/api"));
+        assert!(rows.iter().any(|row| row.name == "@tauri-apps/plugin-updater"));
+        assert!(rows.iter().any(|row| row.name == "@tauri-apps/plugin-process"));
     }
 
     #[test]
@@ -345,7 +347,7 @@ mod tests {
     fn credits_catalog_is_frontend_ready() {
         let catalog = credits_catalog();
         assert!(catalog.crates.len() > 200);
-        assert_eq!(catalog.npm_packages.len(), 4);
+        assert_eq!(catalog.npm_packages.len(), 6);
         assert_eq!(catalog.runtime_components.len(), RUNTIME_COMPONENTS.len());
         for row in &catalog.runtime_components {
             assert!(!row.name.is_empty());

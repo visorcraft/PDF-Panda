@@ -12,9 +12,9 @@ if [ ! -d node_modules ]; then
 fi
 npm ci --prefix e2e
 
-if [ ! -f e2e/fixtures/sample.pdf ]; then
-  echo "Generating e2e/fixtures/sample.pdf..."
-  cargo test --manifest-path src-tauri/Cargo.toml export_e2e_sample_pdf -- --ignored --nocapture
+if [ ! -f e2e/fixtures/sample.pdf ] || [ ! -f e2e/fixtures/sample-3p.pdf ] || [ ! -f e2e/fixtures/sample-b.pdf ]; then
+  echo "Generating e2e/fixtures/*.pdf..."
+  cargo test --manifest-path src-tauri/Cargo.toml export_e2e_fixtures -- --ignored --nocapture
 fi
 
 "$root/scripts/e2e-build.sh"

@@ -16,7 +16,7 @@ if (!fs.existsSync(appBinary)) {
 
 export const config = {
   runner: 'local',
-  specs: [path.join(root, 'e2e', 'specs', '**', '*.ts')],
+  specs: [path.join(root, 'e2e', 'specs', '**', '*.spec.ts')],
   maxInstances: 1,
   logLevel: 'info',
   baseUrl: 'http://localhost:4445',
@@ -27,7 +27,7 @@ export const config = {
   reporters: ['spec'],
   mochaOpts: {
     ui: 'bdd',
-    timeout: 120_000,
+    timeout: 180_000,
   },
   services: [
     [

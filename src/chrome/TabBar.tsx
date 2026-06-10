@@ -20,6 +20,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
               key={tab.id}
               role="tab"
               aria-selected={active}
+              data-testid={`doc-tab-${tab.label}`}
               className={`tab-item${active ? ' active' : ''}`}
               onClick={() => onSelect(tab.id)}
               onMouseDown={(e) => {

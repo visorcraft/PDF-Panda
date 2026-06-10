@@ -17466,18 +17466,31 @@ fn snapshot_undo_restore_reverts_working_copy() {
     let _ = fs::remove_file(&path);
 }
 
-/// Writes `e2e/fixtures/sample.pdf` for the WebdriverIO smoke suite.
+fn write_e2e_fixtures() {
+    let fixtures_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../e2e/fixtures");
+    fs::create_dir_all(&fixtures_dir).unwrap();
+
+    for (name, pages) in [("sample.pdf", 1usize), ("sample-3p.pdf", 3), ("sample-b.pdf", 1)] {
+        let source = save(&mut build_pdf(pages), &format!("e2e_{name}"));
+        let dest = fixtures_dir.join(name);
+        fs::copy(&source, &dest).unwrap();
+        let _ = fs::remove_file(source);
+        eprintln!("wrote {}", dest.display());
+    }
+}
+
+/// Writes `e2e/fixtures/*.pdf` for the WebdriverIO suite.
+#[test]
+#[ignore]
+fn export_e2e_fixtures() {
+    write_e2e_fixtures();
+}
+
+/// Back-compat alias for `export_e2e_fixtures`.
 #[test]
 #[ignore]
 fn export_e2e_sample_pdf() {
-    let dest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../e2e/fixtures/sample.pdf");
-    if let Some(parent) = dest.parent() {
-        fs::create_dir_all(parent).unwrap();
-    }
-    let source = save(&mut build_pdf(1), "e2e_sample");
-    fs::copy(&source, &dest).unwrap();
-    let _ = fs::remove_file(source);
-    eprintln!("wrote {}", dest.display());
+    write_e2e_fixtures();
 }
 
 #[test]
