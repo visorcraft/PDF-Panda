@@ -16,7 +16,11 @@ fi
 npm ci --prefix e2e
 
 "$root/scripts/fetch-pdfium.sh"
-cleanup() { rm -f "$root/src-tauri/capabilities/e2e.json"; }
+cleanup() {
+  rm -f "$root/src-tauri/capabilities/e2e.json"
+  # The e2e capability leaks into the generated permission schemas; restore them.
+  git -C "$root" checkout -- src-tauri/gen/schemas 2>/dev/null || true
+}
 trap cleanup EXIT INT TERM
 cp "$root/e2e/capabilities/e2e.json" "$root/src-tauri/capabilities/e2e.json"
 npm run build

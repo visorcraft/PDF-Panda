@@ -63,7 +63,6 @@ export function usePdfOpen({
         setShowPasswordModal(true);
         return false;
       }
-      const previousWorking = filePath;
       const working = password
         ? await invoke<string>('open_working_copy_with_password', { original: path, password })
         : await invoke<string>('open_working_copy', { original: path });
@@ -90,7 +89,8 @@ export function usePdfOpen({
       await loadThumbnails(working);
       await loadFormFields(working);
       rememberOpenedPdf(path);
-      if (previousWorking) void invoke('discard_working_copy', { working: previousWorking }).catch(() => {});
+      // The previous document's working copy stays with its session; it is
+      // discarded by closeSession/closePdf, never by opening another file.
       return true;
     });
     return loaded === true;

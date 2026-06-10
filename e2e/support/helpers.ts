@@ -203,6 +203,16 @@ export async function selectTextLayerSpan(text: string) {
   }, text);
 }
 
+// `[data-testid^="doc-tab-"]` alone also matches the close buttons
+// (`doc-tab-close-…`), so tab counts must exclude them.
+export async function countDocTabs(): Promise<number> {
+  return browser.execute(
+    () =>
+      document.querySelectorAll('[data-testid^="doc-tab-"]:not([data-testid^="doc-tab-close-"])')
+        .length,
+  );
+}
+
 export async function selectTab(label: string) {
   const tab = await $(`[data-testid="doc-tab-${label}"]`);
   await tab.waitForDisplayed({ timeout: 15_000 });
@@ -263,24 +273,31 @@ export async function setZoomPercent(value: string) {
 export async function drawRedactionOverText() {
   await waitForPageRendered();
   await clickMenuAction('annotate', 'redact');
-  await browser.execute(() => {
-    const container = document.querySelector('[data-testid="page-container"]');
-    const img = document.querySelector('.page-image') as HTMLImageElement | null;
-    if (!container || !img) throw new Error('page container missing');
-    const rect = img.getBoundingClientRect();
-    const startX = rect.left + rect.width * 0.2;
-    const startY = rect.top + rect.height * 0.12;
-    const endX = rect.left + rect.width * 0.75;
-    const endY = rect.top + rect.height * 0.18;
-    for (const [x, y] of [
-      [startX, startY],
-      [endX, endY],
-    ]) {
-      container.dispatchEvent(
-        new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 }),
-      );
-    }
-  });
+  // Two separate executes: the first click arms the drag state and React must
+  // flush it before the second click lands, or both register as "first click".
+  const clickAt = (xFrac: number, yFrac: number) =>
+    browser.execute(
+      (fx: number, fy: number) => {
+        const container = document.querySelector('[data-testid="page-container"]');
+        const img = document.querySelector('.page-image') as HTMLImageElement | null;
+        if (!container || !img) throw new Error('page container missing');
+        const rect = img.getBoundingClientRect();
+        container.dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            clientX: rect.left + rect.width * fx,
+            clientY: rect.top + rect.height * fy,
+            button: 0,
+          }),
+        );
+      },
+      xFrac,
+      yFrac,
+    );
+  await clickAt(0.2, 0.12);
+  await browser.pause(150);
+  await clickAt(0.75, 0.18);
   await browser.pause(400);
 }
 

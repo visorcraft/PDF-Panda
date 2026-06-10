@@ -21,7 +21,7 @@ describe('PDF Panda shell', () => {
   it('opens a PDF via the path modal and shows page controls', async () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
-  }, 180_000);
+  });
 
   it('marks the document dirty after rotate', async () => {
     const saveBtn = await $('[data-testid="save-pdf"]');

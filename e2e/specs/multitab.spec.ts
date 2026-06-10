@@ -1,5 +1,6 @@
 import {
   cancelUnsavedIfPrompted,
+  countDocTabs,
   captureTabWorkingPaths,
   clickMenuAction,
   clickQuickAction,
@@ -39,7 +40,7 @@ describe('multi-document tabs', () => {
     await openPdfViaPathModal(fixturePdfB);
     await waitForPageCount('/ 1');
     await browser.waitUntil(
-      async () => (await $$('[data-testid^="doc-tab-"]')).length === 2,
+      async () => (await countDocTabs()) === 2,
       { timeout: 15_000, timeoutMsg: 'expected two document tabs' },
     );
     expect(await getZoomInput()).toBe('100');
@@ -47,7 +48,7 @@ describe('multi-document tabs', () => {
     expect(await getZoomInput()).toBe('150');
     await selectTab('sample-b');
     expect(await getZoomInput()).toBe('100');
-  }, 240_000);
+  });
 
   it('keeps edits scoped to the active tab', async () => {
     await openPdfViaPathModal(fixturePdf);
@@ -62,7 +63,7 @@ describe('multi-document tabs', () => {
     expect(await getSaveLabel()).toBe('Save');
     await selectTab('sample-b');
     expect(await getSaveLabel()).toBe('Save •');
-  }, 240_000);
+  });
 
   it('isolates undo history per tab', async () => {
     await openPdfViaPathModal(fixturePdf);
@@ -83,7 +84,7 @@ describe('multi-document tabs', () => {
     });
     await selectTab('sample-b');
     expect(await getSaveLabel()).toBe('Save •');
-  }, 240_000);
+  });
 
   it('restores per-tab find state', async () => {
     await openPdfViaPathModal(fixturePdf);
@@ -102,7 +103,7 @@ describe('multi-document tabs', () => {
     await selectTab('sample');
     await findText('Hello');
     await waitForSearchResults(1);
-  }, 240_000);
+  });
 
   it('prompts before closing a dirty tab', async () => {
     await openPdfViaPathModal(fixturePdf);
@@ -112,23 +113,22 @@ describe('multi-document tabs', () => {
     await closeTab('sample-b');
     await (await $('[data-testid="unsaved-cancel"]')).waitForDisplayed({ timeout: 10_000 });
     await cancelUnsavedIfPrompted();
-    expect((await $$('[data-testid^="doc-tab-"]')).length).toBe(2);
+    expect(await countDocTabs()).toBe(2);
     await closeTab('sample-b');
     await discardUnsavedIfPrompted();
     await browser.waitUntil(
-      async () => (await $$('[data-testid^="doc-tab-"]')).length === 0,
+      async () => (await countDocTabs()) === 0,
       { timeout: 10_000, timeoutMsg: 'expected tab bar hidden after one tab remains' },
     );
-  }, 240_000);
+  });
 
   it('focuses an already-open document instead of duplicating tabs', async () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPdfOpen();
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
-    const tabs = await $$('[data-testid^="doc-tab-"]');
-    expect(tabs.length).toBe(0);
-  }, 180_000);
+    expect(await countDocTabs()).toBe(0);
+  });
 
   it('cleans up working copies after all tabs close', async () => {
     await openPdfViaPathModal(fixturePdf);
@@ -137,8 +137,7 @@ describe('multi-document tabs', () => {
     expect(paths.length).toBe(2);
     await closeTab('sample-b');
     await discardUnsavedIfPrompted();
-    const tabsLeft = await $$('[data-testid^="doc-tab-"]');
-    if (tabsLeft.length > 0) {
+    if ((await countDocTabs()) > 0) {
       await closeTab('sample');
     } else {
       await clickMenuAction('file', 'close');
@@ -148,5 +147,5 @@ describe('multi-document tabs', () => {
     for (const p of paths) {
       expect(await pathExists(p)).toBe(false);
     }
-  }, 240_000);
+  });
 });

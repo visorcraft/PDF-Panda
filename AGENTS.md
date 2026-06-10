@@ -20,8 +20,9 @@ Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.0** · GPL v3 · `vis
 | macOS / Windows | `scripts/build-macos.sh` / `scripts/build-windows.sh` |
 | PDFium (local) | `scripts/fetch-pdfium.sh` → `src-tauri/vendor/pdfium/` (gitignored) |
 | E2E | `npm run test:e2e` (`e2e/package.json`; script runs `npm ci --prefix e2e`) |
+| Release (CI) | `release.yml` `workflow_dispatch` + `tag` input → signed updater artifacts + `latest.json` (`scripts/generate-latest-json.py`); needs `TAURI_SIGNING_PRIVATE_KEY{,_PASSWORD}` secrets (`docs/SIGNING.md`) |
 
-npm: 6 prod + 6 dev roots (`@tauri-apps/plugin-updater` / `plugin-process` for in-app updates).
+npm: 6 prod + 6 dev roots (`@tauri-apps/plugin-updater` / `plugin-process` for in-app updates). PDFium bundle resource is per-platform: `tauri.{linux,macos,windows}.conf.json` (base `tauri.conf.json` has none).
 
 ## PDFium & platform
 
@@ -43,7 +44,7 @@ Run from `src-tauri/` unless noted.
 | TS | `npx tsc --noEmit` | clean |
 | Smoke | `scripts/smoke-test.sh` | pass |
 
-CI has no PDFium; ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` (`e2e-build.sh` / `e2e-test.sh` remove on exit).
+CI fetches PDFium (`fetch-pdfium.sh` step); ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab`, ~20 s, green.
 
 ## Frontend (`src/`)
 

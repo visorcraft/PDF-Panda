@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { createStructuralEditRunner } from '../pdf/runStructuralEdit';
 import { useTextLayerLoader } from '../pdf/useTextLayerLoader';
 import { useTextSelection } from './useTextSelection';
@@ -17,7 +17,13 @@ type UseTextLayerFlowOptions = {
 export function useTextLayerFlow(opts: UseTextLayerFlowOptions) {
   const pageContainerRef = useRef<HTMLDivElement>(null);
   const { runs } = useTextLayerLoader(opts.filePath, opts.currentPage, opts.pdfRevision);
-  const { hasSelection, readSelectionRects } = useTextSelection(pageContainerRef, opts.zoom);
+  const { hasSelection, readSelectionRects, clearSelection } = useTextSelection(pageContainerRef, opts.zoom);
+
+  // Captured selection rects are page-relative; drop them when the page or
+  // document changes so a stale capture cannot highlight the wrong page.
+  useEffect(() => {
+    clearSelection();
+  }, [opts.filePath, opts.currentPage, opts.pdfRevision, clearSelection]);
   const textEdit = useTextEditRun({
     filePath: opts.filePath,
     currentPage: opts.currentPage,
@@ -43,9 +49,9 @@ export function useTextLayerFlow(opts: UseTextLayerFlowOptions) {
           reloadAt: opts.currentPage,
         });
       }
-      window.getSelection()?.removeAllRanges();
+      clearSelection();
     })();
-  }, [opts.filePath, opts.currentPage, opts.runEdit, readSelectionRects]);
+  }, [opts.filePath, opts.currentPage, opts.runEdit, readSelectionRects, clearSelection]);
 
   const textLayerInteractive = !opts.annotationModeActive && !opts.editTextRunMode;
 

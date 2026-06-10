@@ -4,6 +4,29 @@ Automated WebDriver smoke tests cover launch, open-via-path, and rotate/dirty
 state (`scripts/e2e-test.sh` / `npm run test:e2e`). Run this broader checklist
 before a release tag.
 
+## v0.5 cross-feature matrix
+
+- [ ] Continuous scroll + tabs — open two PDFs, switch one tab to continuous
+      scroll, scroll mid-document, switch tabs and back: view mode, scroll
+      position, and current page survive the round-trip; single-page tab is
+      unaffected
+- [ ] OCR select/highlight — Document → Make Searchable (OCR) on a scanned PDF,
+      then select OCR'd text in the viewer, copy it, and Annotations →
+      Highlight Selection; Find locates the OCR'd words
+- [ ] Redact + re-OCR — add redaction boxes over text, Document → Apply
+      Redactions… with **Restore searchable text (OCR)** checked: covered text
+      gone from Find/copy, remaining text searchable again, page count and size
+      unchanged; undo restores the pre-apply document until save
+- [ ] Bates — Document → Bates Numbering… (prefix + start + digits + position)
+      across a page range; labels render at every page in the range and survive
+      save/reopen; zoom keeps them aligned
+- [ ] Edit text + undo — Annotations → Edit Text, click a text run, replace it
+      (whiteout covers cleanly at 100% and 200% zoom), then undo: original text
+      returns and dirty state tracks correctly
+- [ ] Dirty-tab quit (multitab scenario 7) — two tabs with unsaved edits, quit
+      the app: prompts appear sequentially with the matching tab focused for
+      each; Cancel on the second prompt aborts quit with both documents intact
+
 ## Open & save
 - [ ] Open PDF via path entry and via built-in browser
 - [ ] Recently Opened list updates

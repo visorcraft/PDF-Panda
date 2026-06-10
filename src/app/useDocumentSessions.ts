@@ -237,6 +237,36 @@ export function useDocumentSessions() {
     [activeId],
   );
 
+  // Async renders resolve their target session by the working-copy path they
+  // rendered, not by whichever tab is active when they complete — opening a
+  // second document races setActive and would otherwise corrupt the previous
+  // tab's cache. Replaced object URLs are revoked here, the cache's single
+  // lifecycle owner.
+  const patchViewerCacheForPath = useCallback(
+    (path: string, patch: Partial<SessionViewerCache>) => {
+      const norm = normalizeDocPath(path);
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (normalizeDocPath(s.filePath) !== norm) return s;
+          if (
+            patch.imageSrc !== undefined &&
+            s.viewerCache.imageSrc &&
+            s.viewerCache.imageSrc !== patch.imageSrc
+          ) {
+            URL.revokeObjectURL(s.viewerCache.imageSrc);
+          }
+          if (patch.thumbnails !== undefined) {
+            s.viewerCache.thumbnails.forEach((url) => {
+              if (!patch.thumbnails?.includes(url)) URL.revokeObjectURL(url);
+            });
+          }
+          return { ...s, viewerCache: { ...s.viewerCache, ...patch } };
+        }),
+      );
+    },
+    [],
+  );
+
   const patchSearch = useCallback(
     (patch: Partial<SessionSearchState>) => {
       if (!activeId) return;
@@ -347,6 +377,7 @@ export function useDocumentSessions() {
     ensureSessionForOpen,
     setViewerCache,
     patchViewerCache,
+    patchViewerCacheForPath,
     patchSearch,
     filePath: activeSession?.filePath ?? empty.filePath,
     originalPath: activeSession?.originalPath ?? empty.originalPath,

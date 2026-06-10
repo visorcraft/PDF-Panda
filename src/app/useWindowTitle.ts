@@ -21,6 +21,9 @@ export function useWindowTitle(opts: UseWindowTitleOptions) {
 
   useEffect(() => {
     opts.isDirtyRef.current = opts.isDirty;
+    // Keep the DOM title in step with the OS window title: WebDriver tooling
+    // (and a11y tools) match windows by document.title.
+    document.title = windowTitle;
     void getCurrentWindow().setTitle(windowTitle);
   }, [opts.isDirty, opts.isDirtyRef, windowTitle]);
 

@@ -62,6 +62,7 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     activeSessionId: doc.activeId,
     viewerCache: doc.viewerCache,
     patchViewerCache: doc.patchViewerCache,
+    patchViewerCacheForPath: doc.patchViewerCacheForPath,
   });
 
   const {

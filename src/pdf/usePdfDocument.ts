@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { SessionViewerCache } from '../app/documentSessionTypes';
 
@@ -41,6 +41,7 @@ export type UsePdfDocumentDeps = {
   activeSessionId: string | null;
   viewerCache?: SessionViewerCache;
   patchViewerCache: (patch: Partial<SessionViewerCache>) => void;
+  patchViewerCacheForPath: (path: string, patch: Partial<SessionViewerCache>) => void;
 };
 
 export function usePdfDocument({
@@ -62,10 +63,20 @@ export function usePdfDocument({
   activeSessionId,
   viewerCache,
   patchViewerCache,
+  patchViewerCacheForPath,
 }: UsePdfDocumentDeps) {
   const [imageSrc, setImageSrc] = useState(viewerCache?.imageSrc ?? '');
   const [thumbnails, setThumbnails] = useState<string[]>(viewerCache?.thumbnails ?? []);
   const [annotations, setAnnotations] = useState<PdfAnnotation[]>(viewerCache?.annotations ?? []);
+
+  // Async renders target the session that owns the rendered path: opening a
+  // second document races setActive, so "patch the active session" would write
+  // the new document's assets into the previous tab's cache. Local state is
+  // only updated while the rendered path is still the displayed document.
+  const filePathRef = useRef(filePath);
+  useEffect(() => {
+    filePathRef.current = filePath;
+  }, [filePath]);
 
   useEffect(() => {
     if (!activeSessionId || !viewerCache) return;
@@ -104,12 +115,10 @@ export function usePdfDocument({
       const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
       return URL.createObjectURL(blob);
     });
-    setThumbnails((prev) => {
-      prev.forEach((url) => URL.revokeObjectURL(url));
-      syncCache({ thumbnails: thumbs });
-      return thumbs;
-    });
-  }, [syncCache]);
+    // The path's session cache owns the URLs (and revokes the replaced ones).
+    patchViewerCacheForPath(path, { thumbnails: thumbs });
+    if (filePathRef.current === path) setThumbnails(thumbs);
+  }, [patchViewerCacheForPath]);
 
   const renderPage = useCallback(async (path: string, index: number) => {
     const bytes = await invoke<number[]>('render_pdf_page', {
@@ -120,17 +129,14 @@ export function usePdfDocument({
     });
     const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
     const url = URL.createObjectURL(blob);
-    setImageSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
-    syncCache({ imageSrc: url });
+    patchViewerCacheForPath(path, { imageSrc: url });
+    if (filePathRef.current === path) setImageSrc(url);
 
     const annots = await invoke<PdfAnnotation[]>('get_annotations', { path, pageIndex: index });
-    setAnnotations(annots);
-    syncCache({ annotations: annots });
+    patchViewerCacheForPath(path, { annotations: annots });
+    if (filePathRef.current === path) setAnnotations(annots);
     await loadPageEdits(path, index);
-  }, [loadPageEdits, syncCache]);
+  }, [loadPageEdits, patchViewerCacheForPath]);
 
   const goToPage = useCallback((index: number) => {
     if (pageCount === null || !filePath) return;

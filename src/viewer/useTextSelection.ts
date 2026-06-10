@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { PDF_BASE_HEIGHT, PDF_BASE_WIDTH } from '../pdf/usePdfDocument';
 
 export type NaturalRect = { x: number; y: number; w: number; h: number };
@@ -23,8 +23,9 @@ function mergeLineRects(rects: NaturalRect[]): NaturalRect[] {
 
 export function useTextSelection(pageContainerRef: RefObject<HTMLElement | null>, zoom: number) {
   const [hasSelection, setHasSelection] = useState(false);
+  const capturedRectsRef = useRef<NaturalRect[]>([]);
 
-  const readSelectionRects = useCallback((): NaturalRect[] => {
+  const computeSelectionRects = useCallback((): NaturalRect[] => {
     const container = pageContainerRef.current;
     const selection = window.getSelection();
     if (!container || !selection || selection.isCollapsed || selection.rangeCount === 0) return [];
@@ -49,14 +50,33 @@ export function useTextSelection(pageContainerRef: RefObject<HTMLElement | null>
     return mergeLineRects(rects);
   }, [pageContainerRef, zoom]);
 
+  // WebKit collapses the selection as soon as the user clicks the menu bar, so
+  // capture rects on every selection change and keep the last non-empty capture
+  // for the menu action to consume; a collapsed selection does not erase it.
   useEffect(() => {
     const onSelectionChange = () => {
       const text = window.getSelection()?.toString().trim() ?? '';
-      setHasSelection(text.length > 0);
+      if (text.length === 0) return;
+      const rects = computeSelectionRects();
+      if (rects.length > 0) {
+        capturedRectsRef.current = rects;
+        setHasSelection(true);
+      }
     };
     document.addEventListener('selectionchange', onSelectionChange);
     return () => document.removeEventListener('selectionchange', onSelectionChange);
+  }, [computeSelectionRects]);
+
+  const readSelectionRects = useCallback((): NaturalRect[] => {
+    const live = computeSelectionRects();
+    return live.length > 0 ? live : capturedRectsRef.current;
+  }, [computeSelectionRects]);
+
+  const clearSelection = useCallback(() => {
+    capturedRectsRef.current = [];
+    setHasSelection(false);
+    window.getSelection()?.removeAllRanges();
   }, []);
 
-  return { hasSelection, readSelectionRects };
+  return { hasSelection, readSelectionRects, clearSelection };
 }

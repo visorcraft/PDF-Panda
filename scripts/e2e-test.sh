@@ -19,7 +19,11 @@ fi
 
 "$root/scripts/e2e-build.sh"
 
-cleanup() { rm -f src-tauri/capabilities/e2e.json; }
+cleanup() {
+  rm -f src-tauri/capabilities/e2e.json
+  # The e2e capability leaks into the generated permission schemas; restore them.
+  git -C "$root" checkout -- src-tauri/gen/schemas 2>/dev/null || true
+}
 trap cleanup EXIT INT TERM
 
 if [ "$(uname -s)" = Linux ] && [ -z "${DISPLAY:-}" ]; then

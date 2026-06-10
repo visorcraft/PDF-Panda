@@ -67,6 +67,7 @@ function MenuDropdownItem({
       className={`menu-item${action.danger ? ' danger' : ''}${action.active ? ' active' : ''}`}
       disabled={action.disabled}
       data-testid={action.id === 'open' ? 'open-pdf' : action.id}
+      onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
         runAction(action);
         onClose();
@@ -102,6 +103,7 @@ function MenuBar({ menus }: { menus: MenuRoot[] }) {
             data-testid={`menu-${menu.id}`}
             aria-haspopup="menu"
             aria-expanded={openId === menu.id}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setOpenId((prev) => (prev === menu.id ? null : menu.id))}
           >
             {menu.label}

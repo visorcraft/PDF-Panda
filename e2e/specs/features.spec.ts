@@ -35,7 +35,7 @@ describe('v0.5 viewer features', () => {
       async () => (await $$('[data-testid="annotation-row"]')).length >= 1,
       { timeout: 20_000, timeoutMsg: 'expected highlight annotation in panel' },
     );
-  }, 180_000);
+  });
 
   it('shows multiple page slots in continuous scroll mode', async () => {
     await resetToWelcome();
@@ -46,7 +46,7 @@ describe('v0.5 viewer features', () => {
       async () => (await $$('[data-testid^="continuous-page-"]')).length >= 2,
       { timeout: 30_000, timeoutMsg: 'expected at least two continuous page slots' },
     );
-  }, 180_000);
+  });
 
   it('apply redactions removes searchable text', async () => {
     await resetToWelcome();
@@ -59,5 +59,5 @@ describe('v0.5 viewer features', () => {
     await applyRedactions();
     await findText('Hello');
     await waitForNoSearchResults();
-  }, 240_000);
+  });
 });
