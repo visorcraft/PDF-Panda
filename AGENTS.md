@@ -1,6 +1,6 @@
 # AGENTS.md — PDF-Panda
 
-Agent context. User docs: `README.md`. `CLAUDE.md` → symlink here.
+Agent context. User docs: `README.md`. Roadmap (v0.5.1/v0.6.0): gitignored `PLAN.md`. `CLAUDE.md` → symlink here.
 
 ## Style
 
@@ -119,7 +119,7 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 
 ## On change
 
-Update this file when features, deps, or gate counts change.
+Update this file + `PLAN.md` when features, deps, or gate counts change.
 
 ## Prompt-file hygiene for subagents & peer reviewers (MANDATORY)
 
