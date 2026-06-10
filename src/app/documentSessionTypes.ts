@@ -85,4 +85,6 @@ export type DocumentTabInfo = {
   label: string;
   dirty: boolean;
   originalPath: string;
+  /** Working-copy path (E2E hygiene checks when VITE_WDIO=1). */
+  filePath: string;
 };

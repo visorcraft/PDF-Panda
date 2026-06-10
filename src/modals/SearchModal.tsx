@@ -46,6 +46,7 @@ export function SearchModal({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         className="modal-input"
+        data-testid="search-query"
         placeholder="Text to find"
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
@@ -75,7 +76,7 @@ export function SearchModal({
         </label>
       </div>
       {results.length > 0 && (
-        <p className="modal-help">
+        <p className="modal-help" data-testid="search-results">
           Match {resultIndex + 1} of {results.length} (page {results[resultIndex].page_index + 1})
         </p>
       )}
@@ -83,7 +84,15 @@ export function SearchModal({
         <button onClick={onClose} className="btn btn-secondary">Close</button>
         <button type="button" onClick={() => onStepMatch(-1)} className="btn" disabled={results.length === 0}>Previous</button>
         <button type="button" onClick={() => onStepMatch(1)} className="btn" disabled={results.length === 0}>Next</button>
-        <button onClick={() => void onFind()} className="btn" disabled={!query.trim()}>Find</button>
+        <button
+          type="button"
+          onClick={() => void onFind()}
+          className="btn"
+          disabled={!query.trim()}
+          data-testid="search-find"
+        >
+          Find
+        </button>
       </div>
     </Modal>
   );

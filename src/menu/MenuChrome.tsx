@@ -131,7 +131,15 @@ function QuickToolbar({ items }: { items: MenuAction[] }) {
           disabled={item.disabled}
           title={item.shortcut ? `${item.label} (${item.shortcut})` : item.label}
           data-testid={
-            item.id === 'qa-save' ? 'save-pdf' : item.id === 'qa-rotate' ? 'rotate-page' : undefined
+            item.id === 'qa-save'
+              ? 'save-pdf'
+              : item.id === 'qa-rotate'
+                ? 'rotate-page'
+                : item.id === 'qa-undo'
+                  ? 'undo-btn'
+                  : item.id === 'qa-find'
+                    ? 'find-btn'
+                    : undefined
           }
           onClick={() => runAction(item)}
         >

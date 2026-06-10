@@ -43,7 +43,14 @@ export function ApplyRedactionsModal({
       )}
       <div className="modal-actions">
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button type="button" onClick={() => void onApply()} className="btn btn-danger">Apply Redactions</button>
+        <button
+          type="button"
+          onClick={() => void onApply()}
+          className="btn btn-danger"
+          data-testid="apply-redactions-confirm"
+        >
+          Apply Redactions
+        </button>
       </div>
     </Modal>
   );

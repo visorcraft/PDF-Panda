@@ -118,6 +118,7 @@ export function PdfPageView({
   return (
     <div
       className={`page-container ${cursorClass}`.trim()}
+      data-testid="page-container"
       onClick={onPageClick}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}

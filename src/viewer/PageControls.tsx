@@ -72,6 +72,7 @@ export function PageControls({
           onKeyDown={(e) => onFieldKeyDown(e, onCommitZoom)}
           onBlur={onCommitZoom}
           aria-label="Zoom percent"
+          data-testid="zoom-input"
         />
         <span className="muted">%</span>
       </span>

@@ -21,6 +21,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
               role="tab"
               aria-selected={active}
               data-testid={`doc-tab-${tab.label}`}
+              data-working-path={import.meta.env.VITE_WDIO === '1' ? tab.filePath || undefined : undefined}
               className={`tab-item${active ? ' active' : ''}`}
               onClick={() => onSelect(tab.id)}
               onMouseDown={(e) => {
@@ -36,6 +37,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
                 type="button"
                 className="tab-close"
                 aria-label={`Close ${tab.label}`}
+                data-testid={`doc-tab-close-${tab.label}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose(tab.id);

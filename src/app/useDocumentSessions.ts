@@ -70,6 +70,7 @@ export function useDocumentSessions() {
         label: tabLabel(s, sessions),
         dirty: s.isDirty,
         originalPath: s.originalPath,
+        filePath: s.filePath,
       })),
     [sessions],
   );

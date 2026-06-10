@@ -16,7 +16,11 @@ if (!fs.existsSync(appBinary)) {
 
 export const config = {
   runner: 'local',
-  specs: [path.join(root, 'e2e', 'specs', '**', '*.spec.ts')],
+  specs: [
+    path.join(root, 'e2e', 'specs', 'smoke.spec.ts'),
+    path.join(root, 'e2e', 'specs', 'features.spec.ts'),
+    path.join(root, 'e2e', 'specs', 'multitab.spec.ts'),
+  ],
   maxInstances: 1,
   logLevel: 'info',
   baseUrl: 'http://localhost:4445',
