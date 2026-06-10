@@ -1984,6 +1984,8 @@ tauri::generate_handler![
             pdf_is_encrypted,
             verify_pdf_password,
             open_working_copy_with_password,
+            save_session_state,
+            load_session_state,
             protect_pdf,
             list_pdf_signatures,
             verify_pdf_signatures,

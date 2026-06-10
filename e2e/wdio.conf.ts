@@ -20,6 +20,8 @@ export const config = {
     path.join(root, 'e2e', 'specs', 'smoke.spec.ts'),
     path.join(root, 'e2e', 'specs', 'features.spec.ts'),
     path.join(root, 'e2e', 'specs', 'multitab.spec.ts'),
+    path.join(root, 'e2e', 'specs', 'restore-setup.spec.ts'),
+    path.join(root, 'e2e', 'specs', 'restore.spec.ts'),
   ],
   maxInstances: 1,
   logLevel: 'info',

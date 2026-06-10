@@ -241,3 +241,11 @@ fn verify_pdf_password(path: String, password: String) -> Result<(), String> {
 fn open_working_copy_with_password(original: String, password: String) -> Result<String, String> {
     pdf::security::open_working_copy_with_password(original, password)
 }
+#[tauri::command]
+fn save_session_state(app: tauri::AppHandle, state: pdf::io::SessionState) -> Result<(), String> {
+    pdf::io::save_session_state(&app, &state)
+}
+#[tauri::command]
+fn load_session_state(app: tauri::AppHandle) -> Result<Option<pdf::io::SessionState>, String> {
+    pdf::io::load_session_state(&app)
+}

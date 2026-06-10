@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
 import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
@@ -24,6 +25,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     slices,
     windowTitle,
     viewerWorkflow,
+    persistence,
   } = bootstrap;
 
   const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
@@ -138,6 +140,12 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     pdfActions,
     showToast,
   });
+
+  useEffect(() => {
+    if (persistence?.restoreSessions) {
+      void persistence.restoreSessions();
+    }
+  }, []);
 
   return useAppShellBinding({
     doc,

@@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`, 
 
 ## Stack & build
 
-Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.0** (shipped 2026-06-10: tag + GitHub release + signed `latest.json` live) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.1-dev** (v0.5.0 shipped 2026-06-10) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
 
@@ -38,13 +38,13 @@ Run from `src-tauri/` unless noted.
 
 | Gate | Command | Baseline |
 | --- | --- | --- |
-| Tests | `cargo test` | **2126** pass / **20** ignored |
+| Tests | `cargo test` | **2128** pass / **20** ignored |
 | Clippy | `RUSTFLAGS=-Dwarnings cargo clippy --all-targets` | clean |
 | Format | `cargo fmt --check` | clean |
 | TS | `npx tsc --noEmit` | clean |
 | Smoke | `scripts/smoke-test.sh` | pass |
 
-CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab`, ~20 s, green.
+CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab` + `restore`, ~26 s, green.
 
 ## Frontend (`src/`)
 
@@ -98,6 +98,10 @@ Parity (0-based): global/local odd-even; in-range/doc-wide mod-3…mod-6; half/t
 
 Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy/highlight-selection); annotations + **sidebar**; **continuous scroll**; **document tabs**; **OCR searchable PDF**; **Bates**; **apply redactions**; **edit text** (whiteout); forms; Markdown toggle + summarize; optimize; encrypt/PAdES; print; **Check for Updates** (AppImage/macOS/Windows); offline licenses/credits.
 
+## v0.5.1 (in progress)
+
+- **Session restore** — relaunch reopens previous tabs (original paths) with per-tab page, zoom, and view mode.
+
 **Gotchas:** Markdown view → PDF thumbnail: switch to PDF mode first (rAF defer). After structural edits: `reloadOpenPdf()` + dirty flag. Credits: `scripts/generate-credits.sh` (6 shipped npm packages in license tests).
 
 ## Env
@@ -116,6 +120,7 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 | `TAURI_SIGNING_PRIVATE_KEY` (+ password) | Updater signing (CI) |
 | `APPIMAGE` | enables Linux in-app updater |
 | `NO_STRIP` | `1` for `build-appimage.sh` on glibc 2.38+ |
+| `PDF_PANDA_NO_RESTORE` | `1` = skip session restore on launch |
 
 ## On change
 

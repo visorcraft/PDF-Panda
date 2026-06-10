@@ -1,5 +1,7 @@
 use lopdf::Document;
-use std::path::Path;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use tauri::Manager;
 
 /// Load a PDF, run `f`, save back to the same path, and return `f`'s result.
 pub fn mutate_pdf<T, F>(path: &Path, f: F) -> Result<T, String>
@@ -15,6 +17,74 @@ where
 /// Return the number of pages without mutating the file.
 pub fn page_count(path: &Path) -> Result<usize, String> {
     Document::load(path).map_err(|e| e.to_string()).map(|doc| doc.get_pages().len())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PersistedSession {
+    pub original_path: String,
+    pub page: u32,
+    pub zoom: f64,
+    pub view_mode: String,
+    pub scroll_view_mode: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SessionState {
+    pub version: u32,
+    pub active_index: usize,
+    pub sessions: Vec<PersistedSession>,
+}
+
+impl SessionState {
+    const CURRENT_VERSION: u32 = 1;
+
+    #[allow(dead_code)]
+    pub fn new(active_index: usize, sessions: Vec<PersistedSession>) -> Self {
+        Self { version: Self::CURRENT_VERSION, active_index, sessions }
+    }
+
+    pub fn validate(self) -> Result<Self, String> {
+        if self.version != Self::CURRENT_VERSION {
+            return Err(format!("unsupported session state version {}", self.version));
+        }
+        Ok(self)
+    }
+}
+
+fn session_state_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let config_dir = app.path().app_config_dir().map_err(|e| format!("failed to get app config dir: {e}"))?;
+    std::fs::create_dir_all(&config_dir).map_err(|e| format!("failed to create config dir: {e}"))?;
+    Ok(config_dir.join("sessions.json"))
+}
+
+fn no_restore_env() -> bool {
+    std::env::var("PDF_PANDA_NO_RESTORE").ok().as_deref() == Some("1")
+}
+
+pub fn save_session_state(app: &tauri::AppHandle, state: &SessionState) -> Result<(), String> {
+    if no_restore_env() {
+        return Ok(());
+    }
+    let path = session_state_path(app)?;
+    let json = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| format!("failed to write session state: {e}"))?;
+    Ok(())
+}
+
+pub fn load_session_state(app: &tauri::AppHandle) -> Result<Option<SessionState>, String> {
+    if no_restore_env() {
+        return Ok(None);
+    }
+    let path = session_state_path(app)?;
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let json = std::fs::read_to_string(&path).map_err(|e| format!("failed to read session state: {e}"))?;
+    let state: SessionState = serde_json::from_str(&json).map_err(|e| format!("failed to parse session state: {e}"))?;
+    match state.validate() {
+        Ok(s) => Ok(Some(s)),
+        Err(_) => Ok(None),
+    }
 }
 
 #[cfg(test)]
@@ -93,5 +163,38 @@ mod tests {
         let rot = doc.get_dictionary(page_id).unwrap().get(b"Rotate").unwrap().as_i64().unwrap();
         assert_eq!(rot, 90);
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn session_state_round_trip() {
+        let state = SessionState::new(
+            1,
+            vec![
+                PersistedSession {
+                    original_path: "/tmp/a.pdf".to_string(),
+                    page: 3,
+                    zoom: 1.5,
+                    view_mode: "pdf".to_string(),
+                    scroll_view_mode: "continuous".to_string(),
+                },
+                PersistedSession {
+                    original_path: "/tmp/b.pdf".to_string(),
+                    page: 0,
+                    zoom: 2.0,
+                    view_mode: "markdown".to_string(),
+                    scroll_view_mode: "single".to_string(),
+                },
+            ],
+        );
+        let json = serde_json::to_string_pretty(&state).unwrap();
+        let loaded: SessionState = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded, state);
+    }
+
+    #[test]
+    fn session_state_unknown_version_returns_error() {
+        let json = r#"{"version":99,"active_index":0,"sessions":[]}"#;
+        let state: SessionState = serde_json::from_str(json).unwrap();
+        assert!(state.validate().is_err());
     }
 }

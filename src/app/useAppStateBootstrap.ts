@@ -13,6 +13,7 @@ import { useAppLifecycleHooks } from './useAppLifecycleHooks';
 import { useAppLifecycleSlices } from './useAppLifecycleSlices';
 import { useAppSetupHooks } from './useAppSetupHooks';
 import { useAppViewerWorkflow } from './useAppViewerWorkflow';
+import { useSessionPersistence } from './useSessionPersistence';
 
 export function useAppStateBootstrap() {
   const doc = useAppDocumentState();
@@ -83,6 +84,15 @@ export function useAppStateBootstrap() {
     renderPage: loaders.renderPage,
   });
 
+  const persistence = useSessionPersistence({
+    sessions: doc.sessions,
+    activeId: doc.activeId,
+    updateSession: doc.updateSession,
+    ensureSessionForOpen: doc.ensureSessionForOpen,
+    loadPdfFromPath: lifecycle.loadPdfFromPath,
+    showToast,
+  });
+
   return {
     doc,
     modal,
@@ -99,5 +109,6 @@ export function useAppStateBootstrap() {
     slices,
     windowTitle,
     viewerWorkflow,
+    persistence,
   };
 }
