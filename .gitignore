@@ -13,9 +13,7 @@ build/
 src-tauri/target/
 src-tauri/bin/
 
-# AI agent context files (kept local, not committed)
-AGENTS.md
-CLAUDE.md
+# Agent planning matrix (kept local, not committed)
 PLAN.md
 
 # Vendored PDFium runtime library (downloaded prebuilt, not committed — see README)
