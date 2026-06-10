@@ -44,6 +44,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 #[cfg(test)]
 use std::process::Command;
+use tauri::{Emitter, Manager};
 
 include!("commands/types.inc.rs");
 include!("commands/wrappers_render.inc.rs");
@@ -114,15 +115,40 @@ fn main() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init());
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // Forward non-flag argv entries to the frontend as open-path events.
+            let paths: Vec<String> = argv.into_iter().filter(|a| !a.starts_with('-')).collect();
+            if !paths.is_empty() {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.emit("open-path", paths);
+                    let _ = w.set_focus();
+                }
+            }
+        }));
 
     builder
         .setup(|app| {
             // In a packaged build, PDFium ships under the app's resource
             // directory; record it so the loader can find it at runtime.
-            use tauri::Manager;
             if let Ok(resources) = app.path().resource_dir() {
                 set_bundled_pdfium_dir(resources.join("vendor").join("pdfium"));
+            }
+            // If the first launch includes a path arg, emit it so the UI opens it.
+            let args: Vec<String> = std::env::args().collect();
+            if args.len() > 1 {
+                let paths: Vec<String> = args.into_iter().skip(1).filter(|a| !a.starts_with('-')).collect();
+                if !paths.is_empty() {
+                    let app_handle = app.handle().clone();
+                    // Defer until the webview is ready.
+                    tauri::async_runtime::spawn(async move {
+                        // Give the frontend a moment to bootstrap listeners.
+                        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                        if let Some(w) = app_handle.get_webview_window("main") {
+                            let _ = w.emit("open-path", paths);
+                        }
+                    });
+                }
             }
             Ok(())
         })

@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
 import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
@@ -141,9 +142,32 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     showToast,
   });
 
+  const openPathPendingRef = useRef(false);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<string[]>('open-path', (event) => {
+      openPathPendingRef.current = true;
+      for (const path of event.payload) {
+        void lifecycle.loadPdfFromPath(path);
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [lifecycle.loadPdfFromPath]);
+
   useEffect(() => {
     if (persistence?.restoreSessions) {
-      void persistence.restoreSessions();
+      void persistence.restoreSessions().then(() => {
+        // If an open-path arrived during restore, it already focused its tab;
+        // do not override with the restored active index.
+        if (openPathPendingRef.current) {
+          openPathPendingRef.current = false;
+        }
+      });
     }
   }, []);
 

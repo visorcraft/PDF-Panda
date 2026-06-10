@@ -25,6 +25,7 @@ tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 tauri-plugin-dialog = "2"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
+tauri-plugin-single-instance = "2"
 underskrift = "0.1.4"
 tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
 

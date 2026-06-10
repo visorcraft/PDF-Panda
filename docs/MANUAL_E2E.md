@@ -69,3 +69,10 @@ before a release tag.
 - [ ] Linux Wayland — launch + page render without Gdk DMABUF protocol error (multi-GPU stack)
 - [ ] Linux X11 — native **Choose file…** on Open/Save when offered
 - [ ] macOS and Windows smoke pass
+
+## Single-instance / Open With
+- [ ] File manager double-click on PDF while app is running opens it in a new tab and focuses the window
+- [ ] CLI `pdf-panda a.pdf` while app is running opens `a.pdf` in a new tab
+- [ ] Second CLI `pdf-panda b.pdf` opens `b.pdf` in another tab (no second process)
+- [ ] Re-opening an already-open file via CLI just focuses its tab
+- [ ] First launch with a path arg (`pdf-panda a.pdf` with no running instance) opens the file on startup
