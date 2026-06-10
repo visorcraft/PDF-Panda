@@ -19,6 +19,8 @@ type Slices = ReturnType<typeof useAppLifecycleSlices>;
 
 export type UseAppShellBindingInput = {
   doc: DocumentState;
+  onSelectTab: (id: string) => void;
+  onCloseTab: (id: string) => void;
   modal: ModalState;
   panels: PanelsState;
   annotation: AnnotationState;
@@ -40,6 +42,8 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
 
   return buildAppShellRenderInput({
     doc: input.doc,
+    onSelectTab: input.onSelectTab,
+    onCloseTab: input.onCloseTab,
     modal: input.modal,
     panels: input.panels,
     annotation: input.annotation,
@@ -62,7 +66,8 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
       handleDragStart: viewerWorkflow.handleDragStart,
       handleDragOver: viewerWorkflow.handleDragOver,
       handleDrop: viewerWorkflow.handleDrop,
-      goToPage: viewer.goToPage,
+      goToPage: viewerWorkflow.goToPage,
+      continuous: viewerWorkflow.continuous,
       openPdf: viewer.openPdf,
       loadPdfBookmarks: input.slices.loaders.loadPdfBookmarks,
       loadPdfSignatures: input.slices.loaders.loadPdfSignatures,

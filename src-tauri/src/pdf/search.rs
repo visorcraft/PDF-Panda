@@ -1,9 +1,7 @@
+use crate::pdf::coords::pdf_rect_to_viewer_px;
 use pdfium_render::prelude::*;
 use serde::Serialize;
 use std::path::Path;
-
-pub const SEARCH_RENDER_W: i32 = 800;
-pub const SEARCH_RENDER_H: i32 = 1132;
 
 #[derive(Debug, Serialize)]
 pub struct PdfTextSearchMatch {
@@ -13,15 +11,14 @@ pub struct PdfTextSearchMatch {
 }
 
 pub fn pdf_rect_to_search_pixels(rect: PdfRect, page_w: f32, page_h: f32) -> [f64; 4] {
-    let sw = SEARCH_RENDER_W as f64;
-    let sh = SEARCH_RENDER_H as f64;
-    let pw = f64::from(page_w).max(1.0);
-    let ph = f64::from(page_h).max(1.0);
-    let left = f64::from(rect.left().value) / pw * sw;
-    let right = f64::from(rect.right().value) / pw * sw;
-    let top = (ph - f64::from(rect.top().value)) / ph * sh;
-    let bottom = (ph - f64::from(rect.bottom().value)) / ph * sh;
-    [left, top, right, bottom]
+    pdf_rect_to_viewer_px(
+        f64::from(rect.left().value),
+        f64::from(rect.bottom().value),
+        f64::from(rect.right().value),
+        f64::from(rect.top().value),
+        page_w,
+        page_h,
+    )
 }
 
 pub fn union_search_bounds(segments: &PdfPageTextSegments<'_>) -> Result<PdfRect, String> {

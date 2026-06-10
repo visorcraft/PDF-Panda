@@ -11,6 +11,7 @@ export type ModeSetters = {
   setImageInsertMode: Dispatch<SetStateAction<boolean>>;
   setFormAddMode: Dispatch<SetStateAction<boolean>>;
   setTextEditMode: Dispatch<SetStateAction<boolean>>;
+  setEditTextRunMode: Dispatch<SetStateAction<boolean>>;
   setVectorEditMode: Dispatch<SetStateAction<boolean>>;
   setShowNoteModal: (open: boolean) => void;
   setPendingNotePos: (pos: null) => void;
@@ -19,7 +20,7 @@ export type ModeSetters = {
 
 export function clearOtherModes(
   modes: ModeSetters,
-  except?: 'highlight' | 'note' | 'draw' | 'shape' | 'stamp' | 'redact' | 'image' | 'form' | 'text' | 'vector',
+  except?: 'highlight' | 'note' | 'draw' | 'shape' | 'stamp' | 'redact' | 'image' | 'form' | 'text' | 'editText' | 'vector',
 ) {
   modes.cancelDrawing();
   if (except !== 'highlight') modes.setHighlightMode(false);
@@ -31,6 +32,7 @@ export function clearOtherModes(
   if (except !== 'image') modes.setImageInsertMode(false);
   if (except !== 'form') modes.setFormAddMode(false);
   if (except !== 'text') modes.setTextEditMode(false);
+  if (except !== 'editText') modes.setEditTextRunMode(false);
   if (except !== 'vector') modes.setVectorEditMode(false);
   modes.setShowNoteModal(false);
   modes.setPendingNotePos(null);

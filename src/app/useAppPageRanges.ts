@@ -33,6 +33,7 @@ export function useAppPageRanges({ pageCount, currentPage, showToast }: UseAppPa
   const parityRange = usePageRangePair({ showToast });
   const insertRange = usePageRangePair({ showToast });
   const mergeRange = usePageRangePair({ showToast });
+  const batesRange = usePageRangePair({ showToast });
 
   return {
     pageNumbersRange,
@@ -59,6 +60,7 @@ export function useAppPageRanges({ pageCount, currentPage, showToast }: UseAppPa
     parityRange,
     insertRange,
     mergeRange,
+    batesRange,
   };
 }
 

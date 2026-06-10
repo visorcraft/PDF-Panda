@@ -44,6 +44,10 @@ export type AppPdfActionsRuntime = Pick<
   | 'setTesseractReminderSource'
 >;
 
+export type AppPdfActionsRuntimeExtras = {
+  openTesseractGuide: () => void;
+};
+
 export type BuildAppPdfActionsInputArgs = {
   modal: ModalState;
   security: SecurityState;
@@ -53,7 +57,7 @@ export type BuildAppPdfActionsInputArgs = {
   drawing: DrawingGestureSlice;
   pageRanges: PageRangesState;
   refs: Pick<RefsState, 'cancelDrawingRef' | 'handleSaveRef' | 'handleMarkdownViewRef' | 'imgRef'>;
-  runtime: AppPdfActionsRuntime;
+  runtime: AppPdfActionsRuntime & AppPdfActionsRuntimeExtras;
 };
 
 export function buildAppPdfActionsInput(args: BuildAppPdfActionsInputArgs): UseAppPdfActionsInput {
@@ -74,5 +78,6 @@ export function buildAppPdfActionsInput(args: BuildAppPdfActionsInputArgs): UseA
     pngExportScope: r.pngExportRange.scope,
     pngExportStartPage: r.pngExportRange.startPage,
     ...runtime,
+    openTesseractGuide: runtime.openTesseractGuide,
   };
 }

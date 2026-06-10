@@ -36,6 +36,7 @@ export interface AppMenuContext {
   pageCount: number | null;
   currentPage: number;
   viewMode: 'pdf' | 'markdown';
+  scrollViewMode: 'single' | 'continuous';
   highlightMode: boolean;
   noteMode: boolean;
   drawMode: boolean;
@@ -47,6 +48,7 @@ export interface AppMenuContext {
   vectorEditMode: boolean;
   showFormsPanel: boolean;
   showBookmarksPanel: boolean;
+  showAnnotationsPanel: boolean;
   showSignaturesPanel: boolean;
   tesseractInstalled: boolean;
   openPdf: () => void;
@@ -133,6 +135,10 @@ export interface AppMenuContext {
   setViewModePdf: () => void;
   toggleMarkdownView: () => void | Promise<void>;
   handleOptimizePdf: () => void | Promise<void>;
+  handleMakePdfSearchable: () => void | Promise<void>;
+  hasRedactions: boolean;
+  openApplyRedactionsModal: () => void;
+  openBatesNumberModal: () => void;
   openExportPngModal: () => void;
   openExportPagePdfModal: () => void;
   openExportPagesPdfModal: () => void;
@@ -166,7 +172,11 @@ export interface AppMenuContext {
   openSignModal: () => void;
   toggleSignaturesPanel: () => void;
   toggleBookmarksPanel: () => void;
+  toggleAnnotationsPanel: () => void;
+  toggleContinuousScroll: () => void;
   toggleRedactMode: () => void;
+  hasTextSelection: boolean;
+  highlightSelection: () => void;
   toggleHighlightMode: () => void;
   toggleNoteMode: () => void;
   toggleDrawMode: () => void;
@@ -174,6 +184,8 @@ export interface AppMenuContext {
   toggleStampMode: () => void;
   toggleImageInsertMode: () => void;
   toggleTextEditMode: () => void;
+  editTextRunMode: boolean;
+  toggleEditTextRunMode: () => void;
   toggleVectorEditMode: () => void;
   openPageEditsModal: () => void;
   toggleFormsPanel: () => void;
@@ -182,6 +194,8 @@ export interface AppMenuContext {
   openLicenses: () => void;
   openCredits: () => void;
   openAbout: () => void;
+  openUpdateModal: () => void;
+  updaterSupported: boolean;
   openCommandPalette: () => void;
 }
 
@@ -203,6 +217,7 @@ export type AppMenuContextSource = {
   pageCount: number | null;
   currentPage: number;
   viewMode: 'pdf' | 'markdown';
+  scrollViewMode: 'single' | 'continuous';
   highlightMode: boolean;
   noteMode: boolean;
   drawMode: boolean;
@@ -214,6 +229,7 @@ export type AppMenuContextSource = {
   vectorEditMode: boolean;
   showFormsPanel: boolean;
   showBookmarksPanel: boolean;
+  showAnnotationsPanel: boolean;
   showSignaturesPanel: boolean;
   tesseractInstalled: boolean;
   openPdf: () => void;
@@ -300,6 +316,10 @@ export type AppMenuContextSource = {
   setViewModePdf: () => void;
   toggleMarkdownView: VoidHandler;
   handleOptimizePdf: VoidHandler;
+  handleMakePdfSearchable: VoidHandler;
+  hasRedactions: boolean;
+  openApplyRedactionsModal: () => void;
+  openBatesNumberModal: () => void;
   openExportPngModal: () => void;
   openExportPagePdfModal: () => void;
   openExportPagesPdfModal: () => void;
@@ -333,7 +353,11 @@ export type AppMenuContextSource = {
   openSignModal: () => void;
   toggleSignaturesPanel: () => void;
   toggleBookmarksPanel: () => void;
+  toggleAnnotationsPanel: () => void;
+  toggleContinuousScroll: () => void;
   toggleRedactMode: () => void;
+  hasTextSelection: boolean;
+  highlightSelection: () => void;
   toggleHighlightMode: () => void;
   toggleNoteMode: () => void;
   toggleDrawMode: () => void;
@@ -341,6 +365,8 @@ export type AppMenuContextSource = {
   toggleStampMode: () => void;
   toggleImageInsertMode: () => void;
   toggleTextEditMode: () => void;
+  editTextRunMode: boolean;
+  toggleEditTextRunMode: () => void;
   toggleVectorEditMode: () => void;
   openPageEditsModal: () => void;
   toggleFormsPanel: () => void;
@@ -349,5 +375,7 @@ export type AppMenuContextSource = {
   openLicenses: () => void;
   openCredits: () => void;
   openAbout: () => void;
+  openUpdateModal: () => void;
+  updaterSupported: boolean;
   openCommandPalette: () => void;
 };

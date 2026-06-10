@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import type { SessionViewerCache } from '../app/documentSessionTypes';
 
 // Base resolution each page is rendered at. Zoom is applied as a CSS transform
 // on top of this so the rendered image and the annotation overlays scale
@@ -37,6 +38,9 @@ export type UsePdfDocumentDeps = {
   loadPdfBookmarks?: (path: string) => void;
   loadPageSizes?: (path: string) => void;
   cancelDrawing: () => void;
+  activeSessionId: string | null;
+  viewerCache?: SessionViewerCache;
+  patchViewerCache: (patch: Partial<SessionViewerCache>) => void;
 };
 
 export function usePdfDocument({
@@ -55,10 +59,27 @@ export function usePdfDocument({
   loadPdfBookmarks,
   loadPageSizes,
   cancelDrawing,
+  activeSessionId,
+  viewerCache,
+  patchViewerCache,
 }: UsePdfDocumentDeps) {
-  const [imageSrc, setImageSrc] = useState('');
-  const [thumbnails, setThumbnails] = useState<string[]>([]);
-  const [annotations, setAnnotations] = useState<PdfAnnotation[]>([]);
+  const [imageSrc, setImageSrc] = useState(viewerCache?.imageSrc ?? '');
+  const [thumbnails, setThumbnails] = useState<string[]>(viewerCache?.thumbnails ?? []);
+  const [annotations, setAnnotations] = useState<PdfAnnotation[]>(viewerCache?.annotations ?? []);
+
+  useEffect(() => {
+    if (!activeSessionId || !viewerCache) return;
+    setImageSrc(viewerCache.imageSrc);
+    setThumbnails(viewerCache.thumbnails);
+    setAnnotations(viewerCache.annotations);
+  }, [activeSessionId, viewerCache?.imageSrc, viewerCache?.thumbnails, viewerCache?.annotations]);
+
+  const syncCache = useCallback(
+    (patch: Partial<SessionViewerCache>) => {
+      patchViewerCache(patch);
+    },
+    [patchViewerCache],
+  );
 
   const revokeViewerAssets = useCallback(() => {
     setImageSrc((prev) => {
@@ -70,7 +91,8 @@ export function usePdfDocument({
       return [];
     });
     setAnnotations([]);
-  }, []);
+    syncCache({ imageSrc: '', thumbnails: [], annotations: [] });
+  }, [syncCache]);
 
   const loadThumbnails = useCallback(async (path: string) => {
     const thumbBytesArray = await invoke<number[][]>('get_pdf_thumbnails', {
@@ -84,9 +106,10 @@ export function usePdfDocument({
     });
     setThumbnails((prev) => {
       prev.forEach((url) => URL.revokeObjectURL(url));
+      syncCache({ thumbnails: thumbs });
       return thumbs;
     });
-  }, []);
+  }, [syncCache]);
 
   const renderPage = useCallback(async (path: string, index: number) => {
     const bytes = await invoke<number[]>('render_pdf_page', {
@@ -96,15 +119,18 @@ export function usePdfDocument({
       height: PDF_BASE_HEIGHT,
     });
     const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+    const url = URL.createObjectURL(blob);
     setImageSrc((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(blob);
+      return url;
     });
+    syncCache({ imageSrc: url });
 
     const annots = await invoke<PdfAnnotation[]>('get_annotations', { path, pageIndex: index });
     setAnnotations(annots);
+    syncCache({ annotations: annots });
     await loadPageEdits(path, index);
-  }, [loadPageEdits]);
+  }, [loadPageEdits, syncCache]);
 
   const goToPage = useCallback((index: number) => {
     if (pageCount === null || !filePath) return;

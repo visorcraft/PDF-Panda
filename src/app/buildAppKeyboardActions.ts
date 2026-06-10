@@ -67,6 +67,8 @@ export type AppKeyboardActions = {
   resetZoom: () => void;
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
+  cycleTab: (delta: number) => void;
+  jumpToTab: (index: number) => void;
 };
 
 export type BuildAppKeyboardActionsInput = {
@@ -137,6 +139,8 @@ export type BuildAppKeyboardActionsInput = {
   resetZoom: () => void;
   undo: () => void;
   redo: () => void;
+  cycleTab: (delta: number) => void;
+  jumpToTab: (index: number) => void;
 };
 
 export function buildAppKeyboardActions(input: BuildAppKeyboardActionsInput): AppKeyboardActions {
@@ -207,5 +211,7 @@ export function buildAppKeyboardActions(input: BuildAppKeyboardActionsInput): Ap
     resetZoom: input.resetZoom,
     undo: input.undo,
     redo: input.redo,
+    cycleTab: input.cycleTab,
+    jumpToTab: input.jumpToTab,
   };
 }

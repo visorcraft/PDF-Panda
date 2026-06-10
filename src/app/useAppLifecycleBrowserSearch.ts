@@ -96,6 +96,8 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
 
   const search = usePdfSearch({
     filePath,
+    search: doc.search,
+    patchSearch: doc.patchSearch,
     withLoading: input.withLoading,
     renderPage: open.renderPage,
     setViewMode,

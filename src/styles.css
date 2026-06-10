@@ -89,6 +89,101 @@ body {
   overflow: hidden;
 }
 
+/* Document tabs */
+.tab-bar {
+  flex-shrink: 0;
+  background: #2d2d2d;
+  border-bottom: 1px solid #1a1a1a;
+  overflow: hidden;
+}
+
+.tab-bar-scroll {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  padding: 0 8px 0 12px;
+  height: 30px;
+  border-right: 1px solid #1a1a1a;
+  background: #3a3a3a;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.tab-item:hover {
+  background: #444;
+}
+
+.tab-item.active {
+  background: #f0f2f5;
+  color: #1a1a2e;
+}
+
+.tab-dirty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4a90d9;
+  flex-shrink: 0;
+}
+
+.tab-item.active .tab-dirty {
+  background: #2a6cb8;
+}
+
+.tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.tab-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.tab-item.active .tab-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.text-edit-overlay-input {
+  border: 1px solid #4a90d9;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1a2e;
+  padding: 0 2px;
+  margin: 0;
+  outline: none;
+  z-index: 20;
+}
+
 /* Window title bar (custom decorations) */
 .window-titlebar {
   display: flex;
@@ -713,16 +808,60 @@ body {
 
 .bookmarks-panel,
 .signatures-panel,
-.forms-panel {
+.forms-panel,
+.annotations-panel {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid #e6e6e6;
 }
 
-.bookmark-list {
+.bookmark-list,
+.annotation-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.annotation-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.annotation-row-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fafafa;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.annotation-row-main:hover {
+  background: #f0f7f2;
+  border-color: rgba(45, 138, 78, 0.45);
+}
+
+.annotation-page {
+  display: block;
+  font-size: 11px;
+  color: #666;
+}
+
+.annotation-label {
+  display: block;
+  font-size: 12px;
+}
+
+.annotation-delete {
+  flex: 0 0 auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0 8px;
+  cursor: pointer;
 }
 
 .bookmark-row-wrap {

@@ -50,7 +50,9 @@ Three things we care about:
 - **Menu bar** (File, Edit, Pages, Document, Annotate, Security, View, Help) plus a slim quick-access row — all page tools live in menus; **Ctrl/Cmd+Shift+P** opens a searchable command palette
 - Smooth viewer with **25%–400%** zoom; thumbnail sidebar matches viewer height
 - Page navigation via menus, quick bar, thumbnails, keyboard, mouse wheel at scroll edges, and a clickable **Bookmarks** outline
-- **Find text** across the document with match highlighting (Ctrl/Cmd+F)
+- **Find text** across the document with match highlighting (Ctrl/Cmd+F); **selectable text layer** with native copy and **Highlight Selection**
+- **Continuous scroll** mode (View → Continuous scroll) with virtualized page rendering
+- **Document tabs** — multiple PDFs open at once (Ctrl+Tab / Ctrl+W)
 - Open via **File → Open PDF** (Ctrl/Cmd+O), in-app path entry, **Recently Opened**, built-in PDF browser, or **native open/save dialogs**
 
 **Organize pages**
@@ -72,7 +74,9 @@ Three things we care about:
 **Annotate & mark up**
 - **Highlights** (`H`), **sticky notes** (`N`), **freehand ink** (`D`), **shapes** (`S` — rectangle/ellipse/line)
 - **Stamps** (`T` — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED, plus image stamps) and **redaction** boxes (`X`)
-- **In-PDF text blocks** (`E`) and **vector rectangles** (`G`), embedded **images** (`I`) — all persisted in the PDF
+- **In-PDF text blocks** (`E`), **Edit text** (click existing text runs), and **vector rectangles** (`G`), embedded **images** (`I`) — all persisted in the PDF
+- **Annotations panel** (View) — document-wide list with navigate and delete
+- **Apply redactions** — burn in redaction boxes (optional OCR restore); **Bates numbering**; **Make Searchable (OCR)** for scanned pages
 
 **Forms & signatures**
 - **Interactive forms** (`F`) — list, fill, and create text / checkbox / choice / radio fields
@@ -85,6 +89,7 @@ Three things we care about:
 - **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
 - **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
 - **Print** via the system print dialog
+- **Help → Check for Updates…** (AppImage / macOS / Windows; signed `latest.json` when release artifacts are published)
 
 ---
 

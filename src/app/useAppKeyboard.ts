@@ -134,6 +134,16 @@ export function useAppKeyboard(actionsRef: MutableRefObject<AppKeyboardActions>)
         return;
       }
       if (key === 'w') { e.preventDefault(); a.requestClosePdf(); return; }
+      if (key === 'tab') {
+        e.preventDefault();
+        a.cycleTab(e.shiftKey ? -1 : 1);
+        return;
+      }
+      if (key >= '1' && key <= '9') {
+        e.preventDefault();
+        a.jumpToTab(Number(key) - 1);
+        return;
+      }
       if (key === 'p') { e.preventDefault(); void a.handlePrint(); return; }
       if (key === 'r') { e.preventDefault(); void a.handleRotatePage(); return; }
       if (key === 'f') { e.preventDefault(); a.openSearchModal(); return; }

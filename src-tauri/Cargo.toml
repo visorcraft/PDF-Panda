@@ -1,6 +1,6 @@
 [package]
 name = "pdf-panda"
-version = "0.4.0"
+version = "0.5.0"
 description = "A high-performance PDF editor"
 edition = "2021"
 license = "GPL-3.0-only"
@@ -23,6 +23,8 @@ fax = "0.2"
 tauri-plugin-wdio = { version = "1", optional = true }
 tauri-plugin-wdio-webdriver = { version = "1", optional = true }
 tauri-plugin-dialog = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
 underskrift = "0.1.4"
 tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
 

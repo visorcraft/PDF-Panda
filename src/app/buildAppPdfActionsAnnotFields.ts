@@ -68,6 +68,7 @@ export function annotationPdfActionFields(a: AnnotationState) {
     setShowPageTextModal: a.setShowPageTextModal,
     setStampMode: a.setStampMode,
     setTextEditMode: a.setTextEditMode,
+    setEditTextRunMode: a.setEditTextRunMode,
     setVectorEditMode: a.setVectorEditMode,
     shapeKind: a.shapeKind,
     shapeMode: a.shapeMode,
@@ -75,6 +76,7 @@ export function annotationPdfActionFields(a: AnnotationState) {
     stampMode: a.stampMode,
     stampPreset: a.stampPreset,
     textEditMode: a.textEditMode,
+    editTextRunMode: a.editTextRunMode,
     vectorEditMode: a.vectorEditMode,
   };
 }

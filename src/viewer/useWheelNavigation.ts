@@ -1,10 +1,11 @@
 import { useRef, type WheelEvent } from 'react';
 import { WHEEL_NAV_COOLDOWN } from '../app/constants';
-import type { ViewMode } from '../app/types';
+import type { ScrollViewMode, ViewMode } from '../app/types';
 
 type UseWheelNavigationOptions = {
   pageCount: number | null;
   viewMode: ViewMode;
+  scrollViewMode: ScrollViewMode;
   currentPage: number;
   goToPage: (index: number) => void;
 };
@@ -12,6 +13,7 @@ type UseWheelNavigationOptions = {
 export function useWheelNavigation({
   pageCount,
   viewMode,
+  scrollViewMode,
   currentPage,
   goToPage,
 }: UseWheelNavigationOptions) {
@@ -20,6 +22,7 @@ export function useWheelNavigation({
   const lastWheelNavRef = useRef(0);
 
   const handleWheel = (e: WheelEvent) => {
+    if (scrollViewMode === 'continuous') return;
     const el = scrollRef.current;
     if (!el || pageCount === null || viewMode !== 'pdf') return;
 

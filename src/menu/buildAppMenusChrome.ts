@@ -13,9 +13,21 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
         active: ctx.viewMode === 'markdown',
       }),
       sep(),
+      act(
+        'continuous-scroll',
+        ctx.scrollViewMode === 'continuous' ? 'Continuous scroll (on)' : 'Continuous scroll',
+        ctx.toggleContinuousScroll,
+        { active: ctx.scrollViewMode === 'continuous', disabled: ctx.viewMode !== 'pdf' },
+      ),
       act('bookmarks', ctx.showBookmarksPanel ? 'Bookmarks panel (on)' : 'Bookmarks panel', ctx.toggleBookmarksPanel, {
         active: ctx.showBookmarksPanel,
       }),
+      act(
+        'annotations-panel',
+        ctx.showAnnotationsPanel ? 'Annotations panel (on)' : 'Annotations panel',
+        ctx.toggleAnnotationsPanel,
+        { active: ctx.showAnnotationsPanel },
+      ),
     ],
   };
 }
@@ -33,6 +45,9 @@ export function buildHelpMenu(ctx: AppMenuContext): MenuRoot {
       act('licenses', 'Licenses…', ctx.openLicenses),
       act('credits', 'Credits…', ctx.openCredits),
       act('about', 'About PDF Panda…', ctx.openAbout),
+      ...(ctx.updaterSupported
+        ? [act('check-updates', 'Check for Updates…', ctx.openUpdateModal)]
+        : []),
     ],
   };
 }

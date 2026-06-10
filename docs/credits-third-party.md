@@ -17,15 +17,15 @@ If you have questions about license compliance, please contact
 
 ## Licenses in use
 
-- **Apache License 2.0** (423 crates)
-- **MIT License** (138 crates)
+- **Apache License 2.0** (445 crates)
+- **MIT License** (141 crates)
 - **Unicode License v3** (19 crates)
 - **BSD 3-Clause &quot;New&quot; or &quot;Revised&quot; License** (12 crates)
 - **BSD 2-Clause &quot;Simplified&quot; License** (6 crates)
 - **Mozilla Public License 2.0** (5 crates)
 - **ISC License** (4 crates)
+- **Community Data License Agreement Permissive 2.0** (2 crates)
 - **BSD Zero Clause License** (1 crate)
-- **Community Data License Agreement Permissive 2.0** (1 crate)
 - **GNU General Public License v3.0 only** (1 crate)
 - **University of Illinois/NCSA Open Source License** (1 crate)
 - **zlib License** (1 crate)
@@ -2039,6 +2039,7 @@ Used by:
 Used by:
 - [`imgref 1.12.1`](https://github.com/kornelski/imgref)
 - [`josekit 0.10.3`](https://github.com/hidekatsu-izuno/josekit-rs)
+- [`rustls-platform-verifier 0.7.0`](https://github.com/rustls/rustls-platform-verifier)
 - [`serialize-to-javascript-impl 0.1.2`](https://github.com/chippers/serialize-to-javascript)
 - [`serialize-to-javascript 0.1.2`](https://github.com/chippers/serialize-to-javascript)
 - [`zune-core 0.5.1`](https://github.com/etemesi254/zune-image)
@@ -6350,10 +6351,13 @@ Used by:
 - [`crossbeam-epoch 0.9.18`](https://github.com/crossbeam-rs/crossbeam)
 - [`crossbeam-utils 0.8.21`](https://github.com/crossbeam-rs/crossbeam)
 - [`curve25519-dalek-derive 0.1.1`](https://github.com/dalek-cryptography/curve25519-dalek)
+- [`derive_arbitrary 1.4.2`](https://github.com/rust-fuzz/arbitrary)
 - [`displaydoc 0.2.6`](https://github.com/yaahc/displaydoc)
 - [`either 1.16.0`](https://github.com/rayon-rs/either)
 - [`equivalent 1.0.2`](https://github.com/indexmap-rs/equivalent)
+- [`errno 0.3.14`](https://github.com/lambda-fairy/rust-errno)
 - [`fastrand 2.4.1`](https://github.com/smol-rs/fastrand)
+- [`filetime 0.2.29`](https://github.com/alexcrichton/filetime)
 - [`find-msvc-tools 0.1.9`](https://github.com/rust-lang/cc-rs)
 - [`flate2 1.1.9`](https://github.com/rust-lang/flate2-rs)
 - [`fnv 1.0.7`](https://github.com/servo/rust-fnv)
@@ -6377,6 +6381,7 @@ Used by:
 - [`js-sys 0.3.99`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys)
 - [`lazy_static 1.5.0`](https://github.com/rust-lang-nursery/lazy-static.rs)
 - [`libfuzzer-sys 0.4.12`](https://github.com/rust-fuzz/libfuzzer)
+- [`linux-raw-sys 0.12.1`](https://github.com/sunfishcode/linux-raw-sys)
 - [`lock_api 0.4.14`](https://github.com/Amanieu/parking_lot)
 - [`log 0.4.32`](https://github.com/rust-lang/log)
 - [`markup5ever 0.38.0`](https://github.com/servo/html5ever)
@@ -6390,6 +6395,7 @@ Used by:
 - [`num-rational 0.4.2`](https://github.com/rust-num/num-rational)
 - [`num-traits 0.2.19`](https://github.com/rust-num/num-traits)
 - [`once_cell 1.21.4`](https://github.com/matklad/once_cell)
+- [`openssl-probe 0.2.1`](https://github.com/rustls/openssl-probe)
 - [`parking_lot 0.12.5`](https://github.com/Amanieu/parking_lot)
 - [`parking_lot_core 0.9.12`](https://github.com/Amanieu/parking_lot)
 - [`percent-encoding 2.3.2`](https://github.com/servo/rust-url/)
@@ -6403,11 +6409,16 @@ Used by:
 - [`regex 1.12.3`](https://github.com/rust-lang/regex)
 - [`ring 0.17.14`](https://github.com/briansmith/ring)
 - [`rustc_version 0.4.1`](https://github.com/djc/rustc-version-rs)
+- [`rustix 1.1.4`](https://github.com/bytecodealliance/rustix)
+- [`rustls-native-certs 0.8.4`](https://github.com/rustls/rustls-native-certs)
 - [`rustls 0.23.40`](https://github.com/rustls/rustls)
 - [`scopeguard 1.2.0`](https://github.com/bluss/scopeguard)
+- [`security-framework-sys 2.17.0`](https://github.com/kornelski/rust-security-framework)
+- [`security-framework 3.7.0`](https://github.com/kornelski/rust-security-framework)
 - [`serde_with 3.21.0`](https://github.com/jonasbb/serde_with/)
 - [`serde_with_macros 3.21.0`](https://github.com/jonasbb/serde_with/)
 - [`servo_arc 0.4.3`](https://github.com/servo/stylo)
+- [`simd_cesu8 1.1.1`](https://github.com/seancroach/simd_cesu8)
 - [`smallvec 1.15.1`](https://github.com/servo/rust-smallvec)
 - [`socket2 0.6.4`](https://github.com/rust-lang/socket2)
 - [`stable_deref_trait 1.2.1`](https://github.com/storyyeller/stable_deref_trait)
@@ -6415,6 +6426,8 @@ Used by:
 - [`string_cache_codegen 0.6.1`](https://github.com/servo/string-cache)
 - [`syn 1.0.109`](https://github.com/dtolnay/syn)
 - [`system-deps 6.2.2`](https://github.com/gdesmott/system-deps)
+- [`tar 0.4.46`](https://github.com/composefs/tar-rs)
+- [`tempfile 3.27.0`](https://github.com/Stebalien/tempfile)
 - [`tendril 0.5.0`](https://github.com/servo/html5ever)
 - [`toml_datetime 0.6.3`](https://github.com/toml-rs/toml)
 - [`ttf-parser 0.25.1`](https://github.com/harfbuzz/ttf-parser)
@@ -6439,6 +6452,7 @@ Used by:
 - [`wit-bindgen 0.51.0`](https://github.com/bytecodealliance/wit-bindgen)
 - [`wit-bindgen 0.57.1`](https://github.com/bytecodealliance/wit-bindgen)
 - [`wry 0.55.1`](https://github.com/tauri-apps/wry)
+- [`xattr 1.6.1`](https://github.com/Stebalien/xattr)
 
 ```
                               Apache License
@@ -9827,7 +9841,9 @@ Used by:
 - [`image-webp 0.2.4`](https://github.com/image-rs/image-webp)
 - [`image 0.25.10`](https://github.com/image-rs/image)
 - [`itoa 1.0.18`](https://github.com/dtolnay/itoa)
+- [`jni-macros 0.22.4`](https://github.com/jni-rs/jni-rs)
 - [`jni-sys-macros 0.4.1`](https://github.com/jni-rs/jni-sys)
+- [`jni 0.22.4`](https://github.com/jni-rs/jni-rs)
 - [`libc 0.2.186`](https://github.com/rust-lang/libc)
 - [`miniz_oxide 0.8.9`](https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide)
 - [`ndk-sys 0.6.0+11769913`](https://github.com/rust-mobile/ndk)
@@ -9844,10 +9860,12 @@ Used by:
 - [`objc2-core-location 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2-core-text 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2-exception-helper 0.1.1`](https://github.com/madsmtm/objc2)
+- [`objc2-osa-kit 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2-quartz-core 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2-ui-kit 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2-user-notifications 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2-web-kit 0.3.2`](https://github.com/madsmtm/objc2)
+- [`osakit 0.3.1`](https://github.com/mdevils/rust-osakit)
 - [`p12 0.6.3`](https://github.com/hjiayz/p12)
 - [`paste 1.0.15`](https://github.com/dtolnay/paste)
 - [`pastey 0.1.1`](https://github.com/as1100k/pastey)
@@ -9868,6 +9886,7 @@ Used by:
 - [`raw-window-handle 0.6.2`](https://github.com/rust-windowing/raw-window-handle)
 - [`rc2 0.8.1`](https://github.com/RustCrypto/block-ciphers)
 - [`rustc-hash 2.1.2`](https://github.com/rust-lang/rustc-hash)
+- [`rustls-platform-verifier-android 0.1.1`](https://github.com/rustls/rustls-platform-verifier)
 - [`rustversion 1.0.22`](https://github.com/dtolnay/rustversion)
 - [`ryu 1.0.23`](https://github.com/dtolnay/ryu)
 - [`semver 1.0.28`](https://github.com/dtolnay/semver)
@@ -9880,6 +9899,7 @@ Used by:
 - [`serde_repr 0.1.20`](https://github.com/dtolnay/serde-repr)
 - [`serde_urlencoded 0.7.1`](https://github.com/nox/serde_urlencoded)
 - [`shlex 2.0.1`](https://github.com/comex/rust-shlex)
+- [`simdutf8 0.1.5`](https://github.com/rusticstuff/simdutf8)
 - [`siphasher 1.0.3`](https://github.com/jedisct1/rust-siphash)
 - [`subsetter 0.2.6`](https://github.com/typst/subsetter)
 - [`syn 2.0.117`](https://github.com/dtolnay/syn)
@@ -9890,6 +9910,8 @@ Used by:
 - [`tauri-macros 2.6.2`](https://github.com/tauri-apps/tauri)
 - [`tauri-plugin-dialog 2.7.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`tauri-plugin-fs 2.5.1`](https://github.com/tauri-apps/plugins-workspace)
+- [`tauri-plugin-process 2.3.1`](https://github.com/tauri-apps/plugins-workspace)
+- [`tauri-plugin-updater 2.10.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`tauri-plugin 2.6.2`](https://github.com/tauri-apps/tauri)
 - [`tauri-runtime-wry 2.11.2`](https://github.com/tauri-apps/tauri)
 - [`tauri-runtime 2.11.2`](https://github.com/tauri-apps/tauri)
@@ -10695,6 +10717,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ### Community Data License Agreement Permissive 2.0
 
 Used by:
+- [`webpki-root-certs 1.0.7`](https://github.com/rustls/webpki-roots)
 - [`webpki-roots 1.0.7`](https://github.com/rustls/webpki-roots)
 
 ```
@@ -10767,7 +10790,7 @@ insights.
 ### GNU General Public License v3.0 only
 
 Used by:
-- [`pdf-panda 0.4.0`](https://crates.io/crates/pdf-panda)
+- [`pdf-panda 0.5.0`](https://crates.io/crates/pdf-panda)
 
 ```
 GNU GENERAL PUBLIC LICENSE
@@ -11355,6 +11378,24 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+
+```
+
+---
+
+### MIT License
+
+Used by:
+- [`schannel 0.1.29`](https://github.com/steffengy/schannel-rs)
+
+```
+Copyright (c) 2015 steffengy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ```
 
@@ -12619,6 +12660,7 @@ Used by:
 - [`dlopen2_derive 0.4.3`](https://github.com/OpenByteDev/dlopen2)
 - [`dpi 0.1.2`](https://github.com/rust-windowing/winit)
 - [`libm 0.2.16`](https://github.com/rust-lang/compiler-builtins)
+- [`minisign-verify 0.2.5`](https://github.com/jedisct1/rust-minisign-verify)
 - [`objc2-encode 4.1.0`](https://github.com/madsmtm/objc2)
 - [`objc2-foundation 0.3.2`](https://github.com/madsmtm/objc2)
 - [`objc2 0.6.4`](https://github.com/madsmtm/objc2)
@@ -12961,6 +13003,40 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+---
+
+### MIT License
+
+Used by:
+- [`zip 4.6.1`](https://github.com/zip-rs/zip2.git)
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2014 Mathijs van de Nes
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Some files in the &quot;tests/data&quot; subdirectory of this repository are under other
+licences; see files named LICENSE.*.txt for details.
 ```
 
 ---
@@ -14900,6 +14976,8 @@ shipped in release builds.
 
 - **@tauri-apps/api** 2.11.0 — MIT OR Apache-2.0
 - **@tauri-apps/plugin-dialog** 2.7.1 — MIT OR Apache-2.0
+- **@tauri-apps/plugin-process** 2.3.1 — MIT OR Apache-2.0
+- **@tauri-apps/plugin-updater** 2.10.1 — MIT OR Apache-2.0
 - **react** 19.2.7 — MIT
 - **react-dom** 19.2.7 — MIT
 
@@ -14942,6 +15020,8 @@ SOFTWARE.
 Used by:
 - [`@tauri-apps/api 2.11.0`](https://github.com/tauri-apps/tauri)
 - [`@tauri-apps/plugin-dialog 2.7.1`](https://github.com/tauri-apps/plugins-workspace)
+- [`@tauri-apps/plugin-process 2.3.1`](https://www.npmjs.com/package/@tauri-apps/plugin-process)
+- [`@tauri-apps/plugin-updater 2.10.1`](https://www.npmjs.com/package/@tauri-apps/plugin-updater)
 
 ```
 MIT License

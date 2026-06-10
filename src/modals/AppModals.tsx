@@ -1,5 +1,7 @@
 import parityBatchCommands from '../parity_batch_commands.json';
 import { AddBookmarkModal } from './AddBookmarkModal';
+import { ApplyRedactionsModal } from './ApplyRedactionsModal';
+import { BatesNumberModal } from './BatesNumberModal';
 import { AddFormFieldModal } from './AddFormFieldModal';
 import { BookmarkAllModal } from './BookmarkAllModal';
 import { CropModal } from './CropModal';
@@ -56,6 +58,7 @@ import { StickyNoteModal } from './StickyNoteModal';
 import { SwapPagesModal } from './SwapPagesModal';
 import { TesseractReminderModal } from './TesseractReminderModal';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
+import { UpdateModal } from './UpdateModal';
 import { WatermarkModal } from './WatermarkModal';
 import type { AppModalsContext } from './appModalsContext';
 
@@ -146,7 +149,38 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApplyEven={ctx.handleAddPageNumbersEvenPages}
         />
       )}
-      
+
+      {ctx.showBatesNumberModal && (
+        <BatesNumberModal
+          startPage={ctx.batesRange.startPage}
+          endPage={ctx.batesRange.endPage}
+          pageCount={ctx.pageCount}
+          prefix={ctx.batesPrefix}
+          startNumber={ctx.batesStartNumber}
+          digits={ctx.batesDigits}
+          position={ctx.batesPosition}
+          onStartChange={ctx.batesRange.setStartPage}
+          onEndChange={ctx.batesRange.setEndPage}
+          onPrefixChange={ctx.setBatesPrefix}
+          onStartNumberChange={ctx.setBatesStartNumber}
+          onDigitsChange={ctx.setBatesDigits}
+          onPositionChange={ctx.setBatesPosition}
+          onClose={() => ctx.setShowBatesNumberModal(false)}
+          onApply={ctx.handleAddBatesNumbers}
+        />
+      )}
+
+      {ctx.showApplyRedactionsModal && (
+        <ApplyRedactionsModal
+          ocrAvailable={ctx.ocrAvailable}
+          ocrAfter={ctx.applyRedactionsOcrAfter}
+          onOcrAfterChange={ctx.setApplyRedactionsOcrAfter}
+          onClose={() => ctx.setShowApplyRedactionsModal(false)}
+          onApply={ctx.handleApplyRedactions}
+          onOpenTesseractGuide={ctx.openTesseractGuide}
+        />
+      )}
+
       {ctx.showWatermarkModal && (
         <WatermarkModal
           range={ctx.watermarkRange}
@@ -744,6 +778,10 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
         />
       )}
       
+      {ctx.showUpdateModal && (
+        <UpdateModal onClose={() => ctx.setShowUpdateModal(false)} />
+      )}
+
       {ctx.showTesseractModal && (
         <TesseractReminderModal
           guide={ctx.tesseractInstallGuide}

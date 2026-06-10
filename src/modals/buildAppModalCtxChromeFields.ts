@@ -23,6 +23,8 @@ export function modalCtxChromeFields(args: BuildAppModalCtxInputArgs) {
     showSearchModal: args.search.showSearchModal,
     showSummaryModal: args.modal.showSummaryModal,
     showTesseractModal: args.help.showTesseractModal,
+    showUpdateModal: args.help.showUpdateModal,
+    setShowUpdateModal: args.help.setShowUpdateModal,
     showToast: args.runtime.showToast,
     showUnsavedModal: args.unsaved.showUnsavedModal,
     stepSearchMatch: args.search.stepSearchMatch,

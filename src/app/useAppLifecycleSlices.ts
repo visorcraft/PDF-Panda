@@ -20,8 +20,6 @@ export function useAppLifecycleSlices(lifecycle: Lifecycle) {
     loadThumbnails,
     renderPage,
     goToPage,
-    canUndo,
-    canRedo,
     markPdfEdited,
     markSaved,
     undo,
@@ -54,7 +52,7 @@ export function useAppLifecycleSlices(lifecycle: Lifecycle) {
     tesseract: { showLaunchTesseractReminder, openTesseractGuide, closeTesseractReminderModal: lifecycle.closeTesseractReminderModal },
     unsaved: { showUnsavedModal, resolveUnsaved, guardUnsaved },
     viewer: { imageSrc, thumbnails, annotations, setAnnotations, goToPage, openPdf, printPages },
-    history: { canUndo, canRedo, undo, redo, markPdfEdited, markSaved },
+    history: { undo, redo, markPdfEdited, markSaved },
     open: { handleOpenPdfPath, handleOpenEncryptedPdf, handleOpenRecentPdf },
     browser: {
       showBrowserModal,

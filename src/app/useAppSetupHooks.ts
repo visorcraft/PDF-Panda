@@ -32,6 +32,7 @@ export function useAppSetupHooks(input: UseAppSetupHooksInput) {
     onOcrAvailable: input.doc.setOcrAvailable,
     onTesseractInstallGuide: input.help.setTesseractInstallGuide,
     onShowTesseractReminder: input.onShowTesseractReminder,
+    onUpdaterSupported: input.help.setUpdaterSupported,
   });
 
   const { windowTitle } = useWindowTitle({

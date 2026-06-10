@@ -1,11 +1,17 @@
 import type React from 'react';
 import type { ShapeKind } from '../app/constants';
 import type { AnnotationData, FormFieldData, PageTextEdit, PageVectorEdit } from '../app/types';
+import type { PageTextRun } from '../pdf/useTextLayerLoader';
 import { PdfPageOverlays } from './PdfPageOverlays';
+import { TextLayer } from './TextLayer';
+import { TextEditOverlay } from './TextEditOverlay';
 
 type PdfPageViewProps = {
   zoom: number;
   imageSrc: string | null;
+  pageContainerRef?: React.RefObject<HTMLDivElement | null>;
+  textRuns?: PageTextRun[];
+  textLayerInteractive?: boolean;
   imgRef: React.RefObject<HTMLImageElement | null>;
   onImageLoad: () => void;
   highlightMode: boolean;
@@ -41,11 +47,19 @@ type PdfPageViewProps = {
   onRemoveShape: (kind: 'Square' | 'Circle' | 'Line', index: number) => void;
   onRemoveInkStroke: (index: number) => void;
   onRemoveTextNote: (index: number) => void;
+  textEditActiveRun?: PageTextRun | null;
+  textEditDraft?: string;
+  onTextEditDraftChange?: (value: string) => void;
+  onApplyTextEdit?: () => void;
+  onCancelTextEdit?: () => void;
 };
 
 export function PdfPageView({
   zoom,
   imageSrc,
+  pageContainerRef,
+  textRuns = [],
+  textLayerInteractive = false,
   imgRef,
   onImageLoad,
   highlightMode,
@@ -81,6 +95,11 @@ export function PdfPageView({
   onRemoveShape,
   onRemoveInkStroke,
   onRemoveTextNote,
+  textEditActiveRun,
+  textEditDraft = '',
+  onTextEditDraftChange,
+  onApplyTextEdit,
+  onCancelTextEdit,
 }: PdfPageViewProps) {
   const cursorClass = [
     highlightMode ? 'highlight-cursor' : '',
@@ -91,6 +110,7 @@ export function PdfPageView({
     redactMode ? 'redact-cursor' : '',
     imageInsertMode ? 'image-insert-cursor' : '',
     textEditMode ? 'text-edit-cursor' : '',
+    textEditActiveRun ? 'text-edit-cursor' : '',
     vectorEditMode ? 'vector-edit-cursor' : '',
     formAddMode ? 'form-add-cursor' : '',
   ].filter(Boolean).join(' ');
@@ -106,8 +126,19 @@ export function PdfPageView({
     >
       {imageSrc ? (
         <div className="page-scale" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
+          <div ref={pageContainerRef} style={{ position: 'relative', display: 'inline-block' }}>
             <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={onImageLoad} />
+            <TextLayer runs={textRuns} interactive={textLayerInteractive} />
+            {textEditActiveRun && onTextEditDraftChange && onApplyTextEdit && onCancelTextEdit && (
+              <TextEditOverlay
+                run={textEditActiveRun}
+                zoom={zoom}
+                draft={textEditDraft}
+                onDraftChange={onTextEditDraftChange}
+                onApply={onApplyTextEdit}
+                onCancel={onCancelTextEdit}
+              />
+            )}
             <PdfPageOverlays
               activeSearchRect={activeSearchRect}
               annotations={annotations}

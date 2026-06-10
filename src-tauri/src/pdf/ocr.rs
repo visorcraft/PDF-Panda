@@ -183,7 +183,12 @@ pub fn ocr_missing_hint(context: &str) -> String {
     format!("_{context} — install Tesseract OCR (`tesseract` on PATH or `TESSERACT_CMD`) and language data (`PDF_PANDA_OCR_LANG`, default `eng`)._\n\n")
 }
 
-fn run_tesseract_on_png(png: &[u8], fail_hard: bool) -> Result<Option<String>, String> {
+enum TesseractOutput {
+    Text,
+    Tsv,
+}
+
+fn run_tesseract_on_png(png: &[u8], output: TesseractOutput, fail_hard: bool) -> Result<Option<String>, String> {
     let tesseract = match resolve_tesseract() {
         Some(path) => path,
         None => return Ok(None),
@@ -199,15 +204,21 @@ fn run_tesseract_on_png(png: &[u8], fail_hard: bool) -> Result<Option<String>, S
     fs::write(&image_path, png).map_err(|e| e.to_string())?;
 
     let mut command = Command::new(&tesseract);
-    command
-        .arg(&image_path)
-        .arg("stdout")
-        .arg("-l")
-        .arg(ocr_language())
-        .arg("--oem")
-        .arg("1")
-        .arg("--psm")
-        .arg(ocr_page_segmentation_mode().to_string());
+    command.arg(&image_path).arg("stdout");
+    match output {
+        TesseractOutput::Text => {
+            command
+                .arg("-l")
+                .arg(ocr_language())
+                .arg("--oem")
+                .arg("1")
+                .arg("--psm")
+                .arg(ocr_page_segmentation_mode().to_string());
+        }
+        TesseractOutput::Tsv => {
+            command.arg("tsv").arg("-l").arg(ocr_language());
+        }
+    }
     if let Some(prefix) = tessdata_prefix() {
         command.env("TESSDATA_PREFIX", prefix);
     }
@@ -232,11 +243,18 @@ fn run_tesseract_on_png(png: &[u8], fail_hard: bool) -> Result<Option<String>, S
 }
 
 pub fn ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
-    run_tesseract_on_png(png, true)
+    run_tesseract_on_png(png, TesseractOutput::Text, true)
 }
 
 pub fn try_ocr_png_bytes(png: &[u8]) -> Result<Option<String>, String> {
-    run_tesseract_on_png(png, false)
+    run_tesseract_on_png(png, TesseractOutput::Text, false)
+}
+
+pub fn ocr_png_to_tsv(png: &[u8]) -> Result<String, String> {
+    match run_tesseract_on_png(png, TesseractOutput::Tsv, true)? {
+        Some(tsv) => Ok(tsv),
+        None => Err(ocr_missing_hint("Make Searchable").trim().to_string()),
+    }
 }
 
 pub fn ocr_status() -> OcrStatus {

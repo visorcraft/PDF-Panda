@@ -11,6 +11,9 @@ export function buildAnnotMenu(ctx: AppMenuContext): MenuRoot {
         shortcut: 'H',
         active: ctx.highlightMode,
       }),
+      act('highlight-selection', 'Highlight Selection', ctx.highlightSelection, {
+        disabled: !ctx.hasTextSelection,
+      }),
       act('note', ctx.noteMode ? 'Sticky note (on)' : 'Sticky note', ctx.toggleNoteMode, {
         shortcut: 'N',
         active: ctx.noteMode,
@@ -36,6 +39,9 @@ export function buildAnnotMenu(ctx: AppMenuContext): MenuRoot {
       act('page-text', ctx.textEditMode ? 'Page text (on)' : 'Page text', ctx.toggleTextEditMode, {
         shortcut: 'E',
         active: ctx.textEditMode,
+      }),
+      act('edit-text', ctx.editTextRunMode ? 'Edit text (on)' : 'Edit text', ctx.toggleEditTextRunMode, {
+        active: ctx.editTextRunMode,
       }),
       act('vector', ctx.vectorEditMode ? 'Vector (on)' : 'Vector', ctx.toggleVectorEditMode, {
         shortcut: 'G',

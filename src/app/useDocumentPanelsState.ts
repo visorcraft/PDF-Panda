@@ -7,6 +7,7 @@ export function useDocumentPanelsState() {
   const [signatureVerification, setSignatureVerification] = useState<PdfSignatureVerificationSummary | null>(null);
   const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
   const [pdfBookmarks, setPdfBookmarks] = useState<PdfBookmarkEntry[]>([]);
+  const [showAnnotationsPanel, setShowAnnotationsPanel] = useState(false);
   const [showFormsPanel, setShowFormsPanel] = useState(false);
   const [formFields, setFormFields] = useState<FormFieldData[]>([]);
   const [formDrafts, setFormDrafts] = useState<Record<string, string>>({});
@@ -17,6 +18,7 @@ export function useDocumentPanelsState() {
     signatureVerification, setSignatureVerification,
     showBookmarksPanel, setShowBookmarksPanel,
     pdfBookmarks, setPdfBookmarks,
+    showAnnotationsPanel, setShowAnnotationsPanel,
     showFormsPanel, setShowFormsPanel,
     formFields, setFormFields,
     formDrafts, setFormDrafts,

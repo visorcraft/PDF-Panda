@@ -3,7 +3,7 @@ import type { BuildAppViewerSourceInput } from './buildAppViewerSource';
 export type BuildAppShellViewerInputArgs = {
   document: Pick<
     BuildAppViewerSourceInput,
-    'filePath' | 'viewMode' | 'zoom' | 'markdownOcrNotice' | 'markdownPath' | 'markdownText'
+    'filePath' | 'viewMode' | 'scrollViewMode' | 'pageCount' | 'currentPage' | 'pageSizes' | 'zoom' | 'markdownOcrNotice' | 'markdownPath' | 'markdownText'
   >;
   sidebar: Pick<
     BuildAppViewerSourceInput,
@@ -14,6 +14,11 @@ export type BuildAppShellViewerInputArgs = {
     | 'handleDragOver'
     | 'handleDrop'
     | 'goToPage'
+    | 'showAnnotationsPanel'
+    | 'pdfRevision'
+    | 'removeHighlightOnPage'
+    | 'removeTextNoteOnPage'
+    | 'removeRedactionOnPage'
     | 'showBookmarksPanel'
     | 'pdfBookmarks'
     | 'openAddBookmarkModal'
@@ -44,6 +49,15 @@ export type BuildAppShellViewerInputArgs = {
     | 'handleImageLoad'
     | 'activeSearchRect'
     | 'annotations'
+    | 'pageContainerRef'
+    | 'textRuns'
+    | 'textLayerInteractive'
+    | 'textEditActiveRun'
+    | 'textEditDraft'
+    | 'onTextEditDraftChange'
+    | 'onApplyTextEdit'
+    | 'onCancelTextEdit'
+    | 'continuous'
   >;
   modes: Pick<
     BuildAppViewerSourceInput,

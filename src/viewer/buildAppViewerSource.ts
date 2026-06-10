@@ -17,6 +17,11 @@ export type BuildAppViewerSourceInput = {
   handleDragOver: SidebarProps['onDragOver'];
   handleDrop: SidebarProps['onDrop'];
   goToPage: SidebarProps['onGoToPage'];
+  showAnnotationsPanel: SidebarProps['showAnnotationsPanel'];
+  pdfRevision: SidebarProps['pdfRevision'];
+  removeHighlightOnPage: SidebarProps['onRemoveHighlightOnPage'];
+  removeTextNoteOnPage: SidebarProps['onRemoveTextNoteOnPage'];
+  removeRedactionOnPage: SidebarProps['onRemoveRedactionOnPage'];
   showBookmarksPanel: SidebarProps['showBookmarksPanel'];
   pdfBookmarks: SidebarProps['pdfBookmarks'];
   openAddBookmarkModal: SidebarProps['onOpenAddBookmarkModal'];
@@ -36,6 +41,10 @@ export type BuildAppViewerSourceInput = {
   openAddFormFieldModal: SidebarProps['onOpenAddFormFieldModal'];
   applyFormField: SidebarProps['onApplyFormField'];
   viewMode: ViewerMainProps['viewMode'];
+  scrollViewMode: ViewerMainProps['scrollViewMode'];
+  pageCount: ViewerMainProps['pageCount'];
+  pageSizes: ViewerMainProps['pageSizes'];
+  continuous: Omit<NonNullable<ViewerMainProps['continuous']>, 'pdfPage' | 'pageImageSrc' | 'pageCount' | 'currentPage' | 'pageSizes'> | null;
   scrollRef: RefObject<HTMLDivElement | null>;
   handleWheel: ViewerMainProps['onWheel'];
   openPdf: ViewerMainProps['onOpenPdf'];
@@ -45,6 +54,14 @@ export type BuildAppViewerSourceInput = {
   openMarkdownSaveAs: ViewerMainProps['onOpenMarkdownSaveAs'];
   zoom: PdfPageProps['zoom'];
   imageSrc: PdfPageProps['imageSrc'];
+  pageContainerRef: PdfPageProps['pageContainerRef'];
+  textRuns: PdfPageProps['textRuns'];
+  textLayerInteractive: PdfPageProps['textLayerInteractive'];
+  textEditActiveRun: PdfPageProps['textEditActiveRun'];
+  textEditDraft: PdfPageProps['textEditDraft'];
+  onTextEditDraftChange: PdfPageProps['onTextEditDraftChange'];
+  onApplyTextEdit: PdfPageProps['onApplyTextEdit'];
+  onCancelTextEdit: PdfPageProps['onCancelTextEdit'];
   imgRef: PdfPageProps['imgRef'];
   handleImageLoad: PdfPageProps['onImageLoad'];
   highlightMode: PdfPageProps['highlightMode'];
@@ -89,6 +106,11 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
     onDragOver: input.handleDragOver,
     onDrop: input.handleDrop,
     onGoToPage: input.goToPage,
+    showAnnotationsPanel: input.showAnnotationsPanel,
+    pdfRevision: input.pdfRevision,
+    onRemoveHighlightOnPage: input.removeHighlightOnPage,
+    onRemoveTextNoteOnPage: input.removeTextNoteOnPage,
+    onRemoveRedactionOnPage: input.removeRedactionOnPage,
     showBookmarksPanel: input.showBookmarksPanel,
     pdfBookmarks: input.pdfBookmarks,
     onOpenAddBookmarkModal: input.openAddBookmarkModal,
@@ -112,6 +134,14 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
   const pdfPage: BuildViewerContextInput['viewer']['pdfPage'] = {
     zoom: input.zoom,
     imageSrc: input.imageSrc,
+    pageContainerRef: input.pageContainerRef,
+    textRuns: input.textRuns,
+    textLayerInteractive: input.textLayerInteractive,
+    textEditActiveRun: input.textEditActiveRun,
+    textEditDraft: input.textEditDraft,
+    onTextEditDraftChange: input.onTextEditDraftChange,
+    onApplyTextEdit: input.onApplyTextEdit,
+    onCancelTextEdit: input.onCancelTextEdit,
     imgRef: input.imgRef,
     onImageLoad: input.handleImageLoad,
     highlightMode: input.highlightMode,
@@ -149,8 +179,24 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
     onRemoveTextNote: input.removeTextNote,
   };
 
+  const continuous = input.continuous
+    ? {
+        ...input.continuous,
+        pdfPage,
+        pageImageSrc: input.imageSrc,
+        pageCount: input.pageCount ?? 0,
+        currentPage: input.currentPage,
+        pageSizes: input.pageSizes,
+      }
+    : null;
+
   const viewer: BuildViewerContextInput['viewer'] = {
     viewMode: input.viewMode,
+    scrollViewMode: input.scrollViewMode,
+    pageCount: input.pageCount,
+    currentPage: input.currentPage,
+    pageSizes: input.pageSizes,
+    continuous,
     scrollRef: input.scrollRef,
     onWheel: input.handleWheel,
     onOpenPdf: input.openPdf,

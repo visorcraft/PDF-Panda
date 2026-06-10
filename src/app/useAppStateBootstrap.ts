@@ -62,8 +62,11 @@ export function useAppStateBootstrap() {
   const viewerWorkflow = useAppViewerWorkflow({
     pageCount: doc.pageCount,
     viewMode: doc.viewMode,
+    scrollViewMode: doc.scrollViewMode,
     currentPage: doc.currentPage,
     filePath: doc.filePath,
+    pdfRevision: doc.pdfRevision,
+    pageSizes: modal.pageSizes,
     draggedIndex: doc.draggedIndex,
     zoom: doc.zoom,
     zoomInput: doc.zoomInput,

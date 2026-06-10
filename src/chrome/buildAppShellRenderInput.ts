@@ -19,6 +19,8 @@ type DrawingState = ReturnType<typeof useDrawingGesture>;
 
 export type BuildAppShellRenderInputArgs = {
   doc: DocumentState;
+  onSelectTab: (id: string) => void;
+  onCloseTab: (id: string) => void;
   modal: { pageSizes: BuildAppChromeSourceInput['pageSizes'] };
   panels: PanelsState;
   annotation: AnnotationState;
@@ -43,6 +45,7 @@ export type BuildAppShellRenderInputArgs = {
     | 'handleDragOver'
     | 'handleDrop'
     | 'goToPage'
+    | 'continuous'
     | 'openPdf'
     | 'loadPdfBookmarks'
     | 'loadPdfSignatures'
@@ -67,6 +70,10 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
     windowTitle: args.windowTitle,
     toast: args.doc.toast,
     loading: args.doc.loading,
+    tabs: args.doc.tabs,
+    activeTabId: args.doc.activeId,
+    onSelectTab: args.onSelectTab,
+    onCloseTab: args.onCloseTab,
     chrome: buildAppShellChromeInput({
       menus: args.appMenus,
       help: buildHelpChromeInput(args.help),
@@ -77,6 +84,10 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       document: {
         filePath: args.doc.filePath,
         viewMode: args.doc.viewMode,
+        scrollViewMode: args.doc.scrollViewMode,
+        pageCount: args.doc.pageCount,
+        currentPage: args.doc.currentPage,
+        pageSizes: args.modal.pageSizes,
         zoom: args.doc.zoom,
         markdownOcrNotice: args.doc.markdownOcrNotice,
         markdownPath: args.doc.markdownPath,
@@ -90,6 +101,11 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
         handleDragOver: args.viewer.handleDragOver,
         handleDrop: args.viewer.handleDrop,
         goToPage: args.viewer.goToPage,
+        showAnnotationsPanel: args.panels.showAnnotationsPanel,
+        pdfRevision: args.doc.pdfRevision,
+        removeHighlightOnPage: args.pdfActions.removeHighlightOnPage,
+        removeTextNoteOnPage: args.pdfActions.removeTextNoteOnPage,
+        removeRedactionOnPage: args.pdfActions.removeRedactionOnPage,
         showBookmarksPanel: args.panels.showBookmarksPanel,
         pdfBookmarks: args.panels.pdfBookmarks,
         openAddBookmarkModal: args.pdfActions.openAddBookmarkModal,
@@ -119,6 +135,15 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
         handleImageLoad: args.viewer.handleImageLoad,
         activeSearchRect: args.viewer.activeSearchRect,
         annotations: args.viewer.annotations,
+        pageContainerRef: args.pdfActions.pageContainerRef,
+        textRuns: args.pdfActions.textRuns,
+        textLayerInteractive: args.pdfActions.textLayerInteractive,
+        textEditActiveRun: args.pdfActions.textEditActiveRun,
+        textEditDraft: args.pdfActions.textEditDraft,
+        onTextEditDraftChange: args.pdfActions.setTextEditDraft,
+        onApplyTextEdit: args.pdfActions.applyTextEdit,
+        onCancelTextEdit: args.pdfActions.cancelTextEdit,
+        continuous: args.viewer.continuous,
       },
       modes: {
         highlightMode: args.annotation.highlightMode,

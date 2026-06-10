@@ -44,6 +44,7 @@ export type UnsavedSlice = {
 
 export type TesseractSlice = {
   closeTesseractReminderModal: () => void;
+  openTesseractGuide: () => void;
 };
 
 export type LifecycleSlice = {
@@ -63,7 +64,7 @@ export type BuildAppModalCtxInputArgs = {
   security: SecurityState;
   annotation: AnnotationState;
   pageRanges: PageRangesState;
-  doc: Pick<DocumentState, 'currentPage' | 'pageCount'>;
+  doc: Pick<DocumentState, 'currentPage' | 'pageCount' | 'ocrAvailable'>;
   browser: BrowserSlice;
   search: SearchSlice;
   unsaved: UnsavedSlice;

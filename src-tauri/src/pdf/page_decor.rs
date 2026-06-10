@@ -86,23 +86,83 @@ pub fn build_page_number_ops(font_name: &str, label: &str, px: f64, py: f64, fon
     )
 }
 
-pub fn add_page_numbers(path: &Path, start_page: u32, end_page: u32, prefix: Option<String>) -> Result<u32, String> {
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+fn viewer_point_for_stamp(position: &str) -> (f64, f64) {
+    match position {
+        "footer-left" => (40.0, 1100.0),
+        "footer-center" => (380.0, 1100.0),
+        "footer-right" => (760.0, 1100.0),
+        "header-right" => (760.0, 40.0),
+        "header-center" => (380.0, 40.0),
+        _ => (380.0, 1100.0),
+    }
+}
+
+fn stamp_page_range<L>(
+    doc: &mut Document,
+    start_page: u32,
+    end_page: u32,
+    position: &str,
+    label_at: L,
+) -> Result<u32, String>
+where
+    L: Fn(u32) -> String,
+{
     let total = doc.get_pages().len() as u32;
     if start_page >= total || end_page >= total || start_page > end_page {
         return Err(format!("Invalid page range: {start_page}-{end_page}"));
     }
-    let prefix = prefix.unwrap_or_default();
+    let (vx, vy) = viewer_point_for_stamp(position);
     let mut stamped = 0u32;
     for page_index in start_page..=end_page {
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
-        let label = format!("{prefix}{}", page_index + 1);
+        let font_name = ensure_helvetica_font(doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(doc, page_id, vx, vy)?;
+        let label = label_at(page_index);
         let ops = build_page_number_ops(&font_name, &label, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+        append_page_content(doc, page_id, ops.as_bytes())?;
         stamped += 1;
     }
+    Ok(stamped)
+}
+
+pub fn bates_label(prefix: &str, n: u64, digits: usize) -> String {
+    format!("{prefix}{n:0digits$}")
+}
+
+pub fn add_bates_numbers(
+    path: &Path,
+    start_page: u32,
+    end_page: u32,
+    prefix: &str,
+    start_number: u64,
+    digits: usize,
+    position: &str,
+) -> Result<(), String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let prefix = prefix.to_string();
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
+    let (vx, vy) = viewer_point_for_stamp(position);
+    for (counter, page_index) in (start_number..).zip(start_page..=end_page) {
+        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
+        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
+        let (px, py) = viewer_point_to_pdf(&doc, page_id, vx, vy)?;
+        let label = bates_label(&prefix, counter, digits);
+        let ops = build_page_number_ops(&font_name, &label, px, py, 12.0);
+        append_page_content(&mut doc, page_id, ops.as_bytes())?;
+    }
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn add_page_numbers(path: &Path, start_page: u32, end_page: u32, prefix: Option<String>) -> Result<u32, String> {
+    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let prefix = prefix.unwrap_or_default();
+    let stamped = stamp_page_range(&mut doc, start_page, end_page, "footer-center", |page_index| {
+        format!("{prefix}{}", page_index + 1)
+    })?;
     doc.save(path).map_err(|e| e.to_string())?;
     Ok(stamped)
 }
@@ -171,20 +231,9 @@ pub fn add_page_header(path: &Path, start_page: u32, end_page: u32, text: &str) 
     if trimmed.is_empty() {
         return Err("Header text cannot be empty".to_string());
     }
+    let label = trimmed.to_string();
     let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut stamped = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 40.0)?;
-        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
+    let stamped = stamp_page_range(&mut doc, start_page, end_page, "header-center", |_| label.clone())?;
     doc.save(path).map_err(|e| e.to_string())?;
     Ok(stamped)
 }
@@ -194,20 +243,9 @@ pub fn add_page_footer(path: &Path, start_page: u32, end_page: u32, text: &str) 
     if trimmed.is_empty() {
         return Err("Footer text cannot be empty".to_string());
     }
+    let label = trimmed.to_string();
     let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let total = doc.get_pages().len() as u32;
-    if start_page >= total || end_page >= total || start_page > end_page {
-        return Err(format!("Invalid page range: {start_page}-{end_page}"));
-    }
-    let mut stamped = 0u32;
-    for page_index in start_page..=end_page {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
-        let font_name = ensure_helvetica_font(&mut doc, page_id)?;
-        let (px, py) = viewer_point_to_pdf(&doc, page_id, 380.0, 1100.0)?;
-        let ops = build_page_number_ops(&font_name, trimmed, px, py, 12.0);
-        append_page_content(&mut doc, page_id, ops.as_bytes())?;
-        stamped += 1;
-    }
+    let stamped = stamp_page_range(&mut doc, start_page, end_page, "footer-center", |_| label.clone())?;
     doc.save(path).map_err(|e| e.to_string())?;
     Ok(stamped)
 }

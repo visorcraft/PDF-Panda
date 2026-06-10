@@ -1,4 +1,4 @@
-import { buildAppPdfActionsInput, type AppPdfActionsRuntime } from './buildAppPdfActionsInput';
+import { buildAppPdfActionsInput, type AppPdfActionsRuntime, type AppPdfActionsRuntimeExtras } from './buildAppPdfActionsInput';
 import { useAppPdfActions } from './useAppPdfActions';
 import type { AnnotationState } from './useAnnotationDraftState';
 import type { DocumentState } from './useAppDocumentState';
@@ -10,7 +10,8 @@ import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
 import type { DrawingGestureSlice } from './buildAppPdfActionsInput';
 
-export type AppPdfActionsRuntimeSlice = Omit<AppPdfActionsRuntime, 'setShowTesseractModal' | 'setTesseractReminderSource'>;
+export type AppPdfActionsRuntimeSlice = Omit<AppPdfActionsRuntime, 'setShowTesseractModal' | 'setTesseractReminderSource'>
+  & AppPdfActionsRuntimeExtras;
 
 export type UseAppPdfActionsBindingInput = {
   doc: DocumentState;

@@ -16,6 +16,7 @@ type UsePdfOpenOptions = {
   rememberOpenedPdf: (path: string) => void;
   cancelDrawing: () => void;
   guardUnsaved: (fn: () => void) => void;
+  ensureSessionForOpen: (originalPath: string) => boolean;
   showToast: (msg: string, kind?: 'error') => void;
   setOriginalPath: (path: string) => void;
   setFilePath: (path: string) => void;
@@ -49,6 +50,7 @@ export function usePdfOpen({
   rememberOpenedPdf,
   cancelDrawing,
   guardUnsaved,
+  ensureSessionForOpen,
   showToast,
   setOriginalPath,
   setFilePath,
@@ -68,6 +70,9 @@ export function usePdfOpen({
   setShowPasswordModal,
 }: UsePdfOpenOptions) {
   const loadPdfFromPath = useCallback(async (path: string, password?: string) => {
+    if (!ensureSessionForOpen(path)) {
+      return true;
+    }
     const loaded = await withLoading(async () => {
       const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
       if (encrypted && !password) {

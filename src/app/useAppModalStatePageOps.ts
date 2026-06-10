@@ -35,6 +35,13 @@ export function useAppModalStatePageOps() {
   const [showSwapPagesModal, setShowSwapPagesModal] = useState(false);
   const [swapPageA, setSwapPageA] = useState(0);
   const [swapPageB, setSwapPageB] = useState(1);
+  const [showBatesNumberModal, setShowBatesNumberModal] = useState(false);
+  const [batesPrefix, setBatesPrefix] = useState('');
+  const [batesStartNumber, setBatesStartNumber] = useState(1);
+  const [batesDigits, setBatesDigits] = useState(6);
+  const [batesPosition, setBatesPosition] = useState('footer-right');
+  const [showApplyRedactionsModal, setShowApplyRedactionsModal] = useState(false);
+  const [applyRedactionsOcrAfter, setApplyRedactionsOcrAfter] = useState(false);
 
   return {
     showDeleteModal, setShowDeleteModal,
@@ -70,5 +77,12 @@ export function useAppModalStatePageOps() {
     showSwapPagesModal, setShowSwapPagesModal,
     swapPageA, setSwapPageA,
     swapPageB, setSwapPageB,
+    showBatesNumberModal, setShowBatesNumberModal,
+    batesPrefix, setBatesPrefix,
+    batesStartNumber, setBatesStartNumber,
+    batesDigits, setBatesDigits,
+    batesPosition, setBatesPosition,
+    showApplyRedactionsModal, setShowApplyRedactionsModal,
+    applyRedactionsOcrAfter, setApplyRedactionsOcrAfter,
   };
 }

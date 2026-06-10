@@ -2,6 +2,7 @@ import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
 import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
 import { useAppShellBinding } from './useAppShellBinding';
+import { useDocumentTabActions } from './useDocumentTabActions';
 import type { useAppStateBootstrap } from './useAppStateBootstrap';
 
 type Bootstrap = ReturnType<typeof useAppStateBootstrap>;
@@ -26,6 +27,40 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
   } = bootstrap;
 
   const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
+
+  const tabActions = useDocumentTabActions({
+    doc,
+    modal,
+    security,
+    panels,
+    annotation,
+    cancelDrawing: () => refs.cancelDrawingRef.current(),
+    showToast,
+    guardUnsavedForSession: (sessionId, action) => {
+      const session = doc.sessions.find((s) => s.id === sessionId);
+      if (sessionId !== doc.activeId) doc.setActiveSession(sessionId);
+      unsaved.guardUnsaved(action, session?.isDirty);
+    },
+    discardHistory: lifecycle.discardHistory,
+    clearModesOnTabSwitch: () => {
+      annotation.setHighlightMode(false);
+      annotation.setNoteMode(false);
+      annotation.setDrawMode(false);
+      annotation.setShapeMode(false);
+      annotation.setStampMode(false);
+      annotation.setRedactMode(false);
+      annotation.setImageInsertMode(false);
+      annotation.setTextEditMode(false);
+      annotation.setEditTextRunMode(false);
+      annotation.setVectorEditMode(false);
+      annotation.setFormAddMode(false);
+      annotation.setShowNoteModal(false);
+      annotation.setPendingNotePos(null);
+    },
+    renderPage: loaders.renderPage,
+    loadThumbnails: loaders.loadThumbnails,
+    loadFormFields: loaders.loadFormFields,
+  });
 
   const pdfActions = useAppPdfActionsBinding({
     doc,
@@ -59,6 +94,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
       shouldShowTesseractReminder: lifecycle.shouldShowTesseractReminder,
       showToast,
       withLoading,
+      openTesseractGuide: tesseract.openTesseractGuide,
     },
   });
 
@@ -71,12 +107,12 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     help,
     refs: { keyboardActionsRef: refs.keyboardActionsRef },
     pdfActions,
-    history,
+    history: { ...history, canUndo: doc.canUndo, canRedo: doc.canRedo },
     chrome: {
       guardUnsaved: unsaved.guardUnsaved,
-      closePdf: chrome.closePdf,
+      closePdf: tabActions.requestCloseActiveTab,
       openPdf: slices.viewer.openPdf,
-      goToPage: slices.viewer.goToPage,
+      goToPage: viewerWorkflow.goToPage,
       handlePrint: chrome.handlePrint,
       openSearchModal: search.openSearchModal,
       openTesseractGuide: tesseract.openTesseractGuide,
@@ -97,7 +133,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     annotation,
     pageRanges,
     help,
-    doc: { currentPage: doc.currentPage, pageCount: doc.pageCount },
+    doc: { currentPage: doc.currentPage, pageCount: doc.pageCount, ocrAvailable: doc.ocrAvailable },
     slices,
     pdfActions,
     showToast,
@@ -118,5 +154,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     modalCtx,
     slices,
     viewerWorkflow,
+    onSelectTab: tabActions.selectTab,
+    onCloseTab: tabActions.requestCloseTab,
   });
 }

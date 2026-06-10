@@ -15,7 +15,7 @@ export type UseAppModalCtxBindingInput = {
   annotation: AnnotationState;
   pageRanges: PageRangesState;
   help: HelpState;
-  doc: { currentPage: number; pageCount: number | null };
+  doc: { currentPage: number; pageCount: number | null; ocrAvailable: boolean | null };
   slices: Slices;
   pdfActions: AppPdfActions;
   showToast: (message: string, type?: 'success' | 'error') => void;

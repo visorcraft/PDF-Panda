@@ -1,6 +1,7 @@
 import type React from 'react';
 import type { FormFieldData, PdfBookmarkEntry, PdfSignatureInfo, PdfSignatureVerificationSummary } from '../app/types';
 import { signatureStatusLabel } from '../app/utils';
+import { AnnotationsPanel } from './AnnotationsPanel';
 
 type PdfSidebarProps = {
   filePath: string;
@@ -11,6 +12,11 @@ type PdfSidebarProps = {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, index: number) => void;
   onGoToPage: (index: number) => void;
+  showAnnotationsPanel: boolean;
+  pdfRevision: number;
+  onRemoveHighlightOnPage: (page: number, index: number) => void;
+  onRemoveTextNoteOnPage: (page: number, index: number) => void;
+  onRemoveRedactionOnPage: (page: number, index: number) => void;
   showBookmarksPanel: boolean;
   pdfBookmarks: PdfBookmarkEntry[];
   onOpenAddBookmarkModal: () => void;
@@ -40,6 +46,11 @@ export function PdfSidebar({
   onDragOver,
   onDrop,
   onGoToPage,
+  showAnnotationsPanel,
+  pdfRevision,
+  onRemoveHighlightOnPage,
+  onRemoveTextNoteOnPage,
+  onRemoveRedactionOnPage,
   showBookmarksPanel,
   pdfBookmarks,
   onOpenAddBookmarkModal,
@@ -80,6 +91,16 @@ export function PdfSidebar({
         </div>
       ) : (
         <p className="muted">No thumbnails loaded</p>
+      )}
+      {filePath && showAnnotationsPanel && (
+        <AnnotationsPanel
+          filePath={filePath}
+          pdfRevision={pdfRevision}
+          onGoToPage={onGoToPage}
+          onRemoveHighlight={onRemoveHighlightOnPage}
+          onRemoveTextNote={onRemoveTextNoteOnPage}
+          onRemoveRedaction={onRemoveRedactionOnPage}
+        />
       )}
       {filePath && showBookmarksPanel && (
         <div className="bookmarks-panel">

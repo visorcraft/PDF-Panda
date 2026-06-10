@@ -17,6 +17,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
     setImageInsertMode,
     setFormAddMode,
     setTextEditMode,
+    setEditTextRunMode,
     setVectorEditMode,
     setShowNoteModal,
     setPendingNotePos,
@@ -36,6 +37,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
     setImageInsertMode,
     setFormAddMode,
     setTextEditMode,
+    setEditTextRunMode,
     setVectorEditMode,
     setShowNoteModal,
     setPendingNotePos,
@@ -91,6 +93,15 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
     setTextEditMode((mode) => !mode);
   }, [setTextEditMode]);
 
+  const toggleEditTextRunMode = useCallback(() => {
+    clearOtherModes(modes, 'editText');
+    setEditTextRunMode((mode) => !mode);
+  }, [setEditTextRunMode]);
+
+  const exitEditTextRunMode = useCallback(() => {
+    setEditTextRunMode(false);
+  }, [setEditTextRunMode]);
+
   const toggleVectorEditMode = useCallback(() => {
     clearOtherModes(modes, 'vector');
     setVectorEditMode((mode) => !mode);
@@ -128,6 +139,8 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
     toggleStampMode,
     exitStampMode,
     toggleTextEditMode,
+    toggleEditTextRunMode,
+    exitEditTextRunMode,
     toggleVectorEditMode,
     toggleRedactMode,
     exitRedactMode,

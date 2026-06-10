@@ -65,11 +65,12 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     loadPdfBookmarks: (path) => refs.loadPdfBookmarksRef.current(path),
     loadPageSizes: (path) => refs.loadPageSizesRef.current(path),
     cancelDrawing,
+    activeSessionId: doc.activeId,
+    viewerCache: doc.viewerCache,
+    patchViewerCache: doc.patchViewerCache,
   });
 
   const {
-    canUndo,
-    canRedo,
     markPdfEdited,
     resetHistoryForOpen,
     markSaved,
@@ -78,6 +79,10 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     redo: redoHistory,
   } = useUndoHistory({
     filePathRef,
+    activeSessionId: doc.activeId,
+    getUndoRefs: doc.getUndoRefs,
+    setCanUndo: doc.setCanUndo,
+    setCanRedo: doc.setCanRedo,
     showToast,
     withLoading,
     onRestore: refreshAfterWorkingChange,
@@ -85,6 +90,9 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     setViewMode,
     setIsDirty,
   });
+
+  const canUndo = doc.canUndo;
+  const canRedo = doc.canRedo;
 
   const undo = () => undoHistory(filePath);
   const redo = () => redoHistory(filePath);
@@ -109,6 +117,7 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     rememberOpenedPdf,
     cancelDrawing,
     guardUnsaved: loaders.guardUnsaved,
+    ensureSessionForOpen: doc.ensureSessionForOpen,
     showToast,
     setOriginalPath,
     setFilePath,

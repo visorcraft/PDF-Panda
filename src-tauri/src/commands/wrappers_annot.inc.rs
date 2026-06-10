@@ -141,3 +141,41 @@ fn remove_redaction(path: String, page_index: u32, index: u32) -> Result<(), Str
 fn get_annotations(path: String, page_index: u32) -> Result<Vec<pdf::annotations::AnnotationData>, String> {
     pdf::annotations::get_annotations(&PathBuf::from(path), page_index)
 }
+#[tauri::command]
+fn list_document_annotations(path: String) -> Result<Vec<pdf::annotations::DocAnnotation>, String> {
+    pdf::annotations::list_document_annotations(&PathBuf::from(path))
+}
+#[tauri::command]
+fn updater_supported() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("APPIMAGE").is_some()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
+}
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+fn replace_text_region(
+    path: String,
+    page_index: u32,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+    new_text: String,
+    font_size: f64,
+) -> Result<(), String> {
+    pdf::text_replace::replace_text_region(
+        &PathBuf::from(path),
+        page_index,
+        x,
+        y,
+        w,
+        h,
+        &new_text,
+        font_size,
+    )
+}

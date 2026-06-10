@@ -47,9 +47,21 @@ export function usePageInteractionAnnot(opts: PageInteractionAnnotOptions) {
     removeAnnotation('remove_highlight', highlightIndex, 'Highlight removed');
   }, [removeAnnotation]);
 
+  const removeHighlightOnPage = useCallback((pageIndex: number, index: number) => {
+    runAnnotationRemoveViaEdit(opts.runEdit, refreshAnnotations, 'remove_highlight', pageIndex, index, 'Highlight removed');
+  }, [opts.runEdit, refreshAnnotations]);
+
   const removeTextNote = useCallback((noteIndex: number) => {
     removeAnnotation('remove_text_note', noteIndex, 'Note removed');
   }, [removeAnnotation]);
+
+  const removeTextNoteOnPage = useCallback((pageIndex: number, index: number) => {
+    runAnnotationRemoveViaEdit(opts.runEdit, refreshAnnotations, 'remove_text_note', pageIndex, index, 'Note removed');
+  }, [opts.runEdit, refreshAnnotations]);
+
+  const removeRedactionOnPage = useCallback((pageIndex: number, index: number) => {
+    runAnnotationRemoveViaEdit(opts.runEdit, refreshAnnotations, 'remove_redaction', pageIndex, index, 'Redaction removed');
+  }, [opts.runEdit, refreshAnnotations]);
 
   const commitInkStroke = useCallback((points: number[]) => {
     if (points.length < 4) return;
@@ -68,7 +80,10 @@ export function usePageInteractionAnnot(opts: PageInteractionAnnotOptions) {
     removeShape,
     removeInkStroke,
     removeHighlight,
+    removeHighlightOnPage,
     removeTextNote,
+    removeTextNoteOnPage,
+    removeRedactionOnPage,
     commitInkStroke,
   };
 }

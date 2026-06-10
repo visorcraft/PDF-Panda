@@ -120,6 +120,12 @@ fn search_pdf_text(
     let pdfium = get_pdfium()?;
     search_pdf_text_impl(&pdfium, &PathBuf::from(path), &query, match_case, match_whole_word)
 }
+/// Character layout for the viewer text-selection layer (viewer px at 800×1132).
+#[tauri::command]
+fn get_page_text_layout(path: String, page_index: u32) -> Result<Vec<pdf::text_layer::PageTextRun>, String> {
+    let pdfium = get_pdfium()?;
+    pdf::text_layer::get_page_text_layout(&pdfium, &PathBuf::from(path), page_index)
+}
 #[tauri::command]
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
     let path = PathBuf::from(path);
@@ -205,6 +211,27 @@ fn add_pdf_bookmark(path: String, title: String, page_index: u32) -> Result<(), 
 #[tauri::command]
 fn add_page_numbers(path: String, start_page: u32, end_page: u32, prefix: Option<String>) -> Result<u32, String> {
     pdf::page_decor::add_page_numbers(&PathBuf::from(path), start_page, end_page, prefix)
+}
+/// Stamp Bates numbers (prefix + zero-padded counter) on each page in the range.
+#[tauri::command]
+fn add_bates_numbers(
+    path: String,
+    start_page: u32,
+    end_page: u32,
+    prefix: String,
+    start_number: u64,
+    digits: u32,
+    position: String,
+) -> Result<(), String> {
+    pdf::page_decor::add_bates_numbers(
+        &PathBuf::from(path),
+        start_page,
+        end_page,
+        &prefix,
+        start_number,
+        digits as usize,
+        &position,
+    )
 }
 /// Add a diagonal text watermark to each page in the range.
 #[tauri::command]

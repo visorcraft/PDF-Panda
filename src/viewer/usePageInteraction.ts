@@ -15,6 +15,8 @@ type UsePageInteractionOptions = {
   setAnnotations: (annots: import('../app/types').AnnotationData[]) => void;
   drawMode: boolean;
   textEditMode: boolean;
+  editTextRunMode?: boolean;
+  handleEditTextRunClick?: (x: number, y: number) => boolean;
   vectorEditMode: boolean;
   formAddMode: boolean;
   imageInsertMode: boolean;

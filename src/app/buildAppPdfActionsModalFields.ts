@@ -159,6 +159,18 @@ export function modalPdfActionFields(m: ModalState) {
     swapPageA: m.swapPageA,
     swapPageB: m.swapPageB,
     watermarkText: m.watermarkText,
+    batesPrefix: m.batesPrefix,
+    batesStartNumber: m.batesStartNumber,
+    batesDigits: m.batesDigits,
+    batesPosition: m.batesPosition,
+    applyRedactionsOcrAfter: m.applyRedactionsOcrAfter,
+    setBatesPrefix: m.setBatesPrefix,
+    setBatesStartNumber: m.setBatesStartNumber,
+    setBatesDigits: m.setBatesDigits,
+    setBatesPosition: m.setBatesPosition,
+    setShowBatesNumberModal: m.setShowBatesNumberModal,
+    setShowApplyRedactionsModal: m.setShowApplyRedactionsModal,
+    setApplyRedactionsOcrAfter: m.setApplyRedactionsOcrAfter,
   };
 }
 

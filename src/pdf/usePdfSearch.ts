@@ -1,10 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
+import type { SessionSearchState } from '../app/documentSessionTypes';
 import type { PdfTextSearchMatch } from '../modals/SearchModal';
 import type { ViewMode } from '../app/types';
 
 type UsePdfSearchOptions = {
   filePath: string;
+  search: SessionSearchState | undefined;
+  patchSearch: (patch: Partial<SessionSearchState>) => void;
   withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
   renderPage: (path: string, page: number) => Promise<void>;
   setViewMode: (mode: ViewMode) => void;
@@ -15,6 +18,8 @@ type UsePdfSearchOptions = {
 
 export function usePdfSearch({
   filePath,
+  search,
+  patchSearch,
   withLoading,
   renderPage,
   setViewMode,
@@ -22,32 +27,31 @@ export function usePdfSearch({
   setPageInput,
   showToast,
 }: UsePdfSearchOptions) {
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchMatchCase, setSearchMatchCase] = useState(false);
-  const [searchWholeWord, setSearchWholeWord] = useState(false);
-  const [searchResults, setSearchResults] = useState<PdfTextSearchMatch[]>([]);
-  const [searchResultIndex, setSearchResultIndex] = useState(0);
-  const [activeSearchRect, setActiveSearchRect] = useState<[number, number, number, number] | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const showSearchModal = search?.showSearchModal ?? false;
+  const searchQuery = search?.searchQuery ?? '';
+  const searchMatchCase = search?.searchMatchCase ?? false;
+  const searchWholeWord = search?.searchWholeWord ?? false;
+  const searchResults = search?.searchResults ?? [];
+  const searchResultIndex = search?.searchResultIndex ?? 0;
+  const activeSearchRect = search?.activeSearchRect ?? null;
 
   const openSearchModal = () => {
     if (!filePath) return;
-    setShowSearchModal(true);
+    patchSearch({ showSearchModal: true });
     window.requestAnimationFrame(() => searchInputRef.current?.focus());
   };
 
   const closeSearchModal = () => {
-    setShowSearchModal(false);
-    setActiveSearchRect(null);
+    patchSearch({ showSearchModal: false, activeSearchRect: null });
   };
 
   const goToSearchMatch = async (index: number, results: PdfTextSearchMatch[] = searchResults) => {
     if (!filePath || results.length === 0) return;
     const clamped = Math.max(0, Math.min(index, results.length - 1));
     const match = results[clamped];
-    setSearchResultIndex(clamped);
-    setActiveSearchRect(match.rect);
+    patchSearch({ searchResultIndex: clamped, activeSearchRect: match.rect });
     setViewMode('pdf');
     setCurrentPage(match.page_index);
     setPageInput(String(match.page_index + 1));
@@ -63,10 +67,9 @@ export function usePdfSearch({
         matchCase: searchMatchCase,
         matchWholeWord: searchWholeWord,
       });
-      setSearchResults(results);
+      patchSearch({ searchResults: results });
       if (results.length === 0) {
-        setSearchResultIndex(0);
-        setActiveSearchRect(null);
+        patchSearch({ searchResultIndex: 0, activeSearchRect: null });
         showToast('No matches found', 'error');
         return;
       }
@@ -83,17 +86,15 @@ export function usePdfSearch({
 
   return {
     showSearchModal,
-    setShowSearchModal,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: (v: string) => patchSearch({ searchQuery: v }),
     searchMatchCase,
-    setSearchMatchCase,
+    setSearchMatchCase: (v: boolean) => patchSearch({ searchMatchCase: v }),
     searchWholeWord,
-    setSearchWholeWord,
+    setSearchWholeWord: (v: boolean) => patchSearch({ searchWholeWord: v }),
     searchResults,
     searchResultIndex,
     activeSearchRect,
-    setActiveSearchRect,
     searchInputRef,
     openSearchModal,
     closeSearchModal,

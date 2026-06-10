@@ -10,6 +10,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'pageCount'
   | 'currentPage'
   | 'viewMode'
+  | 'scrollViewMode'
   | 'highlightMode'
   | 'noteMode'
   | 'drawMode'
@@ -18,20 +19,26 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'redactMode'
   | 'imageInsertMode'
   | 'textEditMode'
+  | 'editTextRunMode'
   | 'vectorEditMode'
   | 'showFormsPanel'
   | 'showBookmarksPanel'
+  | 'showAnnotationsPanel'
   | 'showSignaturesPanel'
   | 'ocrAvailable'
   | 'guardUnsaved'
   | 'closePdf'
   | 'setViewMode'
+  | 'setScrollViewMode'
   | 'setShowBookmarksPanel'
+  | 'setShowAnnotationsPanel'
   | 'setShowPageEditsModal'
   | 'setShowShortcutsHelp'
   | 'setShowLicenses'
   | 'setShowCredits'
   | 'setShowAbout'
+  | 'setShowUpdateModal'
+  | 'updaterSupported'
   | 'setShowCommandPalette'
   | 'openTesseractGuide'
   | 'openPdf'
@@ -43,6 +50,10 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'openSearchModal'
   | 'toggleMarkdownView'
   | 'handleOptimizePdf'
+  | 'handleMakePdfSearchable'
+  | 'hasRedactions'
+  | 'openApplyRedactionsModal'
+  | 'openBatesNumberModal'
   | 'openExportPngModal'
   | 'openExportPagePdfModal'
   | 'openExportPagesPdfModal'
@@ -70,6 +81,8 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'openSignModal'
   | 'toggleSignaturesPanel'
   | 'toggleRedactMode'
+  | 'hasTextSelection'
+  | 'highlightSelection'
   | 'toggleHighlightMode'
   | 'toggleNoteMode'
   | 'toggleDrawMode'
@@ -77,6 +90,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'toggleStampMode'
   | 'toggleImageInsertMode'
   | 'toggleTextEditMode'
+  | 'toggleEditTextRunMode'
   | 'toggleVectorEditMode'
   | 'toggleFormsPanel'
 > {
@@ -89,6 +103,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     pageCount: doc.pageCount,
     currentPage: doc.currentPage,
     viewMode: doc.viewMode,
+    scrollViewMode: doc.scrollViewMode,
     highlightMode: annotation.highlightMode,
     noteMode: annotation.noteMode,
     drawMode: annotation.drawMode,
@@ -97,20 +112,26 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     redactMode: annotation.redactMode,
     imageInsertMode: annotation.imageInsertMode,
     textEditMode: annotation.textEditMode,
+    editTextRunMode: annotation.editTextRunMode,
     vectorEditMode: annotation.vectorEditMode,
     showFormsPanel: panels.showFormsPanel,
     showBookmarksPanel: panels.showBookmarksPanel,
+    showAnnotationsPanel: panels.showAnnotationsPanel,
     showSignaturesPanel: panels.showSignaturesPanel,
     ocrAvailable: doc.ocrAvailable,
     guardUnsaved: chrome.guardUnsaved,
     closePdf: chrome.closePdf,
     setViewMode: chrome.setViewMode,
+    setScrollViewMode: chrome.setScrollViewMode,
     setShowBookmarksPanel: chrome.setShowBookmarksPanel,
+    setShowAnnotationsPanel: chrome.setShowAnnotationsPanel,
     setShowPageEditsModal: chrome.setShowPageEditsModal,
     setShowShortcutsHelp: help.setShowShortcutsHelp,
     setShowLicenses: help.setShowLicenses,
     setShowCredits: help.setShowCredits,
     setShowAbout: help.setShowAbout,
+    setShowUpdateModal: help.setShowUpdateModal,
+    updaterSupported: help.updaterSupported,
     setShowCommandPalette: help.setShowCommandPalette,
     openTesseractGuide: chrome.openTesseractGuide,
     openPdf: chrome.openPdf,
@@ -122,6 +143,10 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     openSearchModal: chrome.openSearchModal,
     toggleMarkdownView: pdfActions.toggleMarkdownView,
     handleOptimizePdf: pdfActions.handleOptimizePdf,
+    handleMakePdfSearchable: pdfActions.handleMakePdfSearchable,
+    hasRedactions: pdfActions.hasRedactions,
+    openApplyRedactionsModal: pdfActions.openApplyRedactionsModal,
+    openBatesNumberModal: pdfActions.openBatesNumberModal,
     openExportPngModal: pdfActions.openExportPngModal,
     openExportPagePdfModal: pdfActions.openExportPagePdfModal,
     openExportPagesPdfModal: pdfActions.openExportPagesPdfModal,
@@ -149,6 +174,8 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     openSignModal: pdfActions.openSignModal,
     toggleSignaturesPanel: pdfActions.toggleSignaturesPanel,
     toggleRedactMode: pdfActions.toggleRedactMode,
+    hasTextSelection: pdfActions.hasTextSelection,
+    highlightSelection: pdfActions.highlightSelection,
     toggleHighlightMode: pdfActions.toggleHighlightMode,
     toggleNoteMode: pdfActions.toggleNoteMode,
     toggleDrawMode: pdfActions.toggleDrawMode,
@@ -156,6 +183,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     toggleStampMode: pdfActions.toggleStampMode,
     toggleImageInsertMode: pdfActions.toggleImageInsertMode,
     toggleTextEditMode: pdfActions.toggleTextEditMode,
+    toggleEditTextRunMode: pdfActions.toggleEditTextRunMode,
     toggleVectorEditMode: pdfActions.toggleVectorEditMode,
     toggleFormsPanel: pdfActions.toggleFormsPanel,
   };

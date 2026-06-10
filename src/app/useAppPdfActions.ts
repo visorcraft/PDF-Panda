@@ -19,6 +19,7 @@ import { usePageDuplicateActions } from '../pdf/usePageDuplicateActions';
 import { useFormFieldActions } from '../pdf/useFormFieldActions';
 import { usePdfRevisionSync } from './usePdfRevisionSync';
 import { usePageInteraction } from '../viewer/usePageInteraction';
+import { useTextLayerFlow } from '../viewer/useTextLayerFlow';
 import { useAnnotationModes } from './useAnnotationModes';
 import { usePageTextEdits } from './usePageTextEdits';
 import { useNotePasswordActions } from '../pdf/useNotePasswordActions';
@@ -26,6 +27,10 @@ import { useNativeFilePickers } from './useNativeFilePickers';
 import { useSaveActions } from '../pdf/useSaveActions';
 import { useMarkdownFlow } from './useMarkdownFlow';
 import { useSecurityDocumentActions } from '../pdf/useSecurityDocumentActions';
+import {
+  useDocumentEnhancementActions,
+  type UseDocumentEnhancementActionsOptions,
+} from '../pdf/useDocumentEnhancementActions';
 
 type HookOpts<H extends (...args: never) => unknown> = Parameters<H>[0];
 
@@ -67,10 +72,26 @@ export type UseAppPdfActionsInput = Omit<
   | 'saveAsViaNativeDialog'
   | 'exitNoteMode'
   | 'refreshAnnotations'
+> & Pick<
+  UseDocumentEnhancementActionsOptions,
+  | 'ocrAvailable'
+  | 'batesRange'
+  | 'batesPrefix'
+  | 'batesStartNumber'
+  | 'batesDigits'
+  | 'batesPosition'
+  | 'applyRedactionsOcrAfter'
+  | 'setShowBatesNumberModal'
+  | 'setShowApplyRedactionsModal'
+  | 'setBatesPrefix'
+  | 'setBatesStartNumber'
+  | 'setBatesDigits'
+  | 'setBatesPosition'
 > & {
   cancelDrawingRef: { current: () => void };
   handleSaveRef: { current: () => void | Promise<void> };
   handleMarkdownViewRef: { current: () => void | Promise<void> };
+  openTesseractGuide: () => void;
 };
 
 function call<H extends (opts: never) => unknown>(hook: H, input: object): ReturnType<H> {
@@ -102,8 +123,32 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
   const formField = call(useFormFieldActions, input);
   call(usePdfRevisionSync, input);
   input.cancelDrawingRef.current = input.cancelDrawing;
-  const pageInteraction = call(usePageInteraction, withRunEdit);
   const annotationModes = call(useAnnotationModes, input);
+  const textLayerFlow = useTextLayerFlow({
+    filePath: input.filePath,
+    currentPage: input.currentPage,
+    pdfRevision: input.pdfRevision,
+    zoom: input.zoom,
+    editTextRunMode: input.editTextRunMode ?? false,
+    runEdit,
+    annotationModeActive:
+      input.highlightMode
+      || input.noteMode
+      || input.drawMode
+      || input.shapeMode
+      || input.stampMode
+      || input.redactMode
+      || input.imageInsertMode
+      || input.textEditMode
+      || input.editTextRunMode
+      || input.vectorEditMode
+      || input.formAddMode,
+  });
+  const pageInteraction = call(usePageInteraction, {
+    ...withRunEdit,
+    editTextRunMode: input.editTextRunMode ?? false,
+    handleEditTextRunClick: textLayerFlow.handleEditTextRunClick,
+  });
   const pageTextEdits = call(usePageTextEdits, input);
   const nativePickers = call(useNativeFilePickers, {
     ...input,
@@ -120,6 +165,28 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
   const markdownFlow = call(useMarkdownFlow, input);
   input.handleMarkdownViewRef.current = markdownFlow.handleMarkdownView;
   const securityDocs = call(useSecurityDocumentActions, withRunEdit);
+  const documentEnhancement = useDocumentEnhancementActions({
+    filePath: input.filePath,
+    pageCount: input.pageCount,
+    currentPage: input.currentPage,
+    pdfRevision: input.pdfRevision,
+    ocrAvailable: input.ocrAvailable,
+    batesRange: input.batesRange,
+    batesPrefix: input.batesPrefix,
+    batesStartNumber: input.batesStartNumber,
+    batesDigits: input.batesDigits,
+    batesPosition: input.batesPosition,
+    applyRedactionsOcrAfter: input.applyRedactionsOcrAfter,
+    runEdit,
+    showToast: input.showToast,
+    openTesseractGuide: input.openTesseractGuide,
+    setShowBatesNumberModal: input.setShowBatesNumberModal,
+    setShowApplyRedactionsModal: input.setShowApplyRedactionsModal,
+    setBatesPrefix: input.setBatesPrefix,
+    setBatesStartNumber: input.setBatesStartNumber,
+    setBatesDigits: input.setBatesDigits,
+    setBatesPosition: input.setBatesPosition,
+  });
 
   return {
     runEdit,
@@ -142,6 +209,7 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
     ...pageDuplicate,
     applyFormField: formField.applyFormField,
     ...pageInteraction,
+    ...textLayerFlow,
     ...annotationModes,
     ...pageTextEdits,
     ...notePassword,
@@ -149,5 +217,6 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
     ...saveActions,
     ...markdownFlow,
     ...securityDocs,
+    ...documentEnhancement,
   };
 }

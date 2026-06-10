@@ -77,6 +77,7 @@ export function documentPdfActionFields(d: DocumentState) {
     setViewMode: d.setViewMode,
     viewMode: d.viewMode,
     zoom: d.zoom,
+    ocrAvailable: d.ocrAvailable,
   };
 }
 
@@ -106,5 +107,6 @@ export function pageRangesPdfActionFields(r: PageRangesState) {
     rotateRange: r.rotateRange,
     shrinkMarginsRange: r.shrinkMarginsRange,
     watermarkRange: r.watermarkRange,
+    batesRange: r.batesRange,
   };
 }

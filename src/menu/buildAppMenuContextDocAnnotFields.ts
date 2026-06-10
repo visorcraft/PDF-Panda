@@ -11,6 +11,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'pageCount'
   | 'currentPage'
   | 'viewMode'
+  | 'scrollViewMode'
   | 'highlightMode'
   | 'noteMode'
   | 'drawMode'
@@ -22,6 +23,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'vectorEditMode'
   | 'showFormsPanel'
   | 'showBookmarksPanel'
+  | 'showAnnotationsPanel'
   | 'showSignaturesPanel'
   | 'tesseractInstalled'
   | 'openPdf'
@@ -35,6 +37,10 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'setViewModePdf'
   | 'toggleMarkdownView'
   | 'handleOptimizePdf'
+  | 'handleMakePdfSearchable'
+  | 'hasRedactions'
+  | 'openApplyRedactionsModal'
+  | 'openBatesNumberModal'
   | 'openExportPngModal'
   | 'openExportPagePdfModal'
   | 'openExportPagesPdfModal'
@@ -62,7 +68,11 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'openSignModal'
   | 'toggleSignaturesPanel'
   | 'toggleBookmarksPanel'
+  | 'toggleAnnotationsPanel'
+  | 'toggleContinuousScroll'
   | 'toggleRedactMode'
+  | 'hasTextSelection'
+  | 'highlightSelection'
   | 'toggleHighlightMode'
   | 'toggleNoteMode'
   | 'toggleDrawMode'
@@ -70,6 +80,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'toggleStampMode'
   | 'toggleImageInsertMode'
   | 'toggleTextEditMode'
+  | 'editTextRunMode'
+  | 'toggleEditTextRunMode'
   | 'toggleVectorEditMode'
   | 'openPageEditsModal'
   | 'toggleFormsPanel'
@@ -78,6 +90,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'openLicenses'
   | 'openCredits'
   | 'openAbout'
+  | 'openUpdateModal'
+  | 'updaterSupported'
   | 'openCommandPalette'
 > {
   return {
@@ -88,6 +102,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     pageCount: source.pageCount,
     currentPage: source.currentPage,
     viewMode: source.viewMode,
+    scrollViewMode: source.scrollViewMode,
     highlightMode: source.highlightMode,
     noteMode: source.noteMode,
     drawMode: source.drawMode,
@@ -99,6 +114,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     vectorEditMode: source.vectorEditMode,
     showFormsPanel: source.showFormsPanel,
     showBookmarksPanel: source.showBookmarksPanel,
+    showAnnotationsPanel: source.showAnnotationsPanel,
     showSignaturesPanel: source.showSignaturesPanel,
     tesseractInstalled: source.tesseractInstalled,
     openPdf: source.openPdf,
@@ -112,6 +128,10 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     setViewModePdf: source.setViewModePdf,
     toggleMarkdownView: source.toggleMarkdownView,
     handleOptimizePdf: source.handleOptimizePdf,
+    handleMakePdfSearchable: voidRun(source.handleMakePdfSearchable),
+    hasRedactions: source.hasRedactions,
+    openApplyRedactionsModal: source.openApplyRedactionsModal,
+    openBatesNumberModal: source.openBatesNumberModal,
     openExportPngModal: source.openExportPngModal,
     openExportPagePdfModal: source.openExportPagePdfModal,
     openExportPagesPdfModal: source.openExportPagesPdfModal,
@@ -139,7 +159,11 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     openSignModal: source.openSignModal,
     toggleSignaturesPanel: source.toggleSignaturesPanel,
     toggleBookmarksPanel: source.toggleBookmarksPanel,
+    toggleAnnotationsPanel: source.toggleAnnotationsPanel,
+    toggleContinuousScroll: source.toggleContinuousScroll,
     toggleRedactMode: source.toggleRedactMode,
+    hasTextSelection: source.hasTextSelection,
+    highlightSelection: source.highlightSelection,
     toggleHighlightMode: source.toggleHighlightMode,
     toggleNoteMode: source.toggleNoteMode,
     toggleDrawMode: source.toggleDrawMode,
@@ -147,6 +171,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     toggleStampMode: source.toggleStampMode,
     toggleImageInsertMode: source.toggleImageInsertMode,
     toggleTextEditMode: source.toggleTextEditMode,
+    editTextRunMode: source.editTextRunMode,
+    toggleEditTextRunMode: source.toggleEditTextRunMode,
     toggleVectorEditMode: source.toggleVectorEditMode,
     openPageEditsModal: source.openPageEditsModal,
     toggleFormsPanel: source.toggleFormsPanel,
@@ -155,6 +181,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     openLicenses: source.openLicenses,
     openCredits: source.openCredits,
     openAbout: source.openAbout,
+    openUpdateModal: source.openUpdateModal,
+    updaterSupported: source.updaterSupported,
     openCommandPalette: source.openCommandPalette,
   };
 }

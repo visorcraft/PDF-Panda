@@ -215,6 +215,20 @@ fn insert_pdf(
 fn optimize_pdf(path: String) -> Result<String, String> {
     pdf::optimize::optimize_pdf_file(&PathBuf::from(path))
 }
+/// OCR scanned pages and write an invisible text layer for search/select.
+#[tauri::command]
+fn make_pdf_searchable(path: String, start_page: u32, end_page: u32) -> Result<u32, String> {
+    pdf::ocr_layer::make_pdf_searchable(&PathBuf::from(path), start_page, end_page)
+}
+/// Burn in redaction boxes, replace affected pages, and optionally re-OCR.
+#[tauri::command]
+fn apply_redactions(path: String, ocr_after: bool) -> Result<u32, String> {
+    pdf::redact::apply_redactions(&PathBuf::from(path), ocr_after)
+}
+#[tauri::command]
+fn has_redaction_boxes(path: String) -> Result<bool, String> {
+    pdf::redact::has_redaction_boxes(&PathBuf::from(path))
+}
 #[tauri::command]
 fn pdf_is_encrypted(path: String) -> Result<bool, String> {
     pdf::security::pdf_is_encrypted(path)

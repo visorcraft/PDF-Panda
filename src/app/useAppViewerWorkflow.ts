@@ -1,14 +1,19 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useThumbnailReorder } from './useThumbnailReorder';
 import { usePageZoom } from '../viewer/usePageZoom';
 import { useWheelNavigation } from '../viewer/useWheelNavigation';
-import type { ViewMode } from './types';
+import { useContinuousScroll } from '../viewer/useContinuousScroll';
+import type { PdfPageSize, ScrollViewMode, ViewMode } from './types';
 
 type UseAppViewerWorkflowInput = {
   pageCount: number | null;
   viewMode: ViewMode;
+  scrollViewMode: ScrollViewMode;
   currentPage: number;
   filePath: string;
+  pdfRevision: number;
+  pageSizes: PdfPageSize[];
   draggedIndex: number | null;
   zoom: number;
   zoomInput: string;
@@ -29,8 +34,11 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
   const {
     pageCount,
     viewMode,
+    scrollViewMode,
     currentPage,
     filePath,
+    pdfRevision,
+    pageSizes,
     draggedIndex,
     zoom,
     zoomInput,
@@ -40,7 +48,7 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
     setZoom,
     setZoomInput,
     setPageInput,
-    goToPage,
+    goToPage: goToPageSingle,
     withLoading,
     markPdfEdited,
     loadThumbnails,
@@ -50,9 +58,32 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
   const { scrollRef, handleWheel, handleImageLoad } = useWheelNavigation({
     pageCount,
     viewMode,
+    scrollViewMode,
     currentPage,
-    goToPage,
+    goToPage: goToPageSingle,
   });
+
+  const continuousScroll = useContinuousScroll({
+    filePath,
+    pdfRevision,
+    pageCount,
+    pageSizes,
+    zoom,
+    scrollRef,
+    setCurrentPage,
+    setPageInput,
+  });
+
+  const goToPage = useCallback(
+    (page: number) => {
+      if (scrollViewMode === 'continuous' && viewMode === 'pdf') {
+        continuousScroll.goToPageContinuous(page);
+        return;
+      }
+      goToPageSingle(page);
+    },
+    [continuousScroll.goToPageContinuous, goToPageSingle, scrollViewMode, viewMode],
+  );
 
   const { handleDragStart, handleDragOver, handleDrop } = useThumbnailReorder({
     filePath,
@@ -77,6 +108,11 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
     goToPage,
   });
 
+  const continuous = useMemo(
+    () => (scrollViewMode === 'continuous' ? continuousScroll.continuous : null),
+    [continuousScroll.continuous, scrollViewMode],
+  );
+
   return {
     scrollRef,
     handleWheel,
@@ -89,5 +125,8 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
     resetZoom,
     commitZoom,
     commitPage,
+    goToPage,
+    continuous,
+    scrollToPageRef: continuousScroll.scrollToPageRef,
   };
 }

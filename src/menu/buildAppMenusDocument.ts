@@ -8,10 +8,18 @@ export function buildDocumentMenu(ctx: AppMenuContext): MenuRoot {
     disabled: !ctx.hasPdf,
     items: [
       act('optimize', 'Optimize PDF', ctx.handleOptimizePdf, { shortcut: 'Ctrl+Shift+O' }),
+      act('make-searchable', 'Make Searchable (OCR)', () => void ctx.handleMakePdfSearchable()),
+      act(
+        'apply-redactions',
+        'Apply Redactions…',
+        ctx.openApplyRedactionsModal,
+        { disabled: !ctx.hasRedactions, danger: true },
+      ),
       act('metadata', 'Edit metadata…', ctx.openMetadataModal),
       act('summarize', 'Summarize & extract…', ctx.handleSummarizePdf, { shortcut: 'Ctrl+Shift+E' }),
       sep(),
       act('page-numbers', 'Add page numbers…', ctx.openPageNumbersModal),
+      act('bates-numbers', 'Bates Numbering…', ctx.openBatesNumberModal),
       act('page-header', 'Add page header…', ctx.openPageHeaderModal),
       act('page-footer', 'Add page footer…', ctx.openPageFooterModal),
       act('page-size', 'Set page size…', ctx.openPageSizeModal),

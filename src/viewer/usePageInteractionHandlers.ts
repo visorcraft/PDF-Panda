@@ -16,6 +16,8 @@ export type PageInteractionHandlerOptions = {
   runEdit: ReturnType<typeof createStructuralEditRunner>;
   drawMode: boolean;
   textEditMode: boolean;
+  editTextRunMode?: boolean;
+  handleEditTextRunClick?: (x: number, y: number) => boolean;
   vectorEditMode: boolean;
   formAddMode: boolean;
   imageInsertMode: boolean;
@@ -85,6 +87,10 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
 
   const handlePageClick = useCallback((e: React.MouseEvent) => {
     if (opts.drawMode) return;
+    if (opts.editTextRunMode && opts.handleEditTextRunClick) {
+      const coords = getImageCoords(e.clientX, e.clientY);
+      if (opts.handleEditTextRunClick(coords.x, coords.y)) return;
+    }
     if (opts.textEditMode) {
       const coords = getImageCoords(e.clientX, e.clientY);
       opts.setPendingTextPos(coords);

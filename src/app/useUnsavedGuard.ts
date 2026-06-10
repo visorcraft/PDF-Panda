@@ -11,8 +11,9 @@ export function useUnsavedGuard({ isDirty, setIsDirty, onSave }: UseUnsavedGuard
   const pendingNavRef = useRef<null | (() => void | Promise<void>)>(null);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
-  const guardUnsaved = (action: () => void | Promise<void>) => {
-    if (isDirty) {
+  const guardUnsaved = (action: () => void | Promise<void>, dirtyOverride?: boolean) => {
+    const dirty = dirtyOverride ?? isDirty;
+    if (dirty) {
       pendingNavRef.current = action;
       setShowUnsavedModal(true);
     } else {

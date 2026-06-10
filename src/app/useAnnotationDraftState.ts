@@ -15,6 +15,7 @@ export function useAnnotationDraftState() {
   const [redactMode, setRedactMode] = useState(false);
   const [imageInsertMode, setImageInsertMode] = useState(false);
   const [textEditMode, setTextEditMode] = useState(false);
+  const [editTextRunMode, setEditTextRunMode] = useState(false);
   const [vectorEditMode, setVectorEditMode] = useState(false);
   const [showPageTextModal, setShowPageTextModal] = useState(false);
   const [showPageEditsModal, setShowPageEditsModal] = useState(false);
@@ -51,6 +52,7 @@ export function useAnnotationDraftState() {
     redactMode, setRedactMode,
     imageInsertMode, setImageInsertMode,
     textEditMode, setTextEditMode,
+    editTextRunMode, setEditTextRunMode,
     vectorEditMode, setVectorEditMode,
     showPageTextModal, setShowPageTextModal,
     showPageEditsModal, setShowPageEditsModal,

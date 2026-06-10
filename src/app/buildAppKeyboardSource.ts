@@ -4,7 +4,7 @@ import type { DocumentState } from './useAppDocumentState';
 import type { AnnotationState } from './useAnnotationDraftState';
 
 export type BuildAppKeyboardSourceArgs = {
-  doc: Pick<DocumentState, 'isDirty' | 'filePath' | 'pageCount' | 'currentPage' | 'viewMode'>;
+  doc: Pick<DocumentState, 'isDirty' | 'filePath' | 'pageCount' | 'currentPage' | 'viewMode' | 'cycleTab' | 'jumpToTab'>;
   annotation: Pick<AnnotationState,
     'noteMode' | 'drawMode' | 'shapeMode' | 'stampMode' | 'redactMode' | 'imageInsertMode'
     | 'textEditMode' | 'vectorEditMode' | 'formAddMode' | 'highlightMode'>;
@@ -57,6 +57,8 @@ export function buildAppKeyboardSource(args: BuildAppKeyboardSourceArgs): BuildA
     resetZoom: args.zoom.resetZoom,
     undo: args.history.undo,
     redo: args.history.redo,
+    cycleTab: args.doc.cycleTab,
+    jumpToTab: args.doc.jumpToTab,
     exitDrawMode: args.pdfActions.exitDrawMode,
     exitFormAddMode: args.pdfActions.exitFormAddMode,
     exitHighlightMode: args.pdfActions.exitHighlightMode,
