@@ -344,7 +344,7 @@ fn download_and_open_package(url: String, sha256: String) -> Result<String, Stri
     #[cfg(not(target_os = "linux"))]
     {
         let _ = (url, sha256);
-        return Err("Package install handoff is only supported on Linux".into());
+        Err("Package install handoff is only supported on Linux".into())
     }
     #[cfg(target_os = "linux")]
     {

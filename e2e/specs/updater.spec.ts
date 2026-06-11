@@ -54,7 +54,7 @@ describe('update notification', () => {
   });
 
   it('opens update modal and shows up-to-date status on Linux packages', async () => {
-    writeLatest({ version: '0.6.4', notes: 'E2E notes' });
+    writeLatest({ version: '0.6.5', notes: 'E2E notes' });
     const modal = await openUpdateModal();
     await browser.waitUntil(
       async () => (await modal.getText()).includes('PDF Panda is up to date'),
