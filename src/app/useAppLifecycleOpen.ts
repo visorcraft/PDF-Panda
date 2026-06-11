@@ -113,6 +113,7 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     cancelDrawing,
     guardUnsaved: loaders.guardUnsaved,
     ensureSessionForOpen: doc.ensureSessionForOpen,
+    clearOpeningPath: doc.clearOpeningPath,
     updateSession: doc.updateSession,
     showToast,
     setOpenFilePath,

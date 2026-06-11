@@ -32,6 +32,7 @@ export function useDocumentSessions() {
   const [sessions, setSessions] = useState<DocumentSessionData[]>([]);
   const [activeId, setActiveId] = useState<DocumentSessionId | null>(null);
   const undoRefs = useRef(new Map<DocumentSessionId, SessionUndoRefs>());
+  const openingPathsRef = useRef<Set<string>>(new Set());
 
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeId) ?? null,
@@ -300,11 +301,17 @@ export function useDocumentSessions() {
   /** Focus an already-open path, or return the session id to load into. */
   const ensureSessionForOpen = useCallback(
     (originalPath: string): string | null => {
+      const norm = normalizeDocPath(originalPath);
+      // Prevent rapid duplicate opens before state updates.
+      if (openingPathsRef.current.has(norm)) {
+        return null;
+      }
       const existing = findSessionByOriginal(originalPath);
       if (existing) {
         setActiveId(existing.id);
         return null;
       }
+      openingPathsRef.current.add(norm);
       const reusable = findReusableEmptySession();
       if (reusable) {
         setActiveId(reusable.id);
@@ -316,6 +323,10 @@ export function useDocumentSessions() {
     },
     [findSessionByOriginal, findReusableEmptySession, addSession],
   );
+
+  const clearOpeningPath = useCallback((originalPath: string) => {
+    openingPathsRef.current.delete(normalizeDocPath(originalPath));
+  }, []);
 
   const removeSession = useCallback((id: DocumentSessionId) => {
     undoRefs.current.delete(id);
@@ -375,6 +386,7 @@ export function useDocumentSessions() {
     jumpToTab,
     findSessionByOriginal,
     ensureSessionForOpen,
+    clearOpeningPath,
     setViewerCache,
     patchViewerCache,
     patchViewerCacheForPath,

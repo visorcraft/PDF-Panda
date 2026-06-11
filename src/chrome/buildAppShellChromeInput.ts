@@ -16,25 +16,10 @@ export type BuildAppShellChromeInputArgs = {
     setShowAbout: (open: boolean) => void;
   };
   modeExtras: BuildAppChromeSourceInput['modeExtras'];
-  page: {
-    pageCount: number | null;
-    viewMode: BuildAppChromeSourceInput['viewMode'];
-    currentPage: number;
-    pageInput: string;
-    pageSizes: BuildAppChromeSourceInput['pageSizes'];
-    setPageInput: (value: string) => void;
-    commitPage: () => void;
-    goToPage: (page: number) => void;
-  };
-  zoom: {
-    zoom: number;
-    zoomInput: string;
-    setZoomInput: (value: string) => void;
-    commitZoom: () => void;
-    zoomIn: () => void;
-    zoomOut: () => void;
-    resetZoom: () => void;
-  };
+  tabs: BuildAppChromeSourceInput['tabs'];
+  activeTabId: BuildAppChromeSourceInput['activeTabId'];
+  onSelectTab: BuildAppChromeSourceInput['onSelectTab'];
+  onCloseTab: BuildAppChromeSourceInput['onCloseTab'];
 };
 
 export function buildAppShellChromeInput(args: BuildAppShellChromeInputArgs): BuildAppChromeSourceInput {
@@ -42,20 +27,9 @@ export function buildAppShellChromeInput(args: BuildAppShellChromeInputArgs): Bu
     menus: args.menus,
     ...args.help,
     modeExtras: args.modeExtras,
-    pageCount: args.page.pageCount,
-    viewMode: args.page.viewMode,
-    currentPage: args.page.currentPage,
-    pageInput: args.page.pageInput,
-    pageSizes: args.page.pageSizes,
-    setPageInput: args.page.setPageInput,
-    commitPage: args.page.commitPage,
-    goToPage: args.page.goToPage,
-    zoom: args.zoom.zoom,
-    zoomInput: args.zoom.zoomInput,
-    setZoomInput: args.zoom.setZoomInput,
-    commitZoom: args.zoom.commitZoom,
-    zoomIn: args.zoom.zoomIn,
-    zoomOut: args.zoom.zoomOut,
-    resetZoom: args.zoom.resetZoom,
+    tabs: args.tabs,
+    activeTabId: args.activeTabId,
+    onSelectTab: args.onSelectTab,
+    onCloseTab: args.onCloseTab,
   };
 }

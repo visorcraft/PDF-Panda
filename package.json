@@ -1,7 +1,7 @@
 {
   "name": "pdf-panda",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.3",
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {

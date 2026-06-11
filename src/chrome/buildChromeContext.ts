@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import type { AppChrome } from './AppChrome';
 import type { AppMenus } from '../menu/types';
-import { PageControls } from '../viewer/PageControls';
+import type { DocumentTabInfo } from '../app/documentSessionTypes';
 
 export type BuildChromeContextInput = {
   menus: AppMenus;
@@ -16,8 +16,10 @@ export type BuildChromeContextInput = {
   onCloseCredits: () => void;
   onCloseAbout: () => void;
   modeExtras: ReactNode;
-  showPageControls: boolean;
-  pageControls: ComponentProps<typeof PageControls> | null;
+  tabs: DocumentTabInfo[];
+  activeTabId: string | null;
+  onSelectTab: (id: string) => void;
+  onCloseTab: (id: string) => void;
 };
 
 export type AppChromeInput = ComponentProps<typeof AppChrome>;

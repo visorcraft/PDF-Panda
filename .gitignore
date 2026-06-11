@@ -8,7 +8,7 @@ dist/
 build/
 .env
 *.log
-*.txt
+/*.txt
 
 # Tauri
 src-tauri/target/

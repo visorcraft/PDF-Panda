@@ -3,10 +3,12 @@ import type { BuildViewerContextInput } from './buildViewerContext';
 import type { PdfPageView } from './PdfPageView';
 import type { PdfSidebar } from './PdfSidebar';
 import type { ViewerMain } from './ViewerMain';
+import type { PageControls } from './PageControls';
 
 type SidebarProps = ComponentProps<typeof PdfSidebar>;
 type PdfPageProps = ComponentProps<typeof PdfPageView>;
 type ViewerMainProps = ComponentProps<typeof ViewerMain>;
+type PageControlsProps = ComponentProps<typeof PageControls>;
 
 export type BuildAppViewerSourceInput = {
   filePath: string;
@@ -95,6 +97,15 @@ export type BuildAppViewerSourceInput = {
   removeShape: PdfPageProps['onRemoveShape'];
   removeInkStroke: PdfPageProps['onRemoveInkStroke'];
   removeTextNote: PdfPageProps['onRemoveTextNote'];
+  pageInput: string;
+  setPageInput: (value: string) => void;
+  commitPage: () => void;
+  zoomInput: string;
+  setZoomInput: (value: string) => void;
+  commitZoom: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
 };
 
 export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildViewerContextInput {
@@ -192,6 +203,24 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
       }
     : null;
 
+  const showPageControls = input.pageCount !== null && input.viewMode === 'pdf';
+  const pageControls: PageControlsProps | null = showPageControls ? {
+    pageCount: input.pageCount!,
+    currentPage: input.currentPage,
+    pageInput: input.pageInput,
+    pageSizes: input.pageSizes,
+    onPageInputChange: input.setPageInput,
+    onCommitPage: input.commitPage,
+    onGoToPage: input.goToPage,
+    zoom: input.zoom,
+    zoomInput: input.zoomInput,
+    onZoomInputChange: input.setZoomInput,
+    onCommitZoom: input.commitZoom,
+    onZoomIn: input.zoomIn,
+    onZoomOut: input.zoomOut,
+    onResetZoom: input.resetZoom,
+  } : null;
+
   const viewer: BuildViewerContextInput['viewer'] = {
     viewMode: input.viewMode,
     scrollViewMode: input.scrollViewMode,
@@ -207,6 +236,7 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
     markdownText: input.markdownText,
     onOpenMarkdownSaveAs: input.openMarkdownSaveAs,
     pdfPage,
+    pageControls,
   };
 
   return { filePath: input.filePath, sidebar, viewer };

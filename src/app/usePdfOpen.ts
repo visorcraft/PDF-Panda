@@ -18,6 +18,7 @@ type UsePdfOpenOptions = {
   cancelDrawing: () => void;
   guardUnsaved: (fn: () => void) => void;
   ensureSessionForOpen: (originalPath: string) => string | null;
+  clearOpeningPath: (originalPath: string) => void;
   updateSession: (sessionId: string, patch: Partial<DocumentSessionData>) => void;
   showToast: (msg: string, kind?: 'error') => void;
   setOpenFilePath: (path: string) => void;
@@ -42,6 +43,7 @@ export function usePdfOpen({
   cancelDrawing,
   guardUnsaved,
   ensureSessionForOpen,
+  clearOpeningPath,
   updateSession,
   showToast,
   setOpenFilePath,
@@ -53,50 +55,56 @@ export function usePdfOpen({
   const loadPdfFromPath = useCallback(async (path: string, password?: string, targetSessionId?: string) => {
     const sessionId = targetSessionId ?? ensureSessionForOpen(path);
     if (sessionId === null) {
+      clearOpeningPath(path);
       return true;
     }
-    const loaded = await withLoading(async () => {
-      const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
-      if (encrypted && !password) {
-        setPendingEncryptedPath(path);
-        setPdfPasswordDraft('');
-        setShowPasswordModal(true);
-        return false;
-      }
-      const working = password
-        ? await invoke<string>('open_working_copy_with_password', { original: path, password })
-        : await invoke<string>('open_working_copy', { original: path });
-      const count = await invoke<number>('get_pdf_page_count', { path: working });
-      updateSession(sessionId, {
-        originalPath: path,
-        filePath: working,
-        viewMode: 'pdf' as ViewMode,
-        markdownText: '',
-        markdownPath: '',
-        markdownOcrNotice: null,
-        pdfRevision: 0,
-        markdownRevision: null,
-        pageCount: count,
-        currentPage: 0,
-        zoom: 1,
-        pageInput: '1',
-        zoomInput: '100',
-        isDirty: false,
+    try {
+      const loaded = await withLoading(async () => {
+        const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
+        if (encrypted && !password) {
+          setPendingEncryptedPath(path);
+          setPdfPasswordDraft('');
+          setShowPasswordModal(true);
+          return false;
+        }
+        const working = password
+          ? await invoke<string>('open_working_copy_with_password', { original: path, password })
+          : await invoke<string>('open_working_copy', { original: path });
+        const count = await invoke<number>('get_pdf_page_count', { path: working });
+        updateSession(sessionId, {
+          originalPath: path,
+          filePath: working,
+          viewMode: 'pdf' as ViewMode,
+          markdownText: '',
+          markdownPath: '',
+          markdownOcrNotice: null,
+          pdfRevision: 0,
+          markdownRevision: null,
+          pageCount: count,
+          currentPage: 0,
+          zoom: 1,
+          pageInput: '1',
+          zoomInput: '100',
+          isDirty: false,
+        });
+        await resetHistoryForOpen(working, sessionId);
+        cancelDrawing();
+        await renderPage(working, 0);
+        await loadThumbnails(working);
+        await loadFormFields(working);
+        rememberOpenedPdf(path);
+        // The previous document's working copy stays with its session; it is
+        // discarded by closeSession/closePdf, never by opening another file.
+        return true;
       });
-      await resetHistoryForOpen(working, sessionId);
-      cancelDrawing();
-      await renderPage(working, 0);
-      await loadThumbnails(working);
-      await loadFormFields(working);
-      rememberOpenedPdf(path);
-      // The previous document's working copy stays with its session; it is
-      // discarded by closeSession/closePdf, never by opening another file.
-      return true;
-    });
-    return loaded === true;
+      return loaded === true;
+    } finally {
+      clearOpeningPath(path);
+    }
   }, [
     filePath,
     ensureSessionForOpen,
+    clearOpeningPath,
     updateSession,
     withLoading,
     resetHistoryForOpen,

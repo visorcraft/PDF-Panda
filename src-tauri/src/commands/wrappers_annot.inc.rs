@@ -341,36 +341,69 @@ pub fn verify_sha256(bytes: &[u8], expected_hex: &str) -> Result<(), String> {
 /// Returns the downloaded temp path on success.
 #[tauri::command]
 fn download_and_open_package(url: String, sha256: String) -> Result<String, String> {
-    if !cfg!(target_os = "linux") {
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (url, sha256);
         return Err("Package install handoff is only supported on Linux".into());
     }
-    if !url.starts_with("https://") {
-        return Err("Invalid URL scheme: only https is allowed".into());
+    #[cfg(target_os = "linux")]
+    {
+        const MAX_PACKAGE_BYTES: usize = 500 * 1024 * 1024;
+        if !url.starts_with("https://") {
+            return Err("Invalid URL scheme: only https is allowed".into());
+        }
+        let mut bytes: Vec<u8> = Vec::new();
+        use std::io::Read;
+        let mut reader = ureq::get(&url)
+            .timeout(std::time::Duration::from_secs(300))
+            .call()
+            .map_err(|e| format!("Failed to download package: {}", e))?
+            .into_reader();
+        let mut buf = [0u8; 65536];
+        loop {
+            let n = reader
+                .read(&mut buf)
+                .map_err(|e| format!("Failed to read package: {}", e))?;
+            if n == 0 {
+                break;
+            }
+            if bytes.len() + n > MAX_PACKAGE_BYTES {
+                return Err("Package exceeds maximum allowed size (500 MB)".into());
+            }
+            bytes.extend_from_slice(&buf[..n]);
+        }
+        verify_sha256(&bytes, &sha256)?;
+        let file_name = url
+            .rsplit('/')
+            .next()
+            .filter(|s| !s.is_empty())
+            .and_then(|s| std::path::Path::new(s).file_name())
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "pdf-panda-update".into());
+        let unique_name = format!(
+            "{}.{}",
+            file_name,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
+        let dest = std::env::temp_dir().join(unique_name);
+        {
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&dest)
+                .map_err(|e| format!("Failed to create temp file: {}", e))?;
+            std::io::Write::write_all(&mut f, &bytes)
+                .map_err(|e| format!("Failed to write package: {}", e))?;
+        }
+        std::process::Command::new("xdg-open")
+            .arg(&dest)
+            .spawn()
+            .map_err(|e| format!("Failed to launch system installer: {}", e))?;
+        Ok(dest.to_string_lossy().into_owned())
     }
-    let mut bytes: Vec<u8> = Vec::new();
-    use std::io::Read;
-    ureq::get(&url)
-        .timeout(std::time::Duration::from_secs(300))
-        .call()
-        .map_err(|e| format!("Failed to download package: {}", e))?
-        .into_reader()
-        .read_to_end(&mut bytes)
-        .map_err(|e| format!("Failed to read package: {}", e))?;
-    verify_sha256(&bytes, &sha256)?;
-    let file_name = url
-        .rsplit('/')
-        .next()
-        .filter(|s| !s.is_empty())
-        .and_then(|s| std::path::Path::new(s).file_name())
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "pdf-panda-update".into());
-    let dest = std::env::temp_dir().join(file_name);
-    std::fs::write(&dest, &bytes).map_err(|e| format!("Failed to write package: {}", e))?;
-    std::process::Command::new("xdg-open")
-        .arg(&dest)
-        .spawn()
-        .map_err(|e| format!("Failed to launch system installer: {}", e))?;
-    Ok(dest.to_string_lossy().into_owned())
 }
 
 #[allow(clippy::too_many_arguments)]

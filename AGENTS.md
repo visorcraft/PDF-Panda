@@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`, 
 
 ## Stack & build
 
-Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.6.1** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.6.3** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
 
@@ -109,6 +109,10 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 
 - **In-place text editing v2** — line-level replacement using decoded content-stream transforms and an embedded full font (Liberation Sans), with v1 whiteout fallback for unsupported pages.
 - **Dark mode / theme system** — system/light/dark menu choices with persisted preference.
+
+## v0.6.3
+
+- **Linux in-app updates (deb/rpm)** — `update_channel` classifies the running binary; `download_and_open_package` fetches the matching deb/rpm with SHA-256 verification and hands it to the system installer via `xdg-open`. Update modal buttons restyled with shared `.btn` classes. `generate-latest-json.py` now emits `linux_packages` (deb/rpm URL + SHA-256).
 
 **Gotchas:** Markdown view → PDF thumbnail: switch to PDF mode first (rAF defer). After structural edits: `reloadOpenPdf()` + dirty flag. Credits: `scripts/generate-credits.sh` (6 shipped npm packages in license tests).
 

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AboutModal } from '../about/AboutModal';
 import { CreditsModal } from '../credits/CreditsModal';
 import { LicensesModal } from '../licenses/LicensesModal';
+import { TabBar } from '../chrome/TabBar';
+import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
 import { KEYBOARD_SHORTCUTS } from './buildAppMenus';
 
@@ -20,6 +22,10 @@ type MenuChromeProps = {
   onCloseCredits: () => void;
   onCloseAbout: () => void;
   modeExtras?: React.ReactNode;
+  tabs: DocumentTabInfo[];
+  activeTabId: string | null;
+  onSelectTab: (id: string) => void;
+  onCloseTab: (id: string) => void;
 };
 
 function runAction(action: MenuAction) {
@@ -95,7 +101,15 @@ function MenuBar({ menus }: { menus: MenuRoot[] }) {
   return (
     <nav className="menu-bar" ref={barRef} aria-label="Application menu">
       {menus.map((menu) => (
-        <div key={menu.id} className="menu-bar-entry">
+        <div
+          key={menu.id}
+          className="menu-bar-entry"
+          onMouseEnter={() => {
+            if (openId !== null && openId !== menu.id && !menu.disabled) {
+              setOpenId(menu.id);
+            }
+          }}
+        >
           <button
             type="button"
             className={`menu-bar-trigger${openId === menu.id ? ' open' : ''}`}
@@ -285,11 +299,16 @@ export function MenuChrome({
   onCloseCredits,
   onCloseAbout,
   modeExtras,
+  tabs,
+  activeTabId,
+  onSelectTab,
+  onCloseTab,
 }: MenuChromeProps) {
   return (
     <>
       <div className="menu-chrome">
         <MenuBar menus={menus} />
+        <TabBar tabs={tabs} activeId={activeTabId} onSelect={onSelectTab} onClose={onCloseTab} />
         {(quickAccess.length > 0 || modeExtras) && (
           <div className="quick-toolbar-row">
             <QuickToolbar items={quickAccess} />

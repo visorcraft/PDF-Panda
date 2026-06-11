@@ -1,7 +1,7 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { MenuChrome } from '../menu/MenuChrome';
 import type { AppMenus } from '../menu/types';
-import { PageControls } from '../viewer/PageControls';
+import type { DocumentTabInfo } from '../app/documentSessionTypes';
 
 type AppChromeProps = {
   menus: AppMenus;
@@ -16,8 +16,10 @@ type AppChromeProps = {
   onCloseCredits: () => void;
   onCloseAbout: () => void;
   modeExtras: ReactNode;
-  showPageControls: boolean;
-  pageControls: ComponentProps<typeof PageControls> | null;
+  tabs: DocumentTabInfo[];
+  activeTabId: string | null;
+  onSelectTab: (id: string) => void;
+  onCloseTab: (id: string) => void;
 };
 
 export function AppChrome({
@@ -33,8 +35,10 @@ export function AppChrome({
   onCloseCredits,
   onCloseAbout,
   modeExtras,
-  showPageControls,
-  pageControls,
+  tabs,
+  activeTabId,
+  onSelectTab,
+  onCloseTab,
 }: AppChromeProps) {
   return (
     <div className="app-chrome">
@@ -53,8 +57,11 @@ export function AppChrome({
         onCloseCredits={onCloseCredits}
         onCloseAbout={onCloseAbout}
         modeExtras={modeExtras}
+        tabs={tabs}
+        activeTabId={activeTabId}
+        onSelectTab={onSelectTab}
+        onCloseTab={onCloseTab}
       />
-      {showPageControls && pageControls && <PageControls {...pageControls} />}
     </div>
   );
 }

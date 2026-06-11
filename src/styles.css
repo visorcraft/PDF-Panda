@@ -79,74 +79,74 @@
 }
 
 [data-theme="dark"] {
-  --pp-bg: #1a1a2e;
-  --pp-surface: #252538;
-  --pp-surface-alt: #2a2a40;
-  --pp-text: #e8e8f0;
-  --pp-text-secondary: #c8c8d8;
-  --pp-text-muted: #8888a0;
-  --pp-border: #3a3a50;
-  --pp-border-light: #404058;
+  --pp-bg: #000000;
+  --pp-surface: #121212;
+  --pp-surface-alt: #1a1a1a;
+  --pp-text: #e8e8e8;
+  --pp-text-secondary: #b0b0b0;
+  --pp-text-muted: #707070;
+  --pp-border: #2a2a2a;
+  --pp-border-light: #333333;
   --pp-accent: #5aa0e8;
   --pp-accent-hover: #4a90d8;
-  --pp-menu-bg: #2a2a40;
-  --pp-menu-hover: #3a3a58;
-  --pp-menu-border: #404058;
-  --pp-menu-text: #e0e0f0;
-  --pp-menu-disabled: #666680;
-  --pp-tab-bar-bg: #1a1a2e;
-  --pp-tab-bar-border: #0d0d1a;
-  --pp-tab-inactive-bg: #252538;
-  --pp-tab-inactive-text: #a0a0b8;
-  --pp-tab-active-bg: #1a1a2e;
-  --pp-tab-active-text: #e8e8f0;
+  --pp-menu-bg: #1a1a1a;
+  --pp-menu-hover: #2a2a2a;
+  --pp-menu-border: #333333;
+  --pp-menu-text: #e0e0e0;
+  --pp-menu-disabled: #555555;
+  --pp-tab-bar-bg: #000000;
+  --pp-tab-bar-border: #1a1a1a;
+  --pp-tab-inactive-bg: #121212;
+  --pp-tab-inactive-text: #888888;
+  --pp-tab-active-bg: #000000;
+  --pp-tab-active-text: #e8e8e8;
   --pp-overlay-bg: rgba(0, 0, 0, 0.6);
-  --pp-sidebar-bg: #252538;
-  --pp-sidebar-border: #3a3a50;
-  --pp-thumbnail-border: #3a3a50;
-  --pp-thumbnail-hover: #666680;
+  --pp-sidebar-bg: #121212;
+  --pp-sidebar-border: #2a2a2a;
+  --pp-thumbnail-border: #2a2a2a;
+  --pp-thumbnail-hover: #555555;
   --pp-thumbnail-active: var(--pp-accent);
-  --pp-input-border: #404058;
+  --pp-input-border: #333333;
   --pp-input-focus: var(--pp-accent);
   --pp-toast-success-bg: #1a3a2a;
   --pp-toast-success-text: #7fd99f;
   --pp-toast-error-bg: #3a1a1a;
   --pp-toast-error-text: #ff9999;
   --pp-modal-backdrop: rgba(0, 0, 0, 0.7);
-  --pp-modal-bg: #2a2a40;
-  --pp-modal-text: #c8c8d8;
-  --pp-btn-secondary-bg: #33334a;
-  --pp-btn-secondary-border: #404058;
-  --pp-btn-hover: #3a3a58;
+  --pp-modal-bg: #1a1a1a;
+  --pp-modal-text: #b0b0b0;
+  --pp-btn-secondary-bg: #222222;
+  --pp-btn-secondary-border: #333333;
+  --pp-btn-hover: #2a2a2a;
   --pp-welcome-hover: rgba(90, 160, 232, 0.1);
   --pp-page-shadow: rgba(0, 0, 0, 0.4);
   --pp-highlight-bg: rgba(255, 255, 0, 0.25);
   --pp-highlight-border: rgba(200, 180, 0, 0.5);
   --pp-search-highlight: rgba(255, 196, 0, 0.35);
   --pp-search-border: rgb(200, 140, 0);
-  --pp-markdown-bg: #252538;
-  --pp-markdown-border: #3a3a50;
-  --pp-markdown-header-border: #404058;
-  --pp-markdown-text: #e0e0f0;
-  --pp-markdown-path: #8888a0;
+  --pp-markdown-bg: #121212;
+  --pp-markdown-border: #2a2a2a;
+  --pp-markdown-header-border: #333333;
+  --pp-markdown-text: #e0e0e0;
+  --pp-markdown-path: #707070;
   --pp-ocr-ready-bg: #1a3a2a;
   --pp-ocr-ready-text: #7fd99f;
   --pp-ocr-missing-bg: #3a2a1a;
   --pp-ocr-missing-text: #d4a060;
-  --pp-annotation-bg: #2a2a40;
-  --pp-annotation-border: #3a3a50;
-  --pp-annotation-hover-bg: #303050;
+  --pp-annotation-bg: #1a1a1a;
+  --pp-annotation-border: #2a2a2a;
+  --pp-annotation-hover-bg: #222222;
   --pp-annotation-hover-border: rgba(45, 138, 78, 0.45);
-  --pp-form-bg: #2a2a40;
-  --pp-form-border: #3a3a50;
-  --pp-recent-bg: #2a2a40;
-  --pp-recent-border: #3a3a50;
-  --pp-recent-hover: #303050;
-  --pp-bookmark-bg: #2a2a40;
-  --pp-bookmark-hover-bg: #33334a;
-  --pp-bookmark-hover-border: #404058;
-  --pp-signature-bg: #2a2a40;
-  --pp-signature-border: #3a3a50;
+  --pp-form-bg: #1a1a1a;
+  --pp-form-border: #2a2a2a;
+  --pp-recent-bg: #1a1a1a;
+  --pp-recent-border: #2a2a2a;
+  --pp-recent-hover: #222222;
+  --pp-bookmark-bg: #1a1a1a;
+  --pp-bookmark-hover-bg: #222222;
+  --pp-bookmark-hover-border: #333333;
+  --pp-signature-bg: #1a1a1a;
+  --pp-signature-border: #2a2a2a;
   --pp-signature-valid-bg: rgba(45, 138, 78, 0.2);
   --pp-signature-valid-text: #7fd99f;
   --pp-signature-untrusted-bg: rgba(200, 140, 0, 0.2);
@@ -154,7 +154,7 @@
   --pp-signature-invalid-bg: rgba(200, 40, 40, 0.2);
   --pp-signature-invalid-text: #ff9999;
   --pp-signature-indeterminate-bg: rgba(120, 120, 120, 0.2);
-  --pp-signature-indeterminate-text: #a0a0b8;
+  --pp-signature-indeterminate-text: #888888;
   --pp-loading-overlay: rgba(0, 0, 0, 0.6);
 }
 
@@ -176,6 +176,77 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+}
+
+/* Resize borders for undecorated window */
+.resize-edge {
+  position: absolute;
+  z-index: 1000;
+}
+
+.resize-edge.top,
+.resize-edge.bottom {
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.resize-edge.top {
+  top: 0;
+}
+
+.resize-edge.bottom {
+  bottom: 0;
+}
+
+.resize-edge.left,
+.resize-edge.right {
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.resize-edge.left {
+  left: 0;
+}
+
+.resize-edge.right {
+  right: 0;
+}
+
+.resize-edge.top-left,
+.resize-edge.top-right,
+.resize-edge.bottom-left,
+.resize-edge.bottom-right {
+  width: 16px;
+  height: 16px;
+}
+
+.resize-edge.top-left {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.resize-edge.top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.resize-edge.bottom-left {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.resize-edge.bottom-right {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
 }
 
 .app-chrome {
@@ -253,15 +324,59 @@ body {
 /* Document tabs */
 .tab-bar {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
   background: var(--pp-tab-bar-bg);
   border-bottom: 1px solid var(--pp-tab-bar-border);
   overflow: hidden;
 }
 
+.tab-scroll-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: var(--pp-tab-bar-bg);
+  color: var(--pp-tab-inactive-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.tab-scroll-btn:hover:not(:disabled) {
+  background: var(--pp-tab-inactive-bg);
+  color: var(--pp-tab-active-text);
+}
+
+.tab-scroll-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.tab-scroll-btn-left {
+  border-right: 1px solid var(--pp-tab-bar-border);
+}
+
+.tab-scroll-btn-right {
+  border-left: 1px solid var(--pp-tab-bar-border);
+}
+
 .tab-bar-scroll {
   display: flex;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+}
+
+.tab-bar-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-item {
@@ -794,6 +909,8 @@ body {
   padding: 8px 16px;
   border-top: 1px solid var(--pp-border);
   flex-wrap: wrap;
+  flex-shrink: 0;
+  background: var(--pp-surface);
 }
 
 .field-group {

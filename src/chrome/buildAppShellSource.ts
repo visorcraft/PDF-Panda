@@ -12,10 +12,6 @@ export type BuildAppShellSourceInput = {
   windowTitle: string;
   toast: AppShellInput['toast'];
   loading: boolean;
-  tabs: AppShellInput['tabs'];
-  activeTabId: AppShellInput['activeTabId'];
-  onSelectTab: AppShellInput['onSelectTab'];
-  onCloseTab: AppShellInput['onCloseTab'];
   chrome: BuildAppChromeSourceInput;
   viewer: BuildAppViewerSourceInput;
   modalCtx: AppModalsRuntime;
@@ -27,10 +23,6 @@ export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppSh
     windowTitle: input.windowTitle,
     toast: input.toast,
     loading: input.loading,
-    tabs: input.tabs,
-    activeTabId: input.activeTabId,
-    onSelectTab: input.onSelectTab,
-    onCloseTab: input.onCloseTab,
     chrome: buildAppChromeSource(input.chrome),
     body: buildAppViewerSource(input.viewer),
     modals: { ctx: input.modalCtx },

@@ -14,6 +14,7 @@ import type { AppMenus } from '../menu/types';
 import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
+import type { PdfPageSize } from '../app/types';
 
 type DrawingState = ReturnType<typeof useDrawingGesture>;
 
@@ -21,7 +22,7 @@ export type BuildAppShellRenderInputArgs = {
   doc: DocumentState;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
-  modal: { pageSizes: BuildAppChromeSourceInput['pageSizes'] };
+  modal: { pageSizes: PdfPageSize[] };
   panels: PanelsState;
   annotation: AnnotationState;
   drawing: Pick<DrawingState, 'highlightStart' | 'highlightRect' | 'inkDraft' | 'shapeLineEnd' | 'drawing'>;
@@ -70,15 +71,14 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
     windowTitle: args.windowTitle,
     toast: args.doc.toast,
     loading: args.doc.loading,
-    tabs: args.doc.tabs,
-    activeTabId: args.doc.activeId,
-    onSelectTab: args.onSelectTab,
-    onCloseTab: args.onCloseTab,
     chrome: buildAppShellChromeInput({
       menus: args.appMenus,
       help: buildHelpChromeInput(args.help),
       modeExtras: args.modeExtras,
-      ...pageZoom,
+      tabs: args.doc.tabs,
+      activeTabId: args.doc.activeId,
+      onSelectTab: args.onSelectTab,
+      onCloseTab: args.onCloseTab,
     }),
     viewer: buildAppShellViewerInput({
       document: {
@@ -178,6 +178,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
         removeInkStroke: args.pdfActions.removeInkStroke,
         removeTextNote: args.pdfActions.removeTextNote,
       },
+      pageZoom,
     }),
     modalCtx: args.modalCtx,
     printPages: args.printPages,

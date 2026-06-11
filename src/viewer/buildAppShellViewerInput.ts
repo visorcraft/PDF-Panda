@@ -94,6 +94,19 @@ export type BuildAppShellViewerInputArgs = {
     | 'removeInkStroke'
     | 'removeTextNote'
   >;
+  pageZoom: Pick<
+    BuildAppViewerSourceInput,
+    | 'pageInput'
+    | 'setPageInput'
+    | 'commitPage'
+    | 'goToPage'
+    | 'zoomInput'
+    | 'setZoomInput'
+    | 'commitZoom'
+    | 'zoomIn'
+    | 'zoomOut'
+    | 'resetZoom'
+  >;
 };
 
 export function buildAppShellViewerInput(args: BuildAppShellViewerInputArgs): BuildAppViewerSourceInput {
@@ -103,5 +116,6 @@ export function buildAppShellViewerInput(args: BuildAppShellViewerInputArgs): Bu
     ...args.viewer,
     ...args.modes,
     ...args.interaction,
+    ...args.pageZoom,
   };
 }

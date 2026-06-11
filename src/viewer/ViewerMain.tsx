@@ -3,6 +3,7 @@ import pandaWelcome from '../assets/panda.png';
 import type { MarkdownOcrNotice, PdfPageSize, ScrollViewMode, ViewMode } from '../app/types';
 import { ContinuousViewer } from './ContinuousViewer';
 import { PdfPageView } from './PdfPageView';
+import { PageControls } from './PageControls';
 
 type ViewerMainProps = {
   filePath: string;
@@ -20,6 +21,7 @@ type ViewerMainProps = {
   onOpenMarkdownSaveAs: () => void;
   continuous: React.ComponentProps<typeof ContinuousViewer> | null;
   pdfPage: React.ComponentProps<typeof PdfPageView>;
+  pageControls: React.ComponentProps<typeof PageControls> | null;
 };
 
 export function ViewerMain({
@@ -37,6 +39,7 @@ export function ViewerMain({
   onOpenMarkdownSaveAs,
   continuous,
   pdfPage,
+  pageControls,
 }: ViewerMainProps) {
   return (
     <main className="main">
@@ -76,6 +79,7 @@ export function ViewerMain({
           <PdfPageView {...pdfPage} />
         )}
       </div>
+      {pageControls && <PageControls {...pageControls} />}
     </main>
   );
 }
