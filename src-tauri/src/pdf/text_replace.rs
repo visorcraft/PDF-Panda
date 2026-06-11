@@ -175,8 +175,8 @@ mod tests {
         );
         doc.trailer.set(b"Root", Object::Reference(catalog_id));
 
-        let path = PathBuf::from(format!(
-            "/tmp/pdf_panda_test_{}_{}.pdf",
+        let path = std::env::temp_dir().join(format!(
+            "pdf_panda_test_{}_{}.pdf",
             std::process::id(),
             COUNTER.fetch_add(1, Ordering::SeqCst)
         ));
