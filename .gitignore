@@ -14,6 +14,9 @@ src-tauri/target/
 src-tauri/bin/
 
 # Agent planning matrix (kept local, not committed)
+AGENTS.md
+CLAUDE.md
+GEMINI.md
 PLAN.md
 
 # Vendored PDFium runtime library (downloaded prebuilt, not committed — see README)
