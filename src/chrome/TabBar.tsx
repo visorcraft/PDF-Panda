@@ -10,38 +10,21 @@ type TabBarProps = {
 
 const SCROLL_EDGE_EPSILON = 2;
 
-function scrollControlWidth(el: HTMLDivElement, side: 'left' | 'right') {
-  const sibling = side === 'left' ? el.previousElementSibling : el.nextElementSibling;
-  return sibling instanceof HTMLElement && sibling.classList.contains(`tab-scroll-btn-${side}`)
-    ? sibling.offsetWidth
-    : 0;
-}
-
 export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  // The scroll arrows are absolute overlays (see styles.css), so they never
+  // take layout space — the scroll viewport width is constant whether or not an
+  // arrow is showing. That keeps these thresholds (and the scroll targets below)
+  // stable, so a single click always lands exactly on the intended tab.
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-
-    const leftButtonWidth = scrollControlWidth(el, 'left');
-    let scrollLeft = el.scrollLeft;
-    if (
-      leftButtonWidth > 0 &&
-      scrollLeft > SCROLL_EDGE_EPSILON &&
-      scrollLeft <= leftButtonWidth + SCROLL_EDGE_EPSILON
-    ) {
-      el.scrollLeft = 0;
-      scrollLeft = 0;
-    }
-
-    setCanScrollLeft(scrollLeft > leftButtonWidth + SCROLL_EDGE_EPSILON);
-    setCanScrollRight(
-      scrollLeft + el.clientWidth <
-        el.scrollWidth - scrollControlWidth(el, 'right') - SCROLL_EDGE_EPSILON,
-    );
+    const scrollLeft = el.scrollLeft;
+    setCanScrollLeft(scrollLeft > SCROLL_EDGE_EPSILON);
+    setCanScrollRight(scrollLeft + el.clientWidth < el.scrollWidth - SCROLL_EDGE_EPSILON);
   }, []);
 
   useLayoutEffect(() => {
@@ -59,29 +42,49 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
     };
   }, [checkScroll, tabs]);
 
+  // Bring a tab fully into view. Snap to the true edge when the target is the
+  // first/last tab so that arrow collapses and the tab is fully revealed.
+  const scrollTabIntoView = useCallback((tab: HTMLElement) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const items = Array.from(el.querySelectorAll<HTMLElement>('.tab-item'));
+    if (items.length === 0) return;
+
+    let target: number;
+    if (tab === items[items.length - 1]) {
+      target = el.scrollWidth; // clamps to max → right arrow collapses
+    } else if (tab === items[0]) {
+      target = 0;
+    } else {
+      const right = tab.offsetLeft + tab.offsetWidth;
+      if (right > el.scrollLeft + el.clientWidth) target = right - el.clientWidth;
+      else if (tab.offsetLeft < el.scrollLeft) target = tab.offsetLeft;
+      else return; // already fully visible
+    }
+    el.scrollTo({ left: target, behavior: 'smooth' });
+  }, []);
+
+  // Keep the active tab fully visible whenever it changes.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !activeId) return;
+    const active = el.querySelector<HTMLElement>('.tab-item.active');
+    if (active) scrollTabIntoView(active);
+  }, [activeId, tabs, scrollTabIntoView]);
+
   if (tabs.length <= 1) return null;
 
   const scrollToNext = (direction: 'left' | 'right') => {
     const el = scrollRef.current;
     if (!el) return;
-    const items = Array.from(el.querySelectorAll('.tab-item')) as HTMLElement[];
+    const items = Array.from(el.querySelectorAll<HTMLElement>('.tab-item'));
     if (items.length === 0) return;
-    const scrollLeft = el.scrollLeft;
-    const visibleRight = scrollLeft + el.clientWidth;
-
-    if (direction === 'right') {
-      // Find the first tab whose right edge is past the visible area
-      const next = items.find((item) => item.offsetLeft + item.offsetWidth > visibleRight + 1);
-      if (next) {
-        el.scrollTo({ left: next.offsetLeft, behavior: 'smooth' });
-      }
-    } else {
-      // Find the first tab whose left edge is before the visible area
-      const prev = [...items].reverse().find((item) => item.offsetLeft < scrollLeft - 1);
-      if (prev) {
-        el.scrollTo({ left: prev.offsetLeft, behavior: 'smooth' });
-      }
-    }
+    const visibleRight = el.scrollLeft + el.clientWidth;
+    const target =
+      direction === 'right'
+        ? items.find((item) => item.offsetLeft + item.offsetWidth > visibleRight + 1)
+        : [...items].reverse().find((item) => item.offsetLeft < el.scrollLeft - 1);
+    if (target) scrollTabIntoView(target);
   };
 
   return (
