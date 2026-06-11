@@ -19370,6 +19370,25 @@ fn parse_latest_json_without_linux_packages_is_none() {
 }
 
 #[test]
+fn verify_sha256_accepts_correct_digest() {
+    // sha256("abc") = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+    let expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    assert!(verify_sha256(b"abc", expected).is_ok());
+}
+
+#[test]
+fn verify_sha256_is_case_insensitive() {
+    let expected = "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD";
+    assert!(verify_sha256(b"abc", expected).is_ok());
+}
+
+#[test]
+fn verify_sha256_rejects_mismatch() {
+    let err = verify_sha256(b"abc", "deadbeef").unwrap_err();
+    assert!(err.contains("Checksum mismatch"));
+}
+
+#[test]
 fn resolve_update_channel_forced_env_wins() {
     assert_eq!(resolve_update_channel(Some("deb"), true, true, false, false), "deb");
     assert_eq!(resolve_update_channel(Some("manual"), false, false, false, false), "manual");

@@ -2033,6 +2033,7 @@ tauri::generate_handler![
             fetch_latest_version,
             open_url,
             update_channel,
+            download_and_open_package,
             open_working_copy,
             save_working_copy,
             discard_working_copy,

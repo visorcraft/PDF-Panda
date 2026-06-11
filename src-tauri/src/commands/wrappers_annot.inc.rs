@@ -317,6 +317,59 @@ fn update_channel() -> String {
     }
 }
 
+pub fn verify_sha256(bytes: &[u8], expected_hex: &str) -> Result<(), String> {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    let got: String = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect();
+    if got.eq_ignore_ascii_case(expected_hex) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Checksum mismatch: expected {}, got {}",
+            expected_hex, got
+        ))
+    }
+}
+
+/// Download a deb/rpm package, verify its SHA-256, then hand it to the
+/// desktop's GUI installer (`xdg-open`) which performs the privileged install.
+/// Returns the downloaded temp path on success.
+#[tauri::command]
+fn download_and_open_package(url: String, sha256: String) -> Result<String, String> {
+    if !url.starts_with("https://") {
+        return Err("Invalid URL scheme: only https is allowed".into());
+    }
+    let mut bytes: Vec<u8> = Vec::new();
+    use std::io::Read;
+    ureq::get(&url)
+        .call()
+        .map_err(|e| format!("Failed to download package: {}", e))?
+        .into_reader()
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("Failed to read package: {}", e))?;
+    verify_sha256(&bytes, &sha256)?;
+    let file_name = url
+        .rsplit('/')
+        .next()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("pdf-panda-update");
+    let dest = std::env::temp_dir().join(file_name);
+    std::fs::write(&dest, &bytes).map_err(|e| format!("Failed to write package: {}", e))?;
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&dest)
+            .spawn()
+            .map_err(|e| format!("Failed to launch system installer: {}", e))?;
+    }
+    Ok(dest.to_string_lossy().into_owned())
+}
+
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn replace_text_region(
