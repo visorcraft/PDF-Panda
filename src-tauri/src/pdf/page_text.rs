@@ -41,12 +41,24 @@ pub fn read_page_content(doc: &Document, page_id: ObjectId) -> Result<Vec<u8>, S
         Some(Object::Array(items)) => {
             let mut merged = Vec::new();
             for item in items {
-                if let Object::Reference(id) = item {
-                    merged.extend_from_slice(&stream_plain_content(doc, id)?);
-                    merged.push(b'\n');
+                match item {
+                    Object::Reference(id) => {
+                        merged.extend_from_slice(&stream_plain_content(doc, id)?);
+                        merged.push(b'\n');
+                    }
+                    Object::Stream(stream) => {
+                        let bytes = stream.get_plain_content().unwrap_or_else(|_| stream.content.clone());
+                        merged.extend_from_slice(&bytes);
+                        merged.push(b'\n');
+                    }
+                    _ => {}
                 }
             }
             Ok(merged)
+        }
+        Some(Object::Stream(stream)) => {
+            let bytes = stream.get_plain_content().unwrap_or_else(|_| stream.content.clone());
+            Ok(bytes)
         }
         _ => Ok(Vec::new()),
     }
