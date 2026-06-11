@@ -101,25 +101,32 @@ fn find_embedded_font_id(doc: &Document) -> Option<ObjectId> {
 }
 
 fn add_font_to_page_resources(doc: &mut Document, page_id: ObjectId, font_id: ObjectId) -> Result<(), String> {
-    let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-    if !matches!(page_dict.get(b"Resources"), Ok(Object::Dictionary(_))) {
-        page_dict.set(b"Resources", Object::Dictionary(Dictionary::new()));
-    }
-    let resources = page_dict
-        .get_mut(b"Resources")
-        .map_err(|e| e.to_string())?
-        .as_dict_mut()
-        .map_err(|_| "Bad Resources".to_string())?;
-    if !matches!(resources.get(b"Font"), Ok(Object::Dictionary(_))) {
-        resources.set(b"Font", Object::Dictionary(Dictionary::new()));
-    }
-    let fonts = resources
-        .get_mut(b"Font")
-        .map_err(|e| e.to_string())?
-        .as_dict_mut()
-        .map_err(|_| "Bad Font dict".to_string())?;
+    let mut resources = page_resources_for_edit(doc, page_id);
+    let mut fonts =
+        resources.get(b"Font").ok().and_then(|obj| dictionary_object_to_owned(doc, obj)).unwrap_or_default();
     fonts.set(FONT_RESOURCE_NAME.as_bytes(), Object::Reference(font_id));
+    resources.set(b"Font", Object::Dictionary(fonts));
+    doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?.set(b"Resources", Object::Dictionary(resources));
     Ok(())
+}
+
+fn page_resources_for_edit(doc: &Document, page_id: ObjectId) -> Dictionary {
+    if let Ok(page_dict) = doc.get_dictionary(page_id) {
+        if let Ok(resources) = page_dict.get(b"Resources") {
+            if let Some(dict) = dictionary_object_to_owned(doc, resources) {
+                return dict;
+            }
+        }
+    }
+    crate::pdf::markdown_images::resolve_page_resources(doc, page_id).unwrap_or_default()
+}
+
+fn dictionary_object_to_owned(doc: &Document, obj: &Object) -> Option<Dictionary> {
+    match obj {
+        Object::Dictionary(dict) => Some(dict.clone()),
+        Object::Reference(id) => doc.get_dictionary(*id).ok().cloned(),
+        _ => None,
+    }
 }
 
 pub fn page_font_entries(doc: &Document, page_id: ObjectId) -> Vec<(Vec<u8>, ObjectId)> {
@@ -197,4 +204,82 @@ pub fn dedup_fonts_after_insert(doc: &mut Document, inserted_page_ids: &[ObjectI
         }
     }
     Ok(deduped)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn build_doc_with_inherited_resources() -> (Document, ObjectId) {
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+        let image_id = doc.add_object(Object::Stream(Stream::new(
+            Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"XObject".to_vec())),
+                (b"Subtype".to_vec(), Object::Name(b"Image".to_vec())),
+                (b"Width".to_vec(), Object::Integer(1)),
+                (b"Height".to_vec(), Object::Integer(1)),
+                (b"ColorSpace".to_vec(), Object::Name(b"DeviceRGB".to_vec())),
+                (b"BitsPerComponent".to_vec(), Object::Integer(8)),
+            ]),
+            vec![0, 0, 0],
+        )));
+
+        let mut xobjects = Dictionary::new();
+        xobjects.set(b"ImParent", Object::Reference(image_id));
+        let mut resources = Dictionary::new();
+        resources.set(b"XObject", Object::Dictionary(xobjects));
+
+        doc.set_object(
+            pages_id,
+            Object::Dictionary(Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"Pages".to_vec())),
+                (b"Kids".to_vec(), Object::Array(vec![Object::Reference(page_id)])),
+                (b"Count".to_vec(), Object::Integer(1)),
+                (b"Resources".to_vec(), Object::Dictionary(resources)),
+            ])),
+        );
+
+        doc.set_object(
+            page_id,
+            Object::Dictionary(Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"Page".to_vec())),
+                (b"Parent".to_vec(), Object::Reference(pages_id)),
+                (
+                    b"MediaBox".to_vec(),
+                    Object::Array(vec![
+                        Object::Integer(0),
+                        Object::Integer(0),
+                        Object::Integer(612),
+                        Object::Integer(792),
+                    ]),
+                ),
+            ])),
+        );
+
+        let catalog_id = doc.new_object_id();
+        doc.set_object(
+            catalog_id,
+            Object::Dictionary(Dictionary::from_iter(vec![
+                (b"Type".to_vec(), Object::Name(b"Catalog".to_vec())),
+                (b"Pages".to_vec(), Object::Reference(pages_id)),
+            ])),
+        );
+        doc.trailer.set(b"Root", Object::Reference(catalog_id));
+        (doc, page_id)
+    }
+
+    #[test]
+    fn ensure_full_font_preserves_inherited_resources() {
+        let (mut doc, page_id) = build_doc_with_inherited_resources();
+
+        let name = ensure_full_font(&mut doc, page_id).unwrap();
+
+        assert_eq!(name, "PPFullFont");
+        let page = doc.get_dictionary(page_id).unwrap();
+        let resources = page.get(b"Resources").unwrap().as_dict().unwrap();
+        assert!(resources.get(b"XObject").unwrap().as_dict().unwrap().get(b"ImParent").is_ok());
+        assert!(resources.get(b"Font").unwrap().as_dict().unwrap().get(b"PPFullFont").is_ok());
+    }
 }

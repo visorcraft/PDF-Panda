@@ -21,9 +21,8 @@ const SAVE_DEBOUNCE_MS = 200;
 const VALID_VIEW_MODES: ViewMode[] = ['pdf', 'markdown'];
 const VALID_SCROLL_MODES: Array<'single' | 'continuous'> = ['single', 'continuous'];
 
-function toState(sessions: DocumentSessionData[], activeId: string | null): SessionState | null {
+function toState(sessions: DocumentSessionData[], activeId: string | null): SessionState {
   const withPath = sessions.filter((s) => s.originalPath);
-  if (withPath.length === 0) return null;
   const activeIndex = activeId ? withPath.findIndex((s) => s.id === activeId) : 0;
   return {
     version: 1,
@@ -50,6 +49,7 @@ export function useSessionPersistence({
   sessions,
   activeId,
   updateSession,
+  removeSession,
   ensureSessionForOpen,
   loadPdfFromPath,
   setActiveSession,
@@ -58,18 +58,20 @@ export function useSessionPersistence({
   sessions: DocumentSessionData[];
   activeId: string | null;
   updateSession: (id: string, patch: Partial<DocumentSessionData>) => void;
+  removeSession: (id: string) => void;
   ensureSessionForOpen: (originalPath: string) => string | null;
-  loadPdfFromPath: (path: string) => Promise<boolean>;
+  loadPdfFromPath: (path: string, password?: string, targetSessionId?: string) => Promise<boolean>;
   setActiveSession: (id: string) => void;
   showToast: (msg: string, kind?: 'error') => void;
 }) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRestoringRef = useRef(false);
+  const restoreAttemptedRef = useRef(false);
 
   const saveSessions = useCallback(async () => {
+    if (!restoreAttemptedRef.current) return;
     if (isRestoringRef.current) return;
     const state = toState(sessions, activeId);
-    if (!state) return;
     try {
       await invoke('save_session_state', { state });
     } catch {
@@ -100,10 +102,13 @@ export function useSessionPersistence({
     return () => window.removeEventListener('beforeunload', handler);
   }, [saveSessions]);
 
-  const restoreSessions = useCallback(async () => {
+  const restoreSessions = useCallback(async (shouldSkipActiveRestore?: () => boolean) => {
     try {
       const state = await invoke<SessionState | null>('load_session_state');
-      if (!state || !state.sessions.length) return;
+      if (!state || !state.sessions.length) {
+        restoreAttemptedRef.current = true;
+        return;
+      }
       isRestoringRef.current = true;
       const opened: { sessionId: string; page: number; zoom: number; viewMode: ViewMode; scrollViewMode: 'single' | 'continuous' }[] = [];
       for (const s of state.sessions) {
@@ -123,7 +128,7 @@ export function useSessionPersistence({
           continue;
         }
         try {
-          const loaded = await loadPdfFromPath(s.original_path);
+          const loaded = await loadPdfFromPath(s.original_path, undefined, sessionId);
           if (loaded) {
             opened.push({
               sessionId,
@@ -133,9 +138,11 @@ export function useSessionPersistence({
               scrollViewMode: validateScrollMode(s.scroll_view_mode),
             });
           } else {
+            removeSession(sessionId);
             showToast(`Skipped restore for ${s.original_path}`, 'error');
           }
         } catch {
+          removeSession(sessionId);
           showToast(`Could not restore ${s.original_path}`, 'error');
         }
       }
@@ -152,14 +159,16 @@ export function useSessionPersistence({
       }
       // Restore the previously active tab.
       const target = opened[state.active_index] ?? opened[0];
-      if (target) {
+      if (target && !shouldSkipActiveRestore?.()) {
         setActiveSession(target.sessionId);
       }
       isRestoringRef.current = false;
+      restoreAttemptedRef.current = true;
     } catch {
       isRestoringRef.current = false;
+      restoreAttemptedRef.current = true;
     }
-  }, [ensureSessionForOpen, loadPdfFromPath, updateSession, setActiveSession, showToast, sessions]);
+  }, [ensureSessionForOpen, loadPdfFromPath, updateSession, removeSession, setActiveSession, showToast, sessions]);
 
   return { restoreSessions };
 }

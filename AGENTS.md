@@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`, 
 
 ## Stack & build
 
-Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.5.1-dev** (v0.5.0 shipped 2026-06-10) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.6.1** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
 
@@ -38,13 +38,13 @@ Run from `src-tauri/` unless noted.
 
 | Gate | Command | Baseline |
 | --- | --- | --- |
-| Tests | `cargo test` | **2150** pass / **21** ignored |
+| Tests | `cargo test` | **2152** pass / **21** ignored |
 | Clippy | `RUSTFLAGS=-Dwarnings cargo clippy --all-targets` | clean |
 | Format | `cargo fmt --check` | clean |
 | TS | `npx tsc --noEmit` | clean |
 | Smoke | `scripts/smoke-test.sh` | pass |
 
-CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab` + `restore` + `updater`, ~26 s, green.
+CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab` + `updater` + `restore`, green.
 
 ## Frontend (`src/`)
 
@@ -80,7 +80,7 @@ Structural edits: `runEdit({ command, args, reloadAt?, afterEdit?, toast })`. Op
 | Core | `io`, `coords`, `content`, `page_tree`, `rotation`, `render`, `pdfium_bind` |
 | Pages | `page_ops`, `page_range`, `page_decor`, `page_margins`, `crop`, `page_sizes`, `page_images`, `merge_split`, `import` |
 | Annot / edit | `annotations`, `annotation_markup`, `text_layer`, `text_replace`, `redact` |
-| Text / OCR | `search`, `ocr`, `ocr_layer`, `page_text` |
+| Text / OCR | `search`, `ocr`, `ocr_layer`, `page_text`, `text_lines` |
 | Markdown | `markdown_pipeline`, `markdown_heuristic`, `markdown_tagged`, `markdown_images`, `markdown`, `summary` |
 | Forms / meta | `forms`, `form_merge`, `fonts`, `bookmarks`, `metadata`, `history`, `security`, `optimize`, `export`, `browser`, `parity_helpers` |
 
@@ -105,9 +105,10 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 - **Drag-to-draw annotations** — redaction boxes, shapes, image placement, and form-field rects draw with press-drag-release + live preview.
 - **Update notification (deb/rpm)** — check-only path for non-AppImage Linux installs links to the release page.
 
-## v0.6.0 (in progress)
+## v0.6.x
 
 - **In-place text editing v2** — line-level replacement using decoded content-stream transforms and an embedded full font (Liberation Sans), with v1 whiteout fallback for unsupported pages.
+- **Dark mode / theme system** — system/light/dark menu choices with persisted preference.
 
 **Gotchas:** Markdown view → PDF thumbnail: switch to PDF mode first (rAF defer). After structural edits: `reloadOpenPdf()` + dirty flag. Credits: `scripts/generate-credits.sh` (6 shipped npm packages in license tests).
 
@@ -124,6 +125,7 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 | `PDF_PANDA_DISABLE_NATIVE_DIALOGS` | `1` = in-app paths only |
 | `WEBKIT_DISABLE_DMABUF_RENDERER` | `1` = disable DMABUF (auto on Linux) |
 | `PDF_PANDA_TEST_PDF` | ignored `render_real_pdf_smoke` |
+| `PDF_PANDA_LATEST_JSON` / `PDF_PANDA_LATEST_JSON_PATH` | test override for updater `latest.json` body/file |
 | `TAURI_SIGNING_PRIVATE_KEY` (+ password) | Updater signing (CI) |
 | `APPIMAGE` | enables Linux in-app updater |
 | `NO_STRIP` | `1` for `build-appimage.sh` on glibc 2.38+ |

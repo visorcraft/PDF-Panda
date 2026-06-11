@@ -34,7 +34,6 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
   return {
     id: 'view',
     label: 'View',
-    disabled: !ctx.hasPdf,
     items: ctx.hasPdf ? [...pdfItems, ...themeItems] : themeItems,
   };
 }

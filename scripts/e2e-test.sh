@@ -6,6 +6,13 @@ set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$root/src-tauri/target}"
+created_latest_json=0
+if [ -z "${PDF_PANDA_LATEST_JSON_PATH:-}" ]; then
+  PDF_PANDA_LATEST_JSON_PATH="$(mktemp "${TMPDIR:-/tmp}/pdf-panda-latest-XXXXXXXX.json")"
+  export PDF_PANDA_LATEST_JSON_PATH
+  created_latest_json=1
+fi
+printf '%s\n' '{"version":"0.6.1","notes":"E2E update manifest"}' > "$PDF_PANDA_LATEST_JSON_PATH"
 
 if [ ! -d node_modules ]; then
   npm ci
@@ -20,6 +27,9 @@ fi
 "$root/scripts/e2e-build.sh"
 
 cleanup() {
+  if [ "$created_latest_json" = 1 ]; then
+    rm -f "$PDF_PANDA_LATEST_JSON_PATH"
+  fi
   rm -f src-tauri/capabilities/e2e.json
   # The e2e capability leaks into the generated permission schemas; restore them.
   git -C "$root" checkout -- src-tauri/gen/schemas 2>/dev/null || true

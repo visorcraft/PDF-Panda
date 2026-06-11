@@ -1,4 +1,31 @@
+import fs from 'node:fs';
 import { waitForShell, clickMenuAction } from '../support/helpers';
+
+type LatestManifest = {
+  version: string;
+  notes?: string;
+};
+
+function writeLatest(result: LatestManifest) {
+  const manifestPath = process.env.PDF_PANDA_LATEST_JSON_PATH;
+  if (!manifestPath) {
+    throw new Error('PDF_PANDA_LATEST_JSON_PATH is required; run the suite through scripts/e2e-test.sh.');
+  }
+  fs.writeFileSync(manifestPath, JSON.stringify({ version: result.version, notes: result.notes }), 'utf8');
+}
+
+async function openUpdateModal() {
+  await clickMenuAction('help', 'check-updates');
+  const modal = await $('[data-testid="update-modal"]');
+  await modal.waitForDisplayed({ timeout: 15_000 });
+  return modal;
+}
+
+async function closeUpdateModal() {
+  const backdrop = await $('.modal-backdrop');
+  await backdrop.click();
+  await $('[data-testid="update-modal"]').waitForDisplayed({ reverse: true, timeout: 5_000 });
+}
 
 describe('update notification', () => {
   beforeEach(async () => {
@@ -6,19 +33,34 @@ describe('update notification', () => {
     await waitForShell();
   });
 
-  it('opens update modal and shows up-to-date status on Linux', async () => {
-    await clickMenuAction('help', 'check-updates');
+  it('shows check-only update available state on Linux packages', async () => {
+    writeLatest({ version: '9.9.9', notes: 'Synthetic release notes' });
+    const modal = await openUpdateModal();
+    await browser.waitUntil(
+      async () => (await modal.getText()).includes('Version 9.9.9 is available'),
+      { timeout: 15_000, timeoutMsg: 'expected available update state' },
+    );
 
-    const modal = await $('[data-testid="update-modal"]');
-    await modal.waitForDisplayed({ timeout: 15_000 });
+    const text = await modal.getText();
+    expect(text).toContain('Check for Updates');
+    expect(text).toContain('Your platform does not support in-app updates');
+    expect(text).toContain('Synthetic release notes');
+
+    await closeUpdateModal();
+  });
+
+  it('opens update modal and shows up-to-date status on Linux packages', async () => {
+    writeLatest({ version: '0.6.1', notes: 'E2E notes' });
+    const modal = await openUpdateModal();
+    await browser.waitUntil(
+      async () => (await modal.getText()).includes('PDF Panda is up to date'),
+      { timeout: 15_000, timeoutMsg: 'expected current update state' },
+    );
 
     const text = await modal.getText();
     expect(text).toContain('Check for Updates');
     expect(text).toContain('PDF Panda is up to date');
 
-    // Close via backdrop click
-    const backdrop = await $('.modal-backdrop');
-    await backdrop.click();
-    await modal.waitForDisplayed({ reverse: true, timeout: 5_000 });
+    await closeUpdateModal();
   });
 });

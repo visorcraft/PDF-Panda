@@ -89,6 +89,7 @@ export function useAppStateBootstrap() {
     sessions: doc.sessions,
     activeId: doc.activeId,
     updateSession: doc.updateSession,
+    removeSession: doc.removeSession,
     ensureSessionForOpen: doc.ensureSessionForOpen,
     loadPdfFromPath: lifecycle.loadPdfFromPath,
     setActiveSession: doc.setActiveSession,

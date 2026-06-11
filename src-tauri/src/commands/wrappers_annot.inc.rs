@@ -181,11 +181,17 @@ fn parse_latest_json(body: &str, current: &str) -> Result<LatestVersionInfo, Str
 #[tauri::command]
 fn fetch_latest_version() -> Result<LatestVersionInfo, String> {
     const URL: &str = "https://github.com/visorcraft/PDF-Panda/releases/latest/download/latest.json";
-    let body = ureq::get(URL)
-        .call()
-        .map_err(|e| format!("Failed to fetch latest version: {}", e))?
-        .into_string()
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+    let body = if let Ok(path) = std::env::var("PDF_PANDA_LATEST_JSON_PATH") {
+        std::fs::read_to_string(path).map_err(|e| format!("Failed to read latest version override: {}", e))?
+    } else if let Ok(body) = std::env::var("PDF_PANDA_LATEST_JSON") {
+        body
+    } else {
+        ureq::get(URL)
+            .call()
+            .map_err(|e| format!("Failed to fetch latest version: {}", e))?
+            .into_string()
+            .map_err(|e| format!("Failed to read response: {}", e))?
+    };
     let current = env!("CARGO_PKG_VERSION").to_string();
     parse_latest_json(&body, &current)
 }

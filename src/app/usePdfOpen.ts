@@ -50,8 +50,8 @@ export function usePdfOpen({
   setPdfPasswordDraft,
   setShowPasswordModal,
 }: UsePdfOpenOptions) {
-  const loadPdfFromPath = useCallback(async (path: string, password?: string) => {
-    const sessionId = ensureSessionForOpen(path);
+  const loadPdfFromPath = useCallback(async (path: string, password?: string, targetSessionId?: string) => {
+    const sessionId = targetSessionId ?? ensureSessionForOpen(path);
     if (sessionId === null) {
       return true;
     }

@@ -261,6 +261,10 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
     const isRectMode = opts.highlightMode || opts.shapeMode || opts.redactMode || opts.imageInsertMode || opts.vectorEditMode || opts.formAddMode;
     if (isRectMode) {
       if (!opts.drawing || !opts.highlightStart) return;
+      if (dragStateRef.current.armedByThisDown) {
+        dragStateRef.current.armedByThisDown = false;
+        return;
+      }
       const coords = getImageCoords(e.clientX, e.clientY);
       const start = opts.highlightStart;
 

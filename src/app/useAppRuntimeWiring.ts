@@ -163,7 +163,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
 
   useEffect(() => {
     if (persistence?.restoreSessions) {
-      void persistence.restoreSessions().then(() => {
+      void persistence.restoreSessions(() => openPathPendingRef.current).then(() => {
         // If an open-path arrived during restore, it already focused its tab;
         // do not override with the restored active index.
         if (openPathPendingRef.current) {

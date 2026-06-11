@@ -39,8 +39,9 @@ fn parse_content_ops(bytes: &[u8]) -> Result<Vec<Operation>, String> {
 fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<Vec<TextLine>, String> {
     let mut lines: Vec<TextLine> = Vec::new();
 
-    // Graphics-state stack for q/Q (we only track CTM if we later need it).
-    let mut _gs_stack: Vec<()> = Vec::new();
+    // Graphics-state stack for q/Q.
+    let mut ctm = identity_matrix();
+    let mut gs_stack: Vec<[f64; 6]> = Vec::new();
 
     // Text-state variables valid inside a BT … ET pair.
     let mut in_text = false;
@@ -101,10 +102,15 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
     for op in ops {
         match op.operator.as_str() {
             "q" => {
-                _gs_stack.push(());
+                gs_stack.push(ctm);
             }
             "Q" => {
-                _gs_stack.pop();
+                ctm = gs_stack.pop().unwrap_or_else(identity_matrix);
+            }
+            "cm" => {
+                if let Some(vals) = op_to_six_f64(&op.operands) {
+                    ctm = multiply_matrices(ctm, vals);
+                }
             }
             "BT" => {
                 in_text = true;
@@ -141,10 +147,11 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
             }
             "Tm" if in_text => {
                 if let Some(vals) = op_to_six_f64(&op.operands) {
+                    let effective_vals = multiply_matrices(ctm, vals);
                     // Tm sets both Tm and Tlm.
                     // If we are already accumulating a line and the baseline
                     // changes significantly, treat this as a new line.
-                    let new_y = vals[5];
+                    let new_y = effective_vals[5];
                     if has_line {
                         let old_y = line_start_tm[5];
                         let threshold = line_font_size * 0.5;
@@ -166,11 +173,11 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                     text_matrix = vals;
                     text_line_matrix = vals;
                     if !has_line {
-                        line_start_tm = vals;
-                        line_start_x = vals[4];
-                        line_end_x = vals[4];
-                        line_min_y = vals[5];
-                        line_max_y = vals[5];
+                        line_start_tm = effective_vals;
+                        line_start_x = effective_vals[4];
+                        line_end_x = effective_vals[4];
+                        line_min_y = effective_vals[5];
+                        line_max_y = effective_vals[5];
                         line_font_name = font_name.clone();
                         line_font_size = font_size;
                         has_line = true;
@@ -231,11 +238,12 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                         &mut has_line,
                         &mut lines,
                     );
-                    line_start_tm = text_matrix;
-                    line_start_x = text_matrix[4];
-                    line_end_x = text_matrix[4];
-                    line_min_y = text_matrix[5];
-                    line_max_y = text_matrix[5];
+                    let effective_tm = multiply_matrices(ctm, text_matrix);
+                    line_start_tm = effective_tm;
+                    line_start_x = effective_tm[4];
+                    line_end_x = effective_tm[4];
+                    line_min_y = effective_tm[5];
+                    line_max_y = effective_tm[5];
                     line_font_name = font_name.clone();
                     line_font_size = font_size;
                     has_line = true;
@@ -257,11 +265,12 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                     &mut has_line,
                     &mut lines,
                 );
-                line_start_tm = text_matrix;
-                line_start_x = text_matrix[4];
-                line_end_x = text_matrix[4];
-                line_min_y = text_matrix[5];
-                line_max_y = text_matrix[5];
+                let effective_tm = multiply_matrices(ctm, text_matrix);
+                line_start_tm = effective_tm;
+                line_start_x = effective_tm[4];
+                line_end_x = effective_tm[4];
+                line_min_y = effective_tm[5];
+                line_max_y = effective_tm[5];
                 line_font_name = font_name.clone();
                 line_font_size = font_size;
                 has_line = true;
@@ -285,18 +294,22 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                 if let Some(s) = operand_to_string(&op.operands[0]) {
                     // If no line is active, start one at current text matrix.
                     if !has_line {
-                        line_start_tm = text_matrix;
-                        line_start_x = text_matrix[4];
-                        line_end_x = text_matrix[4];
-                        line_min_y = text_matrix[5];
-                        line_max_y = text_matrix[5];
+                        let effective_tm = multiply_matrices(ctm, text_matrix);
+                        line_start_tm = effective_tm;
+                        line_start_x = effective_tm[4];
+                        line_end_x = effective_tm[4];
+                        line_min_y = effective_tm[5];
+                        line_max_y = effective_tm[5];
                         line_font_name = font_name.clone();
                         line_font_size = font_size;
                         has_line = true;
                     }
                     let est_width = estimate_text_width(&s, font_size, h_scale, char_spacing, word_spacing);
-                    line_end_x += est_width;
-                    let baseline = text_matrix[5];
+                    let baseline_tm = multiply_matrices(ctm, text_matrix);
+                    let end = transform_point(ctm, text_matrix[4] + est_width, text_matrix[5]);
+                    line_start_x = line_start_x.min(baseline_tm[4]).min(end.0);
+                    line_end_x = line_end_x.max(baseline_tm[4]).max(end.0);
+                    let baseline = baseline_tm[5];
                     line_min_y = line_min_y.min(baseline - font_size * 0.2);
                     line_max_y = line_max_y.max(baseline + font_size * 0.8);
                     current_text.push_str(&s);
@@ -308,11 +321,12 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                 if let Some(arr) = op.operands.first().and_then(|o| o.as_array().ok()) {
                     // If no line is active, start one at current text matrix.
                     if !has_line {
-                        line_start_tm = text_matrix;
-                        line_start_x = text_matrix[4];
-                        line_end_x = text_matrix[4];
-                        line_min_y = text_matrix[5];
-                        line_max_y = text_matrix[5];
+                        let effective_tm = multiply_matrices(ctm, text_matrix);
+                        line_start_tm = effective_tm;
+                        line_start_x = effective_tm[4];
+                        line_end_x = effective_tm[4];
+                        line_min_y = effective_tm[5];
+                        line_max_y = effective_tm[5];
                         line_font_name = font_name.clone();
                         line_font_size = font_size;
                         has_line = true;
@@ -320,8 +334,11 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                     for item in arr {
                         if let Some(s) = operand_to_string(item) {
                             let est_width = estimate_text_width(&s, font_size, h_scale, char_spacing, word_spacing);
-                            line_end_x += est_width;
-                            let baseline = text_matrix[5];
+                            let baseline_tm = multiply_matrices(ctm, text_matrix);
+                            let end = transform_point(ctm, text_matrix[4] + est_width, text_matrix[5]);
+                            line_start_x = line_start_x.min(baseline_tm[4]).min(end.0);
+                            line_end_x = line_end_x.max(baseline_tm[4]).max(end.0);
+                            let baseline = baseline_tm[5];
                             line_min_y = line_min_y.min(baseline - font_size * 0.2);
                             line_max_y = line_max_y.max(baseline + font_size * 0.8);
                             current_text.push_str(&s);
@@ -329,7 +346,6 @@ fn ops_to_lines(doc: &Document, page_id: ObjectId, ops: &[Operation]) -> Result<
                         } else if let Some(adj) = operand_to_f64(item) {
                             // Negative adjustment means move backward.
                             let adj_pts = -adj / 1000.0 * font_size * h_scale;
-                            line_end_x += adj_pts;
                             text_matrix[4] += adj_pts;
                         }
                     }
@@ -389,6 +405,25 @@ fn op_to_six_f64(ops: &[Object]) -> Option<[f64; 6]> {
         out[i] = operand_to_f64(o)?;
     }
     Some(out)
+}
+
+fn identity_matrix() -> [f64; 6] {
+    [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+}
+
+fn multiply_matrices(left: [f64; 6], right: [f64; 6]) -> [f64; 6] {
+    [
+        left[0] * right[0] + left[2] * right[1],
+        left[1] * right[0] + left[3] * right[1],
+        left[0] * right[2] + left[2] * right[3],
+        left[1] * right[2] + left[3] * right[3],
+        left[0] * right[4] + left[2] * right[5] + left[4],
+        left[1] * right[4] + left[3] * right[5] + left[5],
+    ]
+}
+
+fn transform_point(matrix: [f64; 6], x: f64, y: f64) -> (f64, f64) {
+    (matrix[0] * x + matrix[2] * y + matrix[4], matrix[1] * x + matrix[3] * y + matrix[5])
 }
 
 fn operand_to_f64(o: &Object) -> Option<f64> {
@@ -504,8 +539,7 @@ fn estimate_text_width(text: &str, font_size: f64, h_scale: f64, char_spacing: f
 
 /// Check whether the named font on this page is a Type3 font.
 fn is_type3_font(doc: &Document, page_id: ObjectId, name: &str) -> bool {
-    let Ok(page) = doc.get_dictionary(page_id) else { return false };
-    let Ok(resources) = page.get(b"Resources").and_then(|o| o.as_dict()) else { return false };
+    let Some(resources) = super::markdown_images::resolve_page_resources(doc, page_id) else { return false };
     let Ok(fonts) = resources.get(b"Font").and_then(|o| o.as_dict()) else { return false };
     let Ok(obj) = fonts.get(name.as_bytes()) else { return false };
     let id = match obj {
@@ -521,8 +555,7 @@ fn is_type3_font(doc: &Document, page_id: ObjectId, name: &str) -> bool {
 
 /// Check whether a named XObject on this page is a Form XObject.
 fn is_form_xobject(doc: &Document, page_id: ObjectId, name: &str) -> bool {
-    let Ok(page) = doc.get_dictionary(page_id) else { return false };
-    let Ok(resources) = page.get(b"Resources").and_then(|o| o.as_dict()) else { return false };
+    let Some(resources) = super::markdown_images::resolve_page_resources(doc, page_id) else { return false };
     let Ok(xobjects) = resources.get(b"XObject").and_then(|o| o.as_dict()) else { return false };
     let Ok(obj) = xobjects.get(name.as_bytes()) else { return false };
     let id = match obj {
@@ -640,6 +673,17 @@ mod tests {
         let lines = decode_page_text_lines(&doc, page_id).unwrap();
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0].text, "Nested");
+    }
+
+    #[test]
+    fn cm_translation_applies_to_line_transform() {
+        let ops = "q 1 0 0 1 50 25 cm BT /F1 12 Tf 1 0 0 1 100 700 Tm (Moved) Tj ET Q";
+        let (doc, page_id) = build_doc_with_text(ops);
+        let lines = decode_page_text_lines(&doc, page_id).unwrap();
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].text, "Moved");
+        assert!((lines[0].transform[4] - 150.0).abs() < 0.01);
+        assert!((lines[0].transform[5] - 725.0).abs() < 0.01);
     }
 
     #[test]
