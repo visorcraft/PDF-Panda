@@ -29,6 +29,7 @@ tauri-plugin-single-instance = "2"
 underskrift = "0.1.4"
 tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
 ureq = "2"
+ttf-parser = "0.25"
 
 # underskrift → josekit needs OpenSSL; Windows has no system copy, so build it
 # from source there (Linux/macOS keep using the platform OpenSSL).

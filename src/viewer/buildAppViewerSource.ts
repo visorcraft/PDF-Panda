@@ -58,6 +58,7 @@ export type BuildAppViewerSourceInput = {
   textRuns: PdfPageProps['textRuns'];
   textLayerInteractive: PdfPageProps['textLayerInteractive'];
   textEditActiveRun: PdfPageProps['textEditActiveRun'];
+  textEditActiveLine: PdfPageProps['textEditActiveLine'];
   textEditDraft: PdfPageProps['textEditDraft'];
   onTextEditDraftChange: PdfPageProps['onTextEditDraftChange'];
   onApplyTextEdit: PdfPageProps['onApplyTextEdit'];
@@ -138,6 +139,7 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
     textRuns: input.textRuns,
     textLayerInteractive: input.textLayerInteractive,
     textEditActiveRun: input.textEditActiveRun,
+    textEditActiveLine: input.textEditActiveLine,
     textEditDraft: input.textEditDraft,
     onTextEditDraftChange: input.onTextEditDraftChange,
     onApplyTextEdit: input.onApplyTextEdit,

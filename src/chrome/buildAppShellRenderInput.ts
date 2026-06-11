@@ -139,6 +139,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
         textRuns: args.pdfActions.textRuns,
         textLayerInteractive: args.pdfActions.textLayerInteractive,
         textEditActiveRun: args.pdfActions.textEditActiveRun,
+        textEditActiveLine: args.pdfActions.textEditActiveLine,
         textEditDraft: args.pdfActions.textEditDraft,
         onTextEditDraftChange: args.pdfActions.setTextEditDraft,
         onApplyTextEdit: args.pdfActions.applyTextEdit,

@@ -2027,6 +2027,8 @@ tauri::generate_handler![
             get_annotations,
             list_document_annotations,
             replace_text_region,
+            get_page_text_lines,
+            replace_text_line,
             updater_supported,
             fetch_latest_version,
             open_url,

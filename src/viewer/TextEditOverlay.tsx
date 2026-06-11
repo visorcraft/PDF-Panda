@@ -1,8 +1,15 @@
 import { useEffect, useRef } from 'react';
-import type { PageTextRun } from '../pdf/useTextLayerLoader';
+
+type TextEditTarget = {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
 
 type TextEditOverlayProps = {
-  run: PageTextRun;
+  target: TextEditTarget;
   zoom: number;
   draft: string;
   onDraftChange: (value: string) => void;
@@ -11,7 +18,7 @@ type TextEditOverlayProps = {
 };
 
 export function TextEditOverlay({
-  run,
+  target,
   zoom,
   draft,
   onDraftChange,
@@ -23,7 +30,7 @@ export function TextEditOverlay({
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, [run.text]);
+  }, [target.text]);
 
   return (
     <input
@@ -33,11 +40,11 @@ export function TextEditOverlay({
       value={draft}
       style={{
         position: 'absolute',
-        left: run.x,
-        top: run.y,
-        width: run.w,
-        height: run.h,
-        fontSize: run.h * 0.85,
+        left: target.x,
+        top: target.y,
+        width: target.w,
+        height: target.h,
+        fontSize: target.h * 0.85,
         transform: `scale(${zoom})`,
         transformOrigin: 'top left',
       }}

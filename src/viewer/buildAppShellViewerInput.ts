@@ -53,6 +53,7 @@ export type BuildAppShellViewerInputArgs = {
     | 'textRuns'
     | 'textLayerInteractive'
     | 'textEditActiveRun'
+    | 'textEditActiveLine'
     | 'textEditDraft'
     | 'onTextEditDraftChange'
     | 'onApplyTextEdit'

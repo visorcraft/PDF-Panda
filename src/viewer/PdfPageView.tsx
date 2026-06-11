@@ -2,6 +2,7 @@ import type React from 'react';
 import type { ShapeKind } from '../app/constants';
 import type { AnnotationData, FormFieldData, PageTextEdit, PageVectorEdit } from '../app/types';
 import type { PageTextRun } from '../pdf/useTextLayerLoader';
+import type { TextLineInfo } from './useTextEditRun';
 import { PdfPageOverlays } from './PdfPageOverlays';
 import { TextLayer } from './TextLayer';
 import { TextEditOverlay } from './TextEditOverlay';
@@ -48,6 +49,7 @@ type PdfPageViewProps = {
   onRemoveInkStroke: (index: number) => void;
   onRemoveTextNote: (index: number) => void;
   textEditActiveRun?: PageTextRun | null;
+  textEditActiveLine?: TextLineInfo | null;
   textEditDraft?: string;
   onTextEditDraftChange?: (value: string) => void;
   onApplyTextEdit?: () => void;
@@ -96,6 +98,7 @@ export function PdfPageView({
   onRemoveInkStroke,
   onRemoveTextNote,
   textEditActiveRun,
+  textEditActiveLine,
   textEditDraft = '',
   onTextEditDraftChange,
   onApplyTextEdit,
@@ -130,9 +133,9 @@ export function PdfPageView({
           <div ref={pageContainerRef} style={{ position: 'relative', display: 'inline-block' }}>
             <img ref={imgRef} src={imageSrc} alt="PDF Page" className="page-image" draggable={false} onLoad={onImageLoad} />
             <TextLayer runs={textRuns} interactive={textLayerInteractive} />
-            {textEditActiveRun && onTextEditDraftChange && onApplyTextEdit && onCancelTextEdit && (
+            {(textEditActiveRun || textEditActiveLine) && onTextEditDraftChange && onApplyTextEdit && onCancelTextEdit && (
               <TextEditOverlay
-                run={textEditActiveRun}
+                target={textEditActiveLine ?? textEditActiveRun!}
                 zoom={zoom}
                 draft={textEditDraft}
                 onDraftChange={onTextEditDraftChange}

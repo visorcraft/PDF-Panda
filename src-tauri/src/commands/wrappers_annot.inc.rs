@@ -245,3 +245,43 @@ fn replace_text_region(
         font_size,
     )
 }
+
+#[tauri::command]
+fn get_page_text_lines(path: String, page_index: u32) -> Result<Vec<TextLineInfo>, String> {
+    let path = PathBuf::from(path);
+    let doc = lopdf::Document::load(&path).map_err(|e| e.to_string())?;
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or_else(|| "Page not found".to_string())?;
+    let lines = pdf::text_lines::decode_page_text_lines(&doc, page_id)?;
+    let media = pdf::coords::page_media_box(&doc, page_id)?;
+    let page_w = (media[2] - media[0]).max(1.0) as f32;
+    let page_h = (media[3] - media[1]).max(1.0) as f32;
+
+    let mut out = Vec::new();
+    for line in lines {
+        let [left, bottom, right, top] = line.bbox;
+        let viewer = pdf::coords::pdf_rect_to_viewer_px(left, bottom, right, top, page_w, page_h);
+        out.push(TextLineInfo {
+            text: line.text,
+            x: viewer[0],
+            y: viewer[1],
+            w: (viewer[2] - viewer[0]).max(1.0),
+            h: (viewer[3] - viewer[1]).max(1.0),
+        });
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+fn replace_text_line(
+    path: String,
+    page_index: u32,
+    line_index: usize,
+    new_text: String,
+) -> Result<(), String> {
+    pdf::text_replace::replace_text_line(
+        &PathBuf::from(path),
+        page_index,
+        line_index,
+        &new_text,
+    )
+}

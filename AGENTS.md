@@ -38,7 +38,7 @@ Run from `src-tauri/` unless noted.
 
 | Gate | Command | Baseline |
 | --- | --- | --- |
-| Tests | `cargo test` | **2128** pass / **20** ignored |
+| Tests | `cargo test` | **2138** pass / **20** ignored |
 | Clippy | `RUSTFLAGS=-Dwarnings cargo clippy --all-targets` | clean |
 | Format | `cargo fmt --check` | clean |
 | TS | `npx tsc --noEmit` | clean |
@@ -101,6 +101,13 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 ## v0.5.1 (in progress)
 
 - **Session restore** — relaunch reopens previous tabs (original paths) with per-tab page, zoom, and view mode.
+- **Single-instance / "Open With"** — launching while an instance runs focuses the existing window and opens the path in a tab.
+- **Drag-to-draw annotations** — redaction boxes, shapes, image placement, and form-field rects draw with press-drag-release + live preview.
+- **Update notification (deb/rpm)** — check-only path for non-AppImage Linux installs links to the release page.
+
+## v0.6.0 (in progress)
+
+- **In-place text editing v2** — line-level replacement using decoded content-stream transforms and an embedded full font (Liberation Sans), with v1 whiteout fallback for unsupported pages.
 
 **Gotchas:** Markdown view → PDF thumbnail: switch to PDF mode first (rAF defer). After structural edits: `reloadOpenPdf()` + dirty flag. Credits: `scripts/generate-credits.sh` (6 shipped npm packages in license tests).
 

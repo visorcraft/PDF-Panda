@@ -1,6 +1,19 @@
-import { useCallback, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { createStructuralEditRunner } from '../pdf/runStructuralEdit';
 import type { PageTextRun } from '../pdf/useTextLayerLoader';
+
+export type TextLineInfo = {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+type ActiveEditTarget =
+  | { kind: 'line'; index: number; data: TextLineInfo }
+  | { kind: 'run'; data: PageTextRun };
 
 type UseTextEditRunOptions = {
   filePath: string;
@@ -10,8 +23,49 @@ type UseTextEditRunOptions = {
 };
 
 export function useTextEditRun(opts: UseTextEditRunOptions) {
-  const [activeRun, setActiveRun] = useState<PageTextRun | null>(null);
+  const [activeTarget, setActiveTarget] = useState<ActiveEditTarget | null>(null);
   const [draft, setDraft] = useState('');
+  const [lines, setLines] = useState<TextLineInfo[]>([]);
+  const linesCacheRef = useRef(new Map<string, TextLineInfo[]>());
+
+  // Load decoded text lines when entering edit mode.
+  useEffect(() => {
+    if (!opts.editTextRunMode || !opts.filePath) {
+      setLines([]);
+      return;
+    }
+    const cacheKey = `${opts.filePath}\0${opts.currentPage}`;
+    const cached = linesCacheRef.current.get(cacheKey);
+    if (cached) {
+      setLines(cached);
+      return;
+    }
+    void (async () => {
+      try {
+        const result = await invoke<TextLineInfo[]>('get_page_text_lines', {
+          path: opts.filePath,
+          pageIndex: opts.currentPage,
+        });
+        linesCacheRef.current.set(cacheKey, result);
+        setLines(result);
+      } catch {
+        setLines([]);
+      }
+    })();
+  }, [opts.editTextRunMode, opts.filePath, opts.currentPage]);
+
+  const hitTestLine = useCallback(
+    (x: number, y: number): TextLineInfo | null => {
+      for (let i = lines.length - 1; i >= 0; i -= 1) {
+        const line = lines[i]!;
+        if (x >= line.x && x <= line.x + line.w && y >= line.y && y <= line.y + line.h) {
+          return line;
+        }
+      }
+      return null;
+    },
+    [lines],
+  );
 
   const hitTestRun = useCallback(
     (runs: PageTextRun[], x: number, y: number): PageTextRun | null => {
@@ -26,46 +80,78 @@ export function useTextEditRun(opts: UseTextEditRunOptions) {
     [],
   );
 
+  const openLineEditor = useCallback((index: number, line: TextLineInfo) => {
+    setActiveTarget({ kind: 'line', index, data: line });
+    setDraft(line.text);
+  }, []);
+
   const openRunEditor = useCallback((run: PageTextRun) => {
-    setActiveRun(run);
+    setActiveTarget({ kind: 'run', data: run });
     setDraft(run.text);
   }, []);
 
   const cancelEdit = useCallback(() => {
-    setActiveRun(null);
+    setActiveTarget(null);
     setDraft('');
   }, []);
 
   const applyEdit = useCallback(() => {
-    if (!opts.filePath || !activeRun || !draft.trim()) {
+    if (!opts.filePath || !activeTarget || !draft.trim()) {
       cancelEdit();
       return;
     }
-    const run = activeRun;
     const text = draft.trim();
+    const target = activeTarget;
     cancelEdit();
-    void opts.runEdit({
-      command: 'replace_text_region',
-      args: {
-        path: opts.filePath,
-        pageIndex: opts.currentPage,
-        x: run.x,
-        y: run.y,
-        w: run.w,
-        h: run.h,
-        newText: text,
-        fontSize: run.h * 0.85,
-      },
-      reloadAt: opts.currentPage,
-      toast: 'Text replaced',
-    });
-  }, [activeRun, cancelEdit, draft, opts]);
+
+    if (target.kind === 'line') {
+      void opts.runEdit({
+        command: 'replace_text_line',
+        args: {
+          path: opts.filePath,
+          pageIndex: opts.currentPage,
+          lineIndex: target.index,
+          newText: text,
+        },
+        reloadAt: opts.currentPage,
+        toast: 'Text replaced',
+      });
+    } else {
+      void opts.runEdit({
+        command: 'replace_text_region',
+        args: {
+          path: opts.filePath,
+          pageIndex: opts.currentPage,
+          x: target.data.x,
+          y: target.data.y,
+          w: target.data.w,
+          h: target.data.h,
+          newText: text,
+          fontSize: target.data.h * 0.85,
+        },
+        reloadAt: opts.currentPage,
+        toast: 'Text replaced',
+      });
+    }
+  }, [activeTarget, cancelEdit, draft, opts]);
 
   return {
-    activeRun: opts.editTextRunMode ? activeRun : null,
+    activeRun: opts.editTextRunMode
+      ? activeTarget?.kind === 'run'
+        ? activeTarget.data
+        : null
+      : null,
+    activeLine: opts.editTextRunMode
+      ? activeTarget?.kind === 'line'
+        ? activeTarget.data
+        : null
+      : null,
     draft,
     setDraft,
+    lines,
+    hitTestLine,
     hitTestRun,
+    openLineEditor,
     openRunEditor,
     cancelEdit,
     applyEdit,

@@ -39,4 +39,5 @@ pub mod search;
 pub mod security;
 pub mod summary;
 pub mod text_layer;
+pub mod text_lines;
 pub mod text_replace;

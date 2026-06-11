@@ -18,5 +18,15 @@ struct LatestVersionInfo {
     newer: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TextLineInfo {
+    text: String,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+}
+
 const EXPORT_PNG_W: i32 = pdf::export::EXPORT_RENDER_W;
 const EXPORT_PNG_H: i32 = pdf::export::EXPORT_RENDER_H;

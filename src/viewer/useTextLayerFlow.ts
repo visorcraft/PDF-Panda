@@ -58,6 +58,16 @@ export function useTextLayerFlow(opts: UseTextLayerFlowOptions) {
   const handleEditTextRunClick = useCallback(
     (x: number, y: number) => {
       if (!opts.editTextRunMode) return false;
+      // Try line-level hit first (v2).
+      const line = textEdit.hitTestLine(x, y);
+      if (line) {
+        const idx = textEdit.lines.findIndex((l) => l === line);
+        if (idx >= 0) {
+          textEdit.openLineEditor(idx, line);
+          return true;
+        }
+      }
+      // Fall back to run-level (v1).
       const run = textEdit.hitTestRun(runs, x, y);
       if (!run) return false;
       textEdit.openRunEditor(run);
@@ -74,6 +84,7 @@ export function useTextLayerFlow(opts: UseTextLayerFlowOptions) {
     highlightSelection,
     handleEditTextRunClick,
     textEditActiveRun: textEdit.activeRun,
+    textEditActiveLine: textEdit.activeLine,
     textEditDraft: textEdit.draft,
     setTextEditDraft: textEdit.setDraft,
     applyTextEdit: textEdit.applyEdit,
