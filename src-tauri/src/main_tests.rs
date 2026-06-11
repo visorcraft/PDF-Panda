@@ -19309,3 +19309,39 @@ fn version_newer_handles_unequal_parts() {
     assert!(!version_newer("0.5", "0.5.0"));
     assert!(!version_newer("0.5.0", "0.5.0.1"));
 }
+
+#[test]
+fn parse_latest_json_ok() {
+    let body = r#"{"version":"0.5.1","notes":"Bug fixes"}"#;
+    let info = parse_latest_json(body, "0.5.0").unwrap();
+    assert_eq!(info.version, "0.5.1");
+    assert_eq!(info.notes, Some("Bug fixes".to_string()));
+    assert_eq!(info.current, "0.5.0");
+    assert!(info.newer);
+}
+
+#[test]
+fn parse_latest_json_current() {
+    let body = r#"{"version":"0.5.0"}"#;
+    let info = parse_latest_json(body, "0.5.0").unwrap();
+    assert!(!info.newer);
+}
+
+#[test]
+fn parse_latest_json_no_notes() {
+    let body = r#"{"version":"0.5.1"}"#;
+    let info = parse_latest_json(body, "0.5.0").unwrap();
+    assert_eq!(info.notes, None);
+}
+
+#[test]
+fn parse_latest_json_invalid_json() {
+    let err = parse_latest_json("not json", "0.5.0").unwrap_err();
+    assert!(err.contains("Failed to parse JSON"));
+}
+
+#[test]
+fn parse_latest_json_missing_version() {
+    let err = parse_latest_json(r#"{"notes":"x"}"#, "0.5.0").unwrap_err();
+    assert!(err.contains("Missing version field"));
+}

@@ -38,13 +38,13 @@ Run from `src-tauri/` unless noted.
 
 | Gate | Command | Baseline |
 | --- | --- | --- |
-| Tests | `cargo test` | **2138** pass / **20** ignored |
+| Tests | `cargo test` | **2150** pass / **21** ignored |
 | Clippy | `RUSTFLAGS=-Dwarnings cargo clippy --all-targets` | clean |
 | Format | `cargo fmt --check` | clean |
 | TS | `npx tsc --noEmit` | clean |
 | Smoke | `scripts/smoke-test.sh` | pass |
 
-CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab` + `restore`, ~26 s, green.
+CI (`ci.yml`: 3-OS check matrix + `e2e-linux`) is a green baseline; it fetches PDFium per-OS, and Windows vendors OpenSSL (`underskrift`→`josekit` needs it). Ignored tests need PDFium/Tesseract/fixture paths. E2E uses `e2e/capabilities/e2e.json` copied transiently — **never commit** `src-tauri/capabilities/e2e.json` or the e2e-tainted `src-tauri/gen/schemas/*` (`e2e-build.sh` / `e2e-test.sh` clean both on exit). E2E builds set `withGlobalTauri` via `tauri.e2e.conf.json` (the wdio bridge needs `window.__TAURI__`). WDIO mocha: a number after the `it()` callback is a RETRY count, not a timeout. Suite: `smoke` + `features` + `multitab` + `restore` + `updater`, ~26 s, green.
 
 ## Frontend (`src/`)
 

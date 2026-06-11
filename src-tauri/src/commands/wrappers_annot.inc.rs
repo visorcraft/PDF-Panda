@@ -157,6 +157,27 @@ fn updater_supported() -> bool {
     }
 }
 
+fn parse_latest_json(body: &str, current: &str) -> Result<LatestVersionInfo, String> {
+    let json: serde_json::Value = serde_json::from_str(body)
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+    let version = json
+        .get("version")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing version field")?
+        .to_string();
+    let notes = json
+        .get("notes")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let newer = version_newer(&version, current);
+    Ok(LatestVersionInfo {
+        version,
+        notes,
+        current: current.to_string(),
+        newer,
+    })
+}
+
 #[tauri::command]
 fn fetch_latest_version() -> Result<LatestVersionInfo, String> {
     const URL: &str = "https://github.com/visorcraft/PDF-Panda/releases/latest/download/latest.json";
@@ -165,18 +186,8 @@ fn fetch_latest_version() -> Result<LatestVersionInfo, String> {
         .map_err(|e| format!("Failed to fetch latest version: {}", e))?
         .into_string()
         .map_err(|e| format!("Failed to read response: {}", e))?;
-    let json: serde_json::Value = serde_json::from_str(&body)
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
-    let version = json.get("version")
-        .and_then(|v| v.as_str())
-        .ok_or("Missing version field")?
-        .to_string();
-    let notes = json.get("notes")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
     let current = env!("CARGO_PKG_VERSION").to_string();
-    let newer = version_newer(&version, &current);
-    Ok(LatestVersionInfo { version, notes, current, newer })
+    parse_latest_json(&body, &current)
 }
 
 #[tauri::command]

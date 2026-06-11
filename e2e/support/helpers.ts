@@ -480,3 +480,5 @@ export async function applyRedactions() {
   await (await $('[data-testid="apply-redactions-confirm"]')).click();
   await waitForPageRendered();
 }
+
+
