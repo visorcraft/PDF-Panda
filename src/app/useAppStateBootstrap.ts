@@ -14,7 +14,7 @@ import { useAppLifecycleSlices } from './useAppLifecycleSlices';
 import { useAppSetupHooks } from './useAppSetupHooks';
 import { useAppViewerWorkflow } from './useAppViewerWorkflow';
 import { useSessionPersistence } from './useSessionPersistence';
-import { useThemeState } from './useThemeState';
+import { useAppearanceState } from './useAppearanceState';
 import { useAppSurfaceState } from './useAppSurfaceState';
 
 export function useAppStateBootstrap() {
@@ -97,7 +97,7 @@ export function useAppStateBootstrap() {
     showToast,
   });
 
-  const theme = useThemeState();
+  const appearance = useAppearanceState();
   const surface = useAppSurfaceState();
 
   return {
@@ -117,7 +117,7 @@ export function useAppStateBootstrap() {
     windowTitle,
     viewerWorkflow,
     persistence,
-    theme,
+    appearance,
     surface,
   };
 }

@@ -5,6 +5,7 @@ import type { PanelsState } from '../app/useDocumentPanelsState';
 import type { HelpState } from '../app/useHelpChromeState';
 import type { ViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
+import type { AppearanceKey } from '../settings/appearancePalettes';
 
 export type BuildAppMenuInputArgs = {
   doc: Pick<DocumentState, 'filePath' | 'isDirty' | 'pageCount' | 'currentPage' | 'viewMode' | 'scrollViewMode' | 'ocrAvailable'>;
@@ -25,8 +26,8 @@ export type BuildAppMenuInputArgs = {
     openSearchModal: () => void;
   };
   help: Pick<HelpState, 'setShowShortcutsHelp' | 'setShowLicenses' | 'setShowCredits' | 'setShowAbout' | 'setShowUpdateModal' | 'updaterSupported' | 'setShowCommandPalette'>;
-  theme: 'system' | 'light' | 'dark';
-  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+  theme: AppearanceKey;
+  setTheme: (theme: AppearanceKey) => void;
   surface: { activeSurface: AppSurface; openSettings: (focus?: SettingsFocusSection) => void };
   pdfActions: AppPdfActions;
 };

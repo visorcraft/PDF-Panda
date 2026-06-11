@@ -12,6 +12,7 @@ import type { RefsState } from './useAppRefs';
 import type { PanelsState } from './useDocumentPanelsState';
 import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
+import type { AppearanceKey } from '../settings/appearancePalettes';
 
 export type UseAppChromeBindingsInput = {
   doc: DocumentState;
@@ -21,7 +22,7 @@ export type UseAppChromeBindingsInput = {
   annotation: AnnotationState;
   help: HelpState;
   refs: Pick<RefsState, 'keyboardActionsRef'>;
-  theme: { theme: 'system' | 'light' | 'dark'; setTheme: (theme: 'system' | 'light' | 'dark') => void };
+  appearance: { appearance: AppearanceKey; setAppearance: (appearance: AppearanceKey) => void };
   surface: { activeSurface: import('./useAppSurfaceState').AppSurface; openSettings: (focus?: import('./useAppSurfaceState').SettingsFocusSection) => void };
   pdfActions: AppPdfActions;
   history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
@@ -145,8 +146,8 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       updaterSupported: input.help.updaterSupported,
       setShowCommandPalette: input.help.setShowCommandPalette,
     },
-    theme: input.theme.theme,
-    setTheme: input.theme.setTheme,
+    theme: input.appearance.appearance,
+    setTheme: input.appearance.setAppearance,
     surface: input.surface,
     pdfActions: input.pdfActions,
   });

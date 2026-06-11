@@ -1,6 +1,7 @@
 import type { AppMenuContextSource } from './types';
 import type { ScrollViewMode, ViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
+import type { AppearanceKey } from '../settings/appearancePalettes';
 
 /** Inputs from App hooks/state before menu void-wrapping in buildAppMenuContext. */
 export type BuildAppMenuSourceInput = Omit<
@@ -40,8 +41,8 @@ export type BuildAppMenuSourceInput = Omit<
   setShowUpdateModal: (open: boolean) => void;
   updaterSupported: boolean;
   setShowCommandPalette: (open: boolean) => void;
-  theme: 'system' | 'light' | 'dark';
-  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+  theme: AppearanceKey;
+  setTheme: (theme: AppearanceKey) => void;
 };
 
 export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuContextSource {
