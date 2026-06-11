@@ -1,5 +1,8 @@
 import { useEffect, type MutableRefObject } from 'react';
 import type { AppKeyboardActions } from './buildAppKeyboardActions';
+import { SHORTCUT_HANDLERS } from './appShortcutHandlers';
+import { getDefaultShortcuts, type ShortcutCommandId } from '../settings/shortcutRegistry';
+import { eventToShortcut, normalizeShortcut } from '../settings/shortcutKeys';
 
 export type { AppKeyboardActions } from './buildAppKeyboardActions';
 
@@ -10,23 +13,35 @@ function isTextInput(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
-export function useAppKeyboard(actionsRef: MutableRefObject<AppKeyboardActions>) {
+function isShortcutCapture(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && target.dataset.shortcutCapture === 'true';
+}
+
+function buildShortcutIndex(bindings: Record<ShortcutCommandId, string[]>): Map<string, ShortcutCommandId> {
+  const index = new Map<string, ShortcutCommandId>();
+  for (const [commandId, shortcuts] of Object.entries(bindings) as [ShortcutCommandId, string[]][]) {
+    for (const shortcut of shortcuts) {
+      const normalized = normalizeShortcut(shortcut);
+      if (normalized) {
+        index.set(normalized, commandId);
+      }
+    }
+  }
+  return index;
+}
+
+const GLOBAL_COMMANDS = new Set<ShortcutCommandId>(['open-pdf', 'command-palette']);
+
+export function useAppKeyboard(
+  actionsRef: MutableRefObject<AppKeyboardActions>,
+  activeSurface: 'document' | 'settings' = 'document',
+) {
   useEffect(() => {
+    const bindings = getDefaultShortcuts();
+    const shortcutIndex = buildShortcutIndex(bindings);
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isTextInput(e.target)) return;
       const a = actionsRef.current;
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        a.openPdf();
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        a.openCommandPalette();
-        return;
-      }
 
       if (e.key === 'Escape') {
         if (a.noteMode && a.hasOpenPdf) { a.exitNoteMode(); return; }
@@ -40,140 +55,31 @@ export function useAppKeyboard(actionsRef: MutableRefObject<AppKeyboardActions>)
         if (a.formAddMode && a.hasOpenPdf) { a.exitFormAddMode(); return; }
         if (a.highlightMode && a.hasOpenPdf) { a.exitHighlightMode(); return; }
         if (a.anyModalOpen) { a.dismissModals(); return; }
-      }
-
-      if (!a.hasOpenPdf) return;
-
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        const count = a.pageCount;
-        const page = a.currentPage;
-        if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && page > 0) {
-          e.preventDefault();
-          a.goToPage(page - 1);
-          return;
-        }
-        if ((e.key === 'ArrowRight' || e.key === 'PageDown') && count !== null && page < count - 1) {
-          e.preventDefault();
-          a.goToPage(page + 1);
-          return;
-        }
-        if (e.key.toLowerCase() === 'h' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleHighlightMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'n' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleNoteMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'd' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleDrawMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 's' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleShapeMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 't' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleStampMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'x' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleRedactMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'e' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleTextEditMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'g' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleVectorEditMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'i' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleImageInsertMode();
-          return;
-        }
-        if (e.key.toLowerCase() === 'f' && a.viewMode === 'pdf') {
-          e.preventDefault();
-          a.toggleFormsPanel();
-          return;
-        }
-        if (e.key === 'Home' && page > 0) {
-          e.preventDefault();
-          a.goToPage(0);
-          return;
-        }
-        if (e.key === 'End' && count !== null && page < count - 1) {
-          e.preventDefault();
-          a.goToPage(count - 1);
-          return;
-        }
-        if (e.key === 'Delete' && count !== null && count > 1) {
-          e.preventDefault();
-          a.openDeleteModal();
-          return;
-        }
-      }
-
-      if (!e.ctrlKey && !e.metaKey) return;
-
-      const key = e.key.toLowerCase();
-      if (key === 's') {
-        e.preventDefault();
-        if (e.shiftKey) a.openSaveAs();
-        else if (a.isDirty) void a.handleSave();
         return;
       }
-      if (key === 'w') { e.preventDefault(); a.requestClosePdf(); return; }
-      if (key === 'tab') {
-        e.preventDefault();
-        a.cycleTab(e.shiftKey ? -1 : 1);
+
+      if (isTextInput(e.target) && !isShortcutCapture(e.target)) return;
+
+      const shortcut = eventToShortcut(e);
+      if (!shortcut) return;
+
+      if (activeSurface === 'settings' && !GLOBAL_COMMANDS.has(shortcutIndex.get(shortcut) as ShortcutCommandId)) {
         return;
       }
-      if (key >= '1' && key <= '9') {
-        e.preventDefault();
-        a.jumpToTab(Number(key) - 1);
-        return;
-      }
-      if (key === 'p') { e.preventDefault(); void a.handlePrint(); return; }
-      if (key === 'r') { e.preventDefault(); void a.handleRotatePage(); return; }
-      if (key === 'f') { e.preventDefault(); a.openSearchModal(); return; }
-      if (key === 'd' && e.shiftKey) { e.preventDefault(); void a.handleDuplicatePage(); return; }
-      if (key === 'm' && e.shiftKey) { e.preventDefault(); void a.toggleMarkdownView(); return; }
-      if (key === 'o' && e.shiftKey) { e.preventDefault(); void a.handleOptimizePdf(); return; }
-      if (key === 'e' && e.shiftKey) { e.preventDefault(); void a.handleSummarizePdf(); return; }
-      if (key === 'u' && e.shiftKey) { e.preventDefault(); a.openSignModal(); return; }
-      if (key === 'i' && e.shiftKey) { e.preventDefault(); a.openInsertModal(); return; }
-      if (key === 'k' && e.shiftKey) { e.preventDefault(); a.openSplitModal(); return; }
-      if (key === 'j' && e.shiftKey) { e.preventDefault(); a.openExtractModal(); return; }
-      if (key === 'b' && e.shiftKey) { e.preventDefault(); a.openExportPngModal(); return; }
-      if (key === 'n' && e.shiftKey) { e.preventDefault(); void a.handleAddBlankPage(); return; }
-      if (key === 'y' && e.shiftKey) { e.preventDefault(); void a.handleReversePages(); return; }
-      if (key === 'g' && e.shiftKey) { e.preventDefault(); a.openMergeModal(); return; }
-      if (key === '=' || key === '+') { e.preventDefault(); a.zoomIn(); return; }
-      if (key === '-') { e.preventDefault(); a.zoomOut(); return; }
-      if (key === '0') { e.preventDefault(); a.resetZoom(); return; }
-      if (key === 'z' && !e.shiftKey && a.canUndo) {
-        e.preventDefault();
-        void a.undo();
-        return;
-      }
-      if (a.canRedo && ((key === 'y' && !e.shiftKey) || (key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        void a.redo();
-      }
+
+      const commandId = shortcutIndex.get(shortcut);
+      if (!commandId) return;
+
+      const handler = SHORTCUT_HANDLERS[commandId];
+      if (!handler) return;
+
+      if (!handler.enabled(a)) return;
+
+      e.preventDefault();
+      void handler.run(a);
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [actionsRef]);
+  }, [actionsRef, activeSurface]);
 }

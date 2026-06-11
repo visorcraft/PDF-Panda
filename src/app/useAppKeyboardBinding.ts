@@ -6,7 +6,8 @@ import { useAppKeyboard } from './useAppKeyboard';
 export function useAppKeyboardBinding(
   keyboardActionsRef: MutableRefObject<AppKeyboardActions>,
   input: BuildAppKeyboardActionsInput,
+  activeSurface: 'document' | 'settings' = 'document',
 ) {
   keyboardActionsRef.current = buildAppKeyboardActions(input);
-  useAppKeyboard(keyboardActionsRef);
+  useAppKeyboard(keyboardActionsRef, activeSurface);
 }

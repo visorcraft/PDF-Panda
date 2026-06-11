@@ -93,6 +93,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       zoom: input.zoom,
       pdfActions: input.pdfActions,
     }),
+    input.surface.activeSurface,
   );
 
   const appMenus = buildAppMenuInput({

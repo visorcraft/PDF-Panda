@@ -34,6 +34,7 @@ const RESERVED_SHORTCUTS = new Set<string>([
 ]);
 
 function normalizeKey(key: string): string {
+  if (key === '+') return 'Plus';
   const upper = key.length === 1 ? key.toUpperCase() : key;
   return KEY_ALIASES[upper] ?? upper;
 }

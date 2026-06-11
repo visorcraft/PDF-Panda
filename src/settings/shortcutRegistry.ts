@@ -114,7 +114,7 @@ export const SHORTCUT_REGISTRY: ShortcutBinding[] = [
   { commandId: 'next-page', category: 'Navigation', label: 'Next page', defaultShortcuts: ['ArrowRight', 'PageDown'] },
   { commandId: 'first-page', category: 'Navigation', label: 'First page', defaultShortcuts: ['Home'] },
   { commandId: 'last-page', category: 'Navigation', label: 'Last page', defaultShortcuts: ['End'] },
-  { commandId: 'zoom-in', category: 'View', label: 'Zoom in', defaultShortcuts: ['Ctrl+=', 'Ctrl+Plus'] },
+  { commandId: 'zoom-in', category: 'View', label: 'Zoom in', defaultShortcuts: ['Ctrl+=', 'Ctrl+Plus', 'Ctrl+Shift+Plus'] },
   { commandId: 'zoom-out', category: 'View', label: 'Zoom out', defaultShortcuts: ['Ctrl+-'] },
   { commandId: 'zoom-reset', category: 'View', label: 'Reset zoom', defaultShortcuts: ['Ctrl+0'] },
 
