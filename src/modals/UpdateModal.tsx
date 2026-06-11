@@ -4,13 +4,16 @@ import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { Modal } from '../ui/Modal';
 
-type UpdatePhase = 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'error';
+type UpdatePhase = 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'ready' | 'handoff' | 'error';
+
+type LinuxPackageRef = { url: string; sha256: string };
 
 type LatestVersion = {
   version: string;
   notes?: string;
   current: string;
   newer: boolean;
+  linuxPackages?: { deb?: LinuxPackageRef; rpm?: LinuxPackageRef };
 };
 
 type UpdateModalProps = {
@@ -24,6 +27,7 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
   const [latest, setLatest] = useState<LatestVersion | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
+  const [channel, setChannel] = useState<string>('manual');
 
   const runCheck = useCallback(async () => {
     setPhase('checking');
@@ -47,9 +51,13 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
       return;
     }
 
-    // Check-only path for unsupported platforms (deb/rpm)
+    // Check-only path for unsupported platforms (deb/rpm/raw binary)
     try {
-      const result = await invoke<LatestVersion>('fetch_latest_version');
+      const [result, ch] = await Promise.all([
+        invoke<LatestVersion>('fetch_latest_version'),
+        invoke<string>('update_channel').catch(() => 'manual'),
+      ]);
+      setChannel(ch);
       setLatest(result);
       setPhase(result.newer ? 'available' : 'current');
     } catch (err) {
@@ -90,6 +98,27 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
     void invoke('open_url', { url });
   };
 
+  const packageForChannel = (): LinuxPackageRef | undefined => {
+    if (!latest?.linuxPackages) return undefined;
+    if (channel === 'deb') return latest.linuxPackages.deb;
+    if (channel === 'rpm') return latest.linuxPackages.rpm;
+    return undefined;
+  };
+
+  const installPackage = async () => {
+    const pkg = packageForChannel();
+    if (!pkg) return;
+    setPhase('downloading');
+    setProgress(0);
+    try {
+      await invoke<string>('download_and_open_package', { url: pkg.url, sha256: pkg.sha256 });
+      setPhase('handoff');
+    } catch (err) {
+      setError(String(err));
+      setPhase('error');
+    }
+  };
+
   return (
     <Modal onClose={onClose}>
       <div data-testid="update-modal">
@@ -121,17 +150,36 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
                   Version <strong>{latest.version}</strong> is available.
                 </p>
                 {latest.notes && <pre className="update-notes">{latest.notes}</pre>}
-                <p className="muted">
-                  Your platform does not support in-app updates. Open the release page to download manually.
-                </p>
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-active" onClick={() => void openReleasePage()}>
-                    Open Release Page
-                  </button>
-                  <button type="button" className="btn btn-secondary" onClick={onClose}>
-                    Later
-                  </button>
-                </div>
+                {packageForChannel() ? (
+                  <>
+                    <p className="muted">
+                      Download the {channel === 'deb' ? 'Debian' : 'RPM'} package and install it with your
+                      system package manager.
+                    </p>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-active" onClick={() => void installPackage()}>
+                        Download &amp; Install
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={onClose}>
+                        Later
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="muted">
+                      Your platform does not support in-app updates. Open the release page to download manually.
+                    </p>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-active" onClick={() => void openReleasePage()}>
+                        Open Release Page
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={onClose}>
+                        Later
+                      </button>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </>
@@ -146,6 +194,16 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
               Later
             </button>
           </div>
+        )}
+        {phase === 'handoff' && (
+          <>
+            <p>The system installer has been launched. Restart PDF Panda after the update finishes.</p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
         )}
         {phase === 'error' && (
           <>
