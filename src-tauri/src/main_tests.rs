@@ -19347,6 +19347,29 @@ fn parse_latest_json_missing_version() {
 }
 
 #[test]
+fn parse_latest_json_with_linux_packages() {
+    let body = r#"{
+        "version":"0.6.2",
+        "notes":"x",
+        "linux_packages":{
+            "deb":{"url":"https://example.test/app_0.6.2_amd64.deb","sha256":"aabb"},
+            "rpm":{"url":"https://example.test/app-0.6.2.x86_64.rpm","sha256":"ccdd"}
+        }
+    }"#;
+    let info = parse_latest_json(body, "0.6.1").unwrap();
+    let pkgs = info.linux_packages.expect("linux_packages present");
+    assert_eq!(pkgs.deb.as_ref().unwrap().url, "https://example.test/app_0.6.2_amd64.deb");
+    assert_eq!(pkgs.deb.as_ref().unwrap().sha256, "aabb");
+    assert_eq!(pkgs.rpm.as_ref().unwrap().sha256, "ccdd");
+}
+
+#[test]
+fn parse_latest_json_without_linux_packages_is_none() {
+    let info = parse_latest_json(r#"{"version":"0.6.2"}"#, "0.6.1").unwrap();
+    assert!(info.linux_packages.is_none());
+}
+
+#[test]
 fn resolve_update_channel_forced_env_wins() {
     assert_eq!(resolve_update_channel(Some("deb"), true, true, false, false), "deb");
     assert_eq!(resolve_update_channel(Some("manual"), false, false, false, false), "manual");

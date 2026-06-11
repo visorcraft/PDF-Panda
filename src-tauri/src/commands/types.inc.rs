@@ -11,11 +11,26 @@ struct PdfDocumentMetadata {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LinuxPackageRef {
+    url: String,
+    sha256: String,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+struct LinuxPackages {
+    deb: Option<LinuxPackageRef>,
+    rpm: Option<LinuxPackageRef>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct LatestVersionInfo {
     version: String,
     notes: Option<String>,
     current: String,
     newer: bool,
+    linux_packages: Option<LinuxPackages>,
 }
 
 #[derive(Debug, Clone, Serialize)]

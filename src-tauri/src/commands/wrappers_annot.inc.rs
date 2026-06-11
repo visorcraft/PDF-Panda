@@ -170,11 +170,25 @@ fn parse_latest_json(body: &str, current: &str) -> Result<LatestVersionInfo, Str
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
     let newer = version_newer(&version, current);
+    let linux_packages = json.get("linux_packages").map(|lp| {
+        let parse_ref = |key: &str| -> Option<LinuxPackageRef> {
+            let entry = lp.get(key)?;
+            Some(LinuxPackageRef {
+                url: entry.get("url")?.as_str()?.to_string(),
+                sha256: entry.get("sha256")?.as_str()?.to_string(),
+            })
+        };
+        LinuxPackages {
+            deb: parse_ref("deb"),
+            rpm: parse_ref("rpm"),
+        }
+    });
     Ok(LatestVersionInfo {
         version,
         notes,
         current: current.to_string(),
         newer,
+        linux_packages,
     })
 }
 
