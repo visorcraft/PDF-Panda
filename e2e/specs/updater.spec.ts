@@ -46,6 +46,10 @@ describe('update notification', () => {
     expect(text).toContain('Your platform does not support in-app updates');
     expect(text).toContain('Synthetic release notes');
 
+    const releaseBtn = await modal.$('button=Open Release Page');
+    await releaseBtn.waitForDisplayed({ timeout: 5_000 });
+    expect(await releaseBtn.getAttribute('class')).toContain('btn');
+
     await closeUpdateModal();
   });
 

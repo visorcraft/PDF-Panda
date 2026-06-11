@@ -106,10 +106,10 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
                 </p>
                 {update.body && <pre className="update-notes">{update.body}</pre>}
                 <div className="modal-actions">
-                  <button type="button" onClick={() => void download()}>
+                  <button type="button" className="btn btn-active" onClick={() => void download()}>
                     Download
                   </button>
-                  <button type="button" className="secondary" onClick={onClose}>
+                  <button type="button" className="btn btn-secondary" onClick={onClose}>
                     Later
                   </button>
                 </div>
@@ -125,10 +125,10 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
                   Your platform does not support in-app updates. Open the release page to download manually.
                 </p>
                 <div className="modal-actions">
-                  <button type="button" onClick={() => void openReleasePage()}>
+                  <button type="button" className="btn btn-active" onClick={() => void openReleasePage()}>
                     Open Release Page
                   </button>
-                  <button type="button" className="secondary" onClick={onClose}>
+                  <button type="button" className="btn btn-secondary" onClick={onClose}>
                     Later
                   </button>
                 </div>
@@ -139,10 +139,10 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
         {phase === 'downloading' && <p>Downloading… {progress > 0 ? `${progress}%` : ''}</p>}
         {phase === 'ready' && (
           <div className="modal-actions">
-            <button type="button" onClick={() => void restart()}>
+            <button type="button" className="btn btn-active" onClick={() => void restart()}>
               Restart Now
             </button>
-            <button type="button" className="secondary" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
               Later
             </button>
           </div>
@@ -151,10 +151,10 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
           <>
             <p className="error-text">{error || 'Update check failed.'}</p>
             <div className="modal-actions">
-              <button type="button" onClick={() => void runCheck()}>
+              <button type="button" className="btn btn-active" onClick={() => void runCheck()}>
                 Retry
               </button>
-              <button type="button" className="secondary" onClick={onClose}>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Close
               </button>
             </div>
