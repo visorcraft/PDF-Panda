@@ -341,12 +341,16 @@ pub fn verify_sha256(bytes: &[u8], expected_hex: &str) -> Result<(), String> {
 /// Returns the downloaded temp path on success.
 #[tauri::command]
 fn download_and_open_package(url: String, sha256: String) -> Result<String, String> {
+    if !cfg!(target_os = "linux") {
+        return Err("Package install handoff is only supported on Linux".into());
+    }
     if !url.starts_with("https://") {
         return Err("Invalid URL scheme: only https is allowed".into());
     }
     let mut bytes: Vec<u8> = Vec::new();
     use std::io::Read;
     ureq::get(&url)
+        .timeout(std::time::Duration::from_secs(300))
         .call()
         .map_err(|e| format!("Failed to download package: {}", e))?
         .into_reader()
@@ -357,16 +361,15 @@ fn download_and_open_package(url: String, sha256: String) -> Result<String, Stri
         .rsplit('/')
         .next()
         .filter(|s| !s.is_empty())
-        .unwrap_or("pdf-panda-update");
+        .and_then(|s| std::path::Path::new(s).file_name())
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "pdf-panda-update".into());
     let dest = std::env::temp_dir().join(file_name);
     std::fs::write(&dest, &bytes).map_err(|e| format!("Failed to write package: {}", e))?;
-    #[cfg(target_os = "linux")]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(&dest)
-            .spawn()
-            .map_err(|e| format!("Failed to launch system installer: {}", e))?;
-    }
+    std::process::Command::new("xdg-open")
+        .arg(&dest)
+        .spawn()
+        .map_err(|e| format!("Failed to launch system installer: {}", e))?;
     Ok(dest.to_string_lossy().into_owned())
 }
 
