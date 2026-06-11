@@ -28,6 +28,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     viewerWorkflow,
     persistence,
     theme,
+    surface,
   } = bootstrap;
 
   const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
@@ -130,6 +131,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     browser: { showBrowserModal: browser.showBrowserModal, setShowBrowserModal: browser.setShowBrowserModal },
     search: { showSearchModal: search.showSearchModal, closeSearchModal: search.closeSearchModal },
     theme,
+    surface,
   });
 
   const modalCtx = useAppModalCtxBinding({
@@ -188,6 +190,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     modalCtx,
     slices,
     viewerWorkflow,
+    surface,
     onSelectTab: tabActions.selectTab,
     onCloseTab: tabActions.requestCloseTab,
   });

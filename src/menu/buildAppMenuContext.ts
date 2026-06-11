@@ -8,5 +8,7 @@ export function buildAppMenuContext(source: AppMenuContextSource): AppMenuContex
     ...menuContextPagesFields(source),
     theme: source.theme,
     setTheme: source.setTheme,
+    activeSurface: source.activeSurface,
+    openSettings: source.openSettings,
   };
 }

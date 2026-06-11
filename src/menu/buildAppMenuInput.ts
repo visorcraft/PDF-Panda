@@ -10,5 +10,6 @@ export function buildAppMenuInput(args: BuildAppMenuInputArgs) {
     ...menuInputPagesFields(args),
     theme: args.theme,
     setTheme: args.setTheme,
+    surface: args.surface,
   } satisfies BuildAppMenuSourceInput);
 }

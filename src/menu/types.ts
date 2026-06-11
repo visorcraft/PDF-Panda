@@ -199,6 +199,8 @@ export interface AppMenuContext {
   openCommandPalette: () => void;
   theme: 'system' | 'light' | 'dark';
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
+  activeSurface: import('../app/useAppSurfaceState').AppSurface;
+  openSettings: (focus?: import('../app/useAppSurfaceState').SettingsFocusSection) => void;
 }
 
 export type AppMenus = {
@@ -382,4 +384,6 @@ export type AppMenuContextSource = {
   openCommandPalette: () => void;
   theme: 'system' | 'light' | 'dark';
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
+  activeSurface: import('../app/useAppSurfaceState').AppSurface;
+  openSettings: (focus?: import('../app/useAppSurfaceState').SettingsFocusSection) => void;
 };

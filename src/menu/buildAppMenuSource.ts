@@ -1,5 +1,6 @@
 import type { AppMenuContextSource } from './types';
 import type { ScrollViewMode, ViewMode } from '../app/types';
+import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 
 /** Inputs from App hooks/state before menu void-wrapping in buildAppMenuContext. */
 export type BuildAppMenuSourceInput = Omit<
@@ -18,9 +19,12 @@ export type BuildAppMenuSourceInput = Omit<
   | 'openAbout'
   | 'openUpdateModal'
   | 'openCommandPalette'
+  | 'activeSurface'
+  | 'openSettings'
 > & {
   filePath: string;
   ocrAvailable: boolean | null;
+  surface: { activeSurface: AppSurface; openSettings: (focus?: SettingsFocusSection) => void };
   guardUnsaved: (action: () => void) => void;
   closePdf: () => void;
   setViewMode: (mode: ViewMode) => void;
@@ -61,6 +65,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     setShowCommandPalette,
     theme,
     setTheme,
+    surface,
     ...passthrough
   } = input;
   return {
@@ -83,5 +88,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     openCommandPalette: () => setShowCommandPalette(true),
     theme,
     setTheme,
+    activeSurface: surface.activeSurface,
+    openSettings: (focus?: SettingsFocusSection) => surface.openSettings(focus),
   };
 }

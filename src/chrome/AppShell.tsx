@@ -9,6 +9,8 @@ import { PrintSurface } from '../viewer/PrintSurface';
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 
+type AppSurface = import('../app/useAppSurfaceState').AppSurface;
+
 type AppShellProps = {
   windowTitle: string;
   toast: ToastState;
@@ -17,6 +19,7 @@ type AppShellProps = {
   body: React.ComponentProps<typeof AppBody>;
   modals: React.ComponentProps<typeof AppModals>;
   printPages: string[];
+  activeSurface: AppSurface;
   children?: ReactNode;
 };
 
@@ -28,9 +31,10 @@ export function AppShell({
   body,
   modals,
   printPages,
+  activeSurface,
 }: AppShellProps) {
   return (
-    <div className="app">
+    <div className="app" data-active-surface={activeSurface}>
       <ResizeBorders />
       <TitleBar title={windowTitle} />
       <Toast notification={toast} />

@@ -15,6 +15,7 @@ import { useAppSetupHooks } from './useAppSetupHooks';
 import { useAppViewerWorkflow } from './useAppViewerWorkflow';
 import { useSessionPersistence } from './useSessionPersistence';
 import { useThemeState } from './useThemeState';
+import { useAppSurfaceState } from './useAppSurfaceState';
 
 export function useAppStateBootstrap() {
   const doc = useAppDocumentState();
@@ -97,6 +98,7 @@ export function useAppStateBootstrap() {
   });
 
   const theme = useThemeState();
+  const surface = useAppSurfaceState();
 
   return {
     doc,
@@ -116,5 +118,6 @@ export function useAppStateBootstrap() {
     viewerWorkflow,
     persistence,
     theme,
+    surface,
   };
 }

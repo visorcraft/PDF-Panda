@@ -15,6 +15,7 @@ import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
 import type { PdfPageSize } from '../app/types';
+import type { AppSurface } from '../app/useAppSurfaceState';
 
 type DrawingState = ReturnType<typeof useDrawingGesture>;
 
@@ -34,6 +35,7 @@ export type BuildAppShellRenderInputArgs = {
   modeExtras: BuildAppChromeSourceInput['modeExtras'];
   modalCtx: AppModalsRuntime;
   printPages: string[];
+  activeSurface: AppSurface;
   viewer: Pick<
     BuildAppViewerSourceInput,
     | 'thumbnails'
@@ -80,6 +82,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       onSelectTab: args.onSelectTab,
       onCloseTab: args.onCloseTab,
     }),
+    activeSurface: args.activeSurface,
     viewer: buildAppShellViewerInput({
       document: {
         filePath: args.doc.filePath,

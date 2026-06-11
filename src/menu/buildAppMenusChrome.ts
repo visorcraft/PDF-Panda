@@ -47,6 +47,7 @@ export function buildHelpMenu(ctx: AppMenuContext): MenuRoot {
       ...(ctx.tesseractInstalled
         ? []
         : [act('tesseract', 'Install Tesseract (scan OCR)…', ctx.openTesseractGuide)]),
+      act('settings', 'Settings…', () => ctx.openSettings(null)),
       act('shortcuts', 'Keyboard shortcuts…', ctx.openShortcutsHelp),
       act('licenses', 'Licenses…', ctx.openLicenses),
       act('credits', 'Credits…', ctx.openCredits),
