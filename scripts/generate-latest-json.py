@@ -10,10 +10,14 @@ Updater bundles per platform (Tauri v2 `createUpdaterArtifacts`):
   darwin-aarch64  *.app.tar.gz    + *.app.tar.gz.sig   (built on arm64 runners)
   windows-x86_64  *-setup.exe     + *-setup.exe.sig    (NSIS; falls back to .msi)
 
+The manifest also includes a `linux_packages` block carrying the non-updater
+.deb and .rpm asset URLs + SHA-256 for the in-app download-and-handoff path.
+
 Usage: generate-latest-json.py <artifacts-dir> <tag>
 """
 
 import datetime
+import hashlib
 import json
 import pathlib
 import sys
@@ -51,6 +55,31 @@ def platform_entry(root: pathlib.Path, tag: str, suffixes: list[str]) -> dict | 
     return None
 
 
+def sha256_hex(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def linux_packages(root: pathlib.Path, tag: str) -> dict:
+    """deb/rpm asset URL + checksum for the in-app download-and-handoff path."""
+    out: dict = {}
+    for key, suffix in (("deb", ".deb"), ("rpm", ".rpm")):
+        bundle = find_bundle(root, suffix)
+        if bundle is None:
+            continue
+        out[key] = {
+            "url": f"{REPO_DOWNLOAD_BASE}/{tag}/{github_asset_name(bundle.name)}",
+            "sha256": sha256_hex(bundle),
+        }
+    return out
+
+
 def main() -> None:
     if len(sys.argv) != 3:
         raise SystemExit(f"usage: {sys.argv[0]} <artifacts-dir> <tag>")
@@ -83,6 +112,9 @@ def main() -> None:
         .replace("+00:00", "Z"),
         "platforms": platforms,
     }
+    packages = linux_packages(root, tag)
+    if packages:
+        manifest["linux_packages"] = packages
     out = root / "latest.json"
     out.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Wrote {out} ({', '.join(sorted(platforms))})")
