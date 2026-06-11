@@ -2,37 +2,40 @@ import type { AppMenuContext, MenuAction, MenuRoot } from './types';
 import { act, sep } from './menuBuilders';
 
 export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
+  const pdfItems = [
+    act('view-pdf', 'PDF view', ctx.setViewModePdf, { active: ctx.viewMode === 'pdf' }),
+    act('view-md', 'Markdown view', () => void ctx.toggleMarkdownView(), {
+      shortcut: 'Ctrl+Shift+M',
+      active: ctx.viewMode === 'markdown',
+    }),
+    sep(),
+    act(
+      'continuous-scroll',
+      ctx.scrollViewMode === 'continuous' ? 'Continuous scroll (on)' : 'Continuous scroll',
+      ctx.toggleContinuousScroll,
+      { active: ctx.scrollViewMode === 'continuous', disabled: ctx.viewMode !== 'pdf' },
+    ),
+    act('bookmarks', ctx.showBookmarksPanel ? 'Bookmarks panel (on)' : 'Bookmarks panel', ctx.toggleBookmarksPanel, {
+      active: ctx.showBookmarksPanel,
+    }),
+    act(
+      'annotations-panel',
+      ctx.showAnnotationsPanel ? 'Annotations panel (on)' : 'Annotations panel',
+      ctx.toggleAnnotationsPanel,
+      { active: ctx.showAnnotationsPanel },
+    ),
+    sep(),
+  ];
+  const themeItems = [
+    act('theme-system', 'System theme', () => ctx.setTheme('system'), { active: ctx.theme === 'system' }),
+    act('theme-light', 'Light theme', () => ctx.setTheme('light'), { active: ctx.theme === 'light' }),
+    act('theme-dark', 'Dark theme', () => ctx.setTheme('dark'), { active: ctx.theme === 'dark' }),
+  ];
   return {
     id: 'view',
     label: 'View',
     disabled: !ctx.hasPdf,
-    items: [
-      act('view-pdf', 'PDF view', ctx.setViewModePdf, { active: ctx.viewMode === 'pdf' }),
-      act('view-md', 'Markdown view', () => void ctx.toggleMarkdownView(), {
-        shortcut: 'Ctrl+Shift+M',
-        active: ctx.viewMode === 'markdown',
-      }),
-      sep(),
-      act(
-        'continuous-scroll',
-        ctx.scrollViewMode === 'continuous' ? 'Continuous scroll (on)' : 'Continuous scroll',
-        ctx.toggleContinuousScroll,
-        { active: ctx.scrollViewMode === 'continuous', disabled: ctx.viewMode !== 'pdf' },
-      ),
-      act('bookmarks', ctx.showBookmarksPanel ? 'Bookmarks panel (on)' : 'Bookmarks panel', ctx.toggleBookmarksPanel, {
-        active: ctx.showBookmarksPanel,
-      }),
-      act(
-        'annotations-panel',
-        ctx.showAnnotationsPanel ? 'Annotations panel (on)' : 'Annotations panel',
-        ctx.toggleAnnotationsPanel,
-        { active: ctx.showAnnotationsPanel },
-      ),
-      sep(),
-      act('theme-system', 'System theme', () => ctx.setTheme('system'), { active: ctx.theme === 'system' }),
-      act('theme-light', 'Light theme', () => ctx.setTheme('light'), { active: ctx.theme === 'light' }),
-      act('theme-dark', 'Dark theme', () => ctx.setTheme('dark'), { active: ctx.theme === 'dark' }),
-    ],
+    items: ctx.hasPdf ? [...pdfItems, ...themeItems] : themeItems,
   };
 }
 

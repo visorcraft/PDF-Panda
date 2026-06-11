@@ -1,0 +1,27 @@
+[0m
+> build · k2p6
+[0m
+[0m→ [0mRead _review_diff.txt
+[0m→ [0mRead src/app/useThemeState.ts
+[0m→ [0mRead src/styles.css
+[0m→ [0mRead src/menu/buildAppMenusChrome.ts
+[0m→ [0mRead src/styles.css[90m [offset=2001][0m
+**1. CSS variable coverage** — Comprehensive. Nearly all UI surfaces, chrome, sidebar, menus, modals, annotations, forms, toasts, and markdown viewer are migrated to `--pp-*` variables.
+
+**2. Dark palette** — Good overall. Background `#1a1a2e` with text `#e8e8f0` yields strong contrast. Accent `#5aa0e8` is bright enough on dark surfaces. Toast and OCR badge colors are appropriately shifted.
+
+**3. `useThemeState` hook** — Correct. Validates stored values, guards `localStorage`, handles SSR, applies `data-theme` on change, and registers a `matchMedia` listener that only re-applies when `theme === 'system'`. `setTheme` is memoized. No leaks.
+
+**4. Menu integration** — Theme submenu is present in **View** with `active` checkmarks. However, `buildViewMenu` sets `disabled: !ctx.hasPdf`, so the **entire View menu (including theme) is inaccessible when no PDF is open**. Theme should be reachable before loading a document.
+
+**5. E2E test** — One smoke test toggles dark via View menu and asserts `data-theme="dark"`, then toggles back. Adequate for a smoke test.
+
+**6. Hardcoded colors missed** — Several:
+- `.muted` is defined **twice** (line ~573 with `var(--pp-text-muted)`, then again at line ~1797 with hardcoded `#888`). The second definition wins, breaking dark mode for muted text.
+- `.modal-steps` (line 1482): hardcoded `color: #333` — unreadable in dark mode.
+- `.menu-item.danger:hover` (line 525): hardcoded `background: #ffebee` — light pink flash on dark menu hover.
+- `.thumbnail.active` box-shadow and `.num-input:focus` box-shadow use hardcoded `rgba(74, 144, 217, …)` instead of deriving from `--pp-accent`.
+
+**7. Licenses viewer** — No conflict. The `.legal-*` / `.licenses-*` styles form an intentional self-contained "Grexa-style dark shell" with explicit colors and do not reference CSS variables, so the app theme toggle does not affect it.
+
+VERDICT approved issues=4

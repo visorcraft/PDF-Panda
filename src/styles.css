@@ -234,7 +234,7 @@ body {
 
 .thumbnail.active {
   border-color: var(--pp-accent);
-  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.25);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-accent) 25%, transparent);
 }
 
 .thumbnail.dragging {
@@ -522,7 +522,7 @@ body {
 }
 
 .menu-item.danger:hover:not(:disabled) {
-  background: #ffebee;
+  background: rgba(198, 40, 40, 0.12);
 }
 
 .menu-item-submenu {
@@ -818,7 +818,7 @@ body {
 .num-input:focus {
   outline: none;
   border-color: var(--pp-input-focus);
-  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-accent) 20%, transparent);
 }
 
 .zoom-divider {
@@ -1479,7 +1479,7 @@ body {
 .modal-steps {
   margin: 0 0 12px;
   padding-left: 20px;
-  color: #333;
+  color: var(--pp-text-secondary);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -1791,12 +1791,6 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-/* Utility */
-.muted {
-  font-size: 13px;
-  color: #888;
 }
 
 /* Print surface — hidden on screen, revealed only for the native print dialog */

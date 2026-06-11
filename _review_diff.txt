@@ -1,0 +1,531 @@
+e2e/specs/smoke.spec.ts           |  15 ++
+ src/app/useAppChromeBindings.ts   |   3 +
+ src/app/useAppRuntimeWiring.ts    |   2 +
+ src/app/useAppStateBootstrap.ts   |   4 +
+ src/app/useThemeState.ts          |  62 +++++
+ src/menu/buildAppMenuContext.ts   |   2 +
+ src/menu/buildAppMenuInput.ts     |   2 +
+ src/menu/buildAppMenuInputArgs.ts |   2 +
+ src/menu/buildAppMenuSource.ts    |   6 +
+ src/menu/buildAppMenusChrome.ts   |   4 +
+ src/menu/types.ts                 |   4 +
+ src/styles.css                    | 492 ++++++++++++++++++++++++++------------
+ 12 files changed, 444 insertions(+), 154 deletions(-)
+
+--- Changes ---
+
+e2e/specs/smoke.spec.ts
+  @@ -1,4 +1,5 @@
+  +  clickMenuAction,
+     fixturePdf,
+     openFileMenu,
+     openPdfViaPathModal,
+  @@ -32,4 +33,18 @@ describe('PDF Panda shell', () => {
+  +
+  +  it('toggles dark theme via View menu', async () => {
+  +    await clickMenuAction('view', 'theme-dark');
+  +    await browser.waitUntil(
+  +      async () => (await browser.execute(() => document.documentElement.getAttribute('data-theme'))) === 'dark',
+  +      { timeout: 5_000, timeoutMsg: 'expected dark theme' },
+  +    );
+  +    // Toggle back to light for subsequent tests
+  +    await clickMenuAction('view', 'theme-light');
+  +    await browser.waitUntil(
+  +      async () => (await browser.execute(() => document.documentElement.getAttribute('data-theme'))) === 'light',
+  +      { timeout: 5_000, timeoutMsg: 'expected light theme' },
+  +    );
+  +  });
+   });
+  +15 -0
+
+src/app/useAppChromeBindings.ts
+  @@ -21,6 +21,7 @@ export type UseAppChromeBindingsInput = {
+  +  theme: { theme: 'system' | 'light' | 'dark'; setTheme: (theme: 'system' | 'light' | 'dark') => void };
+     pdfActions: AppPdfActions;
+     history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
+     chrome: {
+  @@ -143,6 +144,8 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
+  +    theme: input.theme.theme,
+  +    setTheme: input.theme.setTheme,
+       pdfActions: input.pdfActions,
+     });
+   
+  +3 -0
+
+src/app/useAppRuntimeWiring.ts
+  @@ -27,6 +27,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
+  +    theme,
+     } = bootstrap;
+   
+     const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
+  @@ -128,6 +129,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
+  +    theme,
+     });
+   
+     const modalCtx = useAppModalCtxBinding({
+  +2 -0
+
+src/app/useAppStateBootstrap.ts
+  @@ -14,6 +14,7 @@ import { useAppLifecycleSlices } from './useAppLifecycleSlices';
+  +import { useThemeState } from './useThemeState';
+   
+   export function useAppStateBootstrap() {
+     const doc = useAppDocumentState();
+  @@ -94,6 +95,8 @@ export function useAppStateBootstrap() {
+  +  const theme = useThemeState();
+  +
+     return {
+       doc,
+       modal,
+  @@ -111,5 +114,6 @@ export function useAppStateBootstrap() {
+  +    theme,
+     };
+   }
+  +4 -0
+
+src/app/useThemeState.ts
+  @@ -0,0 +1,62 @@
+  +import { useCallback, useEffect, useState } from 'react';
+  +
+  +type Theme = 'system' | 'light' | 'dark';
+  +const STORAGE_KEY = 'pdf-panda-theme';
+  +
+  +function getStoredTheme(): Theme {
+  +  try {
+  +    const stored = localStorage.getItem(STORAGE_KEY);
+  +    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+  +      return stored;
+  +    }
+  +  } catch {
+  +    // localStorage may be unavailable
+  +  }
+  +  return 'system';
+  +}
+  +
+  +function storeTheme(theme: Theme): void {
+  +  try {
+  +    localStorage.setItem(STORAGE_KEY, theme);
+  +  } catch {
+  +    // ignore
+  +  }
+  +}
+  +
+  +function getSystemTheme(): 'light' | 'dark' {
+  +  if (typeof window === 'undefined') return 'light';
+  +  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  +}
+  +
+  +function applyTheme(theme: Theme): void {
+  +  const effective = theme === 'system' ? getSystemTheme() : theme;
+  +  document.documentElement.setAttribute('data-theme', effective);
+  +}
+  +
+  +export function useThemeState() {
+  +  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+  +
+  +  useEffect(() => {
+  +    applyTheme(theme);
+  +  }, [theme]);
+  +
+  +  useEffect(() => {
+  +    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  +    const handler = () => {
+  +      if (theme === 'system') {
+  +        applyTheme('system');
+  +      }
+  +    };
+  +    mq.addEventListener('change', handler);
+  +    return () => mq.removeEventListener('change', handler);
+  +  }, [theme]);
+  +
+  +  const setTheme = useCallback((next: Theme) => {
+  +    storeTheme(next);
+  +    setThemeState(next);
+  +  }, []);
+  +
+  +  const effectiveTheme: 'light' | 'dark' = theme === 'system' ? getSystemTheme() : theme;
+  +
+  +  return { theme, effectiveTheme, setTheme };
+  +}
+  +62 -0
+
+src/menu/buildAppMenuContext.ts
+  @@ -6,5 +6,7 @@ export function buildAppMenuContext(source: AppMenuContextSource): AppMenuContex
+  +    theme: source.theme,
+  +    setTheme: source.setTheme,
+     };
+   }
+  +2 -0
+
+src/menu/buildAppMenuInput.ts
+  @@ -8,5 +8,7 @@ export function buildAppMenuInput(args: BuildAppMenuInputArgs) {
+  +    theme: args.theme,
+  +    setTheme: args.setTheme,
+     } satisfies BuildAppMenuSourceInput);
+   }
+  +2 -0
+
+src/menu/buildAppMenuInputArgs.ts
+  @@ -24,5 +24,7 @@ export type BuildAppMenuInputArgs = {
+  +  theme: 'system' | 'light' | 'dark';
+  +  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+     pdfActions: AppPdfActions;
+   };
+  +2 -0
+
+src/menu/buildAppMenuSource.ts
+  @@ -36,6 +36,8 @@ export type BuildAppMenuSourceInput = Omit<
+  +  theme: 'system' | 'light' | 'dark';
+  +  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+   };
+   
+   export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuContextSource {
+  @@ -57,6 +59,8 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
+  +    theme,
+  +    setTheme,
+       ...passthrough
+     } = input;
+     return {
+  @@ -77,5 +81,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
+  +    theme,
+  +    setTheme,
+     };
+   }
+  +6 -0
+
+src/menu/buildAppMenusChrome.ts
+  @@ -28,6 +28,10 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
+  +      sep(),
+  +      act('theme-system', 'System theme', () => ctx.setTheme('system'), { active: ctx.theme === 'system' }),
+  +      act('theme-light', 'Light theme', () => ctx.setTheme('light'), { active: ctx.theme === 'light' }),
+  +      act('theme-dark', 'Dark theme', () => ctx.setTheme('dark'), { active: ctx.theme === 'dark' }),
+       ],
+     };
+   }
+  +4 -0
+
+src/menu/types.ts
+  @@ -197,6 +197,8 @@ export interface AppMenuContext {
+  +  theme: 'system' | 'light' | 'dark';
+  +  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+   }
+   
+   export type AppMenus = {
+  @@ -378,4 +380,6 @@ export type AppMenuContextSource = {
+  +  theme: 'system' | 'light' | 'dark';
+  +  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+   };
+  +4 -0
+
+src/styles.css
+  @@ -1,3 +1,163 @@
+  +:root {
+  +  --pp-bg: #f0f2f5;
+  +  --pp-surface: #fff;
+  +  --pp-surface-alt: #fafafa;
+  +  --pp-text: #1a1a2e;
+  +  --pp-text-secondary: #333;
+  +  --pp-text-muted: #888;
+  +  --pp-border: #e3e3e3;
+  +  --pp-border-light: #ddd;
+  +  --pp-accent: #4a90d9;
+  +  --pp-accent-hover: #3a7bc8;
+  +  --pp-menu-bg: #fff;
+  +  --pp-menu-hover: #eef4fc;
+  +  --pp-menu-border: #d8d8d8;
+  +  --pp-menu-text: #333;
+  +  --pp-menu-disabled: #aaa;
+  +  --pp-tab-bar-bg: #2d2d2d;
+  +  --pp-tab-bar-border: #1a1a1a;
+  +  --pp-tab-inactive-bg: #3a3a3a;
+  +  --pp-tab-inactive-text: #ccc;
+  +  --pp-tab-active-bg: var(--pp-bg);
+  +  --pp-tab-active-text: var(--pp-text);
+  +  --pp-overlay-bg: rgba(255, 255, 255, 0.6);
+  +  --pp-sidebar-bg: #fff;
+  +  --pp-sidebar-border: #ddd;
+  +  --pp-thumbnail-border: #e0e0e0;
+  +  --pp-thumbnail-hover: #888;
+  +  --pp-thumbnail-active: var(--pp-accent);
+  +  --pp-input-border: #ccc;
+  +  --pp-input-focus: var(--pp-accent);
+  +  --pp-toast-success-bg: #d4edda;
+  +  --pp-toast-success-text: #155724;
+  +  --pp-toast-error-bg: #f8d7da;
+  +  --pp-toast-error-text: #721c24;
+  +  --pp-modal-backdrop: rgba(0, 0, 0, 0.5);
+  +  --pp-modal-bg: #fff;
+  +  --pp-modal-text: #555;
+  +  --pp-btn-secondary-bg: #eee;
+  +  --pp-btn-secondary-border: #ddd;
+  +  --pp-btn-hover: #f5f5f5;
+  +  --pp-welcome-hover: rgba(74, 144, 217, 0.06);
+  +  --pp-page-shadow: rgba(0, 0, 0, 0.12);
+  +  --pp-highlight-bg: rgba(255, 255, 0, 0.35);
+  +  --pp-highlight-border: rgba(200, 180, 0, 0.6);
+  +  --pp-search-highlight: rgba(255, 196, 0, 0.45);
+  +  --pp-search-border: rgb(230, 140, 0);
+  +  --pp-markdown-bg: #fff;
+  +  --pp-markdown-border: #ddd;
+  +  --pp-markdown-header-border: #eee;
+  +  --pp-markdown-text: #222;
+  +  --pp-markdown-path: #777;
+  +  --pp-ocr-ready-bg: #e8f5e9;
+  +  --pp-ocr-ready-text: #1b5e20;
+  +  --pp-ocr-missing-bg: #fff3e0;
+  +  --pp-ocr-missing-text: #8a4b00;
+  +  --pp-annotation-bg: #fafafa;
+  +  --pp-annotation-border: #e0e0e0;
+  +  --pp-annotation-hover-bg: #f0f7f2;
+  +  --pp-annotation-hover-border: rgba(45, 138, 78, 0.45);
+  +  --pp-form-bg: #fafafa;
+  +  --pp-form-border: #e8e8e8;
+  +  --pp-recent-bg: #fafafa;
+  +  --pp-recent-border: #e0e0e0;
+  +  --pp-recent-hover: #edf4fb;
+  +  --pp-bookmark-bg: #fafafa;
+  +  --pp-bookmark-hover-bg: #f2f2f2;
+  +  --pp-bookmark-hover-border: #d8d8d8;
+  +  --pp-signature-bg: #fafafa;
+  +  --pp-signature-border: #e8e8e8;
+  +  --pp-signature-valid-bg: rgba(45, 138, 78, 0.12);
+  +  --pp-signature-valid-text: #1f6b3a;
+  +  --pp-signature-untrusted-bg: rgba(200, 140, 0, 0.15);
+  +  --pp-signature-untrusted-text: #8a5a00;
+  +  --pp-signature-invalid-bg: rgba(200, 40, 40, 0.12);
+  +  --pp-signature-invalid-text: #9b1c1c;
+  +  --pp-signature-indeterminate-bg: rgba(120, 120, 120, 0.12);
+  +  --pp-signature-indeterminate-text: #555;
+  +  --pp-loading-overlay: rgba(255, 255, 255, 0.6);
+  +}
+  +
+  +[data-theme="dark"] {
+  +  --pp-bg: #1a1a2e;
+  +  --pp-surface: #252538;
+  +  --pp-surface-alt: #2a2a40;
+  +  --pp-text: #e8e8f0;
+  +  --pp-text-secondary: #c8c8d8;
+  +  --pp-text-muted: #8888a0;
+  +  --pp-border: #3a3a50;
+  +  --pp-border-light: #404058;
+  +  --pp-accent: #5aa0e8;
+  +  --pp-accent-hover: #4a90d8;
+  +  --pp-menu-bg: #2a2a40;
+  +  --pp-menu-hover: #3a3a58;
+  +  --pp-menu-border: #404058;
+  +  --pp-menu-text: #e0e0f0;
+  +  --pp-menu-disabled: #666680;
+  +  --pp-tab-bar-bg: #1a1a2e;
+  +  --pp-tab-bar-border: #0d0d1a;
+  +  --pp-tab-inactive-bg: #252538;
+  +  --pp-tab-inactive-text: #a0a0b8;
+  ... (60 lines truncated)
+  @@ -6,8 +166,9 @@
+  -  background: #f0f2f5;
+  -  color: #1a1a2e;
+  +  background: var(--pp-bg);
+  +  color: var(--pp-text);
+  +  transition: background 0.2s, color 0.2s;
+   }
+   
+   .app {
+  @@ -19,8 +180,8 @@ body {
+  -  background: #fff;
+  -  border-bottom: 1px solid #e3e3e3;
+  +  background: var(--pp-surface);
+  +  border-bottom: 1px solid var(--pp-border);
+     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+     z-index: 10;
+   }
+  @@ -35,8 +196,8 @@ body {
+  -  border-right: 1px solid #ddd;
+  -  background: #fff;
+  +  border-right: 1px solid var(--pp-border-light);
+  +  background: var(--pp-sidebar-bg);
+     overflow-y: auto;
+     padding: 12px;
+     flex-shrink: 0;
+  @@ -47,7 +208,7 @@ body {
+  -  color: #333;
+  +  color: var(--pp-text-secondary);
+     text-transform: uppercase;
+     letter-spacing: 0.5px;
+   }
+  @@ -60,7 +221,7 @@ body {
+  -  border: 2px solid #e0e0e0;
+  +  border: 2px solid var(--pp-thumbnail-border);
+     border-radius: 4px;
+     cursor: pointer;
+     transition: border-color 0.15s, opacity 0.15s;
+  @@ -68,11 +229,11 @@ body {
+  -  border-color: #888;
+  +  border-color: var(--pp-thumbnail-hover);
+   }
+   
+   .thumbnail.active {
+  -  border-color: #4a90d9;
+  +  border-color: var(--pp-accent);
+     box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.25);
+   }
+   
+  @@ -92,8 +253,8 @@ body {
+  -  background: #2d2d2d;
+  -  border-bottom: 1px solid #1a1a1a;
+  +  background: var(--pp-tab-bar-bg);
+  +  border-bottom: 1px solid var(--pp-tab-bar-border);
+     overflow: hidden;
+   }
+   
+  @@ -110,9 +271,9 @@ body {
+  -  border-right: 1px solid #1a1a1a;
+  -  background: #3a3a3a;
+  -  color: #ccc;
+  +  border-right: 1px solid var(--pp-tab-bar-border);
+  +  background: var(--pp-tab-inactive-bg);
+  +  color: var(--pp-tab-inactive-text);
+     font-size: 12px;
+     cursor: pointer;
+     user-select: none;
+  @@ -120,12 +281,13 @@ body {
+  -  background: #444;
+  +  background: var(--pp-tab-inactive-bg);
+  +  filter: brightness(1.1);
+   }
+   
+   .tab-item.active {
+  -  background: #f0f2f5;
+  -  color: #1a1a2e;
+  +  background: var(--pp-tab-active-bg);
+  +  color: var(--pp-tab-active-text);
+   }
+   
+   .tab-dirty {
+  @@ -175,9 +337,9 @@ body {
+  -  border: 1px solid #4a90d9;
+  -  background: rgba(255, 255, 255, 0.95);
+  -  color: #1a1a2e;
+  +  border: 1px solid var(--pp-accent);
+  +  background: var(--pp-surface);
+  +  color: var(--pp-text);
+     padding: 0 2px;
+     margin: 0;
+     outline: none;
+  @@ -270,7 +432,7 @@ body {
+  -  background: #fafafa;
+  +  background: var(--pp-surface-alt);
+   }
+   
+   .menu-bar {
+  @@ -290,7 +452,7 @@ body {
+  -  color: #333;
+  +  color: var(--pp-menu-text);
+     font-size: 12px;
+     font-weight: 500;
+     cursor: pointer;
+  @@ -299,12 +461,12 @@ body {
+  -  background: #fff;
+  -  color: #1a5fb4;
+  +  background: var(--pp-menu-bg);
+  +  color: var(--pp-accent);
+   }
+   
+   .menu-bar-trigger:disabled {
+  -  color: #aaa;
+  +  color: var(--pp-menu-disabled);
+     cursor: default;
+   }
+   
+  @@ -317,8 +479,8 @@ body {
+  -  background: #fff;
+  -  border: 1px solid #d8d8d8;
+  +  background: var(--pp-menu-bg);
+  +  border: 1px solid var(--pp-menu-border);
+     border-radius: 0 6px 6px 6px;
+     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+   }
+  @@ -339,7 +501,7 @@ body {
+  -  color: #333;
+  +  color: var(--pp-menu-text);
+     font-size: 13px;
+     text-align: left;
+     cursor: pointer;
+  @@ -347,11 +509,11 @@ body {
+  -  background: #eef4fc;
+  +  background: var(--pp-menu-hover);
+   }
+   
+   .menu-item:disabled {
+  -  color: #aaa;
+  +  color: var(--pp-menu-disabled);
+     cursor: default;
+   }
+   
+  @@ -369,7 +531,7 @@ body {
+  -  background: #eef4fc;
+  +  background: var(--pp-menu-hover);
+   }
+   
+   .menu-item-label {
+  @@ -377,20 +539,20 @@ body {
+  -  color: #888;
+  +  color: var(--pp-text-muted);
+     font-size: 12px;
+     white-space: nowrap;
+   }
+   
+   .menu-item-chevron {
+  -  color: #888;
+  +  color: var(--pp-text-muted);
+     font-size: 12px;
+   }
+   
+   .menu-separator {
+     height: 1px;
+     margin: 6px 0;
+  -  background: #ececec;
+  +  background: var(--pp-border);
+   }
+   
+   .quick-toolbar-row {
+  @@ -408,6 +570,11 @@ body {
+  +.muted {
+  +  font-size: 13px;
+  +  color: var(--pp-text-muted);
+  +}
+  +
+   .command-palette-backdrop {
+     position: fixed;
+     inset: 0;
+  @@ -415,13 +582,13 @@ body {
+  -  background: rgba(0, 0, 0, 0.45);
+  +  background: var(--pp-modal-backdrop);
+   }
+   
+   .command-palette {
+     width: min(560px, 92vw);
+     max-height: 60vh;
+  -  background: #fff;
+  +  background: var(--pp-modal-bg);
+     border-radius: 10px;
+     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+     overflow: hidden;
+  @@ -431,9 +598,11 @@ body {
+  -  border-bottom: 1px solid #e8e8e8;
+  +  border-bottom: 1px solid var(--pp-border);
+     font-size: 15px;
+     outline: none;
+  +  background: var(--pp-modal-bg);
+  +  color: var(--pp-text);
+   }
+   
+   .command-palette-list {
+  @@ -456,25 +625,26 @@ body {
+  +  color: var(--pp-text);
+   }
+   
+   .command-palette-item.highlighted {
+  -  background: #eef4fc;
+
+... (more changes truncated)
+  +208 -39
+[full diff: rtk git diff --no-compact]
