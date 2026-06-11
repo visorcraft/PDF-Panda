@@ -36,6 +36,7 @@ export type BuildAppShellRenderInputArgs = {
   modalCtx: AppModalsRuntime;
   printPages: string[];
   activeSurface: AppSurface;
+  closeSettings: () => void;
   viewer: Pick<
     BuildAppViewerSourceInput,
     | 'thumbnails'
@@ -81,8 +82,10 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       activeTabId: args.doc.activeId,
       onSelectTab: args.onSelectTab,
       onCloseTab: args.onCloseTab,
+      documentChromeVisible: args.activeSurface === 'document',
     }),
     activeSurface: args.activeSurface,
+    closeSettings: args.closeSettings,
     viewer: buildAppShellViewerInput({
       document: {
         filePath: args.doc.filePath,

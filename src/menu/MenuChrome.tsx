@@ -26,6 +26,7 @@ type MenuChromeProps = {
   activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  documentChromeVisible: boolean;
 };
 
 function runAction(action: MenuAction) {
@@ -303,17 +304,22 @@ export function MenuChrome({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  documentChromeVisible,
 }: MenuChromeProps) {
   return (
     <>
       <div className="menu-chrome">
         <MenuBar menus={menus} />
-        <TabBar tabs={tabs} activeId={activeTabId} onSelect={onSelectTab} onClose={onCloseTab} />
-        {(quickAccess.length > 0 || modeExtras) && (
-          <div className="quick-toolbar-row">
-            <QuickToolbar items={quickAccess} />
-            {modeExtras}
-          </div>
+        {documentChromeVisible && (
+          <>
+            <TabBar tabs={tabs} activeId={activeTabId} onSelect={onSelectTab} onClose={onCloseTab} />
+            {(quickAccess.length > 0 || modeExtras) && (
+              <div className="quick-toolbar-row">
+                <QuickToolbar items={quickAccess} />
+                {modeExtras}
+              </div>
+            )}
+          </>
         )}
       </div>
       {showCommandPalette && <CommandPalette actions={allActions} onClose={onCloseCommandPalette} />}

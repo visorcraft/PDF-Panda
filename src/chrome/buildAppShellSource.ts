@@ -17,6 +17,7 @@ export type BuildAppShellSourceInput = {
   modalCtx: AppModalsRuntime;
   printPages: string[];
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
+  closeSettings: () => void;
 };
 
 export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppShellInput, 'children'> {
@@ -29,5 +30,6 @@ export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppSh
     modals: { ctx: input.modalCtx },
     printPages: input.printPages,
     activeSurface: input.activeSurface,
+    closeSettings: input.closeSettings,
   };
 }

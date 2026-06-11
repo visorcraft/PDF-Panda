@@ -20,6 +20,7 @@ export type BuildAppShellChromeInputArgs = {
   activeTabId: BuildAppChromeSourceInput['activeTabId'];
   onSelectTab: BuildAppChromeSourceInput['onSelectTab'];
   onCloseTab: BuildAppChromeSourceInput['onCloseTab'];
+  documentChromeVisible: boolean;
 };
 
 export function buildAppShellChromeInput(args: BuildAppShellChromeInputArgs): BuildAppChromeSourceInput {
@@ -31,5 +32,6 @@ export function buildAppShellChromeInput(args: BuildAppShellChromeInputArgs): Bu
     activeTabId: args.activeTabId,
     onSelectTab: args.onSelectTab,
     onCloseTab: args.onCloseTab,
+    documentChromeVisible: args.documentChromeVisible,
   };
 }

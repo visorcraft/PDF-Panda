@@ -6,6 +6,7 @@ import { AppChrome } from './AppChrome';
 import { AppBody } from '../viewer/AppBody';
 import { AppModals } from '../modals/AppModals';
 import { PrintSurface } from '../viewer/PrintSurface';
+import { SettingsPage } from '../settings/SettingsPage';
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 
@@ -20,6 +21,7 @@ type AppShellProps = {
   modals: React.ComponentProps<typeof AppModals>;
   printPages: string[];
   activeSurface: AppSurface;
+  closeSettings: () => void;
   children?: ReactNode;
 };
 
@@ -32,7 +34,9 @@ export function AppShell({
   modals,
   printPages,
   activeSurface,
+  closeSettings,
 }: AppShellProps) {
+  const hasDocument = !!body.filePath;
   return (
     <div className="app" data-active-surface={activeSurface}>
       <ResizeBorders />
@@ -45,8 +49,12 @@ export function AppShell({
         </div>
       )}
 
-      <AppChrome {...chrome} />
-      <AppBody {...body} />
+      <AppChrome {...chrome} documentChromeVisible={activeSurface === 'document'} />
+      {activeSurface === 'settings' ? (
+        <SettingsPage closeSettings={closeSettings} hasDocument={hasDocument} />
+      ) : (
+        <AppBody {...body} />
+      )}
       <AppModals {...modals} />
       <PrintSurface pages={printPages} />
     </div>

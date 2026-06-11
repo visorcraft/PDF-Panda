@@ -264,6 +264,68 @@ body {
   overflow: hidden;
 }
 
+/* Settings page */
+.settings-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--pp-bg);
+  color: var(--pp-text);
+}
+
+.settings-header {
+  height: 76px;
+  background: var(--pp-surface);
+  border-bottom: 1px solid var(--pp-border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+}
+
+.settings-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+}
+
+.settings-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.settings-subtitle {
+  font-size: 12px;
+  color: var(--pp-text-muted);
+  margin: 4px 0 0;
+}
+
+.settings-content {
+  margin: 20px 24px 24px;
+}
+
+.settings-placeholder {
+  color: var(--pp-text-muted);
+}
+
+.settings-back-button {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 4px;
+  border: 1px solid var(--pp-border);
+  background: var(--pp-btn-secondary-bg);
+  color: var(--pp-text);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.settings-back-button:hover {
+  background: var(--pp-btn-hover);
+}
+
 /* Sidebar */
 .sidebar {
   width: 220px;

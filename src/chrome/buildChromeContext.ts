@@ -20,6 +20,7 @@ export type BuildChromeContextInput = {
   activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  documentChromeVisible: boolean;
 };
 
 export type AppChromeInput = ComponentProps<typeof AppChrome>;

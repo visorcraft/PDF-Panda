@@ -20,6 +20,7 @@ type AppChromeProps = {
   activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  documentChromeVisible: boolean;
 };
 
 export function AppChrome({
@@ -39,6 +40,7 @@ export function AppChrome({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  documentChromeVisible,
 }: AppChromeProps) {
   return (
     <div className="app-chrome">
@@ -61,6 +63,7 @@ export function AppChrome({
         activeTabId={activeTabId}
         onSelectTab={onSelectTab}
         onCloseTab={onCloseTab}
+        documentChromeVisible={documentChromeVisible}
       />
     </div>
   );

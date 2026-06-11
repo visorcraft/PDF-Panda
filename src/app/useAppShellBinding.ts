@@ -35,7 +35,7 @@ export type UseAppShellBindingInput = {
   modalCtx: AppModalsRuntime;
   slices: Slices;
   viewerWorkflow: ViewerWorkflow;
-  surface: { activeSurface: AppSurface };
+  surface: { activeSurface: AppSurface; closeSettings: () => void };
 };
 
 export function useAppShellBinding(input: UseAppShellBindingInput) {
@@ -59,6 +59,7 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
     modalCtx: input.modalCtx,
     printPages: viewer.printPages,
     activeSurface: input.surface.activeSurface,
+    closeSettings: input.surface.closeSettings,
     viewer: {
       thumbnails: viewer.thumbnails,
       imageSrc: viewer.imageSrc,
