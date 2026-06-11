@@ -28,6 +28,10 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
         ctx.toggleAnnotationsPanel,
         { active: ctx.showAnnotationsPanel },
       ),
+      sep(),
+      act('theme-system', 'System theme', () => ctx.setTheme('system'), { active: ctx.theme === 'system' }),
+      act('theme-light', 'Light theme', () => ctx.setTheme('light'), { active: ctx.theme === 'light' }),
+      act('theme-dark', 'Dark theme', () => ctx.setTheme('dark'), { active: ctx.theme === 'dark' }),
     ],
   };
 }

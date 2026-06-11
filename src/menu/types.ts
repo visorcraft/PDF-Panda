@@ -197,6 +197,8 @@ export interface AppMenuContext {
   openUpdateModal: () => void;
   updaterSupported: boolean;
   openCommandPalette: () => void;
+  theme: 'system' | 'light' | 'dark';
+  setTheme: (theme: 'system' | 'light' | 'dark') => void;
 }
 
 export type AppMenus = {
@@ -378,4 +380,6 @@ export type AppMenuContextSource = {
   openUpdateModal: () => void;
   updaterSupported: boolean;
   openCommandPalette: () => void;
+  theme: 'system' | 'light' | 'dark';
+  setTheme: (theme: 'system' | 'light' | 'dark') => void;
 };

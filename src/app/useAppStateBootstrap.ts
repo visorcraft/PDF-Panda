@@ -14,6 +14,7 @@ import { useAppLifecycleSlices } from './useAppLifecycleSlices';
 import { useAppSetupHooks } from './useAppSetupHooks';
 import { useAppViewerWorkflow } from './useAppViewerWorkflow';
 import { useSessionPersistence } from './useSessionPersistence';
+import { useThemeState } from './useThemeState';
 
 export function useAppStateBootstrap() {
   const doc = useAppDocumentState();
@@ -94,6 +95,8 @@ export function useAppStateBootstrap() {
     showToast,
   });
 
+  const theme = useThemeState();
+
   return {
     doc,
     modal,
@@ -111,5 +114,6 @@ export function useAppStateBootstrap() {
     windowTitle,
     viewerWorkflow,
     persistence,
+    theme,
   };
 }

@@ -27,6 +27,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     windowTitle,
     viewerWorkflow,
     persistence,
+    theme,
   } = bootstrap;
 
   const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
@@ -128,6 +129,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     unsaved,
     browser: { showBrowserModal: browser.showBrowserModal, setShowBrowserModal: browser.setShowBrowserModal },
     search: { showSearchModal: search.showSearchModal, closeSearchModal: search.closeSearchModal },
+    theme,
   });
 
   const modalCtx = useAppModalCtxBinding({

@@ -6,5 +6,7 @@ export function buildAppMenuContext(source: AppMenuContextSource): AppMenuContex
   return {
     ...menuContextDocAnnotFields(source),
     ...menuContextPagesFields(source),
+    theme: source.theme,
+    setTheme: source.setTheme,
   };
 }

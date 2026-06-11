@@ -24,5 +24,7 @@ export type BuildAppMenuInputArgs = {
     openSearchModal: () => void;
   };
   help: Pick<HelpState, 'setShowShortcutsHelp' | 'setShowLicenses' | 'setShowCredits' | 'setShowAbout' | 'setShowUpdateModal' | 'updaterSupported' | 'setShowCommandPalette'>;
+  theme: 'system' | 'light' | 'dark';
+  setTheme: (theme: 'system' | 'light' | 'dark') => void;
   pdfActions: AppPdfActions;
 };

@@ -21,6 +21,7 @@ export type UseAppChromeBindingsInput = {
   annotation: AnnotationState;
   help: HelpState;
   refs: Pick<RefsState, 'keyboardActionsRef'>;
+  theme: { theme: 'system' | 'light' | 'dark'; setTheme: (theme: 'system' | 'light' | 'dark') => void };
   pdfActions: AppPdfActions;
   history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
   chrome: {
@@ -143,6 +144,8 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       updaterSupported: input.help.updaterSupported,
       setShowCommandPalette: input.help.setShowCommandPalette,
     },
+    theme: input.theme.theme,
+    setTheme: input.theme.setTheme,
     pdfActions: input.pdfActions,
   });
 

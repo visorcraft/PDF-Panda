@@ -36,6 +36,8 @@ export type BuildAppMenuSourceInput = Omit<
   setShowUpdateModal: (open: boolean) => void;
   updaterSupported: boolean;
   setShowCommandPalette: (open: boolean) => void;
+  theme: 'system' | 'light' | 'dark';
+  setTheme: (theme: 'system' | 'light' | 'dark') => void;
 };
 
 export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuContextSource {
@@ -57,6 +59,8 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     setShowUpdateModal,
     updaterSupported,
     setShowCommandPalette,
+    theme,
+    setTheme,
     ...passthrough
   } = input;
   return {
@@ -77,5 +81,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     openAbout: () => setShowAbout(true),
     openUpdateModal: () => setShowUpdateModal(true),
     openCommandPalette: () => setShowCommandPalette(true),
+    theme,
+    setTheme,
   };
 }
