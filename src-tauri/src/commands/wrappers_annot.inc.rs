@@ -239,6 +239,70 @@ pub fn version_newer(a: &str, b: &str) -> bool {
     a_parts.len() > b_parts.len()
 }
 
+/// Pure update-channel classifier so the decision logic is unit-testable.
+/// Returns one of: "appimage", "deb", "rpm", "manual", "supported".
+pub fn resolve_update_channel(
+    forced: Option<&str>,
+    is_linux: bool,
+    appimage: bool,
+    dpkg_owns: bool,
+    rpm_owns: bool,
+) -> String {
+    if let Some(f) = forced {
+        if !f.is_empty() {
+            return f.to_string();
+        }
+    }
+    if !is_linux {
+        return "supported".to_string();
+    }
+    if appimage {
+        return "appimage".to_string();
+    }
+    if dpkg_owns {
+        return "deb".to_string();
+    }
+    if rpm_owns {
+        return "rpm".to_string();
+    }
+    "manual".to_string()
+}
+
+#[cfg(target_os = "linux")]
+fn path_owned_by_package(program: &str, query_arg: &str, path: &std::path::Path) -> bool {
+    std::process::Command::new(program)
+        .arg(query_arg)
+        .arg(path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+fn update_channel() -> String {
+    let forced = std::env::var("PDF_PANDA_UPDATE_CHANNEL").ok();
+    #[cfg(target_os = "linux")]
+    {
+        let appimage = std::env::var_os("APPIMAGE").is_some();
+        let exe = std::env::current_exe().ok();
+        let dpkg_owns = exe
+            .as_deref()
+            .map(|p| path_owned_by_package("dpkg", "-S", p))
+            .unwrap_or(false);
+        let rpm_owns = exe
+            .as_deref()
+            .map(|p| path_owned_by_package("rpm", "-qf", p))
+            .unwrap_or(false);
+        resolve_update_channel(forced.as_deref(), true, appimage, dpkg_owns, rpm_owns)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        resolve_update_channel(forced.as_deref(), false, false, false, false)
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn replace_text_region(

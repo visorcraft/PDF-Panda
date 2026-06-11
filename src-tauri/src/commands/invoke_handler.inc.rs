@@ -2032,6 +2032,7 @@ tauri::generate_handler![
             updater_supported,
             fetch_latest_version,
             open_url,
+            update_channel,
             open_working_copy,
             save_working_copy,
             discard_working_copy,

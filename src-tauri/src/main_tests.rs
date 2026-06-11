@@ -19345,3 +19345,32 @@ fn parse_latest_json_missing_version() {
     let err = parse_latest_json(r#"{"notes":"x"}"#, "0.5.0").unwrap_err();
     assert!(err.contains("Missing version field"));
 }
+
+#[test]
+fn resolve_update_channel_forced_env_wins() {
+    assert_eq!(resolve_update_channel(Some("deb"), true, true, false, false), "deb");
+    assert_eq!(resolve_update_channel(Some("manual"), false, false, false, false), "manual");
+}
+
+#[test]
+fn resolve_update_channel_empty_forced_ignored() {
+    // empty override behaves as if unset
+    assert_eq!(resolve_update_channel(Some(""), false, false, false, false), "supported");
+}
+
+#[test]
+fn resolve_update_channel_non_linux_is_supported() {
+    assert_eq!(resolve_update_channel(None, false, false, false, false), "supported");
+}
+
+#[test]
+fn resolve_update_channel_linux_appimage() {
+    assert_eq!(resolve_update_channel(None, true, true, true, true), "appimage");
+}
+
+#[test]
+fn resolve_update_channel_linux_deb_then_rpm_then_manual() {
+    assert_eq!(resolve_update_channel(None, true, false, true, false), "deb");
+    assert_eq!(resolve_update_channel(None, true, false, false, true), "rpm");
+    assert_eq!(resolve_update_channel(None, true, false, false, false), "manual");
+}
