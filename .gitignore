@@ -14,7 +14,7 @@ build/
 src-tauri/target/
 src-tauri/bin/
 
-# Agent planning matrix (kept local, not committed)
+# Agent planning matrix (AGENTS.md is tracked; keep the rest local)
 AGENTS.md
 CLAUDE.md
 GEMINI.md
