@@ -2955,3 +2955,33 @@ body {
     outline-offset: 2px;
   }
 }
+
+.error-boundary {
+  padding: 2rem;
+  text-align: center;
+  color: var(--pp-text);
+  background: var(--pp-surface);
+  border: 2px solid var(--pp-error, #d32f2f);
+  border-radius: 0.5rem;
+}
+
+.error-boundary-message {
+  font-family: monospace;
+  margin: 1rem 0;
+  word-break: break-word;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.error-boundary-actions button {
+  padding: 0.5rem 1rem;
+}
+
+.panel-error {
+  margin: 1rem;
+}
