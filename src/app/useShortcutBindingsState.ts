@@ -4,6 +4,13 @@ import { loadShortcutOverrides, normalizeShortcut, saveShortcutOverrides } from 
 
 export type ShortcutBindings = Record<ShortcutCommandId, string[]>;
 
+export type ShortcutBindingsState = {
+  bindings: ShortcutBindings;
+  setBinding: (commandId: ShortcutCommandId, shortcuts: string[]) => void;
+  resetBinding: (commandId: ShortcutCommandId) => void;
+  resetAllBindings: () => void;
+};
+
 export function useShortcutBindingsState() {
   const [overrides, setOverrides] = useState<Partial<ShortcutBindings>>(() => loadShortcutOverrides());
 

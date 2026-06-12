@@ -195,6 +195,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     surface,
     onSelectTab: tabActions.selectTab,
     onCloseTab: tabActions.requestCloseTab,
-    shortcutBindings: shortcutBindingsState.bindings,
+    shortcuts: shortcutBindingsState,
+    appearance,
   });
 }
