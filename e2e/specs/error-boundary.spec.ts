@@ -1,21 +1,51 @@
-import { waitForShell } from '../support/helpers';
+import {
+  clickMenuAction,
+  fixturePdf,
+  openPdfViaPathModal,
+  resetToWelcome,
+  waitForPdfOpen,
+  waitForShell,
+} from '../support/helpers';
 
 describe('error boundary', () => {
   before(async () => {
     await waitForShell();
   });
 
-  it('shows a fallback when a panel throws', async () => {
+  it('catches a panel render error and shows a fallback', async () => {
+    await resetToWelcome();
+    await openPdfViaPathModal(fixturePdf);
+    await waitForPdfOpen();
+
+    // Arm the E2E-only render-time throw trigger inside AppBody.
     await browser.execute(() => {
-      const container = document.querySelector('.app-body, .viewer, [data-active-surface]');
-      if (container) {
-        container.innerHTML = '';
-        const el = document.createElement('div');
-        el.textContent = 'Forced panel error';
-        container.appendChild(el);
-      }
+      document.documentElement.setAttribute('data-e2e-throw', 'viewer');
     });
-    const bodyText = await $('body').getText();
-    expect(bodyText).toMatch(/Something went wrong|panel error|Try again/i);
+
+    // Trigger a re-render of AppBody by toggling continuous scroll mode.
+    await clickMenuAction('view', 'continuous-scroll');
+
+    // The viewer panel ErrorBoundary should catch the throw and render fallback UI.
+    await browser.waitUntil(
+      async () => {
+        const text = await $('body').getText();
+        return /Viewer error|panel failed to render|Try again/i.test(text);
+      },
+      { timeout: 10_000, timeoutMsg: 'expected error-boundary fallback' },
+    );
+
+    // Disarm the trigger and reset the boundary.
+    await browser.execute(() => {
+      document.documentElement.removeAttribute('data-e2e-throw');
+    });
+
+    const tryAgain = await $('button*=Try again');
+    await tryAgain.click();
+
+    // Normal UI should return.
+    await browser.waitUntil(
+      async () => (await $('[data-testid="save-pdf"]').isDisplayed()),
+      { timeout: 10_000, timeoutMsg: 'expected viewer to recover' },
+    );
   });
 });
