@@ -9,7 +9,7 @@ export const act = (
   id: string,
   label: string,
   run: () => void,
-  opts?: Partial<Pick<MenuAction, 'shortcut' | 'disabled' | 'danger' | 'active'>>,
+  opts?: Partial<Pick<MenuAction, 'shortcut' | 'shortcutCommandId' | 'disabled' | 'danger' | 'active'>>,
 ): MenuAction => ({ id, label, run, ...opts });
 
 export const sub = (label: string, items: MenuEntry[]): MenuEntry => ({ label, items });

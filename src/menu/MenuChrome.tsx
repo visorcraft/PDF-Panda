@@ -5,7 +5,8 @@ import { LicensesModal } from '../licenses/LicensesModal';
 import { TabBar } from '../chrome/TabBar';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
-import { KEYBOARD_SHORTCUTS } from './buildAppMenus';
+import { buildKeyboardShortcuts } from './buildMenuShortcuts';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 type MenuChromeProps = {
   menus: MenuRoot[];
@@ -27,6 +28,7 @@ type MenuChromeProps = {
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   documentChromeVisible: boolean;
+  shortcutBindings: ShortcutBindings;
 };
 
 function runAction(action: MenuAction) {
@@ -260,14 +262,15 @@ function CommandPalette({
   );
 }
 
-function ShortcutsModal({ onClose }: { onClose: () => void }) {
+function ShortcutsModal({ bindings, onClose }: { bindings: ShortcutBindings; onClose: () => void }) {
+  const shortcuts = useMemo(() => buildKeyboardShortcuts(bindings), [bindings]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
         <h3>Keyboard shortcuts</h3>
         <table className="shortcuts-table">
           <tbody>
-            {KEYBOARD_SHORTCUTS.map((row) => (
+            {shortcuts.map((row) => (
               <tr key={row.keys}>
                 <th>{row.keys}</th>
                 <td>{row.action}</td>
@@ -305,6 +308,7 @@ export function MenuChrome({
   onSelectTab,
   onCloseTab,
   documentChromeVisible,
+  shortcutBindings,
 }: MenuChromeProps) {
   return (
     <>
@@ -323,7 +327,8 @@ export function MenuChrome({
         )}
       </div>
       {showCommandPalette && <CommandPalette actions={allActions} onClose={onCloseCommandPalette} />}
-      {showShortcutsHelp && <ShortcutsModal onClose={onCloseShortcutsHelp} />}
+      {showShortcutsHelp && <ShortcutsModal bindings={shortcutBindings} onClose={onCloseShortcutsHelp} />}
+
       {showLicenses && <LicensesModal onClose={onCloseLicenses} />}
       {showCredits && <CreditsModal onClose={onCloseCredits} />}
       {showAbout && <AboutModal onClose={onCloseAbout} />}

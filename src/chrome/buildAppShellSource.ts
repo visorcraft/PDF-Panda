@@ -5,6 +5,7 @@ import { buildAppChromeSource } from './buildAppChromeSource';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
 import { buildAppViewerSource } from '../viewer/buildAppViewerSource';
 import type { AppModalsRuntime } from '../modals/appModalsContext';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 type AppShellInput = ComponentProps<typeof AppShell>;
 
@@ -18,6 +19,7 @@ export type BuildAppShellSourceInput = {
   printPages: string[];
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
   closeSettings: () => void;
+  shortcutBindings: ShortcutBindings;
 };
 
 export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppShellInput, 'children'> {
@@ -31,5 +33,6 @@ export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppSh
     printPages: input.printPages,
     activeSurface: input.activeSurface,
     closeSettings: input.closeSettings,
+    shortcutBindings: input.shortcutBindings,
   };
 }

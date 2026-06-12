@@ -7,6 +7,7 @@ import { AppBody } from '../viewer/AppBody';
 import { AppModals } from '../modals/AppModals';
 import { PrintSurface } from '../viewer/PrintSurface';
 import { SettingsPage } from '../settings/SettingsPage';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 
@@ -22,6 +23,7 @@ type AppShellProps = {
   printPages: string[];
   activeSurface: AppSurface;
   closeSettings: () => void;
+  shortcutBindings: ShortcutBindings;
   children?: ReactNode;
 };
 
@@ -35,6 +37,7 @@ export function AppShell({
   printPages,
   activeSurface,
   closeSettings,
+  shortcutBindings,
 }: AppShellProps) {
   const hasDocument = !!body.filePath;
   return (
@@ -49,7 +52,7 @@ export function AppShell({
         </div>
       )}
 
-      <AppChrome {...chrome} documentChromeVisible={activeSurface === 'document'} />
+      <AppChrome {...chrome} documentChromeVisible={activeSurface === 'document'} shortcutBindings={shortcutBindings} />
       {activeSurface === 'settings' ? (
         <SettingsPage closeSettings={closeSettings} hasDocument={hasDocument} />
       ) : (

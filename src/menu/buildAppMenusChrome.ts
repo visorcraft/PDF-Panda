@@ -5,7 +5,7 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
   const pdfItems = [
     act('view-pdf', 'PDF view', ctx.setViewModePdf, { active: ctx.viewMode === 'pdf' }),
     act('view-md', 'Markdown view', () => void ctx.toggleMarkdownView(), {
-      shortcut: 'Ctrl+Shift+M',
+      shortcutCommandId: 'markdown-view',
       active: ctx.viewMode === 'markdown',
     }),
     sep(),
@@ -43,7 +43,7 @@ export function buildHelpMenu(ctx: AppMenuContext): MenuRoot {
     id: 'help',
     label: 'Help',
     items: [
-      act('cmd-palette', 'Command palette…', ctx.openCommandPalette, { shortcut: 'Ctrl+Shift+P' }),
+      act('cmd-palette', 'Command palette…', ctx.openCommandPalette, { shortcutCommandId: 'command-palette' }),
       ...(ctx.tesseractInstalled
         ? []
         : [act('tesseract', 'Install Tesseract (scan OCR)…', ctx.openTesseractGuide)]),
@@ -61,20 +61,20 @@ export function buildQuickAccessActions(ctx: AppMenuContext): MenuAction[] {
   return ctx.hasPdf
     ? [
         act('qa-save', ctx.isDirty ? 'Save •' : 'Save', ctx.handleSave, {
-          shortcut: 'Ctrl+S',
+          shortcutCommandId: 'save',
           disabled: !ctx.isDirty,
         }),
-        act('qa-undo', 'Undo', ctx.undo, { shortcut: 'Ctrl+Z', disabled: !ctx.canUndo }),
-        act('qa-redo', 'Redo', ctx.redo, { shortcut: 'Ctrl+Y', disabled: !ctx.canRedo }),
-        act('qa-find', 'Find', ctx.openSearchModal, { shortcut: 'Ctrl+F' }),
+        act('qa-undo', 'Undo', ctx.undo, { shortcutCommandId: 'undo', disabled: !ctx.canUndo }),
+        act('qa-redo', 'Redo', ctx.redo, { shortcutCommandId: 'redo', disabled: !ctx.canRedo }),
+        act('qa-find', 'Find', ctx.openSearchModal, { shortcutCommandId: 'find' }),
         act('qa-highlight', 'Highlight', ctx.toggleHighlightMode, {
-          shortcut: 'H',
+          shortcutCommandId: 'toggle-highlight',
           active: ctx.highlightMode,
         }),
-        act('qa-note', 'Note', ctx.toggleNoteMode, { shortcut: 'N', active: ctx.noteMode }),
-        act('qa-draw', 'Draw', ctx.toggleDrawMode, { shortcut: 'D', active: ctx.drawMode }),
-        act('qa-rotate', 'Rotate', ctx.handleRotatePage, { shortcut: 'Ctrl+R' }),
-        act('qa-dup', 'Duplicate', ctx.handleDuplicatePage, { shortcut: 'Ctrl+Shift+D' }),
+        act('qa-note', 'Note', ctx.toggleNoteMode, { shortcutCommandId: 'toggle-note', active: ctx.noteMode }),
+        act('qa-draw', 'Draw', ctx.toggleDrawMode, { shortcutCommandId: 'toggle-draw', active: ctx.drawMode }),
+        act('qa-rotate', 'Rotate', ctx.handleRotatePage, { shortcutCommandId: 'rotate-page' }),
+        act('qa-dup', 'Duplicate', ctx.handleDuplicatePage, { shortcutCommandId: 'duplicate-page' }),
       ]
     : [];
 }

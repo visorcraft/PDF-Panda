@@ -15,6 +15,7 @@ import { useAppSetupHooks } from './useAppSetupHooks';
 import { useAppViewerWorkflow } from './useAppViewerWorkflow';
 import { useSessionPersistence } from './useSessionPersistence';
 import { useAppearanceState } from './useAppearanceState';
+import { useShortcutBindingsState } from './useShortcutBindingsState';
 import { useAppSurfaceState } from './useAppSurfaceState';
 
 export function useAppStateBootstrap() {
@@ -98,6 +99,7 @@ export function useAppStateBootstrap() {
   });
 
   const appearance = useAppearanceState();
+  const shortcutBindings = useShortcutBindingsState();
   const surface = useAppSurfaceState();
 
   return {
@@ -118,6 +120,7 @@ export function useAppStateBootstrap() {
     viewerWorkflow,
     persistence,
     appearance,
+    shortcutBindings,
     surface,
   };
 }

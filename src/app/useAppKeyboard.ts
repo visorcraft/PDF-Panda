@@ -1,8 +1,9 @@
 import { useEffect, type MutableRefObject } from 'react';
 import type { AppKeyboardActions } from './buildAppKeyboardActions';
 import { SHORTCUT_HANDLERS } from './appShortcutHandlers';
-import { getDefaultShortcuts, type ShortcutCommandId } from '../settings/shortcutRegistry';
+import { type ShortcutCommandId } from '../settings/shortcutRegistry';
 import { eventToShortcut, normalizeShortcut } from '../settings/shortcutKeys';
+import type { ShortcutBindings } from './useShortcutBindingsState';
 
 export type { AppKeyboardActions } from './buildAppKeyboardActions';
 
@@ -34,11 +35,11 @@ const GLOBAL_COMMANDS = new Set<ShortcutCommandId>(['open-pdf', 'command-palette
 
 export function useAppKeyboard(
   actionsRef: MutableRefObject<AppKeyboardActions>,
+  shortcutBindings: ShortcutBindings,
   activeSurface: 'document' | 'settings' = 'document',
 ) {
   useEffect(() => {
-    const bindings = getDefaultShortcuts();
-    const shortcutIndex = buildShortcutIndex(bindings);
+    const shortcutIndex = buildShortcutIndex(shortcutBindings);
 
     const onKeyDown = (e: KeyboardEvent) => {
       const a = actionsRef.current;
@@ -81,5 +82,5 @@ export function useAppKeyboard(
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [actionsRef, activeSurface]);
+  }, [actionsRef, shortcutBindings, activeSurface]);
 }

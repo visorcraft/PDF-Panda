@@ -1,9 +1,11 @@
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 export type MenuAction = {
   id: string;
   label: string;
   shortcut?: string;
+  shortcutCommandId?: import('../settings/shortcutRegistry').ShortcutCommandId;
   disabled?: boolean;
   danger?: boolean;
   active?: boolean;
@@ -203,6 +205,7 @@ export interface AppMenuContext {
   setTheme: (theme: AppearanceKey) => void;
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
   openSettings: (focus?: import('../app/useAppSurfaceState').SettingsFocusSection) => void;
+  shortcutBindings: ShortcutBindings;
 }
 
 export type AppMenus = {
@@ -388,4 +391,5 @@ export type AppMenuContextSource = {
   setTheme: (theme: AppearanceKey) => void;
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
   openSettings: (focus?: import('../app/useAppSurfaceState').SettingsFocusSection) => void;
+  shortcutBindings: ShortcutBindings;
 };

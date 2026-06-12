@@ -16,6 +16,7 @@ import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
 import type { PdfPageSize } from '../app/types';
 import type { AppSurface } from '../app/useAppSurfaceState';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 type DrawingState = ReturnType<typeof useDrawingGesture>;
 
@@ -37,6 +38,7 @@ export type BuildAppShellRenderInputArgs = {
   printPages: string[];
   activeSurface: AppSurface;
   closeSettings: () => void;
+  shortcutBindings: ShortcutBindings;
   viewer: Pick<
     BuildAppViewerSourceInput,
     | 'thumbnails'
@@ -74,6 +76,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
     windowTitle: args.windowTitle,
     toast: args.doc.toast,
     loading: args.doc.loading,
+    shortcutBindings: args.shortcutBindings,
     chrome: buildAppShellChromeInput({
       menus: args.appMenus,
       help: buildHelpChromeInput(args.help),
@@ -83,6 +86,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       onSelectTab: args.onSelectTab,
       onCloseTab: args.onCloseTab,
       documentChromeVisible: args.activeSurface === 'document',
+      shortcutBindings: args.shortcutBindings,
     }),
     activeSurface: args.activeSurface,
     closeSettings: args.closeSettings,

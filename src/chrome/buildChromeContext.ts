@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import type { AppChrome } from './AppChrome';
 import type { AppMenus } from '../menu/types';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 export type BuildChromeContextInput = {
   menus: AppMenus;
@@ -21,6 +22,7 @@ export type BuildChromeContextInput = {
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   documentChromeVisible: boolean;
+  shortcutBindings: ShortcutBindings;
 };
 
 export type AppChromeInput = ComponentProps<typeof AppChrome>;

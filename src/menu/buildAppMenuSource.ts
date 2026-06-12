@@ -2,6 +2,7 @@ import type { AppMenuContextSource } from './types';
 import type { ScrollViewMode, ViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 /** Inputs from App hooks/state before menu void-wrapping in buildAppMenuContext. */
 export type BuildAppMenuSourceInput = Omit<
@@ -22,6 +23,7 @@ export type BuildAppMenuSourceInput = Omit<
   | 'openCommandPalette'
   | 'activeSurface'
   | 'openSettings'
+  | 'shortcutBindings'
 > & {
   filePath: string;
   ocrAvailable: boolean | null;
@@ -43,6 +45,7 @@ export type BuildAppMenuSourceInput = Omit<
   setShowCommandPalette: (open: boolean) => void;
   theme: AppearanceKey;
   setTheme: (theme: AppearanceKey) => void;
+  shortcutBindings: ShortcutBindings;
 };
 
 export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuContextSource {
@@ -67,6 +70,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     theme,
     setTheme,
     surface,
+    shortcutBindings,
     ...passthrough
   } = input;
   return {
@@ -91,5 +95,6 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     setTheme,
     activeSurface: surface.activeSurface,
     openSettings: (focus?: SettingsFocusSection) => surface.openSettings(focus),
+    shortcutBindings,
   };
 }

@@ -28,6 +28,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     viewerWorkflow,
     persistence,
     appearance,
+    shortcutBindings: shortcutBindingsState,
     surface,
   } = bootstrap;
 
@@ -131,6 +132,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     browser: { showBrowserModal: browser.showBrowserModal, setShowBrowserModal: browser.setShowBrowserModal },
     search: { showSearchModal: search.showSearchModal, closeSearchModal: search.closeSearchModal },
     appearance,
+    shortcutBindings: shortcutBindingsState.bindings,
     surface,
   });
 
@@ -193,5 +195,6 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     surface,
     onSelectTab: tabActions.selectTab,
     onCloseTab: tabActions.requestCloseTab,
+    shortcutBindings: shortcutBindingsState.bindings,
   });
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { MenuChrome } from '../menu/MenuChrome';
 import type { AppMenus } from '../menu/types';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 type AppChromeProps = {
   menus: AppMenus;
@@ -21,6 +22,7 @@ type AppChromeProps = {
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   documentChromeVisible: boolean;
+  shortcutBindings: ShortcutBindings;
 };
 
 export function AppChrome({
@@ -41,6 +43,7 @@ export function AppChrome({
   onSelectTab,
   onCloseTab,
   documentChromeVisible,
+  shortcutBindings,
 }: AppChromeProps) {
   return (
     <div className="app-chrome">
@@ -64,6 +67,7 @@ export function AppChrome({
         onSelectTab={onSelectTab}
         onCloseTab={onCloseTab}
         documentChromeVisible={documentChromeVisible}
+        shortcutBindings={shortcutBindings}
       />
     </div>
   );

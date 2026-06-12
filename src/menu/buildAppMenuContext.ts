@@ -10,5 +10,6 @@ export function buildAppMenuContext(source: AppMenuContextSource): AppMenuContex
     setTheme: source.setTheme,
     activeSurface: source.activeSurface,
     openSettings: source.openSettings,
+    shortcutBindings: source.shortcutBindings,
   };
 }

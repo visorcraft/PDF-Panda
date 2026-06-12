@@ -13,6 +13,7 @@ import type { AppMenus } from '../menu/types';
 import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from '../chrome/buildAppChromeSource';
 import type { AppSurface } from './useAppSurfaceState';
+import type { ShortcutBindings } from './useShortcutBindingsState';
 
 type DrawingState = ReturnType<typeof useDrawingGesture>;
 type ViewerWorkflow = ReturnType<typeof useAppViewerWorkflow>;
@@ -36,6 +37,7 @@ export type UseAppShellBindingInput = {
   slices: Slices;
   viewerWorkflow: ViewerWorkflow;
   surface: { activeSurface: AppSurface; closeSettings: () => void };
+  shortcutBindings: ShortcutBindings;
 };
 
 export function useAppShellBinding(input: UseAppShellBindingInput) {
@@ -60,6 +62,7 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
     printPages: viewer.printPages,
     activeSurface: input.surface.activeSurface,
     closeSettings: input.surface.closeSettings,
+    shortcutBindings: input.shortcutBindings,
     viewer: {
       thumbnails: viewer.thumbnails,
       imageSrc: viewer.imageSrc,

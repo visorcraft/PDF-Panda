@@ -13,6 +13,7 @@ import type { PanelsState } from './useDocumentPanelsState';
 import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { ShortcutBindings } from './useShortcutBindingsState';
 
 export type UseAppChromeBindingsInput = {
   doc: DocumentState;
@@ -24,6 +25,7 @@ export type UseAppChromeBindingsInput = {
   refs: Pick<RefsState, 'keyboardActionsRef'>;
   appearance: { appearance: AppearanceKey; setAppearance: (appearance: AppearanceKey) => void };
   surface: { activeSurface: import('./useAppSurfaceState').AppSurface; openSettings: (focus?: import('./useAppSurfaceState').SettingsFocusSection) => void };
+  shortcutBindings: ShortcutBindings;
   pdfActions: AppPdfActions;
   history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
   chrome: {
@@ -93,6 +95,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       zoom: input.zoom,
       pdfActions: input.pdfActions,
     }),
+    input.shortcutBindings,
     input.surface.activeSurface,
   );
 
@@ -150,6 +153,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
     theme: input.appearance.appearance,
     setTheme: input.appearance.setAppearance,
     surface: input.surface,
+    shortcutBindings: input.shortcutBindings,
     pdfActions: input.pdfActions,
   });
 

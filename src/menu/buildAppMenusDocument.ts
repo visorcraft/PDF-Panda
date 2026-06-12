@@ -7,7 +7,7 @@ export function buildDocumentMenu(ctx: AppMenuContext): MenuRoot {
     label: 'Document',
     disabled: !ctx.hasPdf,
     items: [
-      act('optimize', 'Optimize PDF', ctx.handleOptimizePdf, { shortcut: 'Ctrl+Shift+O' }),
+      act('optimize', 'Optimize PDF', ctx.handleOptimizePdf, { shortcutCommandId: 'optimize-pdf' }),
       act('make-searchable', 'Make Searchable (OCR)', () => void ctx.handleMakePdfSearchable()),
       act(
         'apply-redactions',
@@ -16,7 +16,7 @@ export function buildDocumentMenu(ctx: AppMenuContext): MenuRoot {
         { disabled: !ctx.hasRedactions, danger: true },
       ),
       act('metadata', 'Edit metadata…', ctx.openMetadataModal),
-      act('summarize', 'Summarize & extract…', ctx.handleSummarizePdf, { shortcut: 'Ctrl+Shift+E' }),
+      act('summarize', 'Summarize & extract…', ctx.handleSummarizePdf, { shortcutCommandId: 'summarize' }),
       sep(),
       act('page-numbers', 'Add page numbers…', ctx.openPageNumbersModal),
       act('bates-numbers', 'Bates Numbering…', ctx.openBatesNumberModal),

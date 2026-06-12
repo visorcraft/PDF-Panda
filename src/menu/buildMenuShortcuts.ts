@@ -1,30 +1,50 @@
-export const KEYBOARD_SHORTCUTS = [
-  { keys: 'Ctrl+O', action: 'Open PDF' },
-  { keys: 'Ctrl+S', action: 'Save' },
-  { keys: 'Ctrl+Shift+S', action: 'Save As' },
-  { keys: 'Ctrl+W', action: 'Close PDF' },
-  { keys: 'Ctrl+P', action: 'Print' },
-  { keys: 'Ctrl+Z / Ctrl+Y', action: 'Undo / Redo' },
-  { keys: 'Ctrl+F', action: 'Find text' },
-  { keys: 'Ctrl+Shift+P', action: 'Command palette' },
-  { keys: 'Ctrl+R', action: 'Rotate page' },
-  { keys: 'Ctrl+Shift+D', action: 'Duplicate page' },
-  { keys: 'Ctrl+Shift+N', action: 'Blank page after' },
-  { keys: 'Ctrl+Shift+Y', action: 'Reverse pages' },
-  { keys: 'Ctrl+Shift+I', action: 'Insert PDF' },
-  { keys: 'Ctrl+Shift+G', action: 'Merge PDF' },
-  { keys: 'Ctrl+Shift+K', action: 'Split PDF' },
-  { keys: 'Ctrl+Shift+J', action: 'Extract pages' },
-  { keys: 'Ctrl+Shift+M', action: 'Markdown view' },
-  { keys: 'Ctrl+Shift+O', action: 'Optimize PDF' },
-  { keys: 'Ctrl+Shift+B', action: 'Export images' },
-  { keys: 'Ctrl+Shift+E', action: 'Summarize' },
-  { keys: 'Ctrl+Shift+U', action: 'Sign PDF' },
-  { keys: 'Delete', action: 'Delete page' },
-  { keys: 'H / N / D / S / T / X', action: 'Highlight / Note / Draw / Shape / Stamp / Redact' },
-  { keys: 'E / G / I / F', action: 'Page text / Vector / Insert image / Forms' },
-  { keys: '← → / PageUp PageDown', action: 'Previous / next page' },
-  { keys: 'Home / End', action: 'First / last page' },
-  { keys: 'Ctrl + / Ctrl - / Ctrl 0', action: 'Zoom in / out / reset' },
-  { keys: 'Escape', action: 'Exit tool mode or close dialog' },
-] as const;
+import type { ShortcutCommandId } from '../settings/shortcutRegistry';
+import { shortcutToDisplay } from '../settings/shortcutKeys';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+
+export type KeyboardShortcutRow = { keys: string; action: string };
+
+const GROUPED_ROWS: { label: string; commandIds: ShortcutCommandId[] }[] = [
+  { label: 'Open PDF', commandIds: ['open-pdf'] },
+  { label: 'Command palette', commandIds: ['command-palette'] },
+  { label: 'Save / Save As', commandIds: ['save', 'save-as'] },
+  { label: 'Close PDF', commandIds: ['close-pdf'] },
+  { label: 'Print', commandIds: ['print'] },
+  { label: 'Undo / Redo', commandIds: ['undo', 'redo'] },
+  { label: 'Find text', commandIds: ['find'] },
+  { label: 'Rotate page', commandIds: ['rotate-page'] },
+  { label: 'Duplicate page', commandIds: ['duplicate-page'] },
+  { label: 'Blank page after', commandIds: ['blank-page-after'] },
+  { label: 'Reverse pages', commandIds: ['reverse-pages'] },
+  { label: 'Insert PDF', commandIds: ['insert-pdf'] },
+  { label: 'Merge PDF', commandIds: ['merge-pdf'] },
+  { label: 'Split PDF', commandIds: ['split-pdf'] },
+  { label: 'Extract pages', commandIds: ['extract-pages'] },
+  { label: 'Markdown view', commandIds: ['markdown-view'] },
+  { label: 'Optimize PDF', commandIds: ['optimize-pdf'] },
+  { label: 'Export images', commandIds: ['export-images'] },
+  { label: 'Summarize', commandIds: ['summarize'] },
+  { label: 'Sign PDF', commandIds: ['sign-pdf'] },
+  { label: 'Delete page', commandIds: ['delete-page'] },
+  { label: 'Highlight / Note / Draw / Shape / Stamp / Redact', commandIds: ['toggle-highlight', 'toggle-note', 'toggle-draw', 'toggle-shape', 'toggle-stamp', 'toggle-redact'] },
+  { label: 'Page text / Vector / Insert image / Forms', commandIds: ['toggle-text-edit', 'toggle-vector-edit', 'toggle-image-insert', 'toggle-forms'] },
+  { label: 'Previous / next page', commandIds: ['previous-page', 'next-page'] },
+  { label: 'First / last page', commandIds: ['first-page', 'last-page'] },
+  { label: 'Zoom in / out / reset', commandIds: ['zoom-in', 'zoom-out', 'zoom-reset'] },
+  { label: 'Next / previous tab', commandIds: ['cycle-tab-next', 'cycle-tab-prev'] },
+  { label: 'Jump to tab 1-9', commandIds: ['jump-tab-1', 'jump-tab-2', 'jump-tab-3', 'jump-tab-4', 'jump-tab-5', 'jump-tab-6', 'jump-tab-7', 'jump-tab-8', 'jump-tab-9'] },
+];
+
+export function buildKeyboardShortcuts(bindings: ShortcutBindings): KeyboardShortcutRow[] {
+  return GROUPED_ROWS.map(({ label, commandIds }) => {
+    const keys = commandIds
+      .flatMap((id) => bindings[id] ?? [])
+      .map((s) => shortcutToDisplay(s))
+      .join(' / ');
+    return { keys: keys || '—', action: label };
+  });
+}
+
+export function getShortcutsForCommand(bindings: ShortcutBindings, commandId: ShortcutCommandId): string[] {
+  return bindings[commandId] ?? [];
+}

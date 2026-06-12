@@ -1,5 +1,6 @@
 import type { BuildChromeContextInput } from './buildChromeContext';
 import type { AppMenus } from '../menu/types';
+import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 export type BuildAppChromeSourceInput = {
   menus: AppMenus;
@@ -19,6 +20,7 @@ export type BuildAppChromeSourceInput = {
   onSelectTab: BuildChromeContextInput['onSelectTab'];
   onCloseTab: BuildChromeContextInput['onCloseTab'];
   documentChromeVisible: boolean;
+  shortcutBindings: ShortcutBindings;
 };
 
 export function buildAppChromeSource(input: BuildAppChromeSourceInput): BuildChromeContextInput {
@@ -40,5 +42,6 @@ export function buildAppChromeSource(input: BuildAppChromeSourceInput): BuildChr
     onSelectTab: input.onSelectTab,
     onCloseTab: input.onCloseTab,
     documentChromeVisible: input.documentChromeVisible,
+    shortcutBindings: input.shortcutBindings,
   };
 }
