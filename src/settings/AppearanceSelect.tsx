@@ -17,6 +17,7 @@ export function AppearanceSelect({ appearance, setAppearance }: AppearanceSelect
           className="appearance-select"
           value={appearance}
           onChange={(e) => setAppearance(e.target.value as AppearanceKey)}
+          aria-label="Color scheme"
         >
           {APPEARANCE_OPTIONS.map((option) => (
             <option key={option.key} value={option.key}>
