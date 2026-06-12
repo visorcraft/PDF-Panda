@@ -68,6 +68,13 @@ describe('axe accessibility', () => {
       { timeout: 10_000, timeoutMsg: 'expected PDF/UA panel' },
     );
     await assertNoAxeViolations('pdfua-panel');
+
+    // Leave the viewer clean for any specs that follow.
+    await clickMenuAction('view', 'pdfua-panel');
+    await browser.waitUntil(
+      async () => !(await $('.pdfua-panel').isDisplayed().catch(() => true)),
+      { timeout: 5_000, timeoutMsg: 'expected PDF/UA panel to close' },
+    );
   });
 
   it('settings page has no detectable axe violations', async () => {
