@@ -219,7 +219,6 @@ export function useModalDismiss(opts: UseModalDismissOptions) {
     rest.setShowCredits(false);
     rest.setShowAbout(false);
     rest.setShowTesseractModal(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showUnsavedModal, closeSearchModal, resolveUnsaved]);
 
   const anyModalOpen = useMemo(

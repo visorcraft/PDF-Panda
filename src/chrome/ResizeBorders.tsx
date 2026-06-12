@@ -4,6 +4,15 @@ import { isTauriRuntime } from '../app/tauriRuntime';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
+declare global {
+  interface Window {
+    __pdfPandaStartResize?: (
+      direction: ResizeDirection,
+      e: React.MouseEvent,
+    ) => void;
+  }
+}
+
 export function ResizeBorders() {
   const isTauri = isTauriRuntime();
   const resizingRef = useRef<{
@@ -72,19 +81,19 @@ export function ResizeBorders() {
     };
 
     // Store the startResize function on the window for the JSX handlers
-    (window as any).__pdfPandaStartResize = startResize;
+    window.__pdfPandaStartResize = startResize;
 
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      delete (window as any).__pdfPandaStartResize;
+      delete window.__pdfPandaStartResize;
     };
   }, [isTauri]);
 
   if (!isTauri) return null;
 
   const handleMouseDown = (direction: ResizeDirection) => (e: React.MouseEvent) => {
-    (window as any).__pdfPandaStartResize?.(direction, e);
+    window.__pdfPandaStartResize?.(direction, e);
   };
 
   return (

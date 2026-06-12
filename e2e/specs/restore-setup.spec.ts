@@ -6,7 +6,6 @@ import {
   selectTab,
   setZoomPercent,
   waitForPageCount,
-  waitForPdfOpen,
   waitForShell,
 } from '../support/helpers';
 

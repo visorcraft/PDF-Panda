@@ -97,7 +97,6 @@ export function useClosePdf(opts: UsePdfLifecycleOptions) {
     opts.clearPrintPages();
     opts.showToast('PDF closed');
   // Setters from useState are stable; filePath is read at invoke time.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts.filePath]);
 
   return { closePdf };
