@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AnnouncerProvider } from './ui/Announcer';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import './styles.css';
 
 if (import.meta.env.VITE_WDIO === '1') {
@@ -11,7 +12,9 @@ if (import.meta.env.VITE_WDIO === '1') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AnnouncerProvider>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </AnnouncerProvider>
   </StrictMode>
 );
