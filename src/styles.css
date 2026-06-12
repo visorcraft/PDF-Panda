@@ -90,7 +90,7 @@
   --pp-loading-overlay: rgba(255, 255, 255, 0.6);
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   --pp-bg: #000000;
   --pp-surface: #121212;
   --pp-surface-alt: #1a1a1a;
@@ -177,10 +177,13 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--pp-bg);
   color: var(--pp-text);
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .app {
@@ -372,7 +375,9 @@ body {
   border: 2px solid var(--pp-thumbnail-border);
   border-radius: 4px;
   cursor: pointer;
-  transition: border-color 0.15s, opacity 0.15s;
+  transition:
+    border-color 0.15s,
+    opacity 0.15s;
   display: block;
 }
 
@@ -386,7 +391,7 @@ body {
 }
 
 .thumbnail:focus-visible {
-  outline: 2px solid var(--pp-focus-ring, var(--pp-accent));
+  outline: 2px solid var(--pp-accent);
   outline-offset: 2px;
 }
 
@@ -900,7 +905,9 @@ body {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .view-toggle button:last-child {
@@ -1603,7 +1610,8 @@ body {
   padding: 16px;
   overflow: auto;
   color: var(--pp-markdown-text);
-  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -2079,8 +2087,14 @@ body {
 }
 
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Loading */
@@ -2104,7 +2118,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Print surface — hidden on screen, revealed only for the native print dialog */
@@ -2631,7 +2647,8 @@ body {
 
 .settings-card:focus-visible {
   border-color: var(--pp-input-focus);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
 }
 
 .settings-card-header {
@@ -2685,7 +2702,8 @@ body {
 .appearance-select:focus {
   outline: none;
   border-color: var(--pp-input-focus);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
 }
 
 .settings-actions-row {
@@ -2735,7 +2753,8 @@ body {
 .shortcut-editor-search-input:focus {
   outline: none;
   border-color: var(--pp-input-focus);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
 }
 
 .shortcut-editor-empty {
@@ -2849,7 +2868,8 @@ body {
 .shortcut-capture:focus {
   outline: none;
   border-color: var(--pp-input-focus);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
   color: var(--pp-text);
 }
 
