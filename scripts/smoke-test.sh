@@ -6,9 +6,11 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
 npm ci
+npm audit --audit-level=high
+npm run lint
 npx tsc --noEmit
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo test --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml --all-targets
 RUSTFLAGS=-Dwarnings cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
 
 echo "smoke-test: OK"
