@@ -45,6 +45,12 @@ export function useAppKeyboard(
       const a = actionsRef.current;
 
       if (e.key === 'Escape') {
+        if (activeSurface === 'settings') {
+          if (a.anyModalOpen) {
+            a.dismissModals();
+          }
+          return;
+        }
         if (a.noteMode && a.hasOpenPdf) { a.exitNoteMode(); return; }
         if (a.drawMode && a.hasOpenPdf) { a.exitDrawMode(); return; }
         if (a.shapeMode && a.hasOpenPdf) { a.exitShapeMode(); return; }
@@ -64,12 +70,12 @@ export function useAppKeyboard(
       const shortcut = eventToShortcut(e);
       if (!shortcut) return;
 
-      if (activeSurface === 'settings' && !GLOBAL_COMMANDS.has(shortcutIndex.get(shortcut) as ShortcutCommandId)) {
-        return;
-      }
-
       const commandId = shortcutIndex.get(shortcut);
       if (!commandId) return;
+
+      if (activeSurface === 'settings' && !GLOBAL_COMMANDS.has(commandId)) {
+        return;
+      }
 
       const handler = SHORTCUT_HANDLERS[commandId];
       if (!handler) return;

@@ -9,6 +9,7 @@ import { PrintSurface } from '../viewer/PrintSurface';
 import { SettingsPage } from '../settings/SettingsPage';
 import type { ShortcutBindingsState } from '../app/useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { SettingsFocusSection } from '../app/useAppSurfaceState';
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 
@@ -23,6 +24,7 @@ type AppShellProps = {
   modals: React.ComponentProps<typeof AppModals>;
   printPages: string[];
   activeSurface: AppSurface;
+  settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
@@ -38,6 +40,7 @@ export function AppShell({
   modals,
   printPages,
   activeSurface,
+  settingsFocus,
   closeSettings,
   shortcuts,
   appearance,
@@ -60,6 +63,7 @@ export function AppShell({
         <SettingsPage
           closeSettings={closeSettings}
           hasDocument={hasDocument}
+          focusSection={settingsFocus}
           appearance={appearance}
           shortcuts={shortcuts}
         />

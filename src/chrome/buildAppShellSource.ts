@@ -7,6 +7,7 @@ import { buildAppViewerSource } from '../viewer/buildAppViewerSource';
 import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { ShortcutBindingsState } from '../app/useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { SettingsFocusSection } from '../app/useAppSurfaceState';
 
 type AppShellInput = ComponentProps<typeof AppShell>;
 
@@ -19,6 +20,7 @@ export type BuildAppShellSourceInput = {
   modalCtx: AppModalsRuntime;
   printPages: string[];
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
+  settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
@@ -34,6 +36,7 @@ export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppSh
     modals: { ctx: input.modalCtx },
     printPages: input.printPages,
     activeSurface: input.activeSurface,
+    settingsFocus: input.settingsFocus,
     closeSettings: input.closeSettings,
     shortcuts: input.shortcuts,
     appearance: input.appearance,

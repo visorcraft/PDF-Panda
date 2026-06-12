@@ -12,7 +12,7 @@ import type { useAppLifecycleSlices } from './useAppLifecycleSlices';
 import type { AppMenus } from '../menu/types';
 import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from '../chrome/buildAppChromeSource';
-import type { AppSurface } from './useAppSurfaceState';
+import type { AppSurface, SettingsFocusSection } from './useAppSurfaceState';
 import type { ShortcutBindingsState } from './useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
 
@@ -37,7 +37,7 @@ export type UseAppShellBindingInput = {
   modalCtx: AppModalsRuntime;
   slices: Slices;
   viewerWorkflow: ViewerWorkflow;
-  surface: { activeSurface: AppSurface; closeSettings: () => void };
+  surface: { activeSurface: AppSurface; settingsFocus: SettingsFocusSection; closeSettings: () => void };
   shortcuts: ShortcutBindingsState;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
 };
@@ -63,6 +63,7 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
     modalCtx: input.modalCtx,
     printPages: viewer.printPages,
     activeSurface: input.surface.activeSurface,
+    settingsFocus: input.surface.settingsFocus,
     closeSettings: input.surface.closeSettings,
     shortcuts: input.shortcuts,
     appearance: input.appearance,

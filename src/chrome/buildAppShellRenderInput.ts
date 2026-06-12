@@ -15,7 +15,7 @@ import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
 import type { PdfPageSize } from '../app/types';
-import type { AppSurface } from '../app/useAppSurfaceState';
+import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 import type { ShortcutBindingsState } from '../app/useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
 
@@ -38,6 +38,7 @@ export type BuildAppShellRenderInputArgs = {
   modalCtx: AppModalsRuntime;
   printPages: string[];
   activeSurface: AppSurface;
+  settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
@@ -92,6 +93,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       shortcutBindings: args.shortcuts.bindings,
     }),
     activeSurface: args.activeSurface,
+    settingsFocus: args.settingsFocus,
     closeSettings: args.closeSettings,
     viewer: buildAppShellViewerInput({
       document: {

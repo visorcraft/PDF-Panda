@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, type MutableRefObject } from 'react';
 import type { DocumentSessionData } from './documentSessionTypes';
+import { isTauriRuntime } from './tauriRuntime';
 
 type UseWindowCloseGuardOptions = {
   dirtySessions: DocumentSessionData[];
@@ -18,6 +19,7 @@ export function useWindowCloseGuard({
   focusSession,
 }: UseWindowCloseGuardOptions) {
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     const w = getCurrentWindow();
     const unlisten = w.onCloseRequested((event) => {
       if (!anyDirtyRef.current) return;

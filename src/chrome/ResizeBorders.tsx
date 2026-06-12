@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { getCurrentWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
+import { isTauriRuntime } from '../app/tauriRuntime';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 export function ResizeBorders() {
+  const isTauri = isTauriRuntime();
   const resizingRef = useRef<{
     direction: ResizeDirection;
     startX: number;
@@ -15,6 +17,7 @@ export function ResizeBorders() {
   } | null>(null);
 
   useEffect(() => {
+    if (!isTauri) return;
     const win = getCurrentWindow();
 
     const onMouseMove = async (e: MouseEvent) => {
@@ -76,7 +79,9 @@ export function ResizeBorders() {
       window.removeEventListener('mouseup', onMouseUp);
       delete (window as any).__pdfPandaStartResize;
     };
-  }, []);
+  }, [isTauri]);
+
+  if (!isTauri) return null;
 
   const handleMouseDown = (direction: ResizeDirection) => (e: React.MouseEvent) => {
     (window as any).__pdfPandaStartResize?.(direction, e);

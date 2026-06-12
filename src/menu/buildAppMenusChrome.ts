@@ -1,5 +1,6 @@
 import type { AppMenuContext, MenuAction, MenuRoot } from './types';
 import { act, sep } from './menuBuilders';
+import { APPEARANCE_OPTIONS } from '../settings/appearancePalettes';
 
 export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
   const pdfItems = [
@@ -26,11 +27,9 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
     ),
     sep(),
   ];
-  const themeItems = [
-    act('theme-system', 'System theme', () => ctx.setTheme('system'), { active: ctx.theme === 'system' }),
-    act('theme-light', 'Light theme', () => ctx.setTheme('light'), { active: ctx.theme === 'light' }),
-    act('theme-dark', 'Dark theme', () => ctx.setTheme('dark'), { active: ctx.theme === 'dark' }),
-  ];
+  const themeItems = APPEARANCE_OPTIONS.map((option) =>
+    act(`theme-${option.key}`, option.label, () => ctx.setTheme(option.key), { active: ctx.theme === option.key }),
+  );
   return {
     id: 'view',
     label: 'View',
@@ -48,7 +47,7 @@ export function buildHelpMenu(ctx: AppMenuContext): MenuRoot {
         ? []
         : [act('tesseract', 'Install Tesseract (scan OCR)…', ctx.openTesseractGuide)]),
       act('settings', 'Settings…', () => ctx.openSettings(null)),
-      act('shortcuts', 'Keyboard shortcuts…', ctx.openShortcutsHelp),
+      act('shortcuts', 'Keyboard shortcuts…', () => ctx.openSettings('shortcuts')),
       act('licenses', 'Licenses…', ctx.openLicenses),
       act('credits', 'Credits…', ctx.openCredits),
       act('about', 'About PDF Panda…', ctx.openAbout),

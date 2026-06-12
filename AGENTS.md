@@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`, 
 
 ## Stack & build
 
-Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.6.6** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11; v0.6.5 shipped 2026-06-10) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.7.1** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11; v0.6.5 shipped 2026-06-10; v0.7.0 tagged 2026-06-12; v0.7.1 tagged 2026-06-12) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
 
@@ -122,6 +122,14 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 ## v0.6.5
 
 - **Windows clippy fix** — drop a needless `return` in the non-Linux branch of `download_and_open_package` (`wrappers_annot.inc.rs`); it tripped `clippy::needless_return` under `-D warnings` on the Windows check job (the branch is cfg'd out on Linux, so local clippy never saw it).
+
+## v0.7.0
+
+- **Version bump release** — packages the v0.6.6 feature set as the new v0.7.0 release.
+
+## v0.7.1
+
+- **Version bump release** — packages the current feature set as the new v0.7.1 release.
 
 ## v0.6.6
 

@@ -5,6 +5,7 @@ import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
 import { useAppShellBinding } from './useAppShellBinding';
 import { useDocumentTabActions } from './useDocumentTabActions';
+import { isTauriRuntime } from './tauriRuntime';
 import type { useAppStateBootstrap } from './useAppStateBootstrap';
 
 type Bootstrap = ReturnType<typeof useAppStateBootstrap>;
@@ -151,6 +152,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
   const openPathPendingRef = useRef(false);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
     let unlisten: (() => void) | undefined;
     listen<string[]>('open-path', (event) => {
       openPathPendingRef.current = true;

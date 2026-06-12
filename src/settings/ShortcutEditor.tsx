@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { SHORTCUT_REGISTRY, type ShortcutCategory, type ShortcutCommandId } from './shortcutRegistry';
+import { SHORTCUT_COMMAND_MAP, SHORTCUT_REGISTRY, type ShortcutCategory, type ShortcutCommandId } from './shortcutRegistry';
 import { normalizeShortcut, shortcutToDisplay } from './shortcutKeys';
 import { ShortcutCapture } from './ShortcutCapture';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
@@ -87,8 +87,7 @@ export function ShortcutEditor({ bindings, setBinding, resetBinding }: ShortcutE
               const current = bindings[commandId] ?? item.defaultShortcuts;
               const conflictCommandId = conflicts.get(commandId);
               const conflictLabel = conflictCommandId
-                ? (SHORTCUT_REGISTRY.find((b) => b.commandId === conflictCommandId)?.label ??
-                  conflictCommandId)
+                ? SHORTCUT_COMMAND_MAP[conflictCommandId as ShortcutCommandId]?.label ?? conflictCommandId
                 : null;
 
               return (

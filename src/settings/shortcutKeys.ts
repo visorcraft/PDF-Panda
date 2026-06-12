@@ -9,15 +9,30 @@ export type Conflict = {
 
 const MODIFIER_ORDER = ['Ctrl', 'Meta', 'Alt', 'Shift'] as const;
 
-const KEY_ALIASES: Record<string, string> = {
-  Control: 'Ctrl',
-  Esc: 'Escape',
-  ' ': 'Space',
-  Spacebar: 'Space',
-  Minus: '-',
+const MODIFIER_NAMES = new Set(['Ctrl', 'Alt', 'Shift', 'Meta']);
+const MODIFIER_ALIASES: Record<string, (typeof MODIFIER_ORDER)[number]> = {
+  alt: 'Alt',
+  control: 'Ctrl',
+  ctrl: 'Ctrl',
+  meta: 'Meta',
+  shift: 'Shift',
 };
 
-const MODIFIER_NAMES = new Set(['Ctrl', 'Alt', 'Shift', 'Meta']);
+const KEY_ALIASES: Record<string, string> = {
+  ' ': 'Space',
+  add: 'Plus',
+  control: 'Ctrl',
+  ctrl: 'Ctrl',
+  equal: '=',
+  esc: 'Escape',
+  escape: 'Escape',
+  minus: '-',
+  plus: 'Plus',
+  space: 'Space',
+  spacebar: 'Space',
+};
+
+const TOOL_LETTERS = new Set(['H', 'N', 'D', 'S', 'T', 'X', 'E', 'G', 'I', 'F']);
 
 const RESERVED_SHORTCUTS = new Set<string>([
   'Escape',
@@ -27,16 +42,22 @@ const RESERVED_SHORTCUTS = new Set<string>([
   'Ctrl+T',
   'Ctrl+Shift+T',
   'Ctrl+N',
-  'Ctrl+Shift+N',
   'Ctrl+Shift+W',
   'Ctrl+Shift+R',
   'Ctrl+Shift+C',
 ]);
 
+function normalizeModifier(value: string): (typeof MODIFIER_ORDER)[number] | null {
+  return MODIFIER_ALIASES[value.trim().toLowerCase()] ?? null;
+}
+
 function normalizeKey(key: string): string {
-  if (key === '+') return 'Plus';
-  const upper = key.length === 1 ? key.toUpperCase() : key;
-  return KEY_ALIASES[upper] ?? upper;
+  const trimmed = key.trim();
+  if (!trimmed) return '';
+  if (trimmed === '+') return 'Plus';
+  const alias = KEY_ALIASES[trimmed.toLowerCase()];
+  if (alias) return alias;
+  return trimmed.length === 1 ? trimmed.toUpperCase() : trimmed;
 }
 
 export function eventToShortcut(event: KeyboardEvent | React.KeyboardEvent): Shortcut | null {
@@ -53,8 +74,7 @@ export function eventToShortcut(event: KeyboardEvent | React.KeyboardEvent): Sho
 
   // Reject raw text-entry keys without modifiers unless they are current document tool defaults
   // (single letter keys used by annotation tools: H, N, D, S, T, X, E, G, I, F).
-  const toolLetters = new Set(['H', 'N', 'D', 'S', 'T', 'X', 'E', 'G', 'I', 'F']);
-  if (parts.length === 0 && !toolLetters.has(key) && key.length === 1) {
+  if (parts.length === 0 && !TOOL_LETTERS.has(key) && key.length === 1) {
     return null;
   }
 
@@ -68,10 +88,8 @@ export function normalizeShortcut(input: string): Shortcut | null {
 
   const rawParts = trimmed.split(/\s*\+\s*/);
   const normalizedParts = rawParts.map((part) => {
-    const upper = part.toUpperCase();
-    if (MODIFIER_NAMES.has(upper === 'CONTROL' ? 'Ctrl' : upper)) {
-      return upper === 'CONTROL' ? 'Ctrl' : upper.charAt(0) + upper.slice(1).toLowerCase();
-    }
+    const modifier = normalizeModifier(part);
+    if (modifier) return modifier;
     return normalizeKey(part.trim());
   });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import pandaIcon from '../assets/panda_face.png';
+import { isTauriRuntime } from '../app/tauriRuntime';
 
 type TitleBarProps = {
   title: string;
@@ -15,7 +16,7 @@ function TitleBarIcon({ children }: { children: React.ReactNode }) {
 }
 
 export function TitleBar({ title }: TitleBarProps) {
-  const win = getCurrentWindow();
+  const win = isTauriRuntime() ? getCurrentWindow() : null;
 
   return (
     <header className="window-titlebar">
@@ -30,7 +31,8 @@ export function TitleBar({ title }: TitleBarProps) {
           type="button"
           className="titlebar-btn"
           aria-label="Minimize"
-          onClick={() => void win.minimize()}
+          disabled={!win}
+          onClick={() => void win?.minimize()}
         >
           <TitleBarIcon>
             <path d="M1.5 6 L5 3 L8.5 6" />
@@ -40,7 +42,8 @@ export function TitleBar({ title }: TitleBarProps) {
           type="button"
           className="titlebar-btn"
           aria-label="Maximize"
-          onClick={() => void win.toggleMaximize()}
+          disabled={!win}
+          onClick={() => void win?.toggleMaximize()}
         >
           <TitleBarIcon>
             <path d="M1.5 4 L5 7 L8.5 4" />
@@ -50,7 +53,8 @@ export function TitleBar({ title }: TitleBarProps) {
           type="button"
           className="titlebar-btn titlebar-btn-close"
           aria-label="Close"
-          onClick={() => void win.close()}
+          disabled={!win}
+          onClick={() => void win?.close()}
         >
           <TitleBarIcon>
             <path d="M2 2 L8 8 M8 2 L2 8" />

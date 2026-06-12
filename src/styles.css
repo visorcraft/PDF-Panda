@@ -2497,6 +2497,15 @@ body {
   padding: 20px;
 }
 
+.settings-card:focus {
+  outline: none;
+}
+
+.settings-card:focus-visible {
+  border-color: var(--pp-input-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-input-focus) 25%, transparent);
+}
+
 .settings-card-header {
   margin-bottom: 16px;
 }

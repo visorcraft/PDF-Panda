@@ -5,10 +5,12 @@ import { ShortcutEditor } from './ShortcutEditor';
 import type { AppearanceKey } from './appearancePalettes';
 import type { ShortcutCommandId } from './shortcutRegistry';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+import type { SettingsFocusSection } from '../app/useAppSurfaceState';
 
 type SettingsPageProps = {
   closeSettings?: () => void;
   hasDocument?: boolean;
+  focusSection?: SettingsFocusSection;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
   shortcuts: {
     bindings: ShortcutBindings;
@@ -28,22 +30,42 @@ function focusOwnsEscape(target: EventTarget | null): boolean {
   return false;
 }
 
+function overlayOwnsEscape(): boolean {
+  return document.querySelector('.modal-backdrop, .command-palette-backdrop') !== null;
+}
+
 export function SettingsPage({
   closeSettings,
   hasDocument,
+  focusSection = null,
   appearance,
   shortcuts,
 }: SettingsPageProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const appearanceRef = useRef<HTMLElement>(null);
+  const shortcutsRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
+    const target =
+      focusSection === 'appearance'
+        ? appearanceRef.current
+        : focusSection === 'shortcuts'
+          ? shortcutsRef.current
+          : headingRef.current;
+    if (!target) return;
+    if (focusSection) {
+      target.scrollIntoView({ block: 'start' });
+      target.focus({ preventScroll: true });
+      return;
+    }
+    target.focus();
+  }, [focusSection]);
 
   useEffect(() => {
     if (!closeSettings) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (overlayOwnsEscape()) return;
       if (focusOwnsEscape(e.target)) return;
       e.preventDefault();
       closeSettings();
@@ -75,7 +97,13 @@ export function SettingsPage({
         </div>
       </header>
       <section className="settings-content">
-        <SettingsCard title="Appearance" subtitle="Choose the color scheme for the app.">
+        <SettingsCard
+          ref={appearanceRef}
+          id="settings-appearance"
+          tabIndex={-1}
+          title="Appearance"
+          subtitle="Choose the color scheme for the app."
+        >
           <AppearanceSelect
             appearance={appearance.appearance}
             setAppearance={appearance.setAppearance}
@@ -83,6 +111,9 @@ export function SettingsPage({
         </SettingsCard>
 
         <SettingsCard
+          ref={shortcutsRef}
+          id="settings-shortcuts"
+          tabIndex={-1}
           title="Keyboard shortcuts"
           subtitle="Search, view, and customize keyboard shortcuts."
         >
