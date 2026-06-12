@@ -78,24 +78,12 @@ export function useNativeFilePickers(opts: UseNativeFilePickersOptions) {
     opts.rememberBrowserDirectory(path);
   }, [opts]);
 
-  const handleSaveAs = useCallback(async () => {
-    const target = opts.saveAsPath.trim();
-    if (!opts.filePath || !target) return;
-    await opts.withLoading(async () => {
-      await invoke('save_working_copy', { working: opts.filePath, target });
-      opts.setOriginalPath(target);
-      opts.rememberOpenedPdf(target);
-      opts.markSaved();
-      opts.setShowSaveAsModal(false);
-      opts.showToast(`Saved to ${target}`);
-    });
-  }, [opts]);
-
   const saveAsViaNativeDialog = useCallback(async () => {
-    if (!opts.filePath || !opts.originalPath) return;
+    if (!opts.filePath || !opts.originalPath) return false;
     const picked = await pickSaveWithNativeDialog(opts.saveAsPath || opts.originalPath, PDF_DIALOG_FILTER);
-    if (!picked) return;
+    if (!picked) return false;
     const target = ensureExtension(picked, 'pdf');
+    let saved = false;
     await opts.withLoading(async () => {
       await invoke('save_working_copy', { working: opts.filePath, target });
       opts.setOriginalPath(target);
@@ -103,7 +91,9 @@ export function useNativeFilePickers(opts: UseNativeFilePickersOptions) {
       opts.markSaved();
       opts.setShowSaveAsModal(false);
       opts.showToast(`Saved to ${target}`);
+      saved = true;
     });
+    return saved;
   }, [opts]);
 
   const chooseSaveAsNative = useCallback(async () => {
@@ -171,7 +161,6 @@ export function useNativeFilePickers(opts: UseNativeFilePickersOptions) {
     chooseOpenPdfNative,
     chooseInsertPdfNative,
     chooseMergePdfNative,
-    handleSaveAs,
     saveAsViaNativeDialog,
     chooseSaveAsNative,
     chooseExtractOutputNative,

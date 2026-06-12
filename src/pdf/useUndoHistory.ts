@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useAnnouncer } from '../ui/useAnnouncer';
 import type { SessionUndoRefs } from '../app/documentSessionTypes';
 import {
   type HistorySnapshot,
@@ -40,6 +41,7 @@ export function useUndoHistory({
   setViewMode,
   setIsDirty,
 }: UseUndoHistoryDeps) {
+  const { announce } = useAnnouncer();
   const sessionRefs = useCallback((): SessionUndoRefs | null => {
     if (!activeSessionId) return null;
     return getUndoRefs(activeSessionId);
@@ -185,9 +187,10 @@ export function useUndoHistory({
         }
         await onRestore();
         refreshUndoRedoState();
+        announce('Undo');
       });
     },
-    [onRestore, refreshUndoRedoState, sessionRefs, withLoading],
+    [announce, onRestore, refreshUndoRedoState, sessionRefs, withLoading],
   );
 
   const redo = useCallback(
@@ -209,9 +212,10 @@ export function useUndoHistory({
         }
         await onRestore();
         refreshUndoRedoState();
+        announce('Redo');
       });
     },
-    [onRestore, refreshUndoRedoState, sessionRefs, withLoading],
+    [announce, onRestore, refreshUndoRedoState, sessionRefs, withLoading],
   );
 
   return {

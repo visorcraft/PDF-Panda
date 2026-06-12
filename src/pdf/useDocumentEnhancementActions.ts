@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useCallback, useEffect, useState } from 'react';
+import { useAnnouncer } from '../ui/useAnnouncer';
 import type { PageRangePairController } from '../pageRange/usePageRange';
 import type { RunEdit } from './runEditTypes';
 
@@ -26,7 +27,10 @@ export type UseDocumentEnhancementActionsOptions = {
   setBatesPosition: (value: string) => void;
 };
 
-export function useDocumentEnhancementActions(opts: UseDocumentEnhancementActionsOptions) {
+export function useDocumentEnhancementActions(
+  opts: UseDocumentEnhancementActionsOptions
+) {
+  const { announce } = useAnnouncer();
   const [hasRedactions, setHasRedactions] = useState(false);
 
   useEffect(() => {
@@ -47,13 +51,17 @@ export function useDocumentEnhancementActions(opts: UseDocumentEnhancementAction
     }
     const endPage = opts.pageCount - 1;
     opts.showToast('Making PDF searchable (OCR)…');
-    await opts.runEdit({
+    const result = await opts.runEdit<number>({
       command: 'make_pdf_searchable',
       args: { startPage: 0, endPage },
       reloadAt: opts.currentPage,
       toast: (n) => `OCR text layer added to ${n} page${n === 1 ? '' : 's'}`,
     });
-  }, [opts]);
+    if (result != null) {
+      const n = result;
+      announce(`OCR text layer added to ${n} page${n === 1 ? '' : 's'}`);
+    }
+  }, [opts, announce]);
 
   const openBatesNumberModal = useCallback(() => {
     if (!opts.filePath || opts.pageCount === null) return;
@@ -82,9 +90,12 @@ export function useDocumentEnhancementActions(opts: UseDocumentEnhancementAction
       },
       reloadAt: opts.currentPage,
       toast: 'Bates numbers added',
-      onSuccess: () => opts.setShowBatesNumberModal(false),
+      onSuccess: () => {
+        opts.setShowBatesNumberModal(false);
+        announce('Bates numbers added');
+      },
     });
-  }, [opts]);
+  }, [opts, announce]);
 
   const openApplyRedactionsModal = useCallback(() => {
     if (!opts.filePath || !hasRedactions) return;
@@ -97,14 +108,18 @@ export function useDocumentEnhancementActions(opts: UseDocumentEnhancementAction
       opts.openTesseractGuide();
       return;
     }
-    await opts.runEdit({
+    const result = await opts.runEdit<number>({
       command: 'apply_redactions',
       args: { ocrAfter: opts.applyRedactionsOcrAfter },
       reloadAt: opts.currentPage,
       toast: (n) => `Redactions applied to ${n} page${n === 1 ? '' : 's'}`,
       onSuccess: () => opts.setShowApplyRedactionsModal(false),
     });
-  }, [opts]);
+    if (result != null) {
+      const n = result;
+      announce(`Redactions applied to ${n} page${n === 1 ? '' : 's'}`);
+    }
+  }, [opts, announce]);
 
   return {
     hasRedactions,

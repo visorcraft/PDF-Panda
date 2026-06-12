@@ -1,5 +1,6 @@
 import { ZOOM_STEP } from '../app/constants';
 import { clampZoom } from '../app/utils';
+import { useAnnouncer } from '../ui/useAnnouncer';
 
 type UsePageZoomOptions = {
   zoom: number;
@@ -24,9 +25,26 @@ export function usePageZoom({
   currentPage,
   goToPage,
 }: UsePageZoomOptions) {
-  const zoomIn = () => setZoom((z) => clampZoom(+(z + ZOOM_STEP).toFixed(2)));
-  const zoomOut = () => setZoom((z) => clampZoom(+(z - ZOOM_STEP).toFixed(2)));
-  const resetZoom = () => setZoom(1);
+  const { announce } = useAnnouncer();
+
+  const zoomIn = () => {
+    setZoom((z) => {
+      const next = clampZoom(+(z + ZOOM_STEP).toFixed(2));
+      announce(`Zoom ${Math.round(next * 100)}%`);
+      return next;
+    });
+  };
+  const zoomOut = () => {
+    setZoom((z) => {
+      const next = clampZoom(+(z - ZOOM_STEP).toFixed(2));
+      announce(`Zoom ${Math.round(next * 100)}%`);
+      return next;
+    });
+  };
+  const resetZoom = () => {
+    setZoom(1);
+    announce('Zoom 100%');
+  };
 
   const commitZoom = () => {
     const n = parseInt(zoomInput, 10);
@@ -34,7 +52,10 @@ export function usePageZoom({
       setZoomInput(String(Math.round(zoom * 100)));
       return;
     }
-    setZoom(clampZoom(n / 100));
+    const next = clampZoom(n / 100);
+    setZoom(next);
+    setZoomInput(String(Math.round(next * 100)));
+    announce(`Zoom ${Math.round(next * 100)}%`);
   };
 
   const commitPage = () => {

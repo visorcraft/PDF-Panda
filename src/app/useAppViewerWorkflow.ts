@@ -4,6 +4,7 @@ import { useThumbnailReorder } from './useThumbnailReorder';
 import { usePageZoom } from '../viewer/usePageZoom';
 import { useWheelNavigation } from '../viewer/useWheelNavigation';
 import { useContinuousScroll } from '../viewer/useContinuousScroll';
+import { useAnnouncer } from '../ui/useAnnouncer';
 import type { PdfPageSize, ScrollViewMode, ViewMode } from './types';
 
 type UseAppViewerWorkflowInput = {
@@ -63,6 +64,8 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
     goToPage: goToPageSingle,
   });
 
+  const { announce } = useAnnouncer();
+
   const continuousScroll = useContinuousScroll({
     filePath,
     pdfRevision,
@@ -76,13 +79,17 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
 
   const goToPage = useCallback(
     (page: number) => {
+      const target = pageCount === null ? page : Math.max(0, Math.min(page, pageCount - 1));
       if (scrollViewMode === 'continuous' && viewMode === 'pdf') {
-        continuousScroll.goToPageContinuous(page);
-        return;
+        continuousScroll.goToPageContinuous(target);
+      } else {
+        goToPageSingle(target);
       }
-      goToPageSingle(page);
+      if (pageCount !== null) {
+        announce(`Page ${target + 1} of ${pageCount}`);
+      }
     },
-    [continuousScroll.goToPageContinuous, goToPageSingle, scrollViewMode, viewMode],
+    [continuousScroll.goToPageContinuous, goToPageSingle, scrollViewMode, viewMode, pageCount, announce],
   );
 
   const { handleDragStart, handleDragOver, handleDrop } = useThumbnailReorder({
