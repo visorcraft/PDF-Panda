@@ -9,10 +9,7 @@ import {
   waitForShell,
 } from '../support/helpers';
 
-async function assertNoAxeViolations(
-  context: string,
-  disabledRules?: string[],
-) {
+async function assertNoAxeViolations(context: string) {
   // WebdriverIO v9 + Tauri's embedded WebKit driver do not support
   // `window/new`, which axe-core uses by default for cross-origin/frame
   // isolation. Legacy mode analyzes the current window directly.
@@ -21,10 +18,9 @@ async function assertNoAxeViolations(
   // axe's document-structure best-practice rules (page heading and landmark
   // containment) do not map cleanly to the toolbar/sidebar/viewer layout.
   // Disable them globally; the spec still catches real WCAG failures.
-  const baseDisabledRules = ['page-has-heading-one', 'region'];
   const results = await new AxeBuilder({ client: browser })
     .setLegacyMode(true)
-    .disableRules([...baseDisabledRules, ...(disabledRules ?? [])])
+    .disableRules(['page-has-heading-one', 'region'])
     .analyze();
   if (results.violations.length > 0) {
     console.error(
@@ -57,6 +53,16 @@ describe('axe accessibility', () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
     await clickMenuAction('view', 'pdfua-panel');
+    // The View → PDF/UA Check item is a toggle; if a previous spec left the
+    // panel open, the first click closes it. Wait briefly, then re-open if
+    // the panel is not displayed.
+    await browser.pause(250);
+    const panelDisplayed = await $('.pdfua-panel')
+      .isDisplayed()
+      .catch(() => false);
+    if (!panelDisplayed) {
+      await clickMenuAction('view', 'pdfua-panel');
+    }
     await browser.waitUntil(
       async () => (await $('.pdfua-panel').isDisplayed()),
       { timeout: 10_000, timeoutMsg: 'expected PDF/UA panel' },

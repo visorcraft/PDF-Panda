@@ -86,5 +86,12 @@ describe('keyboard accessibility', () => {
 
     const panelText = await $('.pdfua-panel').getText();
     expect(panelText).toContain('PDF/UA Check');
+
+    // Close the panel so later specs start from a clean viewer state.
+    await clickMenuAction('view', 'pdfua-panel');
+    await browser.waitUntil(
+      async () => !(await $('.pdfua-panel').isDisplayed().catch(() => true)),
+      { timeout: 5_000, timeoutMsg: 'expected PDF/UA panel to close' },
+    );
   });
 });

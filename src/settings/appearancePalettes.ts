@@ -80,7 +80,7 @@ export const APPEARANCE_OPTIONS: AppearanceOption[] = [
       alternateBackground: '#292929',
       tertiaryBackground: '#343434',
       text: '#F5F5F5',
-      disabledText: '#9E9E9E',
+      disabledText: '#9e9e9e',
       highlight: '#2D7FF9',
       focusRing: '#2D7FF9',
       highlightedText: '#FFFFFF',
