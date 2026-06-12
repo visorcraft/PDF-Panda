@@ -31,7 +31,7 @@ type ModalDismissSetters = {
   setShowInterleaveModal: (show: boolean) => void;
   setShowPageSizeModal: (show: boolean) => void;
   setShowDecryptModal: (show: boolean) => void;
-  setShowRotateRangeModal: (show: boolean) => void;
+  setShowRotateModal: (show: boolean) => void;
   setShowKeepRangeModal: (show: boolean) => void;
   setShowMoveRangeModal: (show: boolean) => void;
   setShowPrependModal: (show: boolean) => void;
@@ -39,9 +39,15 @@ type ModalDismissSetters = {
   setShowPageBorderModal: (show: boolean) => void;
   setShowBookmarkAllModal: (show: boolean) => void;
   setShowExpandMarginsModal: (show: boolean) => void;
+  setShowShrinkMarginsModal: (show: boolean) => void;
+  setShowDeleteNthModal: (show: boolean) => void;
+  setShowExtractOddModal: (show: boolean) => void;
+  setShowExtractEvenModal: (show: boolean) => void;
+  setShowSplitAtModal: (show: boolean) => void;
   setShowReverseRangeModal: (show: boolean) => void;
   setShowInsertBlankPagesModal: (show: boolean) => void;
   setShowCropRangeModal: (show: boolean) => void;
+  setShowParityRangeModal: (show: boolean) => void;
   setShowExportPagesPdfModal: (show: boolean) => void;
   setShowInsertImagePageModal: (show: boolean) => void;
   setShowExportPagePdfModal: (show: boolean) => void;
@@ -49,6 +55,7 @@ type ModalDismissSetters = {
   setInsertFilePath: (path: string) => void;
   setShowMergeModal: (show: boolean) => void;
   setMergeFilePath: (path: string) => void;
+  setShowNoteModal: (show: boolean) => void;
   setShowImageInsertModal: (show: boolean) => void;
   setShowAddFormFieldModal: (show: boolean) => void;
   setShowSummaryModal: (show: boolean) => void;
@@ -93,7 +100,7 @@ type ModalDismissFlags = {
   showInterleaveModal: boolean;
   showPageSizeModal: boolean;
   showDecryptModal: boolean;
-  showRotateRangeModal: boolean;
+  showRotateModal: boolean;
   showKeepRangeModal: boolean;
   showMoveRangeModal: boolean;
   showPrependModal: boolean;
@@ -130,18 +137,14 @@ type ModalDismissFlags = {
   showTesseractModal: boolean;
 };
 
-export type UseModalDismissOptions = ModalDismissSetters & ModalDismissFlags & {
-  closeSearchModal: () => void;
-  resolveUnsaved: (choice: UnsavedChoice) => void | Promise<void>;
-};
+export type UseModalDismissOptions = ModalDismissSetters &
+  ModalDismissFlags & {
+    closeSearchModal: () => void;
+    resolveUnsaved: (choice: UnsavedChoice) => void | Promise<void>;
+  };
 
 export function useModalDismiss(opts: UseModalDismissOptions) {
-  const {
-    showUnsavedModal,
-    closeSearchModal,
-    resolveUnsaved,
-    ...rest
-  } = opts;
+  const { showUnsavedModal, closeSearchModal, resolveUnsaved, ...rest } = opts;
 
   const dismissModals = useCallback(() => {
     if (showUnsavedModal) {
@@ -177,7 +180,7 @@ export function useModalDismiss(opts: UseModalDismissOptions) {
     rest.setShowInterleaveModal(false);
     rest.setShowPageSizeModal(false);
     rest.setShowDecryptModal(false);
-    rest.setShowRotateRangeModal(false);
+    rest.setShowRotateModal(false);
     rest.setShowKeepRangeModal(false);
     rest.setShowMoveRangeModal(false);
     rest.setShowPrependModal(false);
@@ -185,9 +188,15 @@ export function useModalDismiss(opts: UseModalDismissOptions) {
     rest.setShowPageBorderModal(false);
     rest.setShowBookmarkAllModal(false);
     rest.setShowExpandMarginsModal(false);
+    rest.setShowShrinkMarginsModal(false);
+    rest.setShowDeleteNthModal(false);
+    rest.setShowExtractOddModal(false);
+    rest.setShowExtractEvenModal(false);
+    rest.setShowSplitAtModal(false);
     rest.setShowReverseRangeModal(false);
     rest.setShowInsertBlankPagesModal(false);
     rest.setShowCropRangeModal(false);
+    rest.setShowParityRangeModal(false);
     rest.setShowExportPagesPdfModal(false);
     rest.setShowInsertImagePageModal(false);
     rest.setShowExportPagePdfModal(false);
@@ -196,6 +205,7 @@ export function useModalDismiss(opts: UseModalDismissOptions) {
     rest.setShowMergeModal(false);
     rest.setMergeFilePath('');
     closeSearchModal();
+    rest.setShowNoteModal(false);
     rest.setShowImageInsertModal(false);
     rest.setShowAddFormFieldModal(false);
     rest.setShowSummaryModal(false);
@@ -209,51 +219,139 @@ export function useModalDismiss(opts: UseModalDismissOptions) {
     rest.setShowCredits(false);
     rest.setShowAbout(false);
     rest.setShowTesseractModal(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showUnsavedModal, closeSearchModal, resolveUnsaved]);
 
   const anyModalOpen = useMemo(
     () =>
-      showUnsavedModal || rest.showSaveAsModal || rest.showMarkdownSaveAsModal || rest.showProtectModal
-      || rest.showSignModal || rest.showMetadataModal || rest.showPasswordModal || rest.showOpenModal
-      || rest.showBrowserModal || rest.showDeleteModal || rest.showSplitModal || rest.showExtractModal
-      || rest.showExportPngModal || rest.showDeleteRangeModal || rest.showPageNumbersModal
-      || rest.showWatermarkModal || rest.showCropModal || rest.showFlattenModal || rest.showAddBookmarkModal
-      || rest.showRenameBookmarkModal || rest.showDuplicateRangeModal || rest.showPageHeaderModal
-      || rest.showPageFooterModal || rest.showSwapPagesModal || rest.showReplacePageModal
-      || rest.showInterleaveModal || rest.showPageSizeModal || rest.showDecryptModal || rest.showRotateRangeModal
-      || rest.showKeepRangeModal || rest.showMoveRangeModal || rest.showPrependModal || rest.showSplitEveryModal
-      || rest.showPageBorderModal || rest.showBookmarkAllModal || rest.showExpandMarginsModal
-      || rest.showShrinkMarginsModal || rest.showDeleteNthModal || rest.showExtractOddModal
-      || rest.showExtractEvenModal || rest.showSplitAtModal || rest.showReverseRangeModal
-      || rest.showInsertBlankPagesModal || rest.showCropRangeModal || rest.showParityRangeModal
-      || rest.showExportPagesPdfModal || rest.showInsertImagePageModal || rest.showExportPagePdfModal
-      || rest.showInsertModal || rest.showMergeModal || rest.showSearchModal || rest.showNoteModal
-      || rest.showImageInsertModal || rest.showAddFormFieldModal || rest.showSummaryModal
-      || rest.showPageTextModal || rest.showPageEditsModal || rest.showCommandPalette
-      || rest.showShortcutsHelp || rest.showLicenses || rest.showCredits || rest.showAbout
-      || rest.showTesseractModal,
-    [
-      showUnsavedModal, rest.showSaveAsModal, rest.showMarkdownSaveAsModal, rest.showProtectModal,
-      rest.showSignModal, rest.showMetadataModal, rest.showPasswordModal, rest.showOpenModal,
-      rest.showBrowserModal, rest.showDeleteModal, rest.showSplitModal, rest.showExtractModal,
-      rest.showExportPngModal, rest.showDeleteRangeModal, rest.showPageNumbersModal,
-      rest.showWatermarkModal, rest.showCropModal, rest.showFlattenModal, rest.showAddBookmarkModal,
-      rest.showRenameBookmarkModal, rest.showDuplicateRangeModal, rest.showPageHeaderModal,
-      rest.showPageFooterModal, rest.showSwapPagesModal, rest.showReplacePageModal,
-      rest.showInterleaveModal, rest.showPageSizeModal, rest.showDecryptModal, rest.showRotateRangeModal,
-      rest.showKeepRangeModal, rest.showMoveRangeModal, rest.showPrependModal, rest.showSplitEveryModal,
-      rest.showPageBorderModal, rest.showBookmarkAllModal, rest.showExpandMarginsModal,
-      rest.showShrinkMarginsModal, rest.showDeleteNthModal, rest.showExtractOddModal,
-      rest.showExtractEvenModal, rest.showSplitAtModal, rest.showReverseRangeModal,
-      rest.showInsertBlankPagesModal, rest.showCropRangeModal, rest.showParityRangeModal,
-      rest.showExportPagesPdfModal, rest.showInsertImagePageModal, rest.showExportPagePdfModal,
-      rest.showInsertModal, rest.showMergeModal, rest.showSearchModal, rest.showNoteModal,
-      rest.showImageInsertModal, rest.showAddFormFieldModal, rest.showSummaryModal,
-      rest.showPageTextModal, rest.showPageEditsModal, rest.showCommandPalette,
-      rest.showShortcutsHelp, rest.showLicenses, rest.showCredits, rest.showAbout,
+      showUnsavedModal ||
+      rest.showSaveAsModal ||
+      rest.showMarkdownSaveAsModal ||
+      rest.showProtectModal ||
+      rest.showSignModal ||
+      rest.showMetadataModal ||
+      rest.showPasswordModal ||
+      rest.showOpenModal ||
+      rest.showBrowserModal ||
+      rest.showDeleteModal ||
+      rest.showSplitModal ||
+      rest.showExtractModal ||
+      rest.showExportPngModal ||
+      rest.showDeleteRangeModal ||
+      rest.showPageNumbersModal ||
+      rest.showWatermarkModal ||
+      rest.showCropModal ||
+      rest.showFlattenModal ||
+      rest.showAddBookmarkModal ||
+      rest.showRenameBookmarkModal ||
+      rest.showDuplicateRangeModal ||
+      rest.showPageHeaderModal ||
+      rest.showPageFooterModal ||
+      rest.showSwapPagesModal ||
+      rest.showReplacePageModal ||
+      rest.showInterleaveModal ||
+      rest.showPageSizeModal ||
+      rest.showDecryptModal ||
+      rest.showRotateModal ||
+      rest.showKeepRangeModal ||
+      rest.showMoveRangeModal ||
+      rest.showPrependModal ||
+      rest.showSplitEveryModal ||
+      rest.showPageBorderModal ||
+      rest.showBookmarkAllModal ||
+      rest.showExpandMarginsModal ||
+      rest.showShrinkMarginsModal ||
+      rest.showDeleteNthModal ||
+      rest.showExtractOddModal ||
+      rest.showExtractEvenModal ||
+      rest.showSplitAtModal ||
+      rest.showReverseRangeModal ||
+      rest.showInsertBlankPagesModal ||
+      rest.showCropRangeModal ||
+      rest.showParityRangeModal ||
+      rest.showExportPagesPdfModal ||
+      rest.showInsertImagePageModal ||
+      rest.showExportPagePdfModal ||
+      rest.showInsertModal ||
+      rest.showMergeModal ||
+      rest.showSearchModal ||
+      rest.showNoteModal ||
+      rest.showImageInsertModal ||
+      rest.showAddFormFieldModal ||
+      rest.showSummaryModal ||
+      rest.showPageTextModal ||
+      rest.showPageEditsModal ||
+      rest.showCommandPalette ||
+      rest.showShortcutsHelp ||
+      rest.showLicenses ||
+      rest.showCredits ||
+      rest.showAbout ||
       rest.showTesseractModal,
-    ],
+    [
+      showUnsavedModal,
+      rest.showSaveAsModal,
+      rest.showMarkdownSaveAsModal,
+      rest.showProtectModal,
+      rest.showSignModal,
+      rest.showMetadataModal,
+      rest.showPasswordModal,
+      rest.showOpenModal,
+      rest.showBrowserModal,
+      rest.showDeleteModal,
+      rest.showSplitModal,
+      rest.showExtractModal,
+      rest.showExportPngModal,
+      rest.showDeleteRangeModal,
+      rest.showPageNumbersModal,
+      rest.showWatermarkModal,
+      rest.showCropModal,
+      rest.showFlattenModal,
+      rest.showAddBookmarkModal,
+      rest.showRenameBookmarkModal,
+      rest.showDuplicateRangeModal,
+      rest.showPageHeaderModal,
+      rest.showPageFooterModal,
+      rest.showSwapPagesModal,
+      rest.showReplacePageModal,
+      rest.showInterleaveModal,
+      rest.showPageSizeModal,
+      rest.showDecryptModal,
+      rest.showRotateModal,
+      rest.showKeepRangeModal,
+      rest.showMoveRangeModal,
+      rest.showPrependModal,
+      rest.showSplitEveryModal,
+      rest.showPageBorderModal,
+      rest.showBookmarkAllModal,
+      rest.showExpandMarginsModal,
+      rest.showShrinkMarginsModal,
+      rest.showDeleteNthModal,
+      rest.showExtractOddModal,
+      rest.showExtractEvenModal,
+      rest.showSplitAtModal,
+      rest.showReverseRangeModal,
+      rest.showInsertBlankPagesModal,
+      rest.showCropRangeModal,
+      rest.showParityRangeModal,
+      rest.showExportPagesPdfModal,
+      rest.showInsertImagePageModal,
+      rest.showExportPagePdfModal,
+      rest.showInsertModal,
+      rest.showMergeModal,
+      rest.showSearchModal,
+      rest.showNoteModal,
+      rest.showImageInsertModal,
+      rest.showAddFormFieldModal,
+      rest.showSummaryModal,
+      rest.showPageTextModal,
+      rest.showPageEditsModal,
+      rest.showCommandPalette,
+      rest.showShortcutsHelp,
+      rest.showLicenses,
+      rest.showCredits,
+      rest.showAbout,
+      rest.showTesseractModal,
+    ]
   );
 
   return { dismissModals, anyModalOpen };

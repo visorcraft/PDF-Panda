@@ -46,7 +46,7 @@ import { ProtectPdfModal } from './ProtectPdfModal';
 import { RenameBookmarkModal } from './RenameBookmarkModal';
 import { ReplacePageModal } from './ReplacePageModal';
 import { ReverseRangeModal } from './ReverseRangeModal';
-import { RotateRangeModal } from './RotateRangeModal';
+import { RotateModal } from './RotateModal';
 import { SaveAsModal } from './SaveAsModal';
 import { SearchModal } from './SearchModal';
 import { ShrinkMarginsModal } from './ShrinkMarginsModal';
@@ -85,7 +85,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onBrowse={() => ctx.openPdfBrowser('open')}
         />
       )}
-      
+
       {ctx.showNoteModal && (
         <StickyNoteModal
           noteDraft={ctx.noteDraft}
@@ -94,7 +94,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSubmit={ctx.submitTextNote}
         />
       )}
-      
+
       {ctx.showDeleteModal && ctx.pageCount !== null && (
         <DeletePageModal
           deletePageInput={ctx.deletePageInput}
@@ -105,7 +105,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onDelete={ctx.handleDeletePage}
         />
       )}
-      
+
       {ctx.showExportPngModal && (
         <ExportPngModal
           range={ctx.pngExportRange}
@@ -124,7 +124,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExportEven={ctx.handleExportEvenPagesImage}
         />
       )}
-      
+
       {ctx.showDeleteRangeModal && (
         <DeleteRangeModal
           startPage={ctx.deleteRange.startPage}
@@ -136,7 +136,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onDelete={ctx.handleDeletePageRange}
         />
       )}
-      
+
       {ctx.showPageNumbersModal && (
         <PageNumbersModal
           range={ctx.pageNumbersRange}
@@ -193,7 +193,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApplyEven={ctx.handleAddWatermarkEvenPages}
         />
       )}
-      
+
       {ctx.showCropModal && (
         <CropModal
           currentPage={ctx.currentPage}
@@ -221,7 +221,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onCrop={ctx.handleCropPage}
         />
       )}
-      
+
       {ctx.showDuplicateRangeModal && (
         <DuplicateRangeModal
           startPage={ctx.duplicateRange.startPage}
@@ -236,7 +236,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onDuplicateToEnd={ctx.handleDuplicatePageRangeToEnd}
         />
       )}
-      
+
       {ctx.showFlattenModal && (
         <FlattenModal
           range={ctx.flattenRange}
@@ -245,7 +245,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onFlatten={ctx.handleFlattenAnnotations}
         />
       )}
-      
+
       {ctx.showAddBookmarkModal && (
         <AddBookmarkModal
           currentPage={ctx.currentPage}
@@ -255,7 +255,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onAdd={ctx.handleAddBookmark}
         />
       )}
-      
+
       {ctx.showPageHeaderModal && (
         <PageHeaderModal
           range={ctx.pageHeaderRange}
@@ -268,7 +268,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApplyEven={ctx.handleAddPageHeaderEvenPages}
         />
       )}
-      
+
       {ctx.showPageFooterModal && (
         <PageFooterModal
           range={ctx.pageFooterRange}
@@ -281,7 +281,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApplyEven={ctx.handleAddPageFooterEvenPages}
         />
       )}
-      
+
       {ctx.showSwapPagesModal && (
         <SwapPagesModal
           pageA={ctx.swapPageA}
@@ -293,28 +293,32 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSwap={ctx.handleSwapPages}
         />
       )}
-      
+
       {ctx.showReplacePageModal && (
         <ReplacePageModal
           currentPage={ctx.currentPage}
           sourcePath={ctx.replaceSourcePath}
           sourcePage={ctx.replaceSourcePage}
           sourcePageCount={ctx.replaceSourcePageCount}
-          onSourcePathChange={(value) => void ctx.handleReplaceSourcePathChange(value)}
+          onSourcePathChange={(value) =>
+            void ctx.handleReplaceSourcePathChange(value)
+          }
           onSourcePageChange={ctx.setReplaceSourcePage}
           onBrowse={() => ctx.openPdfBrowser('replace')}
           onClose={() => ctx.setShowReplacePageModal(false)}
           onReplace={ctx.handleReplacePage}
         />
       )}
-      
+
       {ctx.showInterleaveModal && (
         <InterleaveModal
           sourcePath={ctx.interleaveFilePath}
           sourcePageCount={ctx.interleaveSourcePageCount}
           startPage={ctx.interleaveRange.startPage}
           endPage={ctx.interleaveRange.endPage}
-          onSourcePathChange={(value) => void ctx.handleInterleaveSourcePathChange(value)}
+          onSourcePathChange={(value) =>
+            void ctx.handleInterleaveSourcePathChange(value)
+          }
           onStartChange={ctx.interleaveRange.setStartPage}
           onEndChange={ctx.interleaveRange.setEndPage}
           onBrowse={() => ctx.openPdfBrowser('interleave')}
@@ -322,7 +326,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onInterleave={ctx.handleInterleavePdf}
         />
       )}
-      
+
       {ctx.showPageSizeModal && (
         <PageSizeModal
           range={ctx.pageSizeRange}
@@ -335,7 +339,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApplyEven={ctx.handleSetPageSizeEvenPages}
         />
       )}
-      
+
       {ctx.showExportPagesPdfModal && (
         <ExportPagesPdfModal
           range={ctx.exportPagesPdfRange}
@@ -348,22 +352,23 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExportEven={ctx.handleExportEvenPagesAsPdf}
         />
       )}
-      
-      {ctx.showRotateRangeModal && (
-        <RotateRangeModal
+
+      {ctx.showRotateModal && (
+        <RotateModal
+          scope={ctx.rotateRange.scope}
           startPage={ctx.rotateRange.startPage}
           endPage={ctx.rotateRange.endPage}
           pageCount={ctx.pageCount}
+          direction={ctx.rotateDirection}
+          onClose={() => ctx.setShowRotateModal(false)}
+          onScopeChange={ctx.rotateRange.setScope}
           onStartChange={ctx.rotateRange.setStartPage}
           onEndChange={ctx.rotateRange.setEndPage}
-          onClose={() => ctx.setShowRotateRangeModal(false)}
-          onRotateCw={() => ctx.handleRotatePageRange(false)}
-          onRotateCcw={() => ctx.handleRotatePageRange(true)}
-          onRotate180={ctx.handleRotatePage180Range}
-          onResetRotation={ctx.handleResetRotationRange}
+          onDirectionChange={ctx.setRotateDirection}
+          onApply={ctx.handleApplyRotateModal}
         />
       )}
-      
+
       {ctx.showKeepRangeModal && (
         <KeepRangeModal
           startPage={ctx.keepRange.startPage}
@@ -375,7 +380,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onKeep={ctx.handleKeepPageRange}
         />
       )}
-      
+
       {ctx.showMoveRangeModal && (
         <MoveRangeModal
           startPage={ctx.moveRange.startPage}
@@ -391,14 +396,16 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onMove={ctx.handleMovePageRange}
         />
       )}
-      
+
       {ctx.showPrependModal && (
         <PrependModal
           sourcePath={ctx.prependFilePath}
           sourcePageCount={ctx.prependSourcePageCount}
           startPage={ctx.prependRange.startPage}
           endPage={ctx.prependRange.endPage}
-          onSourcePathChange={(value) => void ctx.handlePrependSourcePathChange(value)}
+          onSourcePathChange={(value) =>
+            void ctx.handlePrependSourcePathChange(value)
+          }
           onStartChange={ctx.prependRange.setStartPage}
           onEndChange={ctx.prependRange.setEndPage}
           onBrowse={() => ctx.openPdfBrowser('prepend')}
@@ -406,7 +413,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onPrepend={ctx.handlePrependPdf}
         />
       )}
-      
+
       {ctx.showSplitEveryModal && (
         <SplitEveryModal
           everyN={ctx.splitEveryN}
@@ -415,7 +422,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSplit={ctx.handleSplitEveryN}
         />
       )}
-      
+
       {ctx.showPageBorderModal && (
         <PageBorderModal
           range={ctx.pageBorderRange}
@@ -428,7 +435,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApplyEven={ctx.handleAddPageBorderEvenPages}
         />
       )}
-      
+
       {ctx.showBookmarkAllModal && (
         <BookmarkAllModal
           prefix={ctx.bookmarkAllPrefix}
@@ -439,7 +446,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onBookmarkAll={ctx.handleBookmarkAllPages}
         />
       )}
-      
+
       {ctx.showShrinkMarginsModal && (
         <ShrinkMarginsModal
           range={ctx.shrinkMarginsRange}
@@ -462,7 +469,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onShrinkEven={ctx.handleShrinkEvenPages}
         />
       )}
-      
+
       {ctx.showSplitAtModal && (
         <SplitAtModal
           splitAtPage={ctx.splitAtPage}
@@ -472,7 +479,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSplit={ctx.handleSplitPdfAtPage}
         />
       )}
-      
+
       {ctx.showDeleteNthModal && (
         <DeleteNthModal
           nth={ctx.deleteNthValue}
@@ -481,7 +488,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onDelete={ctx.handleDeleteEveryNthPage}
         />
       )}
-      
+
       {ctx.showExtractOddModal && (
         <ExtractOddPagesModal
           outputPath={ctx.extractOddOutputPath}
@@ -490,7 +497,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExtract={ctx.handleExtractOddPages}
         />
       )}
-      
+
       {ctx.showExtractEvenModal && (
         <ExtractEvenPagesModal
           outputPath={ctx.extractEvenOutputPath}
@@ -499,7 +506,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExtract={ctx.handleExtractEvenPages}
         />
       )}
-      
+
       {ctx.showExpandMarginsModal && (
         <ExpandMarginsModal
           range={ctx.expandMarginsRange}
@@ -522,7 +529,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExpandEven={ctx.handleExpandEvenPages}
         />
       )}
-      
+
       {ctx.showReverseRangeModal && (
         <ReverseRangeModal
           startPage={ctx.reverseRange.startPage}
@@ -534,7 +541,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onReverse={ctx.handleReversePageRange}
         />
       )}
-      
+
       {ctx.showInsertBlankPagesModal && (
         <InsertBlankPagesModal
           atIndex={ctx.insertBlankAtIndex}
@@ -546,7 +553,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onInsert={ctx.handleInsertBlankPages}
         />
       )}
-      
+
       {ctx.showParityRangeModal && (
         <ParityRangeModal
           commands={parityBatchCommands as string[]}
@@ -563,7 +570,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onRun={ctx.handleParityRangeAction}
         />
       )}
-      
+
       {ctx.showCropRangeModal && (
         <CropRangeModal
           startPage={ctx.cropRange.startPage}
@@ -589,7 +596,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onCrop={ctx.handleCropPageRange}
         />
       )}
-      
+
       {ctx.showDecryptModal && (
         <DecryptModal
           password={ctx.decryptPassword}
@@ -598,7 +605,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onDecrypt={ctx.handleRemovePdfPassword}
         />
       )}
-      
+
       {ctx.showInsertImagePageModal && (
         <InsertImagePageModal
           atIndex={ctx.insertImageAtIndex}
@@ -610,7 +617,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onInsert={ctx.handleInsertImagePage}
         />
       )}
-      
+
       {ctx.showExportPagePdfModal && (
         <ExportPagePdfModal
           currentPage={ctx.currentPage}
@@ -620,7 +627,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExport={ctx.handleExportPagePdf}
         />
       )}
-      
+
       {ctx.showRenameBookmarkModal && (
         <RenameBookmarkModal
           title={ctx.renameBookmarkTitle}
@@ -629,7 +636,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onRename={ctx.handleRenameBookmark}
         />
       )}
-      
+
       {ctx.showExtractModal && (
         <ExtractPagesModal
           startPage={ctx.extractRange.startPage}
@@ -639,11 +646,15 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           nativeDialogs={ctx.nativeDialogs}
           onStartChange={(start) => {
             ctx.extractRange.setStartPage(start);
-            ctx.setExtractOutputPath(ctx.defaultExtractOutputPath(start, ctx.extractRange.endPage));
+            ctx.setExtractOutputPath(
+              ctx.defaultExtractOutputPath(start, ctx.extractRange.endPage)
+            );
           }}
           onEndChange={(end) => {
             ctx.extractRange.setEndPage(end);
-            ctx.setExtractOutputPath(ctx.defaultExtractOutputPath(ctx.extractRange.startPage, end));
+            ctx.setExtractOutputPath(
+              ctx.defaultExtractOutputPath(ctx.extractRange.startPage, end)
+            );
           }}
           onOutputPathChange={ctx.setExtractOutputPath}
           onClose={() => ctx.setShowExtractModal(false)}
@@ -651,7 +662,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onExtract={ctx.handleExtractPdf}
         />
       )}
-      
+
       {ctx.showSplitModal && (
         <SplitPdfModal
           splitRanges={ctx.splitRanges}
@@ -661,7 +672,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSplit={ctx.handleSplitPdf}
         />
       )}
-      
+
       {ctx.showAddFormFieldModal && (
         <AddFormFieldModal
           fieldKind={ctx.newFormFieldKind}
@@ -680,7 +691,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onConfirm={ctx.confirmAddFormField}
         />
       )}
-      
+
       {ctx.showImageInsertModal && (
         <ImageInsertModal
           imagePath={ctx.imageSourceDraft}
@@ -689,7 +700,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onConfirm={ctx.confirmImageSource}
         />
       )}
-      
+
       {ctx.showSearchModal && (
         <SearchModal
           inputRef={ctx.searchInputRef}
@@ -706,7 +717,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onStepMatch={ctx.stepSearchMatch}
         />
       )}
-      
+
       {ctx.showMergeModal && (
         <MergePdfModal
           sourcePath={ctx.mergeFilePath}
@@ -718,13 +729,16 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSourcePathChange={ctx.setMergeFilePath}
           onStartChange={ctx.mergeRange.setStartPage}
           onEndChange={ctx.mergeRange.setEndPage}
-          onClose={() => { ctx.setShowMergeModal(false); ctx.setMergeFilePath(''); }}
+          onClose={() => {
+            ctx.setShowMergeModal(false);
+            ctx.setMergeFilePath('');
+          }}
           onChooseNative={ctx.chooseMergePdfNative}
           onBrowse={() => ctx.openPdfBrowser('merge')}
           onMerge={ctx.handleMergePdf}
         />
       )}
-      
+
       {ctx.showInsertModal && (
         <InsertPdfModal
           sourcePath={ctx.insertFilePath}
@@ -738,13 +752,16 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onInsertAtPageChange={ctx.setInsertAtPage}
           onStartChange={ctx.insertRange.setStartPage}
           onEndChange={ctx.insertRange.setEndPage}
-          onClose={() => { ctx.setShowInsertModal(false); ctx.setInsertFilePath(''); }}
+          onClose={() => {
+            ctx.setShowInsertModal(false);
+            ctx.setInsertFilePath('');
+          }}
           onChooseNative={ctx.chooseInsertPdfNative}
           onBrowse={() => ctx.openPdfBrowser('insert')}
           onInsert={ctx.handleInsertPdf}
         />
       )}
-      
+
       {ctx.showPageTextModal && (
         <PageTextModal
           editing={ctx.editingTextIndex !== null}
@@ -756,7 +773,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSave={ctx.submitPageText}
         />
       )}
-      
+
       {ctx.showPageEditsModal && (
         <PageEditsModal
           currentPage={ctx.currentPage}
@@ -768,7 +785,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onRemoveVector={ctx.removePageVectorEdit}
         />
       )}
-      
+
       {ctx.showSummaryModal && ctx.pdfSummary && (
         <DocumentSummaryModal
           summary={ctx.pdfSummary}
@@ -777,9 +794,12 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSave={ctx.handleSaveSummary}
         />
       )}
-      
+
       {ctx.showUpdateModal && (
-        <UpdateModal onClose={() => ctx.setShowUpdateModal(false)} updaterSupported={ctx.updaterSupported} />
+        <UpdateModal
+          onClose={() => ctx.setShowUpdateModal(false)}
+          updaterSupported={ctx.updaterSupported}
+        />
       )}
 
       {ctx.showTesseractModal && (
@@ -789,12 +809,14 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onDoNotRemindChange={ctx.setTesseractDoNotRemind}
           onClose={ctx.closeTesseractReminderModal}
           onCopyInstallCommand={() => {
-            void navigator.clipboard.writeText(ctx.tesseractInstallGuide.installCommand ?? '');
+            void navigator.clipboard.writeText(
+              ctx.tesseractInstallGuide.installCommand ?? ''
+            );
             ctx.showToast('Install command copied');
           }}
         />
       )}
-      
+
       {ctx.showMarkdownSaveAsModal && (
         <MarkdownSaveAsModal
           outputPath={ctx.markdownSaveAsPath}
@@ -805,7 +827,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSave={ctx.handleMarkdownSaveAs}
         />
       )}
-      
+
       {ctx.showPasswordModal && (
         <PasswordModal
           password={ctx.pdfPasswordDraft}
@@ -814,7 +836,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onOpen={ctx.handleOpenEncryptedPdf}
         />
       )}
-      
+
       {ctx.showMetadataModal && (
         <MetadataModal
           title={ctx.metadataTitle}
@@ -836,7 +858,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onApply={ctx.handleSaveMetadata}
         />
       )}
-      
+
       {ctx.showSignModal && (
         <SignPdfModal
           certPath={ctx.signCertPath}
@@ -853,7 +875,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSign={ctx.handleSignPdf}
         />
       )}
-      
+
       {ctx.showProtectModal && (
         <ProtectPdfModal
           userPassword={ctx.protectUserPassword}
@@ -866,7 +888,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onProtect={ctx.handleProtectPdf}
         />
       )}
-      
+
       {ctx.showSaveAsModal && (
         <SaveAsModal
           outputPath={ctx.saveAsPath}
@@ -877,14 +899,14 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onSave={ctx.handleSaveAs}
         />
       )}
-      
+
       {ctx.showUnsavedModal && (
         <UnsavedChangesModal
           onClose={() => ctx.resolveUnsaved('cancel')}
           onChoose={ctx.resolveUnsaved}
         />
       )}
-      
+
       {ctx.showBrowserModal && (
         <PdfBrowserModal
           pathInput={ctx.browserPathInput}

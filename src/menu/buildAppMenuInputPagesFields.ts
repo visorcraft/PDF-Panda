@@ -1,7 +1,9 @@
 import type { BuildAppMenuSourceInput } from './buildAppMenuSource';
 import type { BuildAppMenuInputArgs } from './buildAppMenuInputArgs';
 
-export function menuInputPagesFields(args: BuildAppMenuInputArgs): Pick<
+export function menuInputPagesFields(
+  args: BuildAppMenuInputArgs
+): Pick<
   BuildAppMenuSourceInput,
   | 'handleRotatePage'
   | 'handleRotatePageCcw'
@@ -19,6 +21,7 @@ export function menuInputPagesFields(args: BuildAppMenuInputArgs): Pick<
   | 'handleResetRotationOddPages'
   | 'handleResetRotationEvenPages'
   | 'handleResetAllRotations'
+  | 'openRotateModal'
   | 'openRotateRangeModal'
   | 'handleDuplicatePage'
   | 'handleDuplicatePageBefore'
@@ -101,6 +104,7 @@ export function menuInputPagesFields(args: BuildAppMenuInputArgs): Pick<
     handleResetRotationOddPages: pdfActions.handleResetRotationOddPages,
     handleResetRotationEvenPages: pdfActions.handleResetRotationEvenPages,
     handleResetAllRotations: pdfActions.handleResetAllRotations,
+    openRotateModal: pdfActions.openRotateModal,
     openRotateRangeModal: pdfActions.openRotateRangeModal,
     handleDuplicatePage: pdfActions.handleDuplicatePage,
     handleDuplicatePageBefore: pdfActions.handleDuplicatePageBefore,
@@ -117,7 +121,8 @@ export function menuInputPagesFields(args: BuildAppMenuInputArgs): Pick<
     openInsertBlankPagesModal: pdfActions.openInsertBlankPagesModal,
     handleInsertBlankBetweenPages: pdfActions.handleInsertBlankBetweenPages,
     handleInsertBlankBeforeOddPages: pdfActions.handleInsertBlankBeforeOddPages,
-    handleInsertBlankBeforeEvenPages: pdfActions.handleInsertBlankBeforeEvenPages,
+    handleInsertBlankBeforeEvenPages:
+      pdfActions.handleInsertBlankBeforeEvenPages,
     handleInsertBlankAfterOddPages: pdfActions.handleInsertBlankAfterOddPages,
     handleInsertBlankAfterEvenPages: pdfActions.handleInsertBlankAfterEvenPages,
     handleMovePageToFirst: pdfActions.handleMovePageToFirst,

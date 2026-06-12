@@ -1803,6 +1803,117 @@ body {
   margin-top: 16px;
 }
 
+.rotate-section-label {
+  margin: 12px 0 6px;
+  color: var(--pp-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.rotate-scope-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rotate-range-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px dashed var(--pp-input-border);
+  border-radius: 6px;
+}
+
+.rotate-range-row label {
+  min-width: 0;
+  color: var(--pp-text-secondary);
+  font-size: 13px;
+}
+
+.rotate-range-row .modal-input {
+  margin-top: 4px;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.rotate-direction-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.rotate-direction-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 80px;
+  padding: 12px 10px;
+  border: 1px solid var(--pp-input-border);
+  border-radius: 8px;
+  background: var(--pp-surface);
+  color: var(--pp-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rotate-direction-btn:hover:not(:disabled) {
+  border-color: var(--pp-text-muted);
+}
+
+.rotate-direction-btn:focus-visible {
+  outline: 2px solid var(--pp-input-focus);
+  outline-offset: 2px;
+}
+
+.rotate-direction-active {
+  border-color: var(--pp-accent);
+  background: var(--pp-accent);
+  color: #fff;
+}
+
+.rotate-direction-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.rotate-degrees-readout {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.rotate-degrees-value {
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.rotate-degrees-label {
+  font-size: 12px;
+  color: var(--pp-text-muted);
+}
+
+.modal-error {
+  color: #b42318;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 520px) {
+  .rotate-range-row,
+  .rotate-direction-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .recent-list {
   margin-top: 14px;
   border: 1px solid var(--pp-recent-border);

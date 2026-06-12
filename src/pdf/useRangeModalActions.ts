@@ -7,7 +7,6 @@ type UseRangeModalActionsOptions = {
   filePath: string;
   pageCount: number | null;
   currentPage: number;
-  rotateRange: PageRangePairController;
   reverseRange: PageRangePairController;
   cropRange: PageRangePairController;
   keepRange: PageRangePairController;
@@ -40,7 +39,6 @@ type UseRangeModalActionsOptions = {
   setMetadataProducer: (value: string) => void;
   setMetadataCreationDate: (value: string) => void;
   setMetadataModDate: (value: string) => void;
-  setShowRotateRangeModal: (open: boolean) => void;
   setShowReverseRangeModal: (open: boolean) => void;
   setShowInsertBlankPagesModal: (open: boolean) => void;
   setShowCropRangeModal: (open: boolean) => void;
@@ -50,57 +48,6 @@ type UseRangeModalActionsOptions = {
 };
 
 export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
-  const openRotateRangeModal = useCallback(() => {
-    if (!opts.filePath || opts.pageCount === null) return;
-    opts.rotateRange.reset(opts.currentPage, opts.currentPage);
-    opts.setShowRotateRangeModal(true);
-  }, [opts]);
-
-  const handleRotatePageRange = useCallback(
-    async (ccw: boolean) => {
-      if (!opts.filePath) return;
-      const range = opts.rotateRange.validate();
-      if (!range) return;
-      await opts.withLoading(async () => {
-        const cmd = ccw ? 'rotate_page_range_ccw' : 'rotate_page_range';
-        const rotated = await invoke<number>(cmd, {
-          path: opts.filePath,
-          startPage: opts.rotateRange.startPage,
-          endPage: opts.rotateRange.endPage,
-        });
-        opts.markPdfEdited();
-        await opts.reloadOpenPdf(opts.currentPage);
-        opts.setShowRotateRangeModal(false);
-        opts.showToast(`Rotated ${rotated} page${rotated === 1 ? '' : 's'} ${ccw ? 'CCW' : 'CW'}`);
-      });
-    },
-    [opts],
-  );
-
-  const handleResetRotationRange = useCallback(async () => {
-    if (!opts.filePath) return;
-    const range = opts.rotateRange.validate();
-    if (!range) return;
-    await opts.runEdit({
-      command: 'reset_rotation_range',
-      args: { startPage: opts.rotateRange.startPage, endPage: opts.rotateRange.endPage },
-      toast: (n) => `Reset rotation on ${n} page${n === 1 ? '' : 's'}`,
-      onSuccess: () => opts.setShowRotateRangeModal(false),
-    });
-  }, [opts]);
-
-  const handleRotatePage180Range = useCallback(async () => {
-    if (!opts.filePath) return;
-    const range = opts.rotateRange.validate();
-    if (!range) return;
-    await opts.runEdit({
-      command: 'rotate_page_180_range',
-      args: { startPage: opts.rotateRange.startPage, endPage: opts.rotateRange.endPage },
-      toast: (n) => `Rotated ${n} page${n === 1 ? '' : 's'} 180°`,
-      onSuccess: () => opts.setShowRotateRangeModal(false),
-    });
-  }, [opts]);
-
   const openReverseRangeModal = useCallback(() => {
     if (!opts.filePath || opts.pageCount === null) return;
     opts.reverseRange.reset(opts.currentPage, opts.currentPage);
@@ -113,7 +60,10 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
     if (!range) return;
     await opts.runEdit({
       command: 'reverse_page_range',
-      args: { startPage: opts.reverseRange.startPage, endPage: opts.reverseRange.endPage },
+      args: {
+        startPage: opts.reverseRange.startPage,
+        endPage: opts.reverseRange.endPage,
+      },
       toast: `Reversed pages ${opts.reverseRange.startPage + 1}–${opts.reverseRange.endPage + 1}`,
       onSuccess: () => opts.setShowReverseRangeModal(false),
     });
@@ -169,7 +119,8 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
   const handleFlattenAllAnnotations = useCallback(async () => {
     await opts.runEdit({
       command: 'flatten_all_annotations',
-      toast: (n) => `Flattened ${n} annotation${n === 1 ? '' : 's'} on all pages`,
+      toast: (n) =>
+        `Flattened ${n} annotation${n === 1 ? '' : 's'} on all pages`,
     });
   }, [opts]);
 
@@ -200,7 +151,7 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
         toast: `Sorted pages by size (${descending ? 'largest first' : 'smallest first'})`,
       });
     },
-    [opts],
+    [opts]
   );
 
   const openKeepRangeModal = useCallback(() => {
@@ -220,9 +171,13 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
     }
     await opts.runEdit<number>({
       command: 'keep_page_range',
-      args: { startPage: opts.keepRange.startPage, endPage: opts.keepRange.endPage },
+      args: {
+        startPage: opts.keepRange.startPage,
+        endPage: opts.keepRange.endPage,
+      },
       reloadAt: Math.min(opts.keepRange.startPage, keepCount - 1),
-      toast: (deleted) => `Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`,
+      toast: (deleted) =>
+        `Kept ${keepCount} page${keepCount === 1 ? '' : 's'}; removed ${deleted}`,
       onSuccess: () => opts.setShowKeepRangeModal(false),
     });
   }, [opts]);
@@ -244,7 +199,11 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
     }
     await opts.runEdit({
       command: 'move_page_range',
-      args: { startPage: opts.moveRange.startPage, endPage: opts.moveRange.endPage, toIndex: opts.moveRangeToIndex },
+      args: {
+        startPage: opts.moveRange.startPage,
+        endPage: opts.moveRange.endPage,
+        toIndex: opts.moveRangeToIndex,
+      },
       reloadAt: opts.moveRangeToIndex,
       toast: `Moved pages ${opts.moveRange.startPage + 1}–${opts.moveRange.endPage + 1} to index ${opts.moveRangeToIndex + 1}`,
       onSuccess: () => opts.setShowMoveRangeModal(false),
@@ -257,7 +216,10 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
     if (!range) return;
     await opts.runEdit({
       command: 'move_page_range_to_start',
-      args: { startPage: opts.moveRange.startPage, endPage: opts.moveRange.endPage },
+      args: {
+        startPage: opts.moveRange.startPage,
+        endPage: opts.moveRange.endPage,
+      },
       reloadAt: 0,
       toast: `Moved pages ${opts.moveRange.startPage + 1}–${opts.moveRange.endPage + 1} to start`,
       onSuccess: () => opts.setShowMoveRangeModal(false),
@@ -270,8 +232,13 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
     if (!range) return;
     await opts.runEdit({
       command: 'move_page_range_to_end',
-      args: { startPage: opts.moveRange.startPage, endPage: opts.moveRange.endPage },
-      reloadAt: opts.pageCount - (opts.moveRange.endPage - opts.moveRange.startPage + 1),
+      args: {
+        startPage: opts.moveRange.startPage,
+        endPage: opts.moveRange.endPage,
+      },
+      reloadAt:
+        opts.pageCount -
+        (opts.moveRange.endPage - opts.moveRange.startPage + 1),
       toast: `Moved pages ${opts.moveRange.startPage + 1}–${opts.moveRange.endPage + 1} to end`,
       onSuccess: () => opts.setShowMoveRangeModal(false),
     });
@@ -287,7 +254,8 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
     if (!opts.filePath || opts.pageCount === null) return;
     const range = opts.deleteRange.validate();
     if (!range) return;
-    const deleteCount = opts.deleteRange.endPage - opts.deleteRange.startPage + 1;
+    const deleteCount =
+      opts.deleteRange.endPage - opts.deleteRange.startPage + 1;
     if (deleteCount >= opts.pageCount) {
       opts.showToast('Cannot delete every page', 'error');
       return;
@@ -305,15 +273,13 @@ export function useRangeModalActions(opts: UseRangeModalActionsOptions) {
           : opts.deleteRange.startPage;
       await opts.reloadOpenPdf(nextPage);
       opts.setShowDeleteRangeModal(false);
-      opts.showToast(`Deleted ${deleteCount} page${deleteCount === 1 ? '' : 's'}`);
+      opts.showToast(
+        `Deleted ${deleteCount} page${deleteCount === 1 ? '' : 's'}`
+      );
     });
   }, [opts]);
 
   return {
-    openRotateRangeModal,
-    handleRotatePageRange,
-    handleResetRotationRange,
-    handleRotatePage180Range,
     openReverseRangeModal,
     handleReversePageRange,
     openInsertBlankPagesModal,

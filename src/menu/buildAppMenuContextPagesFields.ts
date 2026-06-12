@@ -2,7 +2,9 @@ import type { AppMenuContext } from './types';
 import type { AppMenuContextSource } from './types';
 import { voidRun, voidSort } from './menuBuilders';
 
-export function menuContextPagesFields(source: AppMenuContextSource): Pick<
+export function menuContextPagesFields(
+  source: AppMenuContextSource
+): Pick<
   AppMenuContext,
   | 'handleRotatePage'
   | 'handleRotatePageCcw'
@@ -20,6 +22,7 @@ export function menuContextPagesFields(source: AppMenuContextSource): Pick<
   | 'handleResetRotationOddPages'
   | 'handleResetRotationEvenPages'
   | 'handleResetAllRotations'
+  | 'openRotateModal'
   | 'openRotateRangeModal'
   | 'handleDuplicatePage'
   | 'handleDuplicatePageBefore'
@@ -101,6 +104,7 @@ export function menuContextPagesFields(source: AppMenuContextSource): Pick<
     handleResetRotationOddPages: voidRun(source.handleResetRotationOddPages),
     handleResetRotationEvenPages: voidRun(source.handleResetRotationEvenPages),
     handleResetAllRotations: voidRun(source.handleResetAllRotations),
+    openRotateModal: source.openRotateModal,
     openRotateRangeModal: source.openRotateRangeModal,
     handleDuplicatePage: source.handleDuplicatePage,
     handleDuplicatePageBefore: voidRun(source.handleDuplicatePageBefore),
@@ -115,11 +119,21 @@ export function menuContextPagesFields(source: AppMenuContextSource): Pick<
     handleAddBlankPage: voidRun(source.handleAddBlankPage),
     handleAddBlankPageBefore: voidRun(source.handleAddBlankPageBefore),
     openInsertBlankPagesModal: source.openInsertBlankPagesModal,
-    handleInsertBlankBetweenPages: voidRun(source.handleInsertBlankBetweenPages),
-    handleInsertBlankBeforeOddPages: voidRun(source.handleInsertBlankBeforeOddPages),
-    handleInsertBlankBeforeEvenPages: voidRun(source.handleInsertBlankBeforeEvenPages),
-    handleInsertBlankAfterOddPages: voidRun(source.handleInsertBlankAfterOddPages),
-    handleInsertBlankAfterEvenPages: voidRun(source.handleInsertBlankAfterEvenPages),
+    handleInsertBlankBetweenPages: voidRun(
+      source.handleInsertBlankBetweenPages
+    ),
+    handleInsertBlankBeforeOddPages: voidRun(
+      source.handleInsertBlankBeforeOddPages
+    ),
+    handleInsertBlankBeforeEvenPages: voidRun(
+      source.handleInsertBlankBeforeEvenPages
+    ),
+    handleInsertBlankAfterOddPages: voidRun(
+      source.handleInsertBlankAfterOddPages
+    ),
+    handleInsertBlankAfterEvenPages: voidRun(
+      source.handleInsertBlankAfterEvenPages
+    ),
     handleMovePageToFirst: voidRun(source.handleMovePageToFirst),
     handleMovePageToLast: voidRun(source.handleMovePageToLast),
     handleMovePageUp: voidRun(source.handleMovePageUp),
@@ -138,12 +152,22 @@ export function menuContextPagesFields(source: AppMenuContextSource): Pick<
     handleDuplicatePageToEnd: voidRun(source.handleDuplicatePageToEnd),
     handleDuplicateOddPages: voidRun(source.handleDuplicateOddPages),
     handleDuplicateEvenPages: voidRun(source.handleDuplicateEvenPages),
-    handleDuplicateOddPagesBefore: voidRun(source.handleDuplicateOddPagesBefore),
-    handleDuplicateEvenPagesBefore: voidRun(source.handleDuplicateEvenPagesBefore),
+    handleDuplicateOddPagesBefore: voidRun(
+      source.handleDuplicateOddPagesBefore
+    ),
+    handleDuplicateEvenPagesBefore: voidRun(
+      source.handleDuplicateEvenPagesBefore
+    ),
     handleDuplicateOddPagesToEnd: voidRun(source.handleDuplicateOddPagesToEnd),
-    handleDuplicateEvenPagesToEnd: voidRun(source.handleDuplicateEvenPagesToEnd),
-    handleDuplicateOddPagesToStart: voidRun(source.handleDuplicateOddPagesToStart),
-    handleDuplicateEvenPagesToStart: voidRun(source.handleDuplicateEvenPagesToStart),
+    handleDuplicateEvenPagesToEnd: voidRun(
+      source.handleDuplicateEvenPagesToEnd
+    ),
+    handleDuplicateOddPagesToStart: voidRun(
+      source.handleDuplicateOddPagesToStart
+    ),
+    handleDuplicateEvenPagesToStart: voidRun(
+      source.handleDuplicateEvenPagesToStart
+    ),
     openDeleteModal: source.openDeleteModal,
     openDeleteRangeModal: source.openDeleteRangeModal,
     openDeleteNthModal: source.openDeleteNthModal,
@@ -163,6 +187,8 @@ export function menuContextPagesFields(source: AppMenuContextSource): Pick<
     handleSortEvenPagesBySize: voidSort(source.handleSortEvenPagesBySize),
     handleSortPagesByRotation: voidSort(source.handleSortPagesByRotation),
     handleSortOddPagesByRotation: voidSort(source.handleSortOddPagesByRotation),
-    handleSortEvenPagesByRotation: voidSort(source.handleSortEvenPagesByRotation),
+    handleSortEvenPagesByRotation: voidSort(
+      source.handleSortEvenPagesByRotation
+    ),
   };
 }

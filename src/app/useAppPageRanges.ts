@@ -8,7 +8,11 @@ type UseAppPageRangesOptions = {
   showToast: ToastFn;
 };
 
-export function useAppPageRanges({ pageCount, currentPage, showToast }: UseAppPageRangesOptions) {
+export function useAppPageRanges({
+  pageCount,
+  currentPage,
+  showToast,
+}: UseAppPageRangesOptions) {
   const pageNumbersRange = usePageRange({ pageCount, currentPage, showToast });
   const watermarkRange = usePageRange({ pageCount, currentPage, showToast });
   const flattenRange = usePageRange({ pageCount, currentPage, showToast });
@@ -16,15 +20,37 @@ export function useAppPageRanges({ pageCount, currentPage, showToast }: UseAppPa
   const pageFooterRange = usePageRange({ pageCount, currentPage, showToast });
   const pageSizeRange = usePageRange({ pageCount, currentPage, showToast });
   const pageBorderRange = usePageRange({ pageCount, currentPage, showToast });
-  const expandMarginsRange = usePageRange({ pageCount, currentPage, showToast });
-  const shrinkMarginsRange = usePageRange({ pageCount, currentPage, showToast });
-  const pngExportRange = usePageRange({ pageCount, currentPage, defaultScope: 'current', showToast });
-  const exportPagesPdfRange = usePageRange({ pageCount, currentPage, showToast });
+  const expandMarginsRange = usePageRange({
+    pageCount,
+    currentPage,
+    showToast,
+  });
+  const shrinkMarginsRange = usePageRange({
+    pageCount,
+    currentPage,
+    showToast,
+  });
+  const pngExportRange = usePageRange({
+    pageCount,
+    currentPage,
+    defaultScope: 'current',
+    showToast,
+  });
+  const exportPagesPdfRange = usePageRange({
+    pageCount,
+    currentPage,
+    showToast,
+  });
   const duplicateRange = usePageRangePair({ showToast });
   const deleteRange = usePageRangePair({ showToast });
   const extractRange = usePageRangePair({ showToast });
   const interleaveRange = usePageRangePair({ showToast });
-  const rotateRange = usePageRangePair({ showToast });
+  const rotateRange = usePageRange({
+    pageCount,
+    currentPage,
+    defaultScope: 'current',
+    showToast,
+  });
   const keepRange = usePageRangePair({ showToast });
   const moveRange = usePageRangePair({ showToast });
   const prependRange = usePageRangePair({ showToast });

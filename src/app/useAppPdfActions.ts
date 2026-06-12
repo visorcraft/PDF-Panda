@@ -9,6 +9,7 @@ import { usePageSizeActions } from '../pdf/usePageSizeActions';
 import { useExportPagesActions } from '../pdf/useExportPagesActions';
 import { useParityExportActions } from '../pdf/useParityExportActions';
 import { useRangeModalActions } from '../pdf/useRangeModalActions';
+import { useRotateModalActions } from '../pdf/useRotateModalActions';
 import { useOddEvenPageActions } from '../pdf/useOddEvenPageActions';
 import { useOddEvenExtendedActions } from '../pdf/useOddEvenExtendedActions';
 import { useSplitExtractPrependActions } from '../pdf/useSplitExtractPrependActions';
@@ -34,35 +35,35 @@ import {
 
 type HookOpts<H extends (...args: never) => unknown> = Parameters<H>[0];
 
-type AllHookOpts =
-  & HookOpts<typeof usePdfModalOpeners>
-  & HookOpts<typeof useImageExportActions>
-  & HookOpts<typeof useStructuralEdit>
-  & HookOpts<typeof useSinglePageEditActions>
-  & HookOpts<typeof useDuplicateRangeActions>
-  & HookOpts<typeof usePageHeaderFooterActions>
-  & HookOpts<typeof useSwapReplaceInterleaveActions>
-  & HookOpts<typeof usePageSizeActions>
-  & HookOpts<typeof useExportPagesActions>
-  & HookOpts<typeof useParityExportActions>
-  & HookOpts<typeof useRangeModalActions>
-  & HookOpts<typeof useOddEvenPageActions>
-  & HookOpts<typeof useOddEvenExtendedActions>
-  & HookOpts<typeof useSplitExtractPrependActions>
-  & HookOpts<typeof usePageDecorActions>
-  & HookOpts<typeof useBookmarkActions>
-  & HookOpts<typeof usePdfFileOpsActions>
-  & HookOpts<typeof usePageDuplicateActions>
-  & HookOpts<typeof useFormFieldActions>
-  & HookOpts<typeof usePdfRevisionSync>
-  & HookOpts<typeof usePageInteraction>
-  & HookOpts<typeof useAnnotationModes>
-  & HookOpts<typeof usePageTextEdits>
-  & HookOpts<typeof useNotePasswordActions>
-  & HookOpts<typeof useNativeFilePickers>
-  & HookOpts<typeof useSaveActions>
-  & HookOpts<typeof useMarkdownFlow>
-  & HookOpts<typeof useSecurityDocumentActions>;
+type AllHookOpts = HookOpts<typeof usePdfModalOpeners> &
+  HookOpts<typeof useImageExportActions> &
+  HookOpts<typeof useStructuralEdit> &
+  HookOpts<typeof useSinglePageEditActions> &
+  HookOpts<typeof useDuplicateRangeActions> &
+  HookOpts<typeof usePageHeaderFooterActions> &
+  HookOpts<typeof useSwapReplaceInterleaveActions> &
+  HookOpts<typeof usePageSizeActions> &
+  HookOpts<typeof useExportPagesActions> &
+  HookOpts<typeof useParityExportActions> &
+  HookOpts<typeof useRangeModalActions> &
+  HookOpts<typeof useRotateModalActions> &
+  HookOpts<typeof useOddEvenPageActions> &
+  HookOpts<typeof useOddEvenExtendedActions> &
+  HookOpts<typeof useSplitExtractPrependActions> &
+  HookOpts<typeof usePageDecorActions> &
+  HookOpts<typeof useBookmarkActions> &
+  HookOpts<typeof usePdfFileOpsActions> &
+  HookOpts<typeof usePageDuplicateActions> &
+  HookOpts<typeof useFormFieldActions> &
+  HookOpts<typeof usePdfRevisionSync> &
+  HookOpts<typeof usePageInteraction> &
+  HookOpts<typeof useAnnotationModes> &
+  HookOpts<typeof usePageTextEdits> &
+  HookOpts<typeof useNotePasswordActions> &
+  HookOpts<typeof useNativeFilePickers> &
+  HookOpts<typeof useSaveActions> &
+  HookOpts<typeof useMarkdownFlow> &
+  HookOpts<typeof useSecurityDocumentActions>;
 
 export type UseAppPdfActionsInput = Omit<
   AllHookOpts,
@@ -72,29 +73,33 @@ export type UseAppPdfActionsInput = Omit<
   | 'saveAsViaNativeDialog'
   | 'exitNoteMode'
   | 'refreshAnnotations'
-> & Pick<
-  UseDocumentEnhancementActionsOptions,
-  | 'ocrAvailable'
-  | 'batesRange'
-  | 'batesPrefix'
-  | 'batesStartNumber'
-  | 'batesDigits'
-  | 'batesPosition'
-  | 'applyRedactionsOcrAfter'
-  | 'setShowBatesNumberModal'
-  | 'setShowApplyRedactionsModal'
-  | 'setBatesPrefix'
-  | 'setBatesStartNumber'
-  | 'setBatesDigits'
-  | 'setBatesPosition'
-> & {
-  cancelDrawingRef: { current: () => void };
-  handleSaveRef: { current: () => void | Promise<void> };
-  handleMarkdownViewRef: { current: () => void | Promise<void> };
-  openTesseractGuide: () => void;
-};
+> &
+  Pick<
+    UseDocumentEnhancementActionsOptions,
+    | 'ocrAvailable'
+    | 'batesRange'
+    | 'batesPrefix'
+    | 'batesStartNumber'
+    | 'batesDigits'
+    | 'batesPosition'
+    | 'applyRedactionsOcrAfter'
+    | 'setShowBatesNumberModal'
+    | 'setShowApplyRedactionsModal'
+    | 'setBatesPrefix'
+    | 'setBatesStartNumber'
+    | 'setBatesDigits'
+    | 'setBatesPosition'
+  > & {
+    cancelDrawingRef: { current: () => void };
+    handleSaveRef: { current: () => void | Promise<void> };
+    handleMarkdownViewRef: { current: () => void | Promise<void> };
+    openTesseractGuide: () => void;
+  };
 
-function call<H extends (opts: never) => unknown>(hook: H, input: object): ReturnType<H> {
+function call<H extends (opts: never) => unknown>(
+  hook: H,
+  input: object
+): ReturnType<H> {
   return hook(input as Parameters<H>[0]) as ReturnType<H>;
 }
 
@@ -113,6 +118,7 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
   const exportPages = call(useExportPagesActions, input);
   const parityExport = call(useParityExportActions, withRunEdit);
   const rangeModals = call(useRangeModalActions, withRunEdit);
+  const rotateModalActions = call(useRotateModalActions, withRunEdit);
   const oddEven = call(useOddEvenPageActions, withRunEdit);
   const oddEvenExt = call(useOddEvenExtendedActions, withRunEdit);
   const splitExtract = call(useSplitExtractPrependActions, withRunEdit);
@@ -132,17 +138,17 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
     editTextRunMode: input.editTextRunMode ?? false,
     runEdit,
     annotationModeActive:
-      input.highlightMode
-      || input.noteMode
-      || input.drawMode
-      || input.shapeMode
-      || input.stampMode
-      || input.redactMode
-      || input.imageInsertMode
-      || input.textEditMode
-      || input.editTextRunMode
-      || input.vectorEditMode
-      || input.formAddMode,
+      input.highlightMode ||
+      input.noteMode ||
+      input.drawMode ||
+      input.shapeMode ||
+      input.stampMode ||
+      input.redactMode ||
+      input.imageInsertMode ||
+      input.textEditMode ||
+      input.editTextRunMode ||
+      input.vectorEditMode ||
+      input.formAddMode,
   });
   const pageInteraction = call(usePageInteraction, {
     ...withRunEdit,
@@ -155,7 +161,10 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
     defaultExtractOutputPath: modalOpeners.defaultExtractOutputPath,
     defaultImageExportOutput: imageExport.defaultImageExportOutput,
   });
-  const saveActions = call(useSaveActions, { ...input, saveAsViaNativeDialog: nativePickers.saveAsViaNativeDialog });
+  const saveActions = call(useSaveActions, {
+    ...input,
+    saveAsViaNativeDialog: nativePickers.saveAsViaNativeDialog,
+  });
   const notePassword = call(useNotePasswordActions, {
     ...input,
     refreshAnnotations: pageInteraction.refreshAnnotations,
@@ -200,6 +209,7 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
     ...exportPages,
     ...parityExport,
     ...rangeModals,
+    ...rotateModalActions,
     ...oddEven,
     ...oddEvenExt,
     ...splitExtract,

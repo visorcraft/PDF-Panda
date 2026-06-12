@@ -79,6 +79,7 @@ export interface AppMenuContext {
   handleResetRotationOddPages: () => void | Promise<void>;
   handleResetRotationEvenPages: () => void | Promise<void>;
   handleResetAllRotations: () => void | Promise<void>;
+  openRotateModal: () => void;
   openRotateRangeModal: () => void;
   handleDuplicatePage: () => void | Promise<void>;
   handleDuplicatePageBefore: () => void | Promise<void>;
@@ -204,7 +205,9 @@ export interface AppMenuContext {
   theme: AppearanceKey;
   setTheme: (theme: AppearanceKey) => void;
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
-  openSettings: (focus?: import('../app/useAppSurfaceState').SettingsFocusSection) => void;
+  openSettings: (
+    focus?: import('../app/useAppSurfaceState').SettingsFocusSection
+  ) => void;
   shortcutBindings: ShortcutBindings;
 }
 
@@ -265,6 +268,7 @@ export type AppMenuContextSource = {
   handleResetRotationOddPages: VoidHandler;
   handleResetRotationEvenPages: VoidHandler;
   handleResetAllRotations: VoidHandler;
+  openRotateModal: () => void;
   openRotateRangeModal: () => void;
   handleDuplicatePage: VoidHandler;
   handleDuplicatePageBefore: VoidHandler;
@@ -390,6 +394,8 @@ export type AppMenuContextSource = {
   theme: AppearanceKey;
   setTheme: (theme: AppearanceKey) => void;
   activeSurface: import('../app/useAppSurfaceState').AppSurface;
-  openSettings: (focus?: import('../app/useAppSurfaceState').SettingsFocusSection) => void;
+  openSettings: (
+    focus?: import('../app/useAppSurfaceState').SettingsFocusSection
+  ) => void;
   shortcutBindings: ShortcutBindings;
 };

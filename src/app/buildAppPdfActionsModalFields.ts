@@ -41,6 +41,8 @@ export function modalPdfActionFields(m: ModalState) {
     pageSizePreset: m.pageSizePreset,
     parityRangeCommand: m.parityRangeCommand,
     parityRangeOutputPath: m.parityRangeOutputPath,
+    rotateDirection: m.rotateDirection,
+    setRotateDirection: m.setRotateDirection,
     pdfSummary: m.pdfSummary,
     pngExportOutputPath: m.pngExportOutputPath,
     prependFilePath: m.prependFilePath,
@@ -130,7 +132,7 @@ export function modalPdfActionFields(m: ModalState) {
     setShowRenameBookmarkModal: m.setShowRenameBookmarkModal,
     setShowReplacePageModal: m.setShowReplacePageModal,
     setShowReverseRangeModal: m.setShowReverseRangeModal,
-    setShowRotateRangeModal: m.setShowRotateRangeModal,
+    setShowRotateModal: m.setShowRotateModal,
     setShowSaveAsModal: m.setShowSaveAsModal,
     setShowShrinkMarginsModal: m.setShowShrinkMarginsModal,
     setShowSplitAtModal: m.setShowSplitAtModal,
@@ -177,16 +179,22 @@ export function modalPdfActionFields(m: ModalState) {
 export function marginPdfActionFields(m: ModalState) {
   return {
     cropMargins: {
-      marginTop: m.cropMarginTop, marginRight: m.cropMarginRight,
-      marginBottom: m.cropMarginBottom, marginLeft: m.cropMarginLeft,
+      marginTop: m.cropMarginTop,
+      marginRight: m.cropMarginRight,
+      marginBottom: m.cropMarginBottom,
+      marginLeft: m.cropMarginLeft,
     },
     expandMargins: {
-      marginTop: m.expandMarginTop, marginRight: m.expandMarginRight,
-      marginBottom: m.expandMarginBottom, marginLeft: m.expandMarginLeft,
+      marginTop: m.expandMarginTop,
+      marginRight: m.expandMarginRight,
+      marginBottom: m.expandMarginBottom,
+      marginLeft: m.expandMarginLeft,
     },
     shrinkMargins: {
-      marginTop: m.shrinkMarginTop, marginRight: m.shrinkMarginRight,
-      marginBottom: m.shrinkMarginBottom, marginLeft: m.shrinkMarginLeft,
+      marginTop: m.shrinkMarginTop,
+      marginRight: m.shrinkMarginRight,
+      marginBottom: m.shrinkMarginBottom,
+      marginLeft: m.shrinkMarginLeft,
     },
   };
 }

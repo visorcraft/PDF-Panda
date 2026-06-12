@@ -8,7 +8,7 @@ Be concise; cap search/read (`head`, `grep | head`). Never scan `node_modules`, 
 
 ## Stack & build
 
-Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.7.1** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11; v0.6.5 shipped 2026-06-10; v0.7.0 tagged 2026-06-12; v0.7.1 tagged 2026-06-12) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
+Tauri 2 · Rust 2021 · Vite 8 / React 19 / TS 6 · **v0.7.4** (v0.5.0 shipped 2026-06-10; v0.6.0 tagged 2026-06-11; v0.6.5 shipped 2026-06-10; v0.7.0 tagged 2026-06-12; v0.7.1 tagged 2026-06-12; v0.7.3 tagged 2026-06-12; v0.7.4 tagged 2026-06-12) · GPL v3 · `visorcraft/PDF-Panda`. Linux linker: `mold` + `sccache` (`.cargo/config.toml`).
 
 **Use Tauri CLI only** — plain `cargo build --release` embeds dev protocol → `localhost:5173`.
 
@@ -130,6 +130,14 @@ Open/save/undo; page toolkit + parity ranges; find + **text layer** (select/copy
 ## v0.7.1
 
 - **Version bump release** — packages the current feature set as the new v0.7.1 release.
+
+## v0.7.3
+
+- **Version bump release** — packages the current feature set as the new v0.7.3 release.
+
+## v0.7.4
+
+- **Unified Rotate modal** — new `Pages → Rotate…` modal (and toolbar Rotate button) lets you choose Current / All / Range scope and Clockwise / Counter-clockwise 90° rotation, with Cancel / Rotate actions. The old range-only rotate modal is replaced and `Pages → Rotate → Page range…` now opens the same modal with Range pre-selected.
 
 ## v0.6.6
 

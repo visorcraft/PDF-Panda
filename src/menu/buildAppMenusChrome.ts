@@ -72,7 +72,7 @@ export function buildQuickAccessActions(ctx: AppMenuContext): MenuAction[] {
         }),
         act('qa-note', 'Note', ctx.toggleNoteMode, { shortcutCommandId: 'toggle-note', active: ctx.noteMode }),
         act('qa-draw', 'Draw', ctx.toggleDrawMode, { shortcutCommandId: 'toggle-draw', active: ctx.drawMode }),
-        act('qa-rotate', 'Rotate', ctx.handleRotatePage, { shortcutCommandId: 'rotate-page' }),
+        act('qa-rotate', 'Rotate', ctx.openRotateModal, { shortcutCommandId: 'rotate-page' }),
         act('qa-dup', 'Duplicate', ctx.handleDuplicatePage, { shortcutCommandId: 'duplicate-page' }),
       ]
     : [];

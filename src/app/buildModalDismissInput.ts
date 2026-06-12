@@ -10,8 +10,14 @@ export type BuildModalDismissInputArgs = {
   security: SecurityState;
   annotation: AnnotationState;
   help: HelpState;
-  unsaved: { showUnsavedModal: boolean; resolveUnsaved: UseModalDismissOptions['resolveUnsaved'] };
-  browser: { showBrowserModal: boolean; setShowBrowserModal: (show: boolean) => void };
+  unsaved: {
+    showUnsavedModal: boolean;
+    resolveUnsaved: UseModalDismissOptions['resolveUnsaved'];
+  };
+  browser: {
+    showBrowserModal: boolean;
+    setShowBrowserModal: (show: boolean) => void;
+  };
   search: { showSearchModal: boolean; closeSearchModal: () => void };
 };
 
@@ -45,7 +51,7 @@ export function buildModalDismissInput(args: BuildModalDismissInputArgs) {
     showInterleaveModal: args.modal.showInterleaveModal,
     showPageSizeModal: args.modal.showPageSizeModal,
     showDecryptModal: args.security.showDecryptModal,
-    showRotateRangeModal: args.modal.showRotateRangeModal,
+    showRotateModal: args.modal.showRotateModal,
     showKeepRangeModal: args.modal.showKeepRangeModal,
     showMoveRangeModal: args.modal.showMoveRangeModal,
     showPrependModal: args.modal.showPrependModal,
@@ -111,7 +117,7 @@ export function buildModalDismissInput(args: BuildModalDismissInputArgs) {
     setShowInterleaveModal: args.modal.setShowInterleaveModal,
     setShowPageSizeModal: args.modal.setShowPageSizeModal,
     setShowDecryptModal: args.security.setShowDecryptModal,
-    setShowRotateRangeModal: args.modal.setShowRotateRangeModal,
+    setShowRotateModal: args.modal.setShowRotateModal,
     setShowKeepRangeModal: args.modal.setShowKeepRangeModal,
     setShowMoveRangeModal: args.modal.setShowMoveRangeModal,
     setShowPrependModal: args.modal.setShowPrependModal,
@@ -119,9 +125,15 @@ export function buildModalDismissInput(args: BuildModalDismissInputArgs) {
     setShowPageBorderModal: args.modal.setShowPageBorderModal,
     setShowBookmarkAllModal: args.modal.setShowBookmarkAllModal,
     setShowExpandMarginsModal: args.modal.setShowExpandMarginsModal,
+    setShowShrinkMarginsModal: args.modal.setShowShrinkMarginsModal,
+    setShowDeleteNthModal: args.modal.setShowDeleteNthModal,
+    setShowExtractOddModal: args.modal.setShowExtractOddModal,
+    setShowExtractEvenModal: args.modal.setShowExtractEvenModal,
+    setShowSplitAtModal: args.modal.setShowSplitAtModal,
     setShowReverseRangeModal: args.modal.setShowReverseRangeModal,
     setShowInsertBlankPagesModal: args.modal.setShowInsertBlankPagesModal,
     setShowCropRangeModal: args.modal.setShowCropRangeModal,
+    setShowParityRangeModal: args.modal.setShowParityRangeModal,
     setShowExportPagesPdfModal: args.modal.setShowExportPagesPdfModal,
     setShowInsertImagePageModal: args.modal.setShowInsertImagePageModal,
     setShowExportPagePdfModal: args.modal.setShowExportPagePdfModal,
@@ -129,6 +141,7 @@ export function buildModalDismissInput(args: BuildModalDismissInputArgs) {
     setInsertFilePath: args.modal.setInsertFilePath,
     setShowMergeModal: args.modal.setShowMergeModal,
     setMergeFilePath: args.modal.setMergeFilePath,
+    setShowNoteModal: args.annotation.setShowNoteModal,
     setShowImageInsertModal: args.annotation.setShowImageInsertModal,
     setShowAddFormFieldModal: args.annotation.setShowAddFormFieldModal,
     setShowSummaryModal: args.modal.setShowSummaryModal,

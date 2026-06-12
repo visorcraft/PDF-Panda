@@ -2,6 +2,7 @@ import { useAppModalStateFile } from './useAppModalStateFile';
 import { useAppModalStateMergeInsert } from './useAppModalStateMergeInsert';
 import { useAppModalStatePageOps } from './useAppModalStatePageOps';
 import { useAppModalStateRange } from './useAppModalStateRange';
+import { useAppModalStateRotate } from './useAppModalStateRotate';
 
 export function useAppModalState() {
   return {
@@ -9,6 +10,7 @@ export function useAppModalState() {
     ...useAppModalStatePageOps(),
     ...useAppModalStateRange(),
     ...useAppModalStateMergeInsert(),
+    ...useAppModalStateRotate(),
   };
 }
 

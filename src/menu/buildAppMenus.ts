@@ -32,7 +32,9 @@ export function buildAppMenus(ctx: AppMenuContext): AppMenus {
   const viewMenu = buildViewMenu(ctx);
   const helpMenu = buildHelpMenu(ctx);
 
-  const menus = [fileMenu, editMenu, pagesMenu, documentMenu, annotateMenu, securityMenu, viewMenu, helpMenu];
+  const menus = [fileMenu, editMenu, pagesMenu, documentMenu, annotateMenu, securityMenu, viewMenu, helpMenu].filter(
+    (menu) => menu.items.length > 0,
+  );
   for (const menu of menus) {
     resolveMenuShortcuts(menu.items, ctx.shortcutBindings);
   }
