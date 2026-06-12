@@ -49,6 +49,12 @@ jobs:
       - name: Install npm deps
         run: npm ci
 
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+      - name: ESLint
+        run: npm run lint
+
       - name: Fetch PDFium
         shell: bash
         run: scripts/fetch-pdfium.sh
