@@ -74,6 +74,7 @@ function applyAppearance(key: AppearanceKey): void {
   applyColorMix('--pp-border', palette.text, palette.background, 20);
   applyColorMix('--pp-border-light', palette.text, palette.background, 16);
   cssVariable('--pp-accent', palette.highlight);
+  cssVariable('--pp-focus-ring', palette.focusRing);
   applyColorMix('--pp-accent-hover', palette.highlight, palette.text, 82);
   cssVariable('--pp-menu-bg', palette.alternateBackground);
   cssVariable('--pp-menu-hover', palette.tertiaryBackground);
