@@ -95,16 +95,6 @@
   outline-offset: 2px;
 }
 
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[role="button"]:focus-visible {
-  outline: 2px solid var(--pp-focus-ring);
-  outline-offset: 2px;
-}
-
 [data-theme='dark'] {
   --pp-bg: #000000;
   --pp-surface: #121212;
@@ -1094,7 +1084,6 @@ body {
 }
 
 .welcome-splash:focus-visible {
-  outline: 2px solid var(--pp-focus-ring);
   outline-offset: 4px;
 }
 
