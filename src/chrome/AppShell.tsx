@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { TitleBar } from './TitleBar';
 import { ResizeBorders } from './ResizeBorders';
 import { Toast } from '../ui/Toast';
@@ -28,8 +27,10 @@ type AppShellProps = {
   settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
-  appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
-  children?: ReactNode;
+  appearance: {
+    appearance: AppearanceKey;
+    setAppearance: (key: AppearanceKey) => void;
+  };
 };
 
 export function AppShell({
@@ -60,7 +61,11 @@ export function AppShell({
         </div>
       )}
 
-      <AppChrome {...chrome} documentChromeVisible={activeSurface === 'document'} shortcutBindings={shortcuts.bindings} />
+      <AppChrome
+        {...chrome}
+        documentChromeVisible={activeSurface === 'document'}
+        shortcutBindings={shortcuts.bindings}
+      />
       {activeSurface === 'settings' ? (
         <SettingsPage
           closeSettings={closeSettings}

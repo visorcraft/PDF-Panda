@@ -8,6 +8,10 @@ export function useFocusCycle(enabled: boolean) {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'F6') return;
       e.preventDefault();
+      const anyModalOpen =
+        document.querySelector('.modal-backdrop, .command-palette-backdrop') !==
+        null;
+      if (anyModalOpen) return;
       const active = document.activeElement;
       let currentIndex = -1;
       for (let i = 0; i < PANES.length; i++) {
@@ -22,7 +26,7 @@ export function useFocusCycle(enabled: boolean) {
         const idx = (nextIndex + offset) % PANES.length;
         const pane = document.querySelector<HTMLElement>(PANES[idx]);
         const focusable = pane?.querySelector<HTMLElement>(
-          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
         if (focusable) {
           focusable.focus();
