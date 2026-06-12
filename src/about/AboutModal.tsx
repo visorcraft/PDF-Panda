@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { useEscapeClose } from '../legal/useEscapeClose';
+import { FocusTrap } from '../ui/FocusTrap';
 import { openExternalUrl } from '../legal/openExternalUrl';
 
 const REPO_URL = 'https://github.com/visorcraft/PDF-Panda';
@@ -8,7 +9,7 @@ const REPO_URL = 'https://github.com/visorcraft/PDF-Panda';
 export function AboutModal({ onClose }: { onClose: () => void }) {
   const [version, setVersion] = useState<string | null>(null);
 
-  useEscapeClose(onClose);
+  useEscapeClose(onClose, true);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,26 +31,37 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal about-modal" onClick={(e) => e.stopPropagation()} data-testid="about-modal">
-        <h3>About PDF Panda</h3>
-        <p className="about-version">
-          Version{' '}
-          <span data-testid="about-version">{version ?? '…'}</span>
-        </p>
-        <p className="modal-help">
-          A cross-platform desktop PDF editor. GPL-3.0-only — source and releases on GitHub.
-        </p>
-        <p className="about-repo">
-          <button type="button" className="about-repo-link" onClick={openRepo} data-testid="about-repo-link">
-            github.com/visorcraft/PDF-Panda
-          </button>
-        </p>
-        <div className="modal-actions">
-          <button type="button" className="btn btn-active" onClick={onClose}>
-            Close
-          </button>
+      <FocusTrap>
+        <div
+          className="modal about-modal"
+          onClick={(e) => e.stopPropagation()}
+          data-testid="about-modal"
+        >
+          <h3>About PDF Panda</h3>
+          <p className="about-version">
+            Version <span data-testid="about-version">{version ?? '…'}</span>
+          </p>
+          <p className="modal-help">
+            A cross-platform desktop PDF editor. GPL-3.0-only — source and
+            releases on GitHub.
+          </p>
+          <p className="about-repo">
+            <button
+              type="button"
+              className="about-repo-link"
+              onClick={openRepo}
+              data-testid="about-repo-link"
+            >
+              github.com/visorcraft/PDF-Panda
+            </button>
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-active" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }

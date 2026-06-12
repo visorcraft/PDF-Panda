@@ -11,7 +11,10 @@ type SettingsPageProps = {
   closeSettings?: () => void;
   hasDocument?: boolean;
   focusSection?: SettingsFocusSection;
-  appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
+  appearance: {
+    appearance: AppearanceKey;
+    setAppearance: (key: AppearanceKey) => void;
+  };
   shortcuts: {
     bindings: ShortcutBindings;
     setBinding: (commandId: ShortcutCommandId, shortcuts: string[]) => void;
@@ -31,7 +34,10 @@ function focusOwnsEscape(target: EventTarget | null): boolean {
 }
 
 function overlayOwnsEscape(): boolean {
-  return document.querySelector('.modal-backdrop, .command-palette-backdrop') !== null;
+  return (
+    document.querySelector('.modal-backdrop, .command-palette-backdrop') !==
+    null
+  );
 }
 
 export function SettingsPage({
@@ -60,6 +66,10 @@ export function SettingsPage({
     }
     target.focus();
   }, [focusSection]);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!closeSettings) return;
@@ -124,7 +134,10 @@ export function SettingsPage({
           />
         </SettingsCard>
 
-        <SettingsCard title="Actions" subtitle="Reset preferences to their defaults.">
+        <SettingsCard
+          title="Actions"
+          subtitle="Reset preferences to their defaults."
+        >
           <div className="settings-actions-row">
             <button
               type="button"

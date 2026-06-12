@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { LegalModalShell } from '../legal/LegalModalShell';
+import { FocusTrap } from '../ui/FocusTrap';
 import { LicenseTextDialog } from './LicenseTextDialog';
 
 type LicenseTab = 'gpl' | 'third-party' | 'acknowledgments' | 'runtime';
@@ -20,7 +21,12 @@ type TabConfig = {
   body: string;
 };
 
-const TAB_ORDER: LicenseTab[] = ['gpl', 'third-party', 'acknowledgments', 'runtime'];
+const TAB_ORDER: LicenseTab[] = [
+  'gpl',
+  'third-party',
+  'acknowledgments',
+  'runtime',
+];
 
 function decodeEntities(text: string): string {
   return text
@@ -44,7 +50,8 @@ function lineNumber(value: number): string {
 function countMatchingLines(text: string, query: string): number {
   const needle = query.trim().toLowerCase();
   if (!needle) return 0;
-  return text.split('\n').filter((line) => line.toLowerCase().includes(needle)).length;
+  return text.split('\n').filter((line) => line.toLowerCase().includes(needle))
+    .length;
 }
 
 function filteredBody(text: string, query: string): string {
@@ -91,7 +98,8 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
         id: 'gpl',
         label: 'PDF-Panda License',
         title: 'PDF-Panda License',
-        subtitle: 'The complete GPL-3.0-only license text bundled into the application.',
+        subtitle:
+          'The complete GPL-3.0-only license text bundled into the application.',
         body: documents.gpl,
       },
       {
@@ -146,129 +154,142 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <LegalModalShell
-        onClose={onClose}
-        onEscape={() => {
-          if (showGplDialog) setShowGplDialog(false);
-          else onClose();
-        }}
-        allowBackdropClose={!showGplDialog}
-        title="Licenses"
-        tagline="Bundled license and attribution documents, available without opening a browser."
-        backdropClassName="licenses-backdrop"
-        panelClassName="licenses-panel"
-        headerClassName="licenses-header"
-        taglineClassName="licenses-tagline"
-        bodyClassName="licenses-body"
-        testId="licenses-panel"
-      >
-        <div className="licenses-toolbar">
-              <div className="licenses-tabs" role="tablist" aria-label="License documents">
-                {TAB_ORDER.map((tabId) => {
-                  const tab = tabs.find((entry) => entry.id === tabId);
-                  const label = tab?.label
-                    ?? (tabId === 'gpl'
-                      ? 'PDF-Panda License'
-                      : tabId === 'third-party'
-                        ? 'Third-party'
-                        : tabId === 'acknowledgments'
-                          ? 'Acknowledgments'
-                          : 'Runtime components');
-                  return (
-                    <button
-                      key={tabId}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeTab === tabId}
-                      className={`licenses-tab${activeTab === tabId ? ' licenses-tab-active' : ''}`}
-                      onClick={() => switchTab(tabId)}
-                      disabled={!documents}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="licenses-toolbar-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary legal-action-btn"
-                  onClick={() => void handleCopy()}
-                  disabled={!currentBody}
-                  data-testid="licenses-copy"
-                >
-                  {copyStatus ?? 'Copy'}
-                </button>
-                {activeTab === 'gpl' && (
+      <FocusTrap>
+        <LegalModalShell
+          onClose={onClose}
+          onEscape={() => {
+            if (showGplDialog) setShowGplDialog(false);
+            else onClose();
+          }}
+          allowBackdropClose={!showGplDialog}
+          title="Licenses"
+          tagline="Bundled license and attribution documents, available without opening a browser."
+          backdropClassName="licenses-backdrop"
+          panelClassName="licenses-panel"
+          headerClassName="licenses-header"
+          taglineClassName="licenses-tagline"
+          bodyClassName="licenses-body"
+          testId="licenses-panel"
+        >
+          <div className="licenses-toolbar">
+            <div
+              className="licenses-tabs"
+              role="tablist"
+              aria-label="License documents"
+            >
+              {TAB_ORDER.map((tabId) => {
+                const tab = tabs.find((entry) => entry.id === tabId);
+                const label =
+                  tab?.label ??
+                  (tabId === 'gpl'
+                    ? 'PDF-Panda License'
+                    : tabId === 'third-party'
+                      ? 'Third-party'
+                      : tabId === 'acknowledgments'
+                        ? 'Acknowledgments'
+                        : 'Runtime components');
+                return (
                   <button
+                    key={tabId}
                     type="button"
-                    className="btn btn-secondary legal-action-btn"
-                    onClick={() => setShowGplDialog(true)}
-                    disabled={!documents?.gpl}
-                    data-testid="licenses-gpl-dialog"
+                    role="tab"
+                    aria-selected={activeTab === tabId}
+                    className={`licenses-tab${activeTab === tabId ? ' licenses-tab-active' : ''}`}
+                    onClick={() => switchTab(tabId)}
+                    disabled={!documents}
                   >
-                    Dialog
+                    {label}
                   </button>
-                )}
-              </div>
+                );
+              })}
             </div>
 
-            <div className="licenses-doc-header">
-              <div>
-                <h3>{currentTab?.title ?? 'Licenses'}</h3>
-                <p className="legal-subtitle licenses-doc-subtitle">{currentTab?.subtitle ?? ''}</p>
-              </div>
-              <span className="legal-line-count licenses-line-count">
-                {filterText.trim()
-                  ? `${matchingLineCount} matches`
-                  : `${currentLineCount} lines`}
-              </span>
-            </div>
-
-            <div className="licenses-filter-row">
-              <input
-                className="modal-input legal-input licenses-filter-input"
-                type="search"
-                placeholder="Find by crate, package, license, or phrase..."
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                aria-label="Find in license document"
-              />
-              <label className="licenses-wrap-toggle">
-                <input
-                  type="checkbox"
-                  checked={wrapText}
-                  onChange={(e) => setWrapText(e.target.checked)}
-                />
-                Wrap
-              </label>
+            <div className="licenses-toolbar-actions">
               <button
                 type="button"
                 className="btn btn-secondary legal-action-btn"
-                onClick={() => setFilterText('')}
-                disabled={!filterText}
+                onClick={() => void handleCopy()}
+                disabled={!currentBody}
+                data-testid="licenses-copy"
               >
-                Clear
+                {copyStatus ?? 'Copy'}
               </button>
-            </div>
-
-            <div className="licenses-document-shell">
-              {loadError ? (
-                <p className="legal-load-error licenses-load-error">{loadError}</p>
-              ) : !documents ? (
-                <p className="legal-loading licenses-loading">Loading license documents…</p>
-              ) : (
-                <textarea
-                  className={`licenses-document${wrapText ? ' licenses-document-wrap' : ''}`}
-                  readOnly
-                  value={visibleBody}
-                  spellCheck={false}
-                  aria-label={currentTab?.title ?? 'License document'}
-                />
+              {activeTab === 'gpl' && (
+                <button
+                  type="button"
+                  className="btn btn-secondary legal-action-btn"
+                  onClick={() => setShowGplDialog(true)}
+                  disabled={!documents?.gpl}
+                  data-testid="licenses-gpl-dialog"
+                >
+                  Dialog
+                </button>
               )}
             </div>
-      </LegalModalShell>
+          </div>
+
+          <div className="licenses-doc-header">
+            <div>
+              <h3>{currentTab?.title ?? 'Licenses'}</h3>
+              <p className="legal-subtitle licenses-doc-subtitle">
+                {currentTab?.subtitle ?? ''}
+              </p>
+            </div>
+            <span className="legal-line-count licenses-line-count">
+              {filterText.trim()
+                ? `${matchingLineCount} matches`
+                : `${currentLineCount} lines`}
+            </span>
+          </div>
+
+          <div className="licenses-filter-row">
+            <input
+              className="modal-input legal-input licenses-filter-input"
+              type="search"
+              placeholder="Find by crate, package, license, or phrase..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              aria-label="Find in license document"
+            />
+            <label className="licenses-wrap-toggle">
+              <input
+                type="checkbox"
+                checked={wrapText}
+                onChange={(e) => setWrapText(e.target.checked)}
+              />
+              Wrap
+            </label>
+            <button
+              type="button"
+              className="btn btn-secondary legal-action-btn"
+              onClick={() => setFilterText('')}
+              disabled={!filterText}
+            >
+              Clear
+            </button>
+          </div>
+
+          <div className="licenses-document-shell">
+            {loadError ? (
+              <p className="legal-load-error licenses-load-error">
+                {loadError}
+              </p>
+            ) : !documents ? (
+              <p className="legal-loading licenses-loading">
+                Loading license documents…
+              </p>
+            ) : (
+              <textarea
+                className={`licenses-document${wrapText ? ' licenses-document-wrap' : ''}`}
+                readOnly
+                value={visibleBody}
+                spellCheck={false}
+                aria-label={currentTab?.title ?? 'License document'}
+              />
+            )}
+          </div>
+        </LegalModalShell>
+      </FocusTrap>
 
       {showGplDialog && documents?.gpl && (
         <LicenseTextDialog

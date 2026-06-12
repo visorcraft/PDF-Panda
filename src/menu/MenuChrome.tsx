@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { AboutModal } from '../about/AboutModal';
 import { CreditsModal } from '../credits/CreditsModal';
 import { LicensesModal } from '../licenses/LicensesModal';
@@ -7,6 +13,8 @@ import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
 import { buildKeyboardShortcuts } from './buildMenuShortcuts';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+import { useEscapeClose } from '../legal/useEscapeClose';
+import { FocusTrap } from '../ui/FocusTrap';
 
 type MenuChromeProps = {
   menus: MenuRoot[];
@@ -61,7 +69,11 @@ function MenuDropdownItem({
         {subOpen && (
           <div className="menu-dropdown menu-dropdown-nested">
             {entry.items.map((child, index) => (
-              <MenuDropdownItem key={`${entry.label}-${index}`} entry={child} onClose={onClose} />
+              <MenuDropdownItem
+                key={`${entry.label}-${index}`}
+                entry={child}
+                onClose={onClose}
+              />
             ))}
           </div>
         )}
@@ -83,7 +95,9 @@ function MenuDropdownItem({
       }}
     >
       <span className="menu-item-label">{action.label}</span>
-      {action.shortcut && <span className="menu-item-shortcut">{action.shortcut}</span>}
+      {action.shortcut && (
+        <span className="menu-item-shortcut">{action.shortcut}</span>
+      )}
     </button>
   );
 }
@@ -121,14 +135,20 @@ function MenuBar({ menus }: { menus: MenuRoot[] }) {
             aria-haspopup="menu"
             aria-expanded={openId === menu.id}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setOpenId((prev) => (prev === menu.id ? null : menu.id))}
+            onClick={() =>
+              setOpenId((prev) => (prev === menu.id ? null : menu.id))
+            }
           >
             {menu.label}
           </button>
           {openId === menu.id && !menu.disabled && (
             <div className="menu-dropdown" role="menu">
               {menu.items.map((entry, index) => (
-                <MenuDropdownItem key={`${menu.id}-${index}`} entry={entry} onClose={() => setOpenId(null)} />
+                <MenuDropdownItem
+                  key={`${menu.id}-${index}`}
+                  entry={entry}
+                  onClose={() => setOpenId(null)}
+                />
               ))}
             </div>
           )}
@@ -148,7 +168,9 @@ function QuickToolbar({ items }: { items: MenuAction[] }) {
           type="button"
           className={`btn${item.active ? ' btn-active' : ''}`}
           disabled={item.disabled}
-          title={item.shortcut ? `${item.label} (${item.shortcut})` : item.label}
+          title={
+            item.shortcut ? `${item.label} (${item.shortcut})` : item.label
+          }
           data-testid={
             item.id === 'qa-save'
               ? 'save-pdf'
@@ -184,7 +206,9 @@ function CommandPalette({
     const q = query.trim().toLowerCase();
     if (!q) return actions.filter((a) => !a.disabled).slice(0, 40);
     return actions
-      .filter((a) => !a.disabled && (`${a.path} ${a.label}`.toLowerCase().includes(q)))
+      .filter(
+        (a) => !a.disabled && `${a.path} ${a.label}`.toLowerCase().includes(q)
+      )
       .slice(0, 50);
   }, [actions, query]);
 
@@ -201,7 +225,7 @@ function CommandPalette({
       runAction(action);
       onClose();
     },
-    [onClose],
+    [onClose]
   );
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -212,7 +236,9 @@ function CommandPalette({
     }
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setHighlight((prev) => Math.min(prev + 1, Math.max(0, filtered.length - 1)));
+      setHighlight((prev) =>
+        Math.min(prev + 1, Math.max(0, filtered.length - 1))
+      );
       return;
     }
     if (event.key === 'ArrowUp') {
@@ -228,62 +254,85 @@ function CommandPalette({
 
   return (
     <div className="command-palette-backdrop" onClick={onClose}>
-      <div className="command-palette" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Command palette">
-        <input
-          ref={inputRef}
-          className="command-palette-input"
-          type="text"
-          placeholder="Search commands…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
-        <ul className="command-palette-list">
-          {filtered.length === 0 ? (
-            <li className="command-palette-empty">No matching commands</li>
-          ) : (
-            filtered.map((action, index) => (
-              <li key={action.id}>
-                <button
-                  type="button"
-                  className={`command-palette-item${index === highlight ? ' highlighted' : ''}`}
-                  onMouseEnter={() => setHighlight(index)}
-                  onClick={() => pick(action)}
-                >
-                  <span className="command-palette-path">{action.path}</span>
-                  {action.shortcut && <span className="command-palette-shortcut">{action.shortcut}</span>}
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      </div>
+      <FocusTrap>
+        <div
+          className="command-palette"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-label="Command palette"
+        >
+          <input
+            ref={inputRef}
+            className="command-palette-input"
+            type="text"
+            placeholder="Search commands…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+          />
+          <ul className="command-palette-list">
+            {filtered.length === 0 ? (
+              <li className="command-palette-empty">No matching commands</li>
+            ) : (
+              filtered.map((action, index) => (
+                <li key={action.id}>
+                  <button
+                    type="button"
+                    className={`command-palette-item${index === highlight ? ' highlighted' : ''}`}
+                    onMouseEnter={() => setHighlight(index)}
+                    onClick={() => pick(action)}
+                  >
+                    <span className="command-palette-path">{action.path}</span>
+                    {action.shortcut && (
+                      <span className="command-palette-shortcut">
+                        {action.shortcut}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      </FocusTrap>
     </div>
   );
 }
 
-function ShortcutsModal({ bindings, onClose }: { bindings: ShortcutBindings; onClose: () => void }) {
+function ShortcutsModal({
+  bindings,
+  onClose,
+}: {
+  bindings: ShortcutBindings;
+  onClose: () => void;
+}) {
   const shortcuts = useMemo(() => buildKeyboardShortcuts(bindings), [bindings]);
+  useEscapeClose(onClose, true);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Keyboard shortcuts</h3>
-        <table className="shortcuts-table">
-          <tbody>
-            {shortcuts.map((row) => (
-              <tr key={row.keys}>
-                <th>{row.keys}</th>
-                <td>{row.action}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="modal-actions">
-          <button type="button" className="btn btn-active" onClick={onClose}>
-            Close
-          </button>
+      <FocusTrap>
+        <div
+          className="modal shortcuts-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3>Keyboard shortcuts</h3>
+          <table className="shortcuts-table">
+            <tbody>
+              {shortcuts.map((row) => (
+                <tr key={row.keys}>
+                  <th>{row.keys}</th>
+                  <td>{row.action}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-active" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }
@@ -316,7 +365,12 @@ export function MenuChrome({
         <MenuBar menus={menus} />
         {documentChromeVisible && (
           <>
-            <TabBar tabs={tabs} activeId={activeTabId} onSelect={onSelectTab} onClose={onCloseTab} />
+            <TabBar
+              tabs={tabs}
+              activeId={activeTabId}
+              onSelect={onSelectTab}
+              onClose={onCloseTab}
+            />
             {(quickAccess.length > 0 || modeExtras) && (
               <div className="quick-toolbar-row">
                 <QuickToolbar items={quickAccess} />
@@ -326,8 +380,15 @@ export function MenuChrome({
           </>
         )}
       </div>
-      {showCommandPalette && <CommandPalette actions={allActions} onClose={onCloseCommandPalette} />}
-      {showShortcutsHelp && <ShortcutsModal bindings={shortcutBindings} onClose={onCloseShortcutsHelp} />}
+      {showCommandPalette && (
+        <CommandPalette actions={allActions} onClose={onCloseCommandPalette} />
+      )}
+      {showShortcutsHelp && (
+        <ShortcutsModal
+          bindings={shortcutBindings}
+          onClose={onCloseShortcutsHelp}
+        />
+      )}
 
       {showLicenses && <LicensesModal onClose={onCloseLicenses} />}
       {showCredits && <CreditsModal onClose={onCloseCredits} />}
