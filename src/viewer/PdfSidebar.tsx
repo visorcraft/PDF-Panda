@@ -394,7 +394,7 @@ export function PdfSidebar({
         </div>
       )}
       {filePath && showPdfUaPanel && (
-        <PdfUaPanel filePath={filePath} />
+        <PdfUaPanel filePath={filePath} pdfRevision={pdfRevision} />
       )}
     </aside>
   );

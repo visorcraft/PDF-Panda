@@ -1,11 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useEscapeClose(onClose: () => void, restoreFocus?: boolean) {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const previous = document.activeElement;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -15,5 +20,5 @@ export function useEscapeClose(onClose: () => void, restoreFocus?: boolean) {
         previous.focus();
       }
     };
-  }, [onClose, restoreFocus]);
+  }, [restoreFocus]);
 }

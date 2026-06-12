@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
 import type { PdfUaReport } from '../app/types';
 
-export function PdfUaPanel({ filePath }: { filePath: string }) {
+export function PdfUaPanel({ filePath, pdfRevision }: { filePath: string; pdfRevision: number }) {
   const [report, setReport] = useState<PdfUaReport | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +18,7 @@ export function PdfUaPanel({ filePath }: { filePath: string }) {
       .catch(() => { if (!cancelled) setReport(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [filePath]);
+  }, [filePath, pdfRevision]);
 
   if (loading) return <p className="muted">Inspecting PDF/UA…</p>;
   if (!report) return <p className="muted">Unable to inspect PDF/UA.</p>;
