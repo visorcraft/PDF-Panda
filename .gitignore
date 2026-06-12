@@ -19,6 +19,7 @@ AGENTS.md
 CLAUDE.md
 GEMINI.md
 PLAN.md
+/docs/superpowers
 
 # Vendored PDFium runtime library (downloaded prebuilt, not committed — see README)
 src-tauri/vendor/
