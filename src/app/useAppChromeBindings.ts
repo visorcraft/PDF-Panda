@@ -126,6 +126,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       showBookmarksPanel: input.panels.showBookmarksPanel,
       showAnnotationsPanel: input.panels.showAnnotationsPanel,
       showSignaturesPanel: input.panels.showSignaturesPanel,
+      showPdfUaPanel: input.panels.showPdfUaPanel,
     },
     history: input.history,
     chrome: {
@@ -135,6 +136,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       setScrollViewMode: input.doc.setScrollViewMode,
       setShowBookmarksPanel: input.panels.setShowBookmarksPanel,
       setShowAnnotationsPanel: input.panels.setShowAnnotationsPanel,
+      setShowPdfUaPanel: input.panels.setShowPdfUaPanel,
       setShowPageEditsModal: input.annotation.setShowPageEditsModal,
       openTesseractGuide: input.chrome.openTesseractGuide,
       openPdf: input.chrome.openPdf,

@@ -134,6 +134,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
         signatureVerification: args.panels.signatureVerification,
         loadPdfSignatures: args.viewer.loadPdfSignatures,
         showFormsPanel: args.panels.showFormsPanel,
+        showPdfUaPanel: args.panels.showPdfUaPanel,
         formFields: args.panels.formFields,
         formDrafts: args.panels.formDrafts,
         setFormDrafts: args.panels.setFormDrafts,

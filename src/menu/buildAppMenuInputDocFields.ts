@@ -25,6 +25,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'showBookmarksPanel'
   | 'showAnnotationsPanel'
   | 'showSignaturesPanel'
+  | 'showPdfUaPanel'
   | 'ocrAvailable'
   | 'guardUnsaved'
   | 'closePdf'
@@ -32,6 +33,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'setScrollViewMode'
   | 'setShowBookmarksPanel'
   | 'setShowAnnotationsPanel'
+  | 'setShowPdfUaPanel'
   | 'setShowPageEditsModal'
   | 'setShowShortcutsHelp'
   | 'setShowLicenses'
@@ -118,6 +120,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     showBookmarksPanel: panels.showBookmarksPanel,
     showAnnotationsPanel: panels.showAnnotationsPanel,
     showSignaturesPanel: panels.showSignaturesPanel,
+    showPdfUaPanel: panels.showPdfUaPanel,
     ocrAvailable: doc.ocrAvailable,
     guardUnsaved: chrome.guardUnsaved,
     closePdf: chrome.closePdf,
@@ -125,6 +128,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     setScrollViewMode: chrome.setScrollViewMode,
     setShowBookmarksPanel: chrome.setShowBookmarksPanel,
     setShowAnnotationsPanel: chrome.setShowAnnotationsPanel,
+    setShowPdfUaPanel: chrome.setShowPdfUaPanel,
     setShowPageEditsModal: chrome.setShowPageEditsModal,
     setShowShortcutsHelp: help.setShowShortcutsHelp,
     setShowLicenses: help.setShowLicenses,

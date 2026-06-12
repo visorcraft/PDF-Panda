@@ -11,7 +11,7 @@ import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 export type BuildAppMenuInputArgs = {
   doc: Pick<DocumentState, 'filePath' | 'isDirty' | 'pageCount' | 'currentPage' | 'viewMode' | 'scrollViewMode' | 'ocrAvailable'>;
   annotation: Pick<AnnotationState, 'highlightMode' | 'noteMode' | 'drawMode' | 'shapeMode' | 'stampMode' | 'redactMode' | 'imageInsertMode' | 'textEditMode' | 'editTextRunMode' | 'vectorEditMode'>;
-  panels: Pick<PanelsState, 'showFormsPanel' | 'showBookmarksPanel' | 'showSignaturesPanel' | 'showAnnotationsPanel'>;
+  panels: Pick<PanelsState, 'showFormsPanel' | 'showBookmarksPanel' | 'showSignaturesPanel' | 'showAnnotationsPanel' | 'showPdfUaPanel'>;
   history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
   chrome: {
     guardUnsaved: (action: () => void) => void;
@@ -20,6 +20,7 @@ export type BuildAppMenuInputArgs = {
     setScrollViewMode: DocumentState['setScrollViewMode'];
     setShowBookmarksPanel: PanelsState['setShowBookmarksPanel'];
     setShowAnnotationsPanel: PanelsState['setShowAnnotationsPanel'];
+    setShowPdfUaPanel: PanelsState['setShowPdfUaPanel'];
     setShowPageEditsModal: AnnotationState['setShowPageEditsModal'];
     openTesseractGuide: () => void;
     openPdf: () => void;

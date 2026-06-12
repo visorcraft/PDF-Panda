@@ -9,6 +9,7 @@ export function useDocumentPanelsState() {
   const [pdfBookmarks, setPdfBookmarks] = useState<PdfBookmarkEntry[]>([]);
   const [showAnnotationsPanel, setShowAnnotationsPanel] = useState(false);
   const [showFormsPanel, setShowFormsPanel] = useState(false);
+  const [showPdfUaPanel, setShowPdfUaPanel] = useState(false);
   const [formFields, setFormFields] = useState<FormFieldData[]>([]);
   const [formDrafts, setFormDrafts] = useState<Record<string, string>>({});
 
@@ -20,6 +21,7 @@ export function useDocumentPanelsState() {
     pdfBookmarks, setPdfBookmarks,
     showAnnotationsPanel, setShowAnnotationsPanel,
     showFormsPanel, setShowFormsPanel,
+    showPdfUaPanel, setShowPdfUaPanel,
     formFields, setFormFields,
     formDrafts, setFormDrafts,
   };

@@ -13,6 +13,7 @@ export type BuildAppMenuSourceInput = Omit<
   | 'setViewModePdf'
   | 'toggleBookmarksPanel'
   | 'toggleAnnotationsPanel'
+  | 'togglePdfUaPanel'
   | 'toggleContinuousScroll'
   | 'openPageEditsModal'
   | 'openShortcutsHelp'
@@ -35,6 +36,7 @@ export type BuildAppMenuSourceInput = Omit<
   setScrollViewMode: (fn: (prev: ScrollViewMode) => ScrollViewMode) => void;
   setShowBookmarksPanel: (fn: (prev: boolean) => boolean) => void;
   setShowAnnotationsPanel: (fn: (prev: boolean) => boolean) => void;
+  setShowPdfUaPanel: (fn: (prev: boolean) => boolean) => void;
   setShowPageEditsModal: (open: boolean) => void;
   setShowShortcutsHelp: (open: boolean) => void;
   setShowLicenses: (open: boolean) => void;
@@ -59,6 +61,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     setScrollViewMode,
     setShowBookmarksPanel,
     setShowAnnotationsPanel,
+    setShowPdfUaPanel,
     setShowPageEditsModal,
     setShowShortcutsHelp,
     setShowLicenses,
@@ -84,6 +87,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     toggleContinuousScroll: () => setScrollViewMode((prev) => (prev === 'continuous' ? 'single' : 'continuous')),
     toggleBookmarksPanel: () => setShowBookmarksPanel((prev) => !prev),
     toggleAnnotationsPanel: () => setShowAnnotationsPanel((prev) => !prev),
+    togglePdfUaPanel: () => setShowPdfUaPanel((prev) => !prev),
     openPageEditsModal: () => setShowPageEditsModal(true),
     openShortcutsHelp: () => setShowShortcutsHelp(true),
     openLicenses: () => setShowLicenses(true),

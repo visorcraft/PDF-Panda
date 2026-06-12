@@ -37,6 +37,7 @@ export type BuildAppViewerSourceInput = {
   signatureVerification: SidebarProps['signatureVerification'];
   loadPdfSignatures: SidebarProps['onReloadSignatures'];
   showFormsPanel: SidebarProps['showFormsPanel'];
+  showPdfUaPanel: SidebarProps['showPdfUaPanel'];
   formFields: SidebarProps['formFields'];
   formDrafts: SidebarProps['formDrafts'];
   setFormDrafts: Dispatch<SetStateAction<Record<string, string>>>;
@@ -136,6 +137,7 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
     signatureVerification: input.signatureVerification,
     onReloadSignatures: input.loadPdfSignatures,
     showFormsPanel: input.showFormsPanel,
+    showPdfUaPanel: input.showPdfUaPanel,
     formFields: input.formFields,
     formDrafts: input.formDrafts,
     onFormDraftsChange: input.setFormDrafts,

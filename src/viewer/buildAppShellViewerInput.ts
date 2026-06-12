@@ -32,6 +32,7 @@ export type BuildAppShellViewerInputArgs = {
     | 'signatureVerification'
     | 'loadPdfSignatures'
     | 'showFormsPanel'
+    | 'showPdfUaPanel'
     | 'formFields'
     | 'formDrafts'
     | 'setFormDrafts'

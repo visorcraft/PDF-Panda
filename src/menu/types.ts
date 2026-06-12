@@ -54,6 +54,8 @@ export interface AppMenuContext {
   showBookmarksPanel: boolean;
   showAnnotationsPanel: boolean;
   showSignaturesPanel: boolean;
+  showPdfUaPanel: boolean;
+  togglePdfUaPanel: () => void;
   tesseractInstalled: boolean;
   openPdf: () => void;
   handleSave: () => void | Promise<void>;
@@ -243,6 +245,8 @@ export type AppMenuContextSource = {
   showBookmarksPanel: boolean;
   showAnnotationsPanel: boolean;
   showSignaturesPanel: boolean;
+  showPdfUaPanel: boolean;
+  togglePdfUaPanel: () => void;
   tesseractInstalled: boolean;
   openPdf: () => void;
   handleSave: VoidHandler;

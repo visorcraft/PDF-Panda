@@ -7,6 +7,7 @@ import type {
 } from '../app/types';
 import { signatureStatusLabel } from '../app/utils';
 import { AnnotationsPanel } from './AnnotationsPanel';
+import { PdfUaPanel } from './PdfUaPanel';
 
 type PdfSidebarProps = {
   filePath: string;
@@ -35,6 +36,7 @@ type PdfSidebarProps = {
   signatureVerification: PdfSignatureVerificationSummary | null;
   onReloadSignatures: (path: string) => void | Promise<void>;
   showFormsPanel: boolean;
+  showPdfUaPanel: boolean;
   formFields: FormFieldData[];
   formDrafts: Record<string, string>;
   onFormDraftsChange: React.Dispatch<
@@ -71,6 +73,7 @@ export function PdfSidebar({
   signatureVerification,
   onReloadSignatures,
   showFormsPanel,
+  showPdfUaPanel,
   formFields,
   formDrafts,
   onFormDraftsChange,
@@ -389,6 +392,9 @@ export function PdfSidebar({
             </div>
           )}
         </div>
+      )}
+      {filePath && showPdfUaPanel && (
+        <PdfUaPanel filePath={filePath} />
       )}
     </aside>
   );

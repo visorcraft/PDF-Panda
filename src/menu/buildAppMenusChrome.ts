@@ -25,6 +25,12 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
       ctx.toggleAnnotationsPanel,
       { active: ctx.showAnnotationsPanel },
     ),
+    act(
+      'pdfua-panel',
+      ctx.showPdfUaPanel ? 'PDF/UA Check (on)' : 'PDF/UA Check',
+      ctx.togglePdfUaPanel,
+      { active: ctx.showPdfUaPanel },
+    ),
     sep(),
   ];
   const themeItems = APPEARANCE_OPTIONS.map((option) =>

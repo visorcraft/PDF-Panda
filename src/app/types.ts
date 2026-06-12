@@ -107,6 +107,17 @@ export interface PdfBookmarkEntry {
   page_index: number | null;
 }
 
+export interface PdfUaReport {
+  tagged: boolean;
+  hasTitle: boolean;
+  language: string | null;
+  figuresTotal: number;
+  figuresWithAlt: number;
+  imageXobjects: number;
+  pageCount: number;
+  encrypted: boolean;
+}
+
 export interface PdfPageSize {
   width: number;
   height: number;

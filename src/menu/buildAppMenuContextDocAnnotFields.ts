@@ -25,6 +25,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'showBookmarksPanel'
   | 'showAnnotationsPanel'
   | 'showSignaturesPanel'
+  | 'showPdfUaPanel'
+  | 'togglePdfUaPanel'
   | 'tesseractInstalled'
   | 'openPdf'
   | 'handleSave'
@@ -116,6 +118,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     showBookmarksPanel: source.showBookmarksPanel,
     showAnnotationsPanel: source.showAnnotationsPanel,
     showSignaturesPanel: source.showSignaturesPanel,
+    showPdfUaPanel: source.showPdfUaPanel,
+    togglePdfUaPanel: source.togglePdfUaPanel,
     tesseractInstalled: source.tesseractInstalled,
     openPdf: source.openPdf,
     handleSave: source.handleSave,

@@ -1380,6 +1380,39 @@ body {
   margin-bottom: 0;
 }
 
+.pdfua-panel {
+  padding: 12px;
+  border-top: 1px solid var(--pp-border);
+}
+
+.pdfua-panel h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.pdfua-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--pp-surface-alt);
+  border-left: 4px solid var(--pp-accent);
+}
+
+.pdfua-card.pdfua-pass {
+  border-left-color: #2e9d4e;
+}
+
+.pdfua-card.pdfua-warn {
+  border-left-color: #d9a21a;
+}
+
+.pdfua-card.pdfua-info {
+  border-left-color: var(--pp-accent);
+}
+
 .form-field-list {
   display: flex;
   flex-direction: column;
