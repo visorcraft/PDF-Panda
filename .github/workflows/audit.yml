@@ -1,0 +1,24 @@
+name: Security audit
+
+on:
+  schedule:
+    # Run weekly on Monday at 07:42 UTC (avoid the top of the hour herd).
+    - cron: '42 7 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: npm audit
+        run: npm audit --audit-level=high
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Cargo audit
+        working-directory: src-tauri
+        run: cargo audit
