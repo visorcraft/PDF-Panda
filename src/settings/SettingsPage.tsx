@@ -68,10 +68,6 @@ export function SettingsPage({
   }, [focusSection]);
 
   useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
     if (!closeSettings) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;

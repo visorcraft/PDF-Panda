@@ -154,7 +154,7 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <FocusTrap>
+      <FocusTrap active={!showGplDialog}>
         <LegalModalShell
           onClose={onClose}
           onEscape={() => {

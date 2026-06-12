@@ -165,7 +165,7 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <FocusTrap>
+      <FocusTrap active={!licenseDialog}>
         <LegalModalShell
           onClose={onClose}
           onEscape={() => {
