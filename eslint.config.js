@@ -1,0 +1,34 @@
+import js from '@eslint/js';
+import ts from 'typescript-eslint';
+import globals from 'globals';
+
+export default ts.config(
+  js.configs.recommended,
+  ...ts.configs.recommended,
+  {
+    files: ['src/**/*.{ts,tsx}', 'e2e/**/*.{ts}'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
+    ignores: [
+      'dist/',
+      'src-tauri/target/',
+      'node_modules/',
+      'e2e/node_modules/',
+    ],
+  },
+);
