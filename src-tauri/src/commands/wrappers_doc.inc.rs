@@ -249,3 +249,7 @@ fn save_session_state(app: tauri::AppHandle, state: pdf::io::SessionState) -> Re
 fn load_session_state(app: tauri::AppHandle) -> Result<Option<pdf::io::SessionState>, String> {
     pdf::io::load_session_state(&app)
 }
+#[tauri::command]
+fn inspect_pdfua(path: String) -> Result<PdfUaReport, String> {
+    pdf::ua::inspect_pdfua(&PathBuf::from(path))
+}

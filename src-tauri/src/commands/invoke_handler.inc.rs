@@ -1986,6 +1986,7 @@ tauri::generate_handler![
             open_working_copy_with_password,
             save_session_state,
             load_session_state,
+            inspect_pdfua,
             protect_pdf,
             list_pdf_signatures,
             verify_pdf_signatures,
