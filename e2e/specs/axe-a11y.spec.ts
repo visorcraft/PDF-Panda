@@ -22,10 +22,10 @@ async function assertNoAxeViolations(
   // containment) do not map cleanly to the toolbar/sidebar/viewer layout.
   // Disable them globally; the spec still catches real WCAG failures.
   const baseDisabledRules = ['page-has-heading-one', 'region'];
-  let builder = new AxeBuilder({ client: browser })
+  const results = await new AxeBuilder({ client: browser })
     .setLegacyMode(true)
-    .disableRules([...baseDisabledRules, ...(disabledRules ?? [])]);
-  const results = await builder.analyze();
+    .disableRules([...baseDisabledRules, ...(disabledRules ?? [])])
+    .analyze();
   if (results.violations.length > 0) {
     console.error(
       `Axe violations in ${context}:`,
