@@ -1,15 +1,19 @@
 import { useEffect } from 'react';
 
-export function useEscapeClose(onClose: () => void, enabled = true) {
+export function useEscapeClose(onClose: () => void, restoreFocus?: boolean) {
   useEffect(() => {
-    if (!enabled) return undefined;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
+    const previous = document.activeElement;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [enabled, onClose]);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (restoreFocus && previous instanceof HTMLElement) {
+        previous.focus();
+      }
+    };
+  }, [onClose, restoreFocus]);
 }

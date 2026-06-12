@@ -3,6 +3,7 @@ import { TitleBar } from './TitleBar';
 import { ResizeBorders } from './ResizeBorders';
 import { Toast } from '../ui/Toast';
 import { AppChrome } from './AppChrome';
+import { useFocusCycle } from './useFocusCycle';
 import { AppBody } from '../viewer/AppBody';
 import { AppModals } from '../modals/AppModals';
 import { PrintSurface } from '../viewer/PrintSurface';
@@ -46,6 +47,7 @@ export function AppShell({
   appearance,
 }: AppShellProps) {
   const hasDocument = !!body.filePath;
+  useFocusCycle(activeSurface === 'document');
   return (
     <div className="app" data-active-surface={activeSurface}>
       <ResizeBorders />
