@@ -150,6 +150,7 @@ export function RotateModal({
           className="btn"
           type="button"
           disabled={invalidRange}
+          data-testid="rotate-modal-apply"
         >
           Rotate
         </button>

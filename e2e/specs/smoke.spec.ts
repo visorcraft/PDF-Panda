@@ -28,6 +28,8 @@ describe('PDF Panda shell', () => {
     const saveBtn = await $('[data-testid="save-pdf"]');
     await expect(saveBtn).toHaveText('Save');
     await $('[data-testid="rotate-page"]').click();
+    await (await $('[data-testid="rotate-modal-apply"]')).waitForDisplayed({ timeout: 10_000 });
+    await (await $('[data-testid="rotate-modal-apply"]')).click();
     await browser.waitUntil(
       async () => (await saveBtn.getText()) === 'Save •',
       { timeout: 15_000, timeoutMsg: 'expected dirty save label after rotate' },
