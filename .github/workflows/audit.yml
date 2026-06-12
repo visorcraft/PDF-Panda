@@ -17,8 +17,10 @@ jobs:
           node-version: 24
       - name: npm audit
         run: npm audit --audit-level=high
+      - name: npm audit e2e
+        run: npm audit --prefix e2e --audit-level=high
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: cargo install cargo-audit --version 0.21.2 --locked
       - name: Cargo audit
         working-directory: src-tauri
         run: cargo audit

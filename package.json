@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test:e2e": "sh scripts/e2e-test.sh",
-    "lint": "eslint src e2e",
+    "lint": "eslint src e2e --max-warnings=0",
     "lint:fix": "eslint src e2e --fix"
   },
   "dependencies": {
