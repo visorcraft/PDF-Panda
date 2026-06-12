@@ -7,6 +7,7 @@ import { AppBody } from '../viewer/AppBody';
 import { AppModals } from '../modals/AppModals';
 import { PrintSurface } from '../viewer/PrintSurface';
 import { SettingsPage } from '../settings/SettingsPage';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import type { ShortcutBindingsState } from '../app/useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
 import type { SettingsFocusSection } from '../app/useAppSurfaceState';
@@ -32,6 +33,18 @@ type AppShellProps = {
     setAppearance: (key: AppearanceKey) => void;
   };
 };
+
+function panelFallback(name: string) {
+  return (_error: Error | null, onReset: () => void) => (
+    <div className="error-boundary panel-error" role="alert">
+      <h2>{name} error</h2>
+      <p>This panel failed to render.</p>
+      <button type="button" onClick={onReset}>
+        Try again
+      </button>
+    </div>
+  );
+}
 
 export function AppShell({
   windowTitle,
@@ -61,23 +74,33 @@ export function AppShell({
         </div>
       )}
 
-      <AppChrome
-        {...chrome}
-        documentChromeVisible={activeSurface === 'document'}
-        shortcutBindings={shortcuts.bindings}
-      />
-      {activeSurface === 'settings' ? (
-        <SettingsPage
-          closeSettings={closeSettings}
-          hasDocument={hasDocument}
-          focusSection={settingsFocus}
-          appearance={appearance}
-          shortcuts={shortcuts}
+      <ErrorBoundary fallback={panelFallback('Chrome')}>
+        <AppChrome
+          {...chrome}
+          documentChromeVisible={activeSurface === 'document'}
+          shortcutBindings={shortcuts.bindings}
         />
+      </ErrorBoundary>
+
+      {activeSurface === 'settings' ? (
+        <ErrorBoundary fallback={panelFallback('Settings')}>
+          <SettingsPage
+            closeSettings={closeSettings}
+            hasDocument={hasDocument}
+            focusSection={settingsFocus}
+            appearance={appearance}
+            shortcuts={shortcuts}
+          />
+        </ErrorBoundary>
       ) : (
-        <AppBody {...body} />
+        <ErrorBoundary fallback={panelFallback('Viewer')}>
+          <AppBody {...body} />
+        </ErrorBoundary>
       )}
-      <AppModals {...modals} />
+
+      <ErrorBoundary fallback={panelFallback('Dialog')}>
+        <AppModals {...modals} />
+      </ErrorBoundary>
       <PrintSurface pages={printPages} />
     </div>
   );
