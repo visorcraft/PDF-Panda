@@ -12,7 +12,7 @@ export function AppBody({ filePath, sidebar, viewer }: AppBodyProps) {
   return (
     <div className="app-body">
       {filePath && <PdfSidebar {...sidebar} />}
-      <div className="viewer-main">
+      <div className="viewer-main" tabIndex={-1} aria-label="Document viewer">
         <ViewerMain {...viewer} filePath={filePath} />
       </div>
     </div>

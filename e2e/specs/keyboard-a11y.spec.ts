@@ -25,24 +25,25 @@ describe('keyboard accessibility', () => {
     await openPdfViaPathModal(fixturePdf3p);
     await waitForPageCount('/ 3');
 
+    // Ensure no text input is focused so the global shortcut fires.
     await browser.execute(() => {
-      const viewer = document.querySelector('.viewer-main') as HTMLElement | null;
-      viewer?.focus();
+      const active = document.activeElement as HTMLElement | null;
+      active?.blur();
     });
 
-    await browser.keys('PageDown');
+    await browser.keys('ArrowRight');
     await browser.pause(250);
     await expect(await getPageInputValue()).toBe('2');
 
-    await browser.keys('PageDown');
+    await browser.keys('ArrowRight');
     await browser.pause(250);
     await expect(await getPageInputValue()).toBe('3');
 
-    await browser.keys('PageUp');
+    await browser.keys('ArrowLeft');
     await browser.pause(250);
     await expect(await getPageInputValue()).toBe('2');
 
-    await browser.keys('PageUp');
+    await browser.keys('ArrowLeft');
     await browser.pause(250);
     await expect(await getPageInputValue()).toBe('1');
   });

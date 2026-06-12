@@ -23,6 +23,7 @@ export const config = {
     path.join(root, 'e2e', 'specs', 'updater.spec.ts'),
     path.join(root, 'e2e', 'specs', 'restore-setup.spec.ts'),
     path.join(root, 'e2e', 'specs', 'restore.spec.ts'),
+    path.join(root, 'e2e', 'specs', 'keyboard-a11y.spec.ts'),
   ],
   maxInstances: 1,
   logLevel: 'info',

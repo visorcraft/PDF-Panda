@@ -47,6 +47,8 @@ export function ViewerMain({
         className={`page-scroll${!filePath ? ' welcome-scroll' : ''}${viewMode === 'markdown' ? ' markdown-scroll' : ''}${scrollViewMode === 'continuous' ? ' continuous-scroll' : ''}`}
         ref={scrollRef}
         onWheel={onWheel}
+        tabIndex={-1}
+        aria-label="Document pages"
       >
         {!filePath ? (
           <button
