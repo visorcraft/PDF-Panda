@@ -84,8 +84,16 @@ export function PdfSidebar({
               onDragOver={onDragOver}
               onDrop={(e) => onDrop(e, idx)}
               onClick={() => onGoToPage(idx)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onGoToPage(idx);
+                }
+              }}
+              tabIndex={currentPage === idx ? 0 : -1}
+              role="button"
+              aria-label={`Page ${idx + 1}`}
               className={`thumbnail ${currentPage === idx ? 'active' : ''} ${draggedIndex === idx ? 'dragging' : ''}`}
-              alt={`Page ${idx + 1}`}
             />
           ))}
         </div>

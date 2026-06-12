@@ -385,6 +385,11 @@ body {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--pp-accent) 25%, transparent);
 }
 
+.thumbnail:focus-visible {
+  outline: 2px solid var(--pp-focus-ring, var(--pp-accent));
+  outline-offset: 2px;
+}
+
 .thumbnail.dragging {
   opacity: 0.4;
 }
