@@ -42,9 +42,13 @@ describe('error boundary', () => {
     const tryAgain = await $('button*=Try again');
     await tryAgain.click();
 
-    // Normal UI should return.
+    // The fallback should be gone and the viewer region should return.
     await browser.waitUntil(
-      async () => (await $('[data-testid="save-pdf"]').isDisplayed()),
+      async () => !(await $('h2=Viewer error').isExisting()),
+      { timeout: 10_000, timeoutMsg: 'expected fallback to be removed' },
+    );
+    await browser.waitUntil(
+      async () => (await $('.viewer-main').isDisplayed()),
       { timeout: 10_000, timeoutMsg: 'expected viewer to recover' },
     );
   });
