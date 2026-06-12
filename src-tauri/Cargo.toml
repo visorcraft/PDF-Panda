@@ -1,6 +1,6 @@
 [package]
 name = "pdf-panda"
-version = "0.7.4"
+version = "1.0.0"
 description = "A high-performance PDF editor"
 edition = "2021"
 license = "GPL-3.0-only"
