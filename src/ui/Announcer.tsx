@@ -30,6 +30,7 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return () => {
       timeoutsRef.current.forEach(clearTimeout);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
       timeoutsRef.current.clear();
     };
   }, []);

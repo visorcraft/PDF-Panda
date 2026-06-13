@@ -22,6 +22,7 @@ export function useContinuousScroll(opts: UseContinuousScrollOptions) {
       opts.setCurrentPage(page);
       opts.setPageInput(String(page + 1));
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
     [opts.setCurrentPage, opts.setPageInput],
   );
 
@@ -42,6 +43,7 @@ export function useContinuousScroll(opts: UseContinuousScrollOptions) {
       visible.scrollToPage(clamped);
       requestPage(clamped);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
     [opts.pageCount, opts.setCurrentPage, opts.setPageInput, requestPage, visible],
   );
 

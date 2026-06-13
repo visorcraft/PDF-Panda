@@ -19,6 +19,7 @@ export function usePageInteractionAnnot(opts: PageInteractionAnnotOptions) {
       pageIndex: opts.currentPage,
     });
     opts.setAnnotations(annots);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.filePath, opts.currentPage, opts.setAnnotations]);
 
   const removeAnnotation = useCallback((command: AnnotationRemoveCommand, index: number, toast: string) => {
@@ -71,6 +72,7 @@ export function usePageInteractionAnnot(opts: PageInteractionAnnotOptions) {
       afterEdit: async () => { await refreshAnnotations(); },
       toast: 'Drawing added',
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.runEdit, opts.currentPage, refreshAnnotations]);
 
   return {

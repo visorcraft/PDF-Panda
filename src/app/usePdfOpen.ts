@@ -101,6 +101,7 @@ export function usePdfOpen({
     } finally {
       clearOpeningPath(path);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [
     filePath,
     ensureSessionForOpen,

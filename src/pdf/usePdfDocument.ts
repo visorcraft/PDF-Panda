@@ -83,6 +83,7 @@ export function usePdfDocument({
     setImageSrc(viewerCache.imageSrc);
     setThumbnails(viewerCache.thumbnails);
     setAnnotations(viewerCache.annotations);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [activeSessionId, viewerCache?.imageSrc, viewerCache?.thumbnails, viewerCache?.annotations]);
 
   const syncCache = useCallback(

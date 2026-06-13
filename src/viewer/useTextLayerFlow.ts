@@ -51,6 +51,7 @@ export function useTextLayerFlow(opts: UseTextLayerFlowOptions) {
       }
       clearSelection();
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.filePath, opts.currentPage, opts.runEdit, readSelectionRects, clearSelection]);
 
   const textLayerInteractive = !opts.annotationModeActive && !opts.editTextRunMode;

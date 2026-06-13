@@ -108,6 +108,7 @@ export function usePageInteractionHandlers(opts: PageInteractionHandlerOptions) 
       }
       opts.setDrawing(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.drawMode, opts.highlightMode, opts.shapeMode, opts.redactMode, opts.imageInsertMode, opts.vectorEditMode, opts.formAddMode, opts.shapeKind, getImageCoords, opts.setHighlightStart, opts.setShapeLineEnd, opts.setHighlightRect, opts.setDrawing, opts.setInkDrawing, opts.setInkDraft]);
 
   const handleDrawMouseUp = useCallback((e: React.MouseEvent) => {

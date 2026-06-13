@@ -89,6 +89,7 @@ export function useAppViewerWorkflow(input: UseAppViewerWorkflowInput) {
         announce(`Page ${target + 1} of ${pageCount}`);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
     [continuousScroll.goToPageContinuous, goToPageSingle, scrollViewMode, viewMode, pageCount, announce],
   );
 

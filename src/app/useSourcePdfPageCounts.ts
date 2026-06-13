@@ -31,6 +31,7 @@ export function useSourcePdfPageCounts(opts: UseSourcePdfPageCountsOptions) {
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.insertFilePath]);
 
   useEffect(() => {
@@ -52,5 +53,6 @@ export function useSourcePdfPageCounts(opts: UseSourcePdfPageCountsOptions) {
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.mergeFilePath]);
 }

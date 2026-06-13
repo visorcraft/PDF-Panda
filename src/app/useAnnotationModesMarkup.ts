@@ -47,6 +47,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleHighlightMode = useCallback(() => {
     clearOtherModes(modes, 'highlight');
     setHighlightMode((m) => !m);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setHighlightMode]);
 
   const exitHighlightMode = useCallback(() => {
@@ -57,11 +58,13 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleNoteMode = useCallback(() => {
     clearOtherModes(modes, 'note');
     setNoteMode((m) => !m);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setNoteMode]);
 
   const toggleDrawMode = useCallback(() => {
     clearOtherModes(modes, 'draw');
     setDrawMode((m) => !m);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setDrawMode]);
 
   const exitDrawMode = useCallback(() => {
@@ -72,6 +75,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleShapeMode = useCallback(() => {
     clearOtherModes(modes, 'shape');
     setShapeMode((m) => !m);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setShapeMode]);
 
   const exitShapeMode = useCallback(() => {
@@ -82,6 +86,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleStampMode = useCallback(() => {
     clearOtherModes(modes, 'stamp');
     setStampMode((m) => !m);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setStampMode]);
 
   const exitStampMode = useCallback(() => {
@@ -91,11 +96,13 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleTextEditMode = useCallback(() => {
     clearOtherModes(modes, 'text');
     setTextEditMode((mode) => !mode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setTextEditMode]);
 
   const toggleEditTextRunMode = useCallback(() => {
     clearOtherModes(modes, 'editText');
     setEditTextRunMode((mode) => !mode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setEditTextRunMode]);
 
   const exitEditTextRunMode = useCallback(() => {
@@ -105,11 +112,13 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
   const toggleVectorEditMode = useCallback(() => {
     clearOtherModes(modes, 'vector');
     setVectorEditMode((mode) => !mode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setVectorEditMode]);
 
   const toggleRedactMode = useCallback(() => {
     clearOtherModes(modes, 'redact');
     setRedactMode((m) => !m);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [setRedactMode]);
 
   const exitRedactMode = useCallback(() => {
@@ -126,6 +135,7 @@ export function useAnnotationModesMarkup(opts: UseAnnotationModesMarkupOptions) 
 
   const toggleFormsPanel = useCallback(() => {
     opts.setShowFormsPanel((open) => !open);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [opts.setShowFormsPanel]);
 
   return {

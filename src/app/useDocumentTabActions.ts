@@ -98,6 +98,7 @@ export function useDocumentTabActions(deps: TabActionsDeps) {
       deps.clearModesOnTabSwitch();
     }
     prevActiveRef.current = next;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [deps.doc.activeId, deps.clearModesOnTabSwitch]);
 
   const requestCloseActiveTab = useCallback(() => {

@@ -165,6 +165,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     return () => {
       if (unlisten) unlisten();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [lifecycle.loadPdfFromPath]);
 
   useEffect(() => {
@@ -177,6 +178,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
         }
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, []);
 
   return useAppShellBinding({
