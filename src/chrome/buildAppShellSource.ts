@@ -23,6 +23,7 @@ export type BuildAppShellSourceInput = {
   settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
+  showToast: (message: string, type?: 'success' | 'error') => void;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
 };
 
@@ -39,6 +40,7 @@ export function buildAppShellSource(input: BuildAppShellSourceInput): Omit<AppSh
     settingsFocus: input.settingsFocus,
     closeSettings: input.closeSettings,
     shortcuts: input.shortcuts,
+    showToast: input.showToast,
     appearance: input.appearance,
   };
 }

@@ -12,7 +12,7 @@ if (import.meta.env.VITE_WDIO === '1') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AnnouncerProvider>
-      <ErrorBoundary>
+      <ErrorBoundary onError={(error, info) => console.error('Top-level error:', error, info)}>
         <App />
       </ErrorBoundary>
     </AnnouncerProvider>

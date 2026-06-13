@@ -28,6 +28,7 @@ type AppShellProps = {
   settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
+  showToast: (message: string, type?: 'success' | 'error') => void;
   appearance: {
     appearance: AppearanceKey;
     setAppearance: (key: AppearanceKey) => void;
@@ -35,9 +36,12 @@ type AppShellProps = {
 };
 
 function panelFallback(name: string) {
-  return (_error: Error | null, onReset: () => void) => (
+  return (error: Error | null, onReset: () => void) => (
     <div className="error-boundary panel-error" role="alert">
       <h2>{name} error</h2>
+      {error && (
+        <p className="error-boundary-message">{error.message}</p>
+      )}
       <p>This panel failed to render.</p>
       <button type="button" onClick={onReset}>
         Try again
@@ -58,10 +62,16 @@ export function AppShell({
   settingsFocus,
   closeSettings,
   shortcuts,
+  showToast,
   appearance,
 }: AppShellProps) {
   const hasDocument = !!body.filePath;
   useFocusCycle(activeSurface === 'document');
+
+  const handlePanelError = (error: Error) => {
+    showToast(`${error.name}: ${error.message}`, 'error');
+  };
+
   return (
     <div className="app" data-active-surface={activeSurface}>
       <ResizeBorders />
@@ -74,7 +84,10 @@ export function AppShell({
         </div>
       )}
 
-      <ErrorBoundary fallback={panelFallback('Chrome')}>
+      <ErrorBoundary
+        fallback={panelFallback('Chrome')}
+        onError={handlePanelError}
+      >
         <AppChrome
           {...chrome}
           documentChromeVisible={activeSurface === 'document'}
@@ -83,7 +96,10 @@ export function AppShell({
       </ErrorBoundary>
 
       {activeSurface === 'settings' ? (
-        <ErrorBoundary fallback={panelFallback('Settings')}>
+        <ErrorBoundary
+          fallback={panelFallback('Settings')}
+          onError={handlePanelError}
+        >
           <SettingsPage
             closeSettings={closeSettings}
             hasDocument={hasDocument}
@@ -93,12 +109,19 @@ export function AppShell({
           />
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary fallback={panelFallback('Viewer')}>
+        <ErrorBoundary
+          fallback={panelFallback('Viewer')}
+          onError={handlePanelError}
+          resetKeys={[body.filePath]}
+        >
           <AppBody {...body} />
         </ErrorBoundary>
       )}
 
-      <ErrorBoundary fallback={panelFallback('Dialog')}>
+      <ErrorBoundary
+        fallback={() => null}
+        onError={handlePanelError}
+      >
         <AppModals {...modals} />
       </ErrorBoundary>
       <PrintSurface pages={printPages} />

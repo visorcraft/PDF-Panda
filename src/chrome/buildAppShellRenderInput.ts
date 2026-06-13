@@ -41,6 +41,7 @@ export type BuildAppShellRenderInputArgs = {
   settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
+  showToast: (message: string, type?: 'success' | 'error') => void;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
   viewer: Pick<
     BuildAppViewerSourceInput,
@@ -80,6 +81,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
     toast: args.doc.toast,
     loading: args.doc.loading,
     shortcuts: args.shortcuts,
+    showToast: args.showToast,
     appearance: args.appearance,
     chrome: buildAppShellChromeInput({
       menus: args.appMenus,

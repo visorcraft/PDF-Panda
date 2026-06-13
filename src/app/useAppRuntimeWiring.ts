@@ -200,6 +200,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     onSelectTab: tabActions.selectTab,
     onCloseTab: tabActions.requestCloseTab,
     shortcuts: shortcutBindingsState,
+    showToast,
     appearance,
   });
 }
