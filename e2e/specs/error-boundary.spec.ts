@@ -7,9 +7,19 @@ import {
   waitForShell,
 } from '../support/helpers';
 
+async function disarmThrowTrigger() {
+  await browser.execute(() => {
+    document.documentElement.removeAttribute('data-e2e-throw');
+  });
+}
+
 describe('error boundary', () => {
   before(async () => {
     await waitForShell();
+  });
+
+  afterEach(async () => {
+    await disarmThrowTrigger();
   });
 
   it('catches a panel render error and shows a fallback', async () => {
@@ -19,7 +29,7 @@ describe('error boundary', () => {
 
     // Arm the E2E-only render-time throw trigger inside AppBody.
     await browser.execute(() => {
-      document.documentElement.setAttribute('data-e2e-throw', 'viewer');
+      document.documentElement.setAttribute('data-e2e-throw', '');
     });
 
     // Trigger a re-render of AppBody by toggling continuous scroll mode.
@@ -35,9 +45,7 @@ describe('error boundary', () => {
     );
 
     // Disarm the trigger and reset the boundary.
-    await browser.execute(() => {
-      document.documentElement.removeAttribute('data-e2e-throw');
-    });
+    await disarmThrowTrigger();
 
     const tryAgain = await $('button*=Try again');
     await tryAgain.click();
