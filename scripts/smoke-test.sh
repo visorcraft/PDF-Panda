@@ -6,7 +6,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
 npm ci
-npm audit --audit-level=high
+npm run audit
 npm run lint
 npx tsc --noEmit
 cargo fmt --manifest-path src-tauri/Cargo.toml --check

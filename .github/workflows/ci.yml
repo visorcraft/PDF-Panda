@@ -49,8 +49,8 @@ jobs:
       - name: Install npm deps
         run: npm ci
 
-      - name: npm audit
-        run: npm audit --audit-level=high
+      - name: npm dependency audit
+        run: npm run audit
 
       - name: ESLint
         run: npm run lint

@@ -21,8 +21,8 @@ jobs:
       # @wdio/native-utils, which currently transitively depends on an
       # unpatched esbuild (no fixed version available). Re-enable e2e audit once
       # the upstream wdio dependency chain is updated.
-      - name: npm audit
-        run: npm audit --audit-level=high
+      - name: npm dependency audit
+        run: npm run audit
       - name: Install cargo-audit
         run: cargo install cargo-audit --version 0.21.2 --locked
       - name: Cargo audit
