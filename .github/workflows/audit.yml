@@ -23,8 +23,9 @@ jobs:
       # the upstream wdio dependency chain is updated.
       - name: npm dependency audit
         run: npm run audit
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --version 0.21.2 --locked
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.21.2
       - name: Cargo audit
         working-directory: src-tauri
         run: cargo audit
