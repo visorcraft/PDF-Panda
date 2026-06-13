@@ -20,8 +20,11 @@ describe('keyboard accessibility', () => {
     await waitForShell();
   });
 
-  it('navigates pages with keyboard', async () => {
+  beforeEach(async () => {
     await resetToWelcome();
+  });
+
+  it('navigates pages with keyboard', async () => {
     await openPdfViaPathModal(fixturePdf3p);
     await waitForPageCount('/ 3');
 
@@ -49,7 +52,6 @@ describe('keyboard accessibility', () => {
   });
 
   it('focuses and activates thumbnails with keyboard', async () => {
-    await resetToWelcome();
     await openPdfViaPathModal(fixturePdf3p);
     await waitForPageCount('/ 3');
 
@@ -73,7 +75,6 @@ describe('keyboard accessibility', () => {
   });
 
   it('opens PDF/UA Check panel from View menu', async () => {
-    await resetToWelcome();
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
 
@@ -86,12 +87,5 @@ describe('keyboard accessibility', () => {
 
     const panelText = await $('.pdfua-panel').getText();
     expect(panelText).toContain('PDF/UA Check');
-
-    // Close the panel so later specs start from a clean viewer state.
-    await clickMenuAction('view', 'pdfua-panel');
-    await browser.waitUntil(
-      async () => !(await $('.pdfua-panel').isDisplayed().catch(() => true)),
-      { timeout: 5_000, timeoutMsg: 'expected PDF/UA panel to close' },
-    );
   });
 });

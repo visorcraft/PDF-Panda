@@ -36,49 +36,32 @@ describe('axe accessibility', () => {
     await waitForShell();
   });
 
-  it('welcome screen has no detectable axe violations', async () => {
+  beforeEach(async () => {
     await resetToWelcome();
+  });
+
+  it('welcome screen has no detectable axe violations', async () => {
     await assertNoAxeViolations('welcome');
   });
 
   it('viewer has no detectable axe violations', async () => {
-    await resetToWelcome();
     await openPdfViaPathModal(fixturePdf3p);
     await waitForPageCount('/ 3');
     await assertNoAxeViolations('viewer');
   });
 
   it('PDF/UA panel has no detectable axe violations', async () => {
-    await resetToWelcome();
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
     await clickMenuAction('view', 'pdfua-panel');
-    // The View → PDF/UA Check item is a toggle; if a previous spec left the
-    // panel open, the first click closes it. Wait briefly, then re-open if
-    // the panel is not displayed.
-    await browser.pause(250);
-    const panelDisplayed = await $('.pdfua-panel')
-      .isDisplayed()
-      .catch(() => false);
-    if (!panelDisplayed) {
-      await clickMenuAction('view', 'pdfua-panel');
-    }
     await browser.waitUntil(
       async () => (await $('.pdfua-panel').isDisplayed()),
       { timeout: 10_000, timeoutMsg: 'expected PDF/UA panel' },
     );
     await assertNoAxeViolations('pdfua-panel');
-
-    // Leave the viewer clean for any specs that follow.
-    await clickMenuAction('view', 'pdfua-panel');
-    await browser.waitUntil(
-      async () => !(await $('.pdfua-panel').isDisplayed().catch(() => true)),
-      { timeout: 5_000, timeoutMsg: 'expected PDF/UA panel to close' },
-    );
   });
 
   it('settings page has no detectable axe violations', async () => {
-    await resetToWelcome();
     await clickMenuAction('help', 'settings');
     await browser.waitUntil(
       async () => (await $('body').getText()).includes('Appearance'),
