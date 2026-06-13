@@ -9,7 +9,10 @@ import {
   waitForShell,
 } from '../support/helpers';
 
-async function assertNoAxeViolations(context: string) {
+async function assertNoAxeViolations(
+  context: string,
+  extraDisabledRules: string[] = [],
+) {
   // WebdriverIO v9 + Tauri's embedded WebKit driver do not support
   // `window/new`, which axe-core uses by default for cross-origin/frame
   // isolation. Legacy mode analyzes the current window directly.
@@ -17,10 +20,11 @@ async function assertNoAxeViolations(context: string) {
   // PDF Panda is an app-like desktop PDF editor, not a document website, so
   // axe's document-structure best-practice rules (page heading and landmark
   // containment) do not map cleanly to the toolbar/sidebar/viewer layout.
-  // Disable them globally; the spec still catches real WCAG failures.
+  // Disable them by default; individual tests can opt out via extraDisabledRules.
+  const baseDisabledRules = ['page-has-heading-one'];
   const results = await new AxeBuilder({ client: browser })
     .setLegacyMode(true)
-    .disableRules(['page-has-heading-one', 'region'])
+    .disableRules([...baseDisabledRules, ...extraDisabledRules])
     .analyze();
   if (results.violations.length > 0) {
     console.error(
@@ -41,13 +45,13 @@ describe('axe accessibility', () => {
   });
 
   it('welcome screen has no detectable axe violations', async () => {
-    await assertNoAxeViolations('welcome');
+    await assertNoAxeViolations('welcome', ['region']);
   });
 
   it('viewer has no detectable axe violations', async () => {
     await openPdfViaPathModal(fixturePdf3p);
     await waitForPageCount('/ 3');
-    await assertNoAxeViolations('viewer');
+    await assertNoAxeViolations('viewer', ['region']);
   });
 
   it('PDF/UA panel has no detectable axe violations', async () => {
@@ -58,7 +62,7 @@ describe('axe accessibility', () => {
       async () => (await $('.pdfua-panel').isDisplayed()),
       { timeout: 10_000, timeoutMsg: 'expected PDF/UA panel' },
     );
-    await assertNoAxeViolations('pdfua-panel');
+    await assertNoAxeViolations('pdfua-panel', ['region']);
   });
 
   it('settings page has no detectable axe violations', async () => {
