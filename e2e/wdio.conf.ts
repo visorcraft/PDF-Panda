@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { dismissTesseractReminder, waitForShell } from './support/helpers';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ext = os.platform() === 'win32' ? '.exe' : '';
@@ -60,4 +61,8 @@ export const config = {
       },
     },
   ],
+  before: async () => {
+    await waitForShell();
+    await dismissTesseractReminder();
+  },
 };

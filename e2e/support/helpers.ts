@@ -254,6 +254,19 @@ export async function resetToWelcome() {
   await waitForWelcome();
 }
 
+export async function dismissTesseractReminder() {
+  // The app shows a Tesseract installation reminder at launch when Tesseract
+  // is unavailable. In CI that modal overlays the UI and breaks later tests,
+  // so dismiss it once and persist the choice for the session.
+  await browser.execute(() => {
+    window.localStorage.setItem('pdf-panda:tesseract-remind-dismissed', '1');
+  });
+  const closeBtn = await $('[data-testid="tesseract-reminder-close"]');
+  if (await closeBtn.isDisplayed().catch(() => false)) {
+    await closeBtn.click();
+  }
+}
+
 export async function getSaveLabel(): Promise<string> {
   return (await $('[data-testid="save-pdf"]')).getText();
 }
