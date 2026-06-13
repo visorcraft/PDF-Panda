@@ -14,6 +14,7 @@ import {
   openPdfViaPathModal,
   pathExists,
   resetToWelcome,
+  rotateCurrentPage,
   selectTab,
   setZoomPercent,
   waitForPageCount,
@@ -54,7 +55,7 @@ describe('multi-document tabs', () => {
     await openPdfViaPathModal(fixturePdf);
     await openPdfViaPathModal(fixturePdfB);
     await selectTab('sample-b');
-    await $('[data-testid="rotate-page"]').click();
+    await rotateCurrentPage();
     await browser.waitUntil(async () => (await getSaveLabel()) === 'Save •', {
       timeout: 15_000,
       timeoutMsg: 'expected dirty tab B',
@@ -69,9 +70,9 @@ describe('multi-document tabs', () => {
     await openPdfViaPathModal(fixturePdf);
     await openPdfViaPathModal(fixturePdfB);
     await selectTab('sample');
-    await $('[data-testid="rotate-page"]').click();
+    await rotateCurrentPage();
     await selectTab('sample-b');
-    await $('[data-testid="rotate-page"]').click();
+    await rotateCurrentPage();
     await selectTab('sample');
     await browser.waitUntil(async () => (await $('[data-testid="undo-btn"]').isEnabled()), {
       timeout: 10_000,
@@ -109,7 +110,7 @@ describe('multi-document tabs', () => {
     await openPdfViaPathModal(fixturePdf);
     await openPdfViaPathModal(fixturePdfB);
     await selectTab('sample-b');
-    await $('[data-testid="rotate-page"]').click();
+    await rotateCurrentPage();
     await closeTab('sample-b');
     await (await $('[data-testid="unsaved-cancel"]')).waitForDisplayed({ timeout: 10_000 });
     await cancelUnsavedIfPrompted();

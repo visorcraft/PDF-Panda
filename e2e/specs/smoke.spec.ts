@@ -4,6 +4,7 @@ import {
   openFileMenu,
   openPdfViaPathModal,
   resetToWelcome,
+  rotateCurrentPage,
   waitForPageCount,
   waitForShell,
 } from '../support/helpers';
@@ -36,10 +37,7 @@ describe('PDF Panda shell', () => {
     const saveBtn = await $('[data-testid="save-pdf"]');
     await expect(saveBtn).toHaveText('Save');
 
-    await $('[data-testid="rotate-page"]').click();
-    const applyBtn = await $('[data-testid="rotate-modal-apply"]');
-    await applyBtn.waitForDisplayed({ timeout: 10_000 });
-    await applyBtn.click();
+    await rotateCurrentPage();
 
     await browser.waitUntil(
       async () => (await saveBtn.getText()) === 'Save •',

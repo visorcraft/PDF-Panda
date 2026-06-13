@@ -178,6 +178,13 @@ export async function clickQuickAction(testId: string) {
   await btn.click();
 }
 
+export async function rotateCurrentPage() {
+  await clickQuickAction('rotate-page');
+  const applyBtn = await $('[data-testid="rotate-modal-apply"]');
+  await applyBtn.waitForDisplayed({ timeout: 10_000 });
+  await applyBtn.click();
+}
+
 export async function selectTextLayerSpan(text: string) {
   await browser.waitUntil(
     async () => {
