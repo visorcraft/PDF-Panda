@@ -25,7 +25,7 @@ export function TesseractReminderModal({
   onCopyInstallCommand,
 }: TesseractReminderModalProps) {
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={onClose} aria-label="Tesseract installation reminder">
       <h3>Read text from scanned PDFs (optional)</h3>
       <p className="modal-help">{guide.summary}</p>
       <p className="modal-help">{guide.licenseNote}</p>

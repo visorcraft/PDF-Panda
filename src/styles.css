@@ -975,14 +975,14 @@ body {
 }
 
 .btn-active {
-  background: var(--pp-accent);
+  background: color-mix(in srgb, var(--pp-accent), black 20%);
   color: #fff;
-  border-color: var(--pp-accent);
+  border-color: color-mix(in srgb, var(--pp-accent), black 20%);
 }
 
 .btn-active:hover:not(:disabled) {
-  background: var(--pp-accent-hover);
-  border-color: var(--pp-accent-hover);
+  background: color-mix(in srgb, var(--pp-accent), black 35%);
+  border-color: color-mix(in srgb, var(--pp-accent), black 35%);
 }
 
 .btn-secondary {
