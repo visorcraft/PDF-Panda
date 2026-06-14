@@ -19416,3 +19416,9 @@ fn resolve_update_channel_linux_deb_then_rpm_then_manual() {
     assert_eq!(resolve_update_channel(None, true, false, false, true), "rpm");
     assert_eq!(resolve_update_channel(None, true, false, false, false), "manual");
 }
+
+#[test]
+fn list_printers_does_not_panic() {
+    let printers = pdf::print::list_printers();
+    assert!(printers.is_empty() || !printers[0].system_name.is_empty());
+}
