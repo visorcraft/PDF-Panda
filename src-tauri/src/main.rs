@@ -85,6 +85,28 @@ include!("parity_batch8_generated.inc.rs");
 include!("commands/wrappers_doc.inc.rs");
 include!("commands/wrappers_annot.inc.rs");
 
+pub fn print_temp_dir() -> PathBuf {
+    std::env::temp_dir().join("pdf_panda_print")
+}
+
+fn cleanup_old_print_temp_files() {
+    let dir = print_temp_dir();
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return;
+    };
+    let cutoff = std::time::SystemTime::now() - std::time::Duration::from_secs(24 * 60 * 60);
+    for entry in entries.flatten() {
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        if let Ok(modified) = meta.modified() {
+            if modified < cutoff {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
 fn main() {
     // webkit2gtk's DMABUF renderer aborts with `Gdk Error 71 (Protocol error)
     // dispatching to Wayland display` on some Wayland + GPU-driver combinations
@@ -105,6 +127,8 @@ fn main() {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
         }
     }
+
+    cleanup_old_print_temp_files();
 
     #[cfg(feature = "wdio")]
     let builder = tauri::Builder::default()

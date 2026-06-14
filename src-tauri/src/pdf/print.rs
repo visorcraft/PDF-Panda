@@ -22,9 +22,81 @@ pub fn list_printers() -> Vec<PrinterInfo> {
 }
 
 pub fn print_document(source_path: &Path, opts: &PrintOptions, temp_dir: &Path) -> Result<PrintDocumentResult, String> {
-    // TODO: Task 7
-    let _ = (source_path, opts, temp_dir);
-    Err("not implemented".into())
+    let printer_name = opts.printer_name.as_ref().ok_or("Printer name is required")?;
+    let copies = opts.copies.ok_or("Copies is required")?;
+    let duplex = opts.duplex.as_deref().ok_or("Duplex is required")?;
+
+    let doc = Document::load(source_path).map_err(|e| e.to_string())?;
+    let page_count = doc.get_pages().len() as u32;
+    let selected = parse_page_range(opts.page_range.as_deref(), page_count)?;
+
+    let temp_name = format!("print_{}.pdf", std::process::id());
+    let temp_path = temp_dir.join(temp_name);
+    build_print_pdf(source_path, opts, &selected, &temp_path)?;
+
+    #[cfg(target_os = "windows")]
+    {
+        open_pdf_for_manual_print(&temp_path)?;
+        Ok(PrintDocumentResult::WindowsFallback { temp_path: temp_path.to_string_lossy().into_owned() })
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use printers::common::base::job::PrinterJobOptions;
+        use printers::common::converters::Converter;
+        use printers::get_printer_by_name;
+
+        let printer =
+            get_printer_by_name(printer_name).ok_or_else(|| format!("Printer not found: {}", printer_name))?;
+
+        let copies_str = copies.to_string();
+        let mut props: Vec<(&str, &str)> = vec![("copies", &copies_str), ("media", &opts.paper_size)];
+        let sides = match duplex {
+            "simplex" => "one-sided",
+            "longEdge" => "two-sided-long-edge",
+            "shortEdge" => "two-sided-short-edge",
+            _ => "one-sided",
+        };
+        props.push(("sides", sides));
+
+        let job_id = printer
+            .print_file(
+                temp_path.to_str().unwrap_or_default(),
+                PrinterJobOptions {
+                    name: Some("PDF Panda print job"),
+                    raw_properties: &props,
+                    converter: Converter::None,
+                },
+            )
+            .map_err(|e| format!("Print failed: {:?}", e))?;
+
+        let _ = std::fs::remove_file(&temp_path);
+        Ok(PrintDocumentResult::DirectJob { job_id })
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn open_pdf_for_manual_print(path: &Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::UI::Shell::ShellExecuteExW;
+    use windows::Win32::UI::Shell::SEE_MASK_NOCLOSEPROCESS;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let operation: Vec<u16> = "print\0".encode_utf16().collect();
+    let mut info = windows::Win32::UI::Shell::SHELLEXECUTEINFOW {
+        cbSize: std::mem::size_of::<windows::Win32::UI::Shell::SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_NOCLOSEPROCESS,
+        lpVerb: windows::core::PCWSTR(operation.as_ptr()),
+        lpFile: windows::core::PCWSTR(wide.as_ptr()),
+        nShow: SW_SHOWNORMAL.0 as i32,
+        ..Default::default()
+    };
+
+    unsafe {
+        ShellExecuteExW(&mut info).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 pub fn print_to_pdf(source_path: &Path, opts: &PrintOptions, output_path: &Path) -> Result<(), String> {

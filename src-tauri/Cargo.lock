@@ -3800,6 +3800,7 @@ dependencies = [
  "ttf-parser",
  "underskrift",
  "ureq",
+ "windows",
 ]
 
 [[package]]
