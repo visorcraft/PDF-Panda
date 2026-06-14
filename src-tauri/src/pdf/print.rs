@@ -411,6 +411,16 @@ fn parse_page_range(range: Option<&str>, page_count: u32) -> Result<Vec<u32>, St
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::PathBuf;
+
+    fn test_dir() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "pdf_panda_print_test_{}",
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()
+        ));
+        let _ = fs::create_dir_all(&dir);
+        dir
+    }
 
     fn minimal_blank_pdf(path: &Path) {
         let mut doc = Document::with_version("1.4");
@@ -449,8 +459,7 @@ mod tests {
 
     #[test]
     fn build_print_pdf_a4_landscape() {
-        let dir = std::env::temp_dir().join("pdf_panda_print_test");
-        let _ = fs::create_dir_all(&dir);
+        let dir = test_dir();
         let source = dir.join("source.pdf");
         let output = dir.join("output.pdf");
 
@@ -484,8 +493,7 @@ mod tests {
 
     #[test]
     fn print_to_pdf_creates_file() {
-        let dir = std::env::temp_dir().join("pdf_panda_print_test");
-        let _ = fs::create_dir_all(&dir);
+        let dir = test_dir();
         let source = dir.join("source.pdf");
         let output = dir.join("print_output.pdf");
 
@@ -512,8 +520,7 @@ mod tests {
 
     #[test]
     fn render_print_preview_returns_png() {
-        let dir = std::env::temp_dir().join("pdf_panda_print_test");
-        let _ = fs::create_dir_all(&dir);
+        let dir = test_dir();
         let source = dir.join("source.pdf");
 
         minimal_blank_pdf(&source);
