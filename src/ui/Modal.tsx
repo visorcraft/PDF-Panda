@@ -7,9 +7,10 @@ type ModalProps = {
   onClose: () => void;
   'aria-label'?: string;
   'aria-labelledby'?: string;
+  'data-testid'?: string;
 };
 
-export function Modal({ children, onClose, ...aria }: ModalProps) {
+export function Modal({ children, onClose, 'data-testid': dataTestId, ...aria }: ModalProps) {
   useEscapeClose(onClose, true);
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -19,6 +20,7 @@ export function Modal({ children, onClose, ...aria }: ModalProps) {
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
+          data-testid={dataTestId}
           {...aria}
         >
           {children}
