@@ -2044,5 +2044,9 @@ tauri::generate_handler![
             discard_history_entry,
             prune_history_entry,
             file_byte_size,
-            native_file_dialogs_enabled
+            native_file_dialogs_enabled,
+            list_printers,
+            print_document,
+            print_to_pdf,
+            render_print_preview
 ]

@@ -406,6 +406,43 @@ fn download_and_open_package(url: String, sha256: String) -> Result<String, Stri
     }
 }
 
+#[tauri::command]
+fn list_printers() -> Vec<crate::PrinterInfo> {
+    pdf::print::list_printers()
+}
+
+#[tauri::command]
+fn print_document(
+    source_path: String,
+    opts: crate::PrintOptions,
+) -> Result<crate::PrintDocumentResult, String> {
+    let temp_dir = crate::print_temp_dir();
+    let _ = std::fs::create_dir_all(&temp_dir);
+    pdf::print::print_document(Path::new(&source_path), &opts, &temp_dir)
+}
+
+#[tauri::command]
+fn print_to_pdf(
+    source_path: String,
+    opts: crate::PrintOptions,
+    output_path: String,
+) -> Result<(), String> {
+    pdf::print::print_to_pdf(Path::new(&source_path), &opts, Path::new(&output_path))
+}
+
+#[tauri::command]
+fn render_print_preview(
+    source_path: String,
+    page_index: u32,
+    opts: crate::PrintOptions,
+    width: i32,
+    height: i32,
+) -> Result<Vec<u8>, String> {
+    let temp_dir = crate::print_temp_dir();
+    let _ = std::fs::create_dir_all(&temp_dir);
+    pdf::print::render_print_preview(Path::new(&source_path), page_index, &opts, width, height, &temp_dir)
+}
+
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn replace_text_region(
