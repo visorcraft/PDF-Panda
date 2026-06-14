@@ -39,3 +39,57 @@ pub fn render_print_preview(
     // TODO: Task 9
     Err("not implemented".into())
 }
+
+fn parse_page_range(range: Option<&str>, page_count: u32) -> Result<Vec<u32>, String> {
+    let indices: Vec<u32> = (0..page_count).collect();
+    let Some(spec) = range else {
+        return Ok(indices);
+    };
+    let spec = spec.trim();
+    if spec.is_empty() || spec.eq_ignore_ascii_case("all") {
+        return Ok(indices);
+    }
+
+    let mut out = Vec::new();
+    for part in spec.split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        if let Some((start, end)) = part.split_once('-') {
+            let start: u32 = start.trim().parse().map_err(|_| format!("Invalid range: {}", part))?;
+            let end: u32 = end.trim().parse().map_err(|_| format!("Invalid range: {}", part))?;
+            if start == 0 || end < start || end > page_count {
+                return Err(format!("Range out of bounds: {}", part));
+            }
+            out.extend((start - 1)..end);
+        } else {
+            let idx: u32 = part.parse().map_err(|_| format!("Invalid page: {}", part))?;
+            if idx == 0 || idx > page_count {
+                return Err(format!("Page out of bounds: {}", part));
+            }
+            out.push(idx - 1);
+        }
+    }
+    if out.is_empty() {
+        return Err("No pages selected".into());
+    }
+    out.sort_unstable();
+    out.dedup();
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_page_range_all() {
+        assert_eq!(parse_page_range(Some("all"), 5).unwrap(), vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn parse_page_range_comma_and_dash() {
+        assert_eq!(parse_page_range(Some("1-3,5"), 5).unwrap(), vec![0, 1, 2, 4]);
+    }
+}
