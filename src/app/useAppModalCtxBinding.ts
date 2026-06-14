@@ -5,6 +5,7 @@ import type { ModalState } from './useAppModalState';
 import type { PageRangesState } from './useAppPageRanges';
 import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
+import type { DocumentSessionData } from './documentSessionTypes';
 import type { useAppLifecycleSlices } from './useAppLifecycleSlices';
 
 type Slices = ReturnType<typeof useAppLifecycleSlices>;
@@ -15,7 +16,7 @@ export type UseAppModalCtxBindingInput = {
   annotation: AnnotationState;
   pageRanges: PageRangesState;
   help: HelpState;
-  doc: { currentPage: number; pageCount: number | null; ocrAvailable: boolean | null };
+  doc: { activeSession: DocumentSessionData | null; currentPage: number; pageCount: number | null; ocrAvailable: boolean | null };
   slices: Slices;
   pdfActions: AppPdfActions;
   showToast: (message: string, type?: 'success' | 'error') => void;
@@ -66,6 +67,7 @@ export function useAppModalCtxBinding(input: UseAppModalCtxBindingInput) {
       handleOpenRecentPdf: open.handleOpenRecentPdf,
       loadPdfBrowser: browser.loadPdfBrowser,
       openPdfBrowser: browser.openPdfBrowser,
+      handleUseSystemPrint: slices.chrome.handlePrint,
     },
     runtime: { showToast: input.showToast },
     pdfActions: input.pdfActions,

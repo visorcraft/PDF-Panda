@@ -144,7 +144,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     annotation,
     pageRanges,
     help,
-    doc: { currentPage: doc.currentPage, pageCount: doc.pageCount, ocrAvailable: doc.ocrAvailable },
+    doc: { activeSession: doc.activeSession, currentPage: doc.currentPage, pageCount: doc.pageCount, ocrAvailable: doc.ocrAvailable },
     slices,
     pdfActions,
     showToast,

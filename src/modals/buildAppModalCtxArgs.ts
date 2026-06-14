@@ -53,6 +53,7 @@ export type LifecycleSlice = {
   handleOpenRecentPdf: (path: string) => void | Promise<void>;
   loadPdfBrowser: (path?: string) => void | Promise<void>;
   openPdfBrowser: (target: PdfBrowserTarget) => void;
+  handleUseSystemPrint: () => void;
 };
 
 export type RuntimeSlice = {
@@ -64,7 +65,7 @@ export type BuildAppModalCtxInputArgs = {
   security: SecurityState;
   annotation: AnnotationState;
   pageRanges: PageRangesState;
-  doc: Pick<DocumentState, 'currentPage' | 'pageCount' | 'ocrAvailable'>;
+  doc: Pick<DocumentState, 'activeSession' | 'currentPage' | 'pageCount' | 'ocrAvailable'>;
   browser: BrowserSlice;
   search: SearchSlice;
   unsaved: UnsavedSlice;

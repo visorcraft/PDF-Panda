@@ -42,6 +42,7 @@ import { ParityRangeModal } from './ParityRangeModal';
 import { PasswordModal } from './PasswordModal';
 import { PdfBrowserModal } from './PdfBrowserModal';
 import { PrependModal } from './PrependModal';
+import { PrintDialog } from './PrintDialog';
 import { ProtectPdfModal } from './ProtectPdfModal';
 import { RenameBookmarkModal } from './RenameBookmarkModal';
 import { ReplacePageModal } from './ReplacePageModal';
@@ -897,6 +898,16 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onClose={() => ctx.setShowSaveAsModal(false)}
           onChooseNative={ctx.chooseSaveAsNative}
           onSave={ctx.handleSaveAs}
+        />
+      )}
+
+      {ctx.showPrintDialog && (
+        <PrintDialog
+          filePath={ctx.activeFilePath}
+          pageCount={ctx.pageCount ?? 0}
+          currentPage={ctx.currentPage}
+          onClose={() => ctx.setShowPrintDialog(false)}
+          onUseSystemPrint={ctx.handleUseSystemPrint}
         />
       )}
 
