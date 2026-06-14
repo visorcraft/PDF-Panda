@@ -5,19 +5,13 @@ use crate::{PrintDocumentResult, PrintMargins, PrintOptions, PrinterInfo};
 pub fn list_printers() -> Vec<PrinterInfo> {
     use printers::{get_default_printer, get_printers};
 
-    let default_name = get_default_printer()
-        .map(|p| p.system_name.clone())
-        .unwrap_or_default();
+    let default_name = get_default_printer().map(|p| p.system_name.clone()).unwrap_or_default();
 
     get_printers()
         .into_iter()
         .map(|p| PrinterInfo {
             system_name: p.system_name.clone(),
-            display_name: if p.name.is_empty() {
-                p.system_name.clone()
-            } else {
-                p.name.clone()
-            },
+            display_name: if p.name.is_empty() { p.system_name.clone() } else { p.name.clone() },
             is_default: p.system_name == default_name,
             driver_name: p.driver_name,
         })
