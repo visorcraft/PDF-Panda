@@ -30,13 +30,22 @@ pub fn print_document(source_path: &Path, opts: &PrintOptions, temp_dir: &Path) 
     let page_count = doc.get_pages().len() as u32;
     let selected = parse_page_range(opts.page_range.as_deref(), page_count)?;
 
-    let temp_name = format!("print_{}.pdf", std::process::id());
+    let temp_name = format!(
+        "print_{}_{}.pdf",
+        std::process::id(),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()
+    );
     let temp_path = temp_dir.join(temp_name);
+    #[cfg(target_os = "windows")]
+    let mut guard = TempFileGuard::new(&temp_path);
+    #[cfg(not(target_os = "windows"))]
+    let guard = TempFileGuard::new(&temp_path);
     build_print_pdf(source_path, opts, &selected, &temp_path)?;
 
     #[cfg(target_os = "windows")]
     {
         open_pdf_for_manual_print(&temp_path)?;
+        guard.disarm();
         Ok(PrintDocumentResult::WindowsFallback { temp_path: temp_path.to_string_lossy().into_owned() })
     }
 
@@ -61,7 +70,7 @@ pub fn print_document(source_path: &Path, opts: &PrintOptions, temp_dir: &Path) 
 
         let job_id = printer
             .print_file(
-                temp_path.to_str().unwrap_or_default(),
+                temp_path.to_str().ok_or("Temp path is not valid UTF-8")?,
                 PrinterJobOptions {
                     name: Some("PDF Panda print job"),
                     raw_properties: &props,
@@ -70,8 +79,30 @@ pub fn print_document(source_path: &Path, opts: &PrintOptions, temp_dir: &Path) 
             )
             .map_err(|e| format!("Print failed: {:?}", e))?;
 
-        let _ = std::fs::remove_file(&temp_path);
         Ok(PrintDocumentResult::DirectJob { job_id })
+    }
+}
+
+struct TempFileGuard<'a> {
+    path: &'a Path,
+    disarmed: bool,
+}
+
+impl<'a> TempFileGuard<'a> {
+    fn new(path: &'a Path) -> Self {
+        Self { path, disarmed: false }
+    }
+
+    fn disarm(&mut self) {
+        self.disarmed = true;
+    }
+}
+
+impl<'a> Drop for TempFileGuard<'a> {
+    fn drop(&mut self) {
+        if !self.disarmed {
+            let _ = std::fs::remove_file(self.path);
+        }
     }
 }
 
