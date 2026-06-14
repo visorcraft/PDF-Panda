@@ -27,7 +27,7 @@ export function useAppStateBootstrap() {
   const annotation = useAnnotationDraftState();
   const drawingGesture = useDrawingGesture();
   const refs = useAppRefs();
-  const { showToast, withLoading } = useAppLoading({ setToast: doc.setToast, setLoading: doc.setLoading });
+  const { showToast, dismissToast, withLoading } = useAppLoading({ setToast: doc.setToast, setLoading: doc.setLoading });
   const pageRanges = useAppPageRanges({ pageCount: doc.pageCount, currentPage: doc.currentPage, showToast });
 
   const lifecycle = useAppLifecycleHooks(
@@ -113,6 +113,7 @@ export function useAppStateBootstrap() {
     refs,
     pageRanges,
     showToast,
+    dismissToast,
     withLoading,
     lifecycle,
     slices,

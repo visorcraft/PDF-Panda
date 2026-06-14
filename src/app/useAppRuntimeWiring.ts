@@ -22,6 +22,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     pageRanges,
     help,
     showToast,
+    dismissToast,
     withLoading,
     lifecycle,
     slices,
@@ -201,6 +202,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     onCloseTab: tabActions.requestCloseTab,
     shortcuts: shortcutBindingsState,
     showToast,
+    dismissToast,
     appearance,
   });
 }

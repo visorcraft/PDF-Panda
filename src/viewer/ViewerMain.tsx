@@ -47,7 +47,7 @@ export function ViewerMain({
         className={`page-scroll${!filePath ? ' welcome-scroll' : ''}${viewMode === 'markdown' ? ' markdown-scroll' : ''}${scrollViewMode === 'continuous' ? ' continuous-scroll' : ''}`}
         ref={scrollRef}
         onWheel={onWheel}
-        tabIndex={-1}
+        tabIndex={0}
         aria-label="Document pages"
       >
         {!filePath ? (

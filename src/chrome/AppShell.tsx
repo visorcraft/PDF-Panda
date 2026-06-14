@@ -29,6 +29,7 @@ type AppShellProps = {
   closeSettings: () => void;
   shortcuts: ShortcutBindingsState;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  dismissToast: () => void;
   appearance: {
     appearance: AppearanceKey;
     setAppearance: (key: AppearanceKey) => void;
@@ -63,6 +64,7 @@ export function AppShell({
   closeSettings,
   shortcuts,
   showToast,
+  dismissToast,
   appearance,
 }: AppShellProps) {
   const hasDocument = !!body.filePath;
@@ -76,7 +78,7 @@ export function AppShell({
     <div className="app" data-active-surface={activeSurface}>
       <ResizeBorders />
       <TitleBar title={windowTitle} />
-      <Toast notification={toast} />
+      <Toast notification={toast} onClose={dismissToast} />
 
       {loading && (
         <div className="loading-overlay">

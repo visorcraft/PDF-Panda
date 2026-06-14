@@ -40,6 +40,7 @@ export type UseAppShellBindingInput = {
   surface: { activeSurface: AppSurface; settingsFocus: SettingsFocusSection; closeSettings: () => void };
   shortcuts: ShortcutBindingsState;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  dismissToast: () => void;
   appearance: { appearance: AppearanceKey; setAppearance: (key: AppearanceKey) => void };
 };
 
@@ -68,6 +69,7 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
     closeSettings: input.surface.closeSettings,
     shortcuts: input.shortcuts,
     showToast: input.showToast,
+    dismissToast: input.dismissToast,
     appearance: input.appearance,
     viewer: {
       thumbnails: viewer.thumbnails,

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 
@@ -8,9 +8,22 @@ type UseAppLoadingOptions = {
 };
 
 export function useAppLoading({ setToast, setLoading }: UseAppLoadingOptions) {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dismissToast = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setToast(null);
+  }, [setToast]);
+
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    timeoutRef.current = setTimeout(() => setToast(null), 3000);
   }, [setToast]);
 
   const withLoading = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
@@ -25,5 +38,5 @@ export function useAppLoading({ setToast, setLoading }: UseAppLoadingOptions) {
     }
   };
 
-  return { showToast, withLoading };
+  return { showToast, dismissToast, withLoading };
 }

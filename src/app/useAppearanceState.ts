@@ -95,8 +95,9 @@ function applyAppearance(key: AppearanceKey): void {
   cssVariable('--pp-thumbnail-active', palette.highlight);
   cssVariable('--pp-input-border', `color-mix(in srgb, ${palette.text} 20%, ${palette.background})`);
   cssVariable('--pp-input-focus', palette.highlight);
-  cssVariable('--pp-toast-success-text', palette.positiveText);
-  cssVariable('--pp-toast-error-text', palette.negativeText);
+  // Toast text uses the fixed semantic colors from styles.css so notifications
+  // stay readable across every palette (some palette positive/negative reds and
+  // greens fail contrast on the light toast backgrounds).
   cssVariable('--pp-modal-bg', palette.alternateBackground);
   cssVariable('--pp-modal-text', palette.text);
   cssVariable('--pp-btn-secondary-bg', palette.tertiaryBackground);

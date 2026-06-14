@@ -243,7 +243,16 @@ export async function closeActiveDocument() {
   await clickMenuAction('file', 'close');
 }
 
+export async function dismissToastIfAny() {
+  const close = await $('[data-testid="toast-close"]');
+  if (await close.isDisplayed().catch(() => false)) {
+    await close.click();
+    await browser.pause(150);
+  }
+}
+
 export async function resetToWelcome() {
+  await dismissToastIfAny();
   for (let guard = 0; guard < 8; guard++) {
     const welcome = await $('[data-testid="welcome-open-pdf"]');
     if (await welcome.isDisplayed().catch(() => false)) return;

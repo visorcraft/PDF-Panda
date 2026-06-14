@@ -20,12 +20,33 @@ export function PdfUaPanel({ filePath, pdfRevision }: { filePath: string; pdfRev
     return () => { cancelled = true; };
   }, [filePath, pdfRevision]);
 
-  if (loading) return <p className="muted">Inspecting PDF/UA…</p>;
-  if (!report) return <p className="muted">Unable to inspect PDF/UA.</p>;
-  if (report.encrypted) return <p className="muted">Document is encrypted.</p>;
+  if (loading) {
+    return (
+      <div className="pdfua-panel" role="region" aria-label="PDF/UA inspection">
+        <h3>PDF/UA Check</h3>
+        <p className="muted">Inspecting PDF/UA…</p>
+      </div>
+    );
+  }
+  if (!report) {
+    return (
+      <div className="pdfua-panel" role="region" aria-label="PDF/UA inspection">
+        <h3>PDF/UA Check</h3>
+        <p className="muted">Unable to inspect PDF/UA.</p>
+      </div>
+    );
+  }
+  if (report.encrypted) {
+    return (
+      <div className="pdfua-panel" role="region" aria-label="PDF/UA inspection">
+        <h3>PDF/UA Check</h3>
+        <p className="muted">Document is encrypted.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="pdfua-panel">
+    <div className="pdfua-panel" role="region" aria-label="PDF/UA inspection">
       <h3>PDF/UA Check</h3>
       <div className={`pdfua-card ${report.tagged ? 'pdfua-pass' : 'pdfua-warn'}`}>
         <strong>{report.tagged ? 'Tagged' : 'Not tagged'}</strong>

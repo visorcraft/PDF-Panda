@@ -1,5 +1,6 @@
 import {
   clickMenuAction,
+  dismissToastIfAny,
   fixturePdf,
   openPdfViaPathModal,
   resetToWelcome,
@@ -20,6 +21,7 @@ describe('error boundary', () => {
 
   afterEach(async () => {
     await disarmThrowTrigger();
+    await dismissToastIfAny();
   });
 
   it('catches a panel render error and shows a fallback', async () => {

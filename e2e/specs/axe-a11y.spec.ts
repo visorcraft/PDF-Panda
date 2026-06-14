@@ -57,7 +57,11 @@ describe('axe accessibility', () => {
   it('PDF/UA panel has no detectable axe violations', async () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
-    await clickMenuAction('view', 'pdfua-panel');
+    // Earlier specs may have left the panel open; toggle only if it is closed.
+    const panel = await $('.pdfua-panel');
+    if (!(await panel.isDisplayed().catch(() => false))) {
+      await clickMenuAction('view', 'pdfua-panel');
+    }
     await browser.waitUntil(
       async () => (await $('.pdfua-panel').isDisplayed()),
       { timeout: 10_000, timeoutMsg: 'expected PDF/UA panel' },
