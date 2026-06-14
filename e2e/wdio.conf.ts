@@ -25,6 +25,7 @@ export const config = {
     path.join(root, 'e2e', 'specs', 'restore.spec.ts'),
     path.join(root, 'e2e', 'specs', 'keyboard-a11y.spec.ts'),
     path.join(root, 'e2e', 'specs', 'error-boundary.spec.ts'),
+    path.join(root, 'e2e', 'specs', 'print.spec.ts'),
     path.join(root, 'e2e', 'specs', 'axe-a11y.spec.ts'),
   ],
   maxInstances: 1,
