@@ -13,6 +13,7 @@ export function useAppModalStateFile() {
   const [pdfSummary, setPdfSummary] = useState<PdfSummaryResult | null>(null);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [openFilePath, setOpenFilePath] = useState<string>('');
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [recentPdfs, setRecentPdfs] = useState<string[]>(() => readStoredStringArray(RECENT_PDFS_KEY));
   const [lastBrowserDir, setLastBrowserDir] = useState<string>(() => readStoredString(LAST_BROWSER_DIR_KEY));
 
@@ -26,6 +27,7 @@ export function useAppModalStateFile() {
     pdfSummary, setPdfSummary,
     showOpenModal, setShowOpenModal,
     openFilePath, setOpenFilePath,
+    showPrintDialog, setShowPrintDialog,
     recentPdfs, setRecentPdfs,
     lastBrowserDir, setLastBrowserDir,
   };
