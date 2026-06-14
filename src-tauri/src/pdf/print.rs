@@ -146,9 +146,14 @@ pub fn render_print_preview(
     height: i32,
     temp_dir: &Path,
 ) -> Result<Vec<u8>, String> {
-    // TODO: Task 9
-    let _ = (source_path, page_index, opts, width, height, temp_dir);
-    Err("not implemented".into())
+    let temp_name = format!("preview_{}_{}.pdf", std::process::id(), page_index);
+    let temp_path = temp_dir.join(temp_name);
+
+    build_print_pdf(source_path, opts, &[page_index], &temp_path)?;
+
+    let bytes = crate::pdf::pdfium_bind::render_page_png(&temp_path, 0, width, height)?;
+    let _ = std::fs::remove_file(&temp_path);
+    Ok(bytes)
 }
 
 /// Build a transformed print PDF from the source, laying out the selected pages
@@ -496,5 +501,31 @@ mod tests {
 
         let _ = fs::remove_file(&source);
         let _ = fs::remove_file(&output);
+    }
+
+    #[test]
+    fn render_print_preview_returns_png() {
+        let dir = std::env::temp_dir().join("pdf_panda_print_test");
+        let _ = fs::create_dir_all(&dir);
+        let source = dir.join("source.pdf");
+
+        minimal_blank_pdf(&source);
+
+        let opts = PrintOptions {
+            page_range: None,
+            orientation: "portrait".into(),
+            paper_size: "A4".into(),
+            scaling: "none".into(),
+            margins: PrintMargins::None,
+            color_mode: "color".into(),
+            printer_name: None,
+            copies: None,
+            duplex: None,
+        };
+
+        let png = render_print_preview(&source, 0, &opts, 400, 600, &dir).unwrap();
+        assert!(png.starts_with(b"\x89PNG"));
+
+        let _ = fs::remove_file(&source);
     }
 }
