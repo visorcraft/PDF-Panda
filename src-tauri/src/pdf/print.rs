@@ -131,9 +131,11 @@ fn open_pdf_for_manual_print(path: &Path) -> Result<(), String> {
 }
 
 pub fn print_to_pdf(source_path: &Path, opts: &PrintOptions, output_path: &Path) -> Result<(), String> {
-    // TODO: Task 8
-    let _ = (source_path, opts, output_path);
-    Err("not implemented".into())
+    let doc = Document::load(source_path).map_err(|e| e.to_string())?;
+    let page_count = doc.get_pages().len() as u32;
+    let selected = parse_page_range(opts.page_range.as_deref(), page_count)?;
+    build_print_pdf(source_path, opts, &selected, output_path)?;
+    Ok(())
 }
 
 pub fn render_print_preview(
@@ -463,6 +465,34 @@ mod tests {
         let h = obj_to_f64(&media[3]) - obj_to_f64(&media[1]);
         assert!((w - 842.0).abs() < 0.1, "expected width ~842, got {w}");
         assert!((h - 595.0).abs() < 0.1, "expected height ~595, got {h}");
+
+        let _ = fs::remove_file(&source);
+        let _ = fs::remove_file(&output);
+    }
+
+    #[test]
+    fn print_to_pdf_creates_file() {
+        let dir = std::env::temp_dir().join("pdf_panda_print_test");
+        let _ = fs::create_dir_all(&dir);
+        let source = dir.join("source.pdf");
+        let output = dir.join("print_output.pdf");
+
+        minimal_blank_pdf(&source);
+
+        let opts = PrintOptions {
+            page_range: None,
+            orientation: "portrait".to_string(),
+            paper_size: "Letter".to_string(),
+            scaling: "fitToPage".to_string(),
+            margins: PrintMargins::Default,
+            color_mode: "color".to_string(),
+            printer_name: None,
+            copies: None,
+            duplex: None,
+        };
+
+        print_to_pdf(&source, &opts, &output).unwrap();
+        assert!(output.exists());
 
         let _ = fs::remove_file(&source);
         let _ = fs::remove_file(&output);
