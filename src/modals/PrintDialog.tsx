@@ -341,7 +341,6 @@ export function PrintDialog({
               >
                 <option value="color">Color</option>
                 <option value="grayscale">Grayscale</option>
-                <option value="monochrome">Monochrome</option>
               </select>
             </div>
           </div>
