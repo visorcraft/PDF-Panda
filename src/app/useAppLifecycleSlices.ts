@@ -29,6 +29,7 @@ export function useAppLifecycleSlices(lifecycle: Lifecycle) {
     search,
     printPages,
     handlePrint,
+    openPrintDialog,
     closePdf,
     handleOpenPdfPath,
     handleOpenEncryptedPdf,
@@ -66,7 +67,7 @@ export function useAppLifecycleSlices(lifecycle: Lifecycle) {
       handleBrowserEntryClick,
     },
     search,
-    chrome: { handlePrint, closePdf },
+    chrome: { handlePrint, openPrintDialog, closePdf },
     lifecycle,
   };
 }

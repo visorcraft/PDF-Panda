@@ -49,6 +49,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'undo'
   | 'redo'
   | 'handlePrint'
+  | 'openPrintDialog'
   | 'openSearchModal'
   | 'toggleMarkdownView'
   | 'handleOptimizePdf'
@@ -144,6 +145,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     undo: history.undo,
     redo: history.redo,
     handlePrint: chrome.handlePrint,
+    openPrintDialog: chrome.openPrintDialog,
     openSearchModal: chrome.openSearchModal,
     toggleMarkdownView: pdfActions.toggleMarkdownView,
     handleOptimizePdf: pdfActions.handleOptimizePdf,

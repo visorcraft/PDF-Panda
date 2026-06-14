@@ -34,6 +34,7 @@ export type UseAppChromeBindingsInput = {
     openPdf: () => void;
     goToPage: (page: number) => void;
     handlePrint: () => void;
+    openPrintDialog: () => void;
     openSearchModal: () => void;
     openTesseractGuide: () => void;
   };
@@ -90,6 +91,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
         setShowCommandPalette: input.help.setShowCommandPalette,
         goToPage: input.chrome.goToPage,
         handlePrint: input.chrome.handlePrint,
+        openPrintDialog: input.chrome.openPrintDialog,
         openSearchModal: input.chrome.openSearchModal,
       },
       zoom: input.zoom,
@@ -141,6 +143,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       openTesseractGuide: input.chrome.openTesseractGuide,
       openPdf: input.chrome.openPdf,
       handlePrint: input.chrome.handlePrint,
+      openPrintDialog: input.chrome.openPrintDialog,
       openSearchModal: input.chrome.openSearchModal,
     },
     help: {

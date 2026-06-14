@@ -4,7 +4,7 @@ import type { UseAppLifecycleDocumentInput } from './appLifecycleTypes';
 
 export function useAppLifecycleDocument({ input, loaders }: UseAppLifecycleDocumentInput) {
   const open = useAppLifecycleOpen({ input, loaders });
-  const { browser, search, printPages, handlePrint, closePdf } = useAppLifecycleBrowserSearch({ input, loaders, open });
+  const { browser, search, printPages, handlePrint, openPrintDialog, closePdf } = useAppLifecycleBrowserSearch({ input, loaders, open });
 
   return {
     ...open,
@@ -12,6 +12,7 @@ export function useAppLifecycleDocument({ input, loaders }: UseAppLifecycleDocum
     search,
     printPages,
     handlePrint,
+    openPrintDialog,
     closePdf,
   };
 }

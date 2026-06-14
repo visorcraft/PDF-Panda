@@ -35,6 +35,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'undo'
   | 'redo'
   | 'handlePrint'
+  | 'openPrintDialog'
   | 'openSearchModal'
   | 'setViewModePdf'
   | 'toggleMarkdownView'
@@ -128,6 +129,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     undo: source.undo,
     redo: source.redo,
     handlePrint: source.handlePrint,
+    openPrintDialog: source.openPrintDialog,
     openSearchModal: source.openSearchModal,
     setViewModePdf: source.setViewModePdf,
     toggleMarkdownView: source.toggleMarkdownView,

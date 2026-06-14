@@ -64,6 +64,7 @@ export interface AppMenuContext {
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
   handlePrint: () => void | Promise<void>;
+  openPrintDialog: () => void;
   openSearchModal: () => void;
   handleRotatePage: () => void | Promise<void>;
   handleRotatePageCcw: () => void | Promise<void>;
@@ -255,6 +256,7 @@ export type AppMenuContextSource = {
   undo: VoidHandler;
   redo: VoidHandler;
   handlePrint: VoidHandler;
+  openPrintDialog: VoidHandler;
   openSearchModal: () => void;
   handleRotatePage: VoidHandler;
   handleRotatePageCcw: VoidHandler;

@@ -122,6 +122,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
       openPdf: slices.viewer.openPdf,
       goToPage: viewerWorkflow.goToPage,
       handlePrint: chrome.handlePrint,
+      openPrintDialog: chrome.openPrintDialog,
       openSearchModal: search.openSearchModal,
       openTesseractGuide: tesseract.openTesseractGuide,
     },

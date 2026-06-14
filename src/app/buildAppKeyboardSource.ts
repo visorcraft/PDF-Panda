@@ -18,6 +18,7 @@ export type BuildAppKeyboardSourceArgs = {
     setShowCommandPalette: (open: boolean) => void;
     goToPage: (page: number) => void;
     handlePrint: () => void;
+    openPrintDialog: () => void;
     openSearchModal: () => void;
   };
   zoom: { zoomIn: () => void; zoomOut: () => void; resetZoom: () => void };
@@ -50,6 +51,7 @@ export function buildAppKeyboardSource(args: BuildAppKeyboardSourceArgs): BuildA
     guardUnsaved: args.chrome.guardUnsaved,
     closePdf: args.chrome.closePdf,
     handlePrint: args.chrome.handlePrint,
+    openPrintDialog: args.chrome.openPrintDialog,
     openSearchModal: args.chrome.openSearchModal,
     goToPage: args.chrome.goToPage,
     zoomIn: args.zoom.zoomIn,

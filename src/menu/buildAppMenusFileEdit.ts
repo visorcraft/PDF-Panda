@@ -16,7 +16,7 @@ export function buildFileEditMenus(ctx: AppMenuContext): { fileMenu: MenuRoot; e
             }),
             act('save-as', 'Save As…', ctx.openSaveAs, { shortcutCommandId: 'save-as' }),
             sep(),
-            act('print', 'Print…', ctx.handlePrint, { shortcutCommandId: 'print' }),
+            act('print', 'Print…', ctx.openPrintDialog, { shortcutCommandId: 'print' }),
             sub('Export', [
               act('export-image', 'Pages as images…', ctx.openExportPngModal, { shortcutCommandId: 'export-images' }),
               act('export-page', 'Current page as PDF…', ctx.openExportPagePdfModal),

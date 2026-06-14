@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { usePdfBrowser } from '../pdf/usePdfBrowser';
 import { usePdfSearch } from '../pdf/usePdfSearch';
 import { usePrintJobs } from '../pdf/usePrintJobs';
@@ -37,6 +38,7 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
     setMergeFilePath,
     setShowOpenModal,
     setShowDeleteModal,
+    setShowPrintDialog,
     setPageSizes,
   } = modal;
   const { setShowSignModal, setShowMetadataModal } = security;
@@ -108,6 +110,11 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
 
   const { printPages, handlePrint, clearPrintPages } = usePrintJobs({ filePath, pageCount, withLoading: input.withLoading });
 
+  const openPrintDialog = useCallback(() => {
+    if (!filePath) return;
+    setShowPrintDialog(true);
+  }, [filePath, setShowPrintDialog]);
+
   const { closePdf } = useClosePdf({
     filePath,
     discardHistory: open.discardHistory,
@@ -154,5 +161,5 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
     setShowDeleteModal,
   });
 
-  return { browser, search, printPages, handlePrint, closePdf };
+  return { browser, search, printPages, handlePrint, openPrintDialog, closePdf };
 }

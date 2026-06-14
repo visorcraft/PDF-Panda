@@ -25,6 +25,7 @@ export type BuildAppMenuInputArgs = {
     openTesseractGuide: () => void;
     openPdf: () => void;
     handlePrint: () => void;
+    openPrintDialog: () => void;
     openSearchModal: () => void;
   };
   help: Pick<HelpState, 'setShowShortcutsHelp' | 'setShowLicenses' | 'setShowCredits' | 'setShowAbout' | 'setShowUpdateModal' | 'updaterSupported' | 'setShowCommandPalette'>;

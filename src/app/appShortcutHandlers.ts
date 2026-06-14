@@ -37,7 +37,7 @@ export const SHORTCUT_HANDLERS: Record<ShortcutCommandId, ShortcutHandler> = {
   print: {
     id: 'print',
     enabled: (a) => a.hasOpenPdf,
-    run: (a) => void a.handlePrint(),
+    run: (a) => void a.openPrintDialog(),
   },
   undo: {
     id: 'undo',
