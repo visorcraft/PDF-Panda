@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Modal } from '../ui/Modal';
@@ -88,6 +88,15 @@ export function PrintDialog({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const previewUrlRef = useRef<string | null>(null);
+
+  const setPreviewObjectUrl = (url: string | null) => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = url;
+    setPreviewUrl(url);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -125,10 +134,7 @@ export function PrintDialog({
         if (cancelled) return;
         const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
         const url = URL.createObjectURL(blob);
-        setPreviewUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return url;
-        });
+        setPreviewObjectUrl(url);
       } catch (e) {
         if (cancelled) return;
         setError(`Preview failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -145,9 +151,12 @@ export function PrintDialog({
 
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
     };
-  }, [previewUrl]);
+  }, []);
 
   const handlePrint = async () => {
     if (!opts.printerName) {
@@ -224,7 +233,7 @@ export function PrintDialog({
   const customMargins = opts.margins.kind === 'custom' ? opts.margins : null;
 
   return (
-    <Modal onClose={onClose} data-testid="print-dialog">
+    <Modal onClose={onClose} data-testid="print-dialog" aria-label="Print">
       <div className="print-dialog-layout">
         <div className="print-dialog-controls">
           <h3>Print</h3>
