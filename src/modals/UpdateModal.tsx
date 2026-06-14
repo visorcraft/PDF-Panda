@@ -207,10 +207,17 @@ export function UpdateModal({ onClose, updaterSupported }: UpdateModalProps) {
         )}
         {phase === 'error' && (
           <>
-            <p className="error-text">{error || 'Update check failed.'}</p>
+            <p className="error-text">
+              {error?.toLowerCase().includes('release json')
+                ? 'Could not fetch the release manifest. The latest release may not have packages attached yet.'
+                : error || 'Update check failed.'}
+            </p>
             <div className="modal-actions">
               <button type="button" className="btn btn-active" onClick={() => void runCheck()}>
                 Retry
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => void openReleasePage()}>
+                Open Release Page
               </button>
               <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Close
