@@ -146,12 +146,19 @@ pub fn render_print_preview(
     height: i32,
     temp_dir: &Path,
 ) -> Result<Vec<u8>, String> {
-    let temp_name = format!("preview_{}_{}.pdf", std::process::id(), page_index);
+    let temp_name = format!(
+        "preview_{}_{}_{}.pdf",
+        std::process::id(),
+        page_index,
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()
+    );
     let temp_path = temp_dir.join(temp_name);
+    let mut guard = TempFileGuard::new(&temp_path);
 
     build_print_pdf(source_path, opts, &[page_index], &temp_path)?;
 
     let bytes = crate::pdf::pdfium_bind::render_page_png(&temp_path, 0, width, height)?;
+    guard.disarm();
     let _ = std::fs::remove_file(&temp_path);
     Ok(bytes)
 }
