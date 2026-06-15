@@ -768,6 +768,73 @@ body {
   font-size: 12px;
 }
 
+/* Tab right-click context menu — themed, mirrors .menu-dropdown styling. */
+.tab-context-menu,
+.tcm-submenu {
+  z-index: 1300;
+  min-width: 220px;
+  padding: 6px 0;
+  background: var(--pp-menu-bg);
+  border: 1px solid var(--pp-menu-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.tab-context-menu {
+  position: fixed;
+}
+
+.tcm-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--pp-menu-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tcm-item:hover:not(:disabled) {
+  background: var(--pp-menu-hover);
+}
+
+.tcm-item:disabled {
+  color: var(--pp-menu-disabled);
+  cursor: default;
+}
+
+.tcm-divider {
+  height: 1px;
+  margin: 5px 0;
+  background: var(--pp-menu-border);
+}
+
+.tcm-submenu-wrap {
+  position: relative;
+}
+
+.tcm-submenu-wrap:hover > .tcm-item:not(:disabled) {
+  background: var(--pp-menu-hover);
+}
+
+.tcm-arrow {
+  color: var(--pp-text-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tcm-submenu {
+  position: absolute;
+  top: -6px;
+  left: 100%;
+  margin-left: 2px;
+}
+
 .menu-separator {
   height: 1px;
   margin: 6px 0;
