@@ -44,7 +44,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 #[cfg(test)]
 use std::process::Command;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
+// `Emitter` (event emit) is only used by the single-instance handler, which is
+// compiled out under the `wdio` (e2e) feature.
+#[cfg(not(feature = "wdio"))]
+use tauri::Emitter;
 
 /// File paths captured from the initial process launch (file-association /
 /// "Open With"). The frontend drains these via the `take_pending_open_paths`
@@ -56,7 +60,9 @@ struct PendingOpenPaths(std::sync::Mutex<Vec<String>>);
 /// Pick the window that should receive a forwarded "Open With" path: the focused
 /// window, else "main", else any window. With multi-window, "main" may be closed
 /// while spawned document windows remain, so always-targeting "main" could drop
-/// the path.
+/// the path. Only the single-instance handler calls this; it is compiled out
+/// under the `wdio` (e2e) feature.
+#[cfg(not(feature = "wdio"))]
 fn target_open_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
     app.webview_windows()
         .values()
@@ -178,8 +184,7 @@ fn main() {
     // argv[0] is the program path, so skip it and keep only non-flag arguments.
     // The frontend drains these via `take_pending_open_paths` after it mounts,
     // which is race-free — unlike emitting an event the listener may miss.
-    let initial_open_paths: Vec<String> =
-        std::env::args().skip(1).filter(|a| !a.starts_with('-')).collect();
+    let initial_open_paths: Vec<String> = std::env::args().skip(1).filter(|a| !a.starts_with('-')).collect();
 
     builder
         .manage(PendingOpenPaths(std::sync::Mutex::new(initial_open_paths)))
