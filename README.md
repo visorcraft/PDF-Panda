@@ -99,7 +99,7 @@ Three things we care about:
 
 - [Node.js](https://nodejs.org/) 24+
 - [Rust](https://rustup.rs/) (edition 2021)
-- **Linux:** GTK/WebKit dev packages (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the exact apt list)
+- **Linux:** GTK/WebKit dev packages plus `libcups2-dev` (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the exact apt list)
 - **Linux (optional):** `mold` linker and `sccache` for faster builds (configured in `.cargo/config.toml`)
 
 ### Fetch PDFium (required for rendering)
