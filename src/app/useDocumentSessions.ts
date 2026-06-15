@@ -360,6 +360,28 @@ export function useDocumentSessions() {
     [sessions],
   );
 
+  const moveTabToFirst = useCallback((id: DocumentSessionId) => {
+    setSessions((prev) => {
+      const i = prev.findIndex((s) => s.id === id);
+      if (i <= 0) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(i, 1);
+      next.unshift(moved!);
+      return next;
+    });
+  }, []);
+
+  const moveTabToLast = useCallback((id: DocumentSessionId) => {
+    setSessions((prev) => {
+      const i = prev.findIndex((s) => s.id === id);
+      if (i < 0 || i === prev.length - 1) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(i, 1);
+      next.push(moved!);
+      return next;
+    });
+  }, []);
+
   const dirtySessions = useMemo(
     () => sessions.filter((s) => s.isDirty),
     [sessions],
@@ -384,6 +406,8 @@ export function useDocumentSessions() {
     setActiveSession,
     cycleTab,
     jumpToTab,
+    moveTabToFirst,
+    moveTabToLast,
     findSessionByOriginal,
     ensureSessionForOpen,
     clearOpeningPath,

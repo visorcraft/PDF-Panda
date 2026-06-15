@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { listen } from '@tauri-apps/api/event';
+import { listen, emit } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { readSpawnParams, spawnDocumentWindow } from './spawnWindow';
 import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
 import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
@@ -188,6 +189,17 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
 
   useEffect(() => {
     void (async () => {
+      // Spawned document windows ("Move tab → New window") open only their one
+      // file, skip session restore (persistence is gated off elsewhere), and ack
+      // their load so the source window can close the moved tab.
+      const spawnParams = readSpawnParams();
+      if (spawnParams.spawn && spawnParams.openPath) {
+        const ok = await loadPdfFromPathRef.current(spawnParams.openPath);
+        if (ok && isTauriRuntime()) {
+          void emit('spawn-loaded', { token: spawnParams.token });
+        }
+        return;
+      }
       // Drain any file paths this process was launched with (file-association /
       // "Open With"). Pulling after mount is race-free, where the old launch-time
       // event could fire before this component registered its 'open-path'
@@ -217,6 +229,40 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, []);
 
+  // Move a tab's document into a fresh window. Opening it there is a fresh load
+  // of the on-disk file, so route a dirty source through the unsaved guard first
+  // (Save keeps edits; the new window then opens the saved file).
+  const moveToNewWindow = (id: string) => {
+    const session = doc.sessions.find((s) => s.id === id);
+    if (!session?.originalPath) return;
+    const run = () =>
+      spawnDocumentWindow(session.originalPath, id, {
+        finalizeClose: tabActions.finalizeCloseSession,
+        showToast,
+      });
+    if (session.isDirty) {
+      if (id !== doc.activeId) doc.setActiveSession(id);
+      unsaved.guardUnsaved(run, true);
+    } else {
+      void run();
+    }
+  };
+
+  const tabMenuApi = {
+    selectTab: tabActions.selectTab,
+    requestCloseTab: tabActions.requestCloseTab,
+    finalizeClose: tabActions.finalizeCloseSession,
+    moveTabToFirst: doc.moveTabToFirst,
+    moveTabToLast: doc.moveTabToLast,
+    moveToNewWindow,
+    updateSession: doc.updateSession,
+    openPrint: chrome.openPrintDialog,
+    openProperties: (filePath: string) => {
+      void pdfActions.openMetadataModal(filePath);
+    },
+    showToast,
+  };
+
   return useAppShellBinding({
     doc,
     modal,
@@ -235,6 +281,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     surface,
     onSelectTab: tabActions.selectTab,
     onCloseTab: tabActions.requestCloseTab,
+    tabMenuApi,
     shortcuts: shortcutBindingsState,
     showToast,
     dismissToast,

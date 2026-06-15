@@ -14,6 +14,7 @@ import { useAppLifecycleSlices } from './useAppLifecycleSlices';
 import { useAppSetupHooks } from './useAppSetupHooks';
 import { useAppViewerWorkflow } from './useAppViewerWorkflow';
 import { useSessionPersistence } from './useSessionPersistence';
+import { readSpawnParams } from './spawnWindow';
 import { useAppearanceState } from './useAppearanceState';
 import { useShortcutBindingsState } from './useShortcutBindingsState';
 import { useAppSurfaceState } from './useAppSurfaceState';
@@ -96,6 +97,7 @@ export function useAppStateBootstrap() {
     loadPdfFromPath: lifecycle.loadPdfFromPath,
     setActiveSession: doc.setActiveSession,
     showToast,
+    isSpawned: readSpawnParams().spawn,
   });
 
   const appearance = useAppearanceState();

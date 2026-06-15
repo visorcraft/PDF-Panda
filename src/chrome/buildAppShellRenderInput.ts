@@ -13,6 +13,7 @@ import type { HelpState } from '../app/useHelpChromeState';
 import type { AppMenus } from '../menu/types';
 import type { AppModalsRuntime } from '../modals/appModalsContext';
 import type { BuildAppChromeSourceInput } from './buildAppChromeSource';
+import type { TabMenuApi } from './useTabContextMenu';
 import type { BuildAppViewerSourceInput } from '../viewer/buildAppViewerSource';
 import type { PdfPageSize } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
@@ -25,6 +26,7 @@ export type BuildAppShellRenderInputArgs = {
   doc: DocumentState;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  tabMenuApi: TabMenuApi;
   modal: { pageSizes: PdfPageSize[] };
   panels: PanelsState;
   annotation: AnnotationState;
@@ -93,6 +95,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       activeTabId: args.doc.activeId,
       onSelectTab: args.onSelectTab,
       onCloseTab: args.onCloseTab,
+      tabMenuApi: args.tabMenuApi,
       documentChromeVisible: args.activeSurface === 'document',
       shortcutBindings: args.shortcuts.bindings,
     }),

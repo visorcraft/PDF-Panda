@@ -9,6 +9,7 @@ import { AboutModal } from '../about/AboutModal';
 import { CreditsModal } from '../credits/CreditsModal';
 import { LicensesModal } from '../licenses/LicensesModal';
 import { TabBar } from '../chrome/TabBar';
+import { useTabContextMenu, type TabMenuApi } from '../chrome/useTabContextMenu';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
 import { buildKeyboardShortcuts } from './buildMenuShortcuts';
@@ -35,6 +36,7 @@ type MenuChromeProps = {
   activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  tabMenuApi: TabMenuApi;
   documentChromeVisible: boolean;
   shortcutBindings: ShortcutBindings;
 };
@@ -356,9 +358,11 @@ export function MenuChrome({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  tabMenuApi,
   documentChromeVisible,
   shortcutBindings,
 }: MenuChromeProps) {
+  const { onTabContextMenu, overlay: tabMenuOverlay } = useTabContextMenu({ tabs, ...tabMenuApi });
   return (
     <>
       <div className="menu-chrome">
@@ -370,7 +374,9 @@ export function MenuChrome({
               activeId={activeTabId}
               onSelect={onSelectTab}
               onClose={onCloseTab}
+              onTabContextMenu={onTabContextMenu}
             />
+            {tabMenuOverlay}
             {(quickAccess.length > 0 || modeExtras) && (
               <div className="quick-toolbar-row">
                 <QuickToolbar items={quickAccess} />

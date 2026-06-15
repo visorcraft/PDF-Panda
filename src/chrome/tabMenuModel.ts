@@ -25,21 +25,6 @@ export interface TabMenuActions {
   properties: () => void;
 }
 
-/** Id-taking actions threaded down to the chrome; bound to a target id there. */
-export interface TabMenuApi {
-  rename(id: string): void;
-  closeTab(id: string): void;
-  closeOthers(id: string): void;
-  closeRight(id: string): void;
-  newWindow(id: string): void;
-  moveFirst(id: string): void;
-  moveLast(id: string): void;
-  copyPath(id: string): void;
-  openFolder(id: string): void;
-  print(id: string): void;
-  properties(id: string): void;
-}
-
 /** Build the exact menu structure from the spec (order + dividers + submenu). */
 export function buildTabMenuItems(a: TabMenuActions): TabMenuItem[] {
   return [

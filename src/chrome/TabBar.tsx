@@ -6,11 +6,12 @@ type TabBarProps = {
   activeId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onTabContextMenu?: (id: string, x: number, y: number) => void;
 };
 
 const SCROLL_EDGE_EPSILON = 2;
 
-export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
+export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: TabBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -111,6 +112,14 @@ export function TabBar({ tabs, activeId, onSelect, onClose }: TabBarProps) {
               data-working-path={import.meta.env.VITE_WDIO === '1' ? tab.filePath || undefined : undefined}
               className={`tab-item${active ? ' active' : ''}`}
               onClick={() => onSelect(tab.id)}
+              onContextMenu={
+                onTabContextMenu
+                  ? (e) => {
+                      e.preventDefault();
+                      onTabContextMenu(tab.id, e.clientX, e.clientY);
+                    }
+                  : undefined
+              }
               onMouseDown={(e) => {
                 if (e.button === 1) {
                   e.preventDefault();

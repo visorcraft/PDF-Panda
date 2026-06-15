@@ -76,10 +76,11 @@ export function useSecurityDocumentActions(opts: UseSecurityDocumentActionsOptio
     });
   }, [opts]);
 
-  const openMetadataModal = useCallback(async () => {
-    if (!opts.filePath) return;
+  const openMetadataModal = useCallback(async (explicitPath?: string) => {
+    const path = explicitPath ?? opts.filePath;
+    if (!path) return;
     await opts.withLoading(async () => {
-      const metadata = await invoke<PdfDocumentMetadata>('get_pdf_metadata', { path: opts.filePath });
+      const metadata = await invoke<PdfDocumentMetadata>('get_pdf_metadata', { path });
       opts.setMetadataTitle(metadata.title ?? '');
       opts.setMetadataAuthor(metadata.author ?? '');
       opts.setMetadataSubject(metadata.subject ?? '');

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { MenuChrome } from '../menu/MenuChrome';
 import type { AppMenus } from '../menu/types';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
+import type { TabMenuApi } from './useTabContextMenu';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 type AppChromeProps = {
@@ -21,6 +22,7 @@ type AppChromeProps = {
   activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  tabMenuApi: TabMenuApi;
   documentChromeVisible: boolean;
   shortcutBindings: ShortcutBindings;
 };
@@ -42,6 +44,7 @@ export function AppChrome({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  tabMenuApi,
   documentChromeVisible,
   shortcutBindings,
 }: AppChromeProps) {
@@ -66,6 +69,7 @@ export function AppChrome({
         activeTabId={activeTabId}
         onSelectTab={onSelectTab}
         onCloseTab={onCloseTab}
+        tabMenuApi={tabMenuApi}
         documentChromeVisible={documentChromeVisible}
         shortcutBindings={shortcutBindings}
       />

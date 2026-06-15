@@ -24,6 +24,7 @@ export type UseAppShellBindingInput = {
   doc: DocumentState;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  tabMenuApi: import('../chrome/useTabContextMenu').TabMenuApi;
   modal: ModalState;
   panels: PanelsState;
   annotation: AnnotationState;
@@ -52,6 +53,7 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
     doc: input.doc,
     onSelectTab: input.onSelectTab,
     onCloseTab: input.onCloseTab,
+    tabMenuApi: input.tabMenuApi,
     modal: input.modal,
     panels: input.panels,
     annotation: input.annotation,

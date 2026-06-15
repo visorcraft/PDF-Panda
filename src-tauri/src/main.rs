@@ -53,6 +53,19 @@ use tauri::{Emitter, Manager};
 /// is registered, silently dropping the file the user asked to open.
 struct PendingOpenPaths(std::sync::Mutex<Vec<String>>);
 
+/// Pick the window that should receive a forwarded "Open With" path: the focused
+/// window, else "main", else any window. With multi-window, "main" may be closed
+/// while spawned document windows remain, so always-targeting "main" could drop
+/// the path.
+fn target_open_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    app.webview_windows()
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .cloned()
+        .or_else(|| app.get_webview_window("main"))
+        .or_else(|| app.webview_windows().values().next().cloned())
+}
+
 include!("commands/types.inc.rs");
 include!("commands/wrappers_render.inc.rs");
 include!("commands/wrappers_page.inc.rs");
@@ -154,7 +167,7 @@ fn main() {
             // opened as a bogus document, accumulating a dead tab each time.
             let paths: Vec<String> = argv.into_iter().skip(1).filter(|a| !a.starts_with('-')).collect();
             if !paths.is_empty() {
-                if let Some(w) = app.get_webview_window("main") {
+                if let Some(w) = target_open_window(app) {
                     let _ = w.emit("open-path", paths);
                     let _ = w.set_focus();
                 }

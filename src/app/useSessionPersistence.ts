@@ -54,6 +54,7 @@ export function useSessionPersistence({
   loadPdfFromPath,
   setActiveSession,
   showToast,
+  isSpawned = false,
 }: {
   sessions: DocumentSessionData[];
   activeId: string | null;
@@ -63,12 +64,16 @@ export function useSessionPersistence({
   loadPdfFromPath: (path: string, password?: string, targetSessionId?: string) => Promise<boolean>;
   setActiveSession: (id: string) => void;
   showToast: (msg: string, kind?: 'error') => void;
+  isSpawned?: boolean;
 }) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRestoringRef = useRef(false);
   const restoreAttemptedRef = useRef(false);
 
   const saveSessions = useCallback(async () => {
+    // Spawned document windows are ephemeral: never persist (they share one
+    // sessions.json with the main window and would clobber it).
+    if (isSpawned) return;
     if (!restoreAttemptedRef.current) return;
     if (isRestoringRef.current) return;
     const state = toState(sessions, activeId);
@@ -77,7 +82,7 @@ export function useSessionPersistence({
     } catch {
       // Silent fail — session restore is best-effort.
     }
-  }, [sessions, activeId]);
+  }, [sessions, activeId, isSpawned]);
 
   useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
