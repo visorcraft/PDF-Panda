@@ -1,6 +1,5 @@
 import type { AppMenuContext, MenuAction, MenuRoot } from './types';
 import { act, sep } from './menuBuilders';
-import { APPEARANCE_OPTIONS } from '../settings/appearancePalettes';
 
 export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
   const pdfItems = [
@@ -31,15 +30,11 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
       ctx.togglePdfUaPanel,
       { active: ctx.showPdfUaPanel },
     ),
-    sep(),
   ];
-  const themeItems = APPEARANCE_OPTIONS.map((option) =>
-    act(`theme-${option.key}`, option.label, () => ctx.setTheme(option.key), { active: ctx.theme === option.key }),
-  );
   return {
     id: 'view',
     label: 'View',
-    items: ctx.hasPdf ? [...pdfItems, ...themeItems] : themeItems,
+    items: pdfItems,
   };
 }
 

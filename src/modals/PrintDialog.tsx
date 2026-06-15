@@ -38,8 +38,8 @@ type PrintDialogProps = {
 const DEFAULT_OPTS: PrintOptions = {
   pageRange: 'all',
   orientation: 'portrait',
-  paperSize: 'A4',
-  scaling: 'fitToPage',
+  paperSize: 'Letter',
+  scaling: 'none',
   margins: { kind: 'default' },
   colorMode: 'color',
   copies: 1,
