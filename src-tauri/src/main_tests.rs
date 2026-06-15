@@ -19422,3 +19422,25 @@ fn list_printers_does_not_panic() {
     let printers = pdf::print::list_printers();
     assert!(printers.is_empty() || !printers[0].system_name.is_empty());
 }
+
+#[test]
+fn resolve_rename_target_appends_pdf_extension() {
+    let original = PathBuf::from("/docs/old.pdf");
+    let out = resolve_rename_target(&original, "report").unwrap();
+    assert_eq!(out, PathBuf::from("/docs/report.pdf"));
+}
+
+#[test]
+fn resolve_rename_target_keeps_existing_pdf_extension() {
+    let original = PathBuf::from("/docs/old.pdf");
+    let out = resolve_rename_target(&original, "Report.PDF").unwrap();
+    assert_eq!(out, PathBuf::from("/docs/Report.PDF"));
+}
+
+#[test]
+fn resolve_rename_target_rejects_separators_and_empty() {
+    let original = PathBuf::from("/docs/old.pdf");
+    assert!(resolve_rename_target(&original, "a/b").is_err());
+    assert!(resolve_rename_target(&original, "a\\b").is_err());
+    assert!(resolve_rename_target(&original, "   ").is_err());
+}

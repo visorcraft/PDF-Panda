@@ -173,6 +173,81 @@ fn take_pending_open_paths(pending: tauri::State<'_, PendingOpenPaths>) -> Vec<S
     let mut guard = pending.0.lock().unwrap_or_else(|e| e.into_inner());
     std::mem::take(&mut *guard)
 }
+/// Resolve the on-disk target for a rename: same directory as `original`, base
+/// name `new_name`, forcing a single `.pdf` extension. Rejects path separators.
+fn resolve_rename_target(original: &Path, new_name: &str) -> Result<PathBuf, String> {
+    let trimmed = new_name.trim();
+    if trimmed.is_empty() {
+        return Err("Name cannot be empty".into());
+    }
+    if trimmed.contains('/') || trimmed.contains('\\') {
+        return Err("Name cannot contain path separators".into());
+    }
+    let dir = original.parent().ok_or("File has no parent directory")?;
+    let mut base = trimmed.trim_end_matches('.').to_string();
+    if !base.to_lowercase().ends_with(".pdf") {
+        base.push_str(".pdf");
+    }
+    Ok(dir.join(base))
+}
+/// Rename the PDF on disk (in its current directory). Returns the new path.
+#[tauri::command]
+fn rename_document(original_path: String, new_file_name: String) -> Result<String, String> {
+    let original = Path::new(&original_path);
+    if !original.exists() {
+        return Err("Original file no longer exists".into());
+    }
+    let target = resolve_rename_target(original, &new_file_name)?;
+    if target == original {
+        return Ok(original_path);
+    }
+    if target.exists() {
+        let name = target.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+        return Err(format!("A file named \"{name}\" already exists"));
+    }
+    std::fs::rename(original, &target).map_err(|e| e.to_string())?;
+    Ok(target.to_string_lossy().into_owned())
+}
+/// Reveal a file in the OS file manager, selecting it where supported.
+#[tauri::command]
+fn reveal_in_file_manager(path: String) -> Result<(), String> {
+    use std::process::Command;
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err("File no longer exists".into());
+    }
+    let parent = p.parent().ok_or("No parent directory")?;
+    #[cfg(target_os = "linux")]
+    {
+        let uri = format!("file://{path}");
+        let dbus = Command::new("dbus-send")
+            .args([
+                "--session",
+                "--print-reply",
+                "--dest=org.freedesktop.FileManager1",
+                "--type=method_call",
+                "/org/freedesktop/FileManager1",
+                "org.freedesktop.FileManager1.ShowItems",
+                &format!("array:string:{uri}"),
+                "string:",
+            ])
+            .status();
+        if matches!(dbus, Ok(s) if s.success()) {
+            return Ok(());
+        }
+        Command::new("xdg-open").arg(parent).status().map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open").args(["-R", &path]).status().map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer").arg(format!("/select,{path}")).status().map_err(|e| e.to_string())?;
+    }
+    let _ = parent;
+    Ok(())
+}
 /// Text/heuristic Markdown preview without assets or OCR (API/tests only).
 /// The UI Markdown view uses `save_pdf_markdown`, which runs the full export pipeline.
 #[tauri::command]

@@ -2046,6 +2046,8 @@ tauri::generate_handler![
             file_byte_size,
             native_file_dialogs_enabled,
             take_pending_open_paths,
+            rename_document,
+            reveal_in_file_manager,
             list_printers,
             print_document,
             print_to_pdf,
