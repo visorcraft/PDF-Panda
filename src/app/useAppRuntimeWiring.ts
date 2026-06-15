@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
 import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
@@ -153,33 +154,66 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
 
   const openPathPendingRef = useRef(false);
 
+  // Always point at the latest loader. The listener and the launch-path pull are
+  // registered once (empty deps); without this ref they would capture a stale
+  // loadPdfFromPath — both calling outdated logic and deduping against stale
+  // session state.
+  const loadPdfFromPathRef = useRef(lifecycle.loadPdfFromPath);
+  loadPdfFromPathRef.current = lifecycle.loadPdfFromPath;
+
+  // Register the 'open-path' listener exactly once. Re-registering on every
+  // loadPdfFromPath identity change (which changes on every session change) let
+  // listeners leak — the cleanup is a no-op until listen()'s promise resolves —
+  // so a single event fired the loader multiple times, opening a new file twice.
   useEffect(() => {
     if (!isTauriRuntime()) return;
     let unlisten: (() => void) | undefined;
-    listen<string[]>('open-path', (event) => {
+    let cancelled = false;
+    void listen<string[]>('open-path', (event) => {
       openPathPendingRef.current = true;
       for (const path of event.payload) {
-        void lifecycle.loadPdfFromPath(path);
+        void loadPdfFromPathRef.current(path);
       }
     }).then((fn) => {
-      unlisten = fn;
+      // If the effect was torn down before listen() resolved, unlisten now
+      // instead of leaking the registration.
+      if (cancelled) fn();
+      else unlisten = fn;
     });
     return () => {
+      cancelled = true;
       if (unlisten) unlisten();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
-  }, [lifecycle.loadPdfFromPath]);
+  }, []);
 
   useEffect(() => {
-    if (persistence?.restoreSessions) {
-      void persistence.restoreSessions(() => openPathPendingRef.current).then(() => {
-        // If an open-path arrived during restore, it already focused its tab;
-        // do not override with the restored active index.
-        if (openPathPendingRef.current) {
-          openPathPendingRef.current = false;
+    void (async () => {
+      // Drain any file paths this process was launched with (file-association /
+      // "Open With"). Pulling after mount is race-free, where the old launch-time
+      // event could fire before this component registered its 'open-path'
+      // listener and be dropped (the bug where the app opened but the PDF didn't).
+      let launchPaths: string[] = [];
+      if (isTauriRuntime()) {
+        try {
+          launchPaths = await invoke<string[]>('take_pending_open_paths');
+        } catch {
+          launchPaths = [];
         }
-      });
-    }
+      }
+      if (launchPaths.length > 0) openPathPendingRef.current = true;
+      // Restore the previous session first, skipping its active-tab restore when
+      // a launch file is pending so that file wins focus.
+      if (persistence?.restoreSessions) {
+        await persistence.restoreSessions(() => openPathPendingRef.current);
+      }
+      // Open launch files after restore so an already-restored document is
+      // focused (deduped) rather than opened a second time. Use the ref so the
+      // dedup sees the just-restored sessions.
+      for (const path of launchPaths) {
+        void loadPdfFromPathRef.current(path);
+      }
+      openPathPendingRef.current = false;
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, []);
 

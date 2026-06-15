@@ -46,6 +46,13 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tauri::{Emitter, Manager};
 
+/// File paths captured from the initial process launch (file-association /
+/// "Open With"). The frontend drains these via the `take_pending_open_paths`
+/// command once its document loaders have mounted. Pulling on demand avoids a
+/// startup race: emitting an event at launch could fire before any JS listener
+/// is registered, silently dropping the file the user asked to open.
+struct PendingOpenPaths(std::sync::Mutex<Vec<String>>);
+
 include!("commands/types.inc.rs");
 include!("commands/wrappers_render.inc.rs");
 include!("commands/wrappers_page.inc.rs");
@@ -142,7 +149,10 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // Forward non-flag argv entries to the frontend as open-path events.
-            let paths: Vec<String> = argv.into_iter().filter(|a| !a.starts_with('-')).collect();
+            // `argv` is the second instance's full `std::env::args()`, so skip
+            // argv[0] (the program path) — otherwise the binary's own path is
+            // opened as a bogus document, accumulating a dead tab each time.
+            let paths: Vec<String> = argv.into_iter().skip(1).filter(|a| !a.starts_with('-')).collect();
             if !paths.is_empty() {
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.emit("open-path", paths);
@@ -151,28 +161,20 @@ fn main() {
             }
         }));
 
+    // Capture any file paths from this launch (file-association / "Open With").
+    // argv[0] is the program path, so skip it and keep only non-flag arguments.
+    // The frontend drains these via `take_pending_open_paths` after it mounts,
+    // which is race-free — unlike emitting an event the listener may miss.
+    let initial_open_paths: Vec<String> =
+        std::env::args().skip(1).filter(|a| !a.starts_with('-')).collect();
+
     builder
+        .manage(PendingOpenPaths(std::sync::Mutex::new(initial_open_paths)))
         .setup(|app| {
             // In a packaged build, PDFium ships under the app's resource
             // directory; record it so the loader can find it at runtime.
             if let Ok(resources) = app.path().resource_dir() {
                 set_bundled_pdfium_dir(resources.join("vendor").join("pdfium"));
-            }
-            // If the first launch includes a path arg, emit it so the UI opens it.
-            let args: Vec<String> = std::env::args().collect();
-            if args.len() > 1 {
-                let paths: Vec<String> = args.into_iter().skip(1).filter(|a| !a.starts_with('-')).collect();
-                if !paths.is_empty() {
-                    let app_handle = app.handle().clone();
-                    // Defer until the webview is ready.
-                    tauri::async_runtime::spawn(async move {
-                        // Give the frontend a moment to bootstrap listeners.
-                        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-                        if let Some(w) = app_handle.get_webview_window("main") {
-                            let _ = w.emit("open-path", paths);
-                        }
-                    });
-                }
             }
             Ok(())
         })

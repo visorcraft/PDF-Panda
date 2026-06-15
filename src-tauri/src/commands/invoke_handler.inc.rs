@@ -2045,6 +2045,7 @@ tauri::generate_handler![
             prune_history_entry,
             file_byte_size,
             native_file_dialogs_enabled,
+            take_pending_open_paths,
             list_printers,
             print_document,
             print_to_pdf,

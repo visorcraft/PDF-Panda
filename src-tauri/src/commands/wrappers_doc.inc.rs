@@ -165,6 +165,14 @@ fn native_file_dialogs_enabled() -> bool {
         std::env::var("PDF_PANDA_DISABLE_NATIVE_DIALOGS").ok().as_deref(),
     )
 }
+/// Drain file paths captured at launch (file-association / "Open With").
+/// Returns them once and clears the buffer, so the frontend can open them
+/// after its document loaders mount — avoiding a startup event-delivery race.
+#[tauri::command]
+fn take_pending_open_paths(pending: tauri::State<'_, PendingOpenPaths>) -> Vec<String> {
+    let mut guard = pending.0.lock().unwrap_or_else(|e| e.into_inner());
+    std::mem::take(&mut *guard)
+}
 /// Text/heuristic Markdown preview without assets or OCR (API/tests only).
 /// The UI Markdown view uses `save_pdf_markdown`, which runs the full export pipeline.
 #[tauri::command]
