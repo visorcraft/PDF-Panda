@@ -10,7 +10,7 @@ identity="${APPLE_SIGNING_IDENTITY:?Set APPLE_SIGNING_IDENTITY}"
 sign_app() {
   app="$1"
   echo "Signing $app"
-  codesign --force --options runtime --timestamp --sign "$IDENTITY" --deep "$app"
+  codesign --force --options runtime --timestamp --sign "$identity" --deep "$app"
   codesign --verify --deep --strict "$app"
 }
 
@@ -56,7 +56,7 @@ fi
 for dmg in "$bundle_dir/"*.dmg; do
   [ -f "$dmg" ] || continue
   echo "Signing $dmg"
-  codesign --force --timestamp --sign "$IDENTITY" "$dmg"
+  codesign --force --timestamp --sign "$identity" "$dmg"
 done
 
 echo "macOS signing complete."

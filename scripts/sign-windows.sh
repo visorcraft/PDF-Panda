@@ -6,7 +6,7 @@ set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 pfx="${1:-${WINDOWS_CERTIFICATE_PATH:-}}"
 password="${WINDOWS_CERTIFICATE_PASSWORD:?Set WINDOWS_CERTIFICATE_PASSWORD}"
-timestamp_url="${WINDOWS_TIMESTAMP_URL:-http://timestamp.digicert.com}"
+timestamp_url="${WINDOWS_TIMESTAMP_URL:-https://timestamp.digicert.com}"
 
 if [ -z "$pfx" ]; then
   echo "Usage: scripts/sign-windows.sh path/to/certificate.pfx" >&2
