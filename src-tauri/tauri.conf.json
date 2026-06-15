@@ -36,6 +36,14 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
+    "category": "Productivity",
+    "fileAssociations": [
+      {
+        "ext": ["pdf"],
+        "mimeType": "application/pdf",
+        "role": "Editor"
+      }
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",
@@ -44,6 +52,14 @@
       "icons/512x512.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "pdf-panda.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "pdf-panda.desktop"
+      }
+    }
   }
 }
