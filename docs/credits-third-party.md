@@ -11173,7 +11173,7 @@ insights.
 ### GNU General Public License v3.0 only
 
 Used by:
-- [`pdf-panda 1.3.0`](https://crates.io/crates/pdf-panda)
+- [`pdf-panda 1.3.1`](https://crates.io/crates/pdf-panda)
 
 ```
 GNU GENERAL PUBLIC LICENSE
