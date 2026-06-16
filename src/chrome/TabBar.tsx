@@ -15,6 +15,28 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [focusedTabId, setFocusedTabId] = useState<string | null>(activeId);
+  const lastActiveIdRef = useRef(activeId);
+
+  // Sync roving focus to the active tab when activation changes, and fall back
+  // if the focused tab is removed from the tab list.
+  useEffect(() => {
+    const activeChanged = activeId !== lastActiveIdRef.current;
+    lastActiveIdRef.current = activeId;
+
+    setFocusedTabId((prev) => {
+      if (activeChanged && activeId && tabs.some((t) => t.id === activeId)) {
+        return activeId;
+      }
+      if (prev && tabs.some((t) => t.id === prev)) {
+        return prev;
+      }
+      if (activeId && tabs.some((t) => t.id === activeId)) {
+        return activeId;
+      }
+      return tabs[0]?.id ?? null;
+    });
+  }, [activeId, tabs]);
 
   // The scroll arrows are absolute overlays (see styles.css), so they never
   // take layout space — the scroll viewport width is constant whether or not an
@@ -73,6 +95,79 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
     if (active) scrollTabIntoView(active);
   }, [activeId, tabs, scrollTabIntoView]);
 
+  // Move DOM focus to the roving tabindex target and reveal it.
+  const focusTabElement = useCallback((id: string | null) => {
+    const el = scrollRef.current;
+    if (!el || !id) return;
+    const tab = el.querySelector<HTMLElement>(`.tab-item[data-tab-id="${id}"]`);
+    if (tab) {
+      tab.focus();
+      scrollTabIntoView(tab);
+    }
+  }, [scrollTabIntoView]);
+
+  useEffect(() => {
+    focusTabElement(focusedTabId);
+  }, [focusedTabId, focusTabElement]);
+
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>, tab: DocumentTabInfo) => {
+      if (!tabs.length) return;
+      const index = tabs.findIndex((t) => t.id === tab.id);
+      if (index === -1) return;
+
+      const moveFocus = (nextId: string) => {
+        e.preventDefault();
+        setFocusedTabId(nextId);
+      };
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          moveFocus(tabs[(index - 1 + tabs.length) % tabs.length].id);
+          break;
+        case 'ArrowRight':
+          moveFocus(tabs[(index + 1) % tabs.length].id);
+          break;
+        case 'Home':
+          moveFocus(tabs[0].id);
+          break;
+        case 'End':
+          moveFocus(tabs[tabs.length - 1].id);
+          break;
+        case 'Delete':
+          e.preventDefault();
+          onClose(tab.id);
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          onSelect(tab.id);
+          break;
+        case 'F10':
+          if (e.shiftKey && onTabContextMenu) {
+            e.preventDefault();
+            const el = scrollRef.current?.querySelector<HTMLElement>(`.tab-item[data-tab-id="${tab.id}"]`);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              onTabContextMenu(tab.id, rect.left + rect.width / 2, rect.top + rect.height / 2);
+            }
+          }
+          break;
+        case 'ContextMenu':
+          if (onTabContextMenu) {
+            e.preventDefault();
+            const el = scrollRef.current?.querySelector<HTMLElement>(`.tab-item[data-tab-id="${tab.id}"]`);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              onTabContextMenu(tab.id, rect.left + rect.width / 2, rect.top + rect.height / 2);
+            }
+          }
+          break;
+      }
+    },
+    [tabs, onClose, onSelect, onTabContextMenu]
+  );
+
   if (tabs.length <= 1) return null;
 
   const scrollToNext = (direction: 'left' | 'right') => {
@@ -103,15 +198,20 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
       <div className="tab-bar-scroll" ref={scrollRef}>
         {tabs.map((tab) => {
           const active = tab.id === activeId;
+          const focused = tab.id === focusedTabId;
           return (
             <div
               key={tab.id}
               role="tab"
               aria-selected={active}
+              aria-label={tab.label}
+              tabIndex={focused ? 0 : -1}
+              data-tab-id={tab.id}
               data-testid={`doc-tab-${tab.label}`}
               data-working-path={import.meta.env.VITE_WDIO === '1' ? tab.filePath || undefined : undefined}
               className={`tab-item${active ? ' active' : ''}`}
               onClick={() => onSelect(tab.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, tab)}
               onContextMenu={
                 onTabContextMenu
                   ? (e) => {
