@@ -31,7 +31,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <FocusTrap>
+      <FocusTrap initialFocus={false}>
         <div
           className="modal about-modal"
           onClick={(e) => e.stopPropagation()}
