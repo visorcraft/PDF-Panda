@@ -5,7 +5,6 @@ import type { PanelsState } from '../app/useDocumentPanelsState';
 import type { HelpState } from '../app/useHelpChromeState';
 import type { ViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
-import type { AppearanceKey } from '../settings/appearancePalettes';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 export type BuildAppMenuInputArgs = {
@@ -29,8 +28,6 @@ export type BuildAppMenuInputArgs = {
     openSearchModal: () => void;
   };
   help: Pick<HelpState, 'setShowShortcutsHelp' | 'setShowLicenses' | 'setShowCredits' | 'setShowAbout' | 'setShowUpdateModal' | 'updaterSupported' | 'setShowCommandPalette'>;
-  theme: AppearanceKey;
-  setTheme: (theme: AppearanceKey) => void;
   surface: { activeSurface: AppSurface; openSettings: (focus?: SettingsFocusSection) => void };
   shortcutBindings: ShortcutBindings;
   pdfActions: AppPdfActions;

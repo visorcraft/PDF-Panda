@@ -1,5 +1,4 @@
 import {
-  clickMenuAction,
   fixturePdf,
   openFileMenu,
   openPdfViaPathModal,
@@ -45,17 +44,4 @@ describe('PDF Panda shell', () => {
     );
   });
 
-  it('toggles dark theme via View menu', async () => {
-    await clickMenuAction('view', 'theme-dark');
-    await browser.waitUntil(
-      async () => (await browser.execute(() => document.documentElement.getAttribute('data-theme'))) === 'dark',
-      { timeout: 5_000, timeoutMsg: 'expected dark theme' },
-    );
-    // Toggle back to light for subsequent tests
-    await clickMenuAction('view', 'theme-light');
-    await browser.waitUntil(
-      async () => (await browser.execute(() => document.documentElement.getAttribute('data-theme'))) === 'light',
-      { timeout: 5_000, timeoutMsg: 'expected light theme' },
-    );
-  });
 });

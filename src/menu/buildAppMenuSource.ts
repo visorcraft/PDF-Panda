@@ -1,7 +1,6 @@
 import type { AppMenuContextSource } from './types';
 import type { ScrollViewMode, ViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
-import type { AppearanceKey } from '../settings/appearancePalettes';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
 /** Inputs from App hooks/state before menu void-wrapping in buildAppMenuContext. */
@@ -45,8 +44,6 @@ export type BuildAppMenuSourceInput = Omit<
   setShowUpdateModal: (open: boolean) => void;
   updaterSupported: boolean;
   setShowCommandPalette: (open: boolean) => void;
-  theme: AppearanceKey;
-  setTheme: (theme: AppearanceKey) => void;
   shortcutBindings: ShortcutBindings;
 };
 
@@ -70,8 +67,6 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     setShowUpdateModal,
     updaterSupported,
     setShowCommandPalette,
-    theme,
-    setTheme,
     surface,
     shortcutBindings,
     ...passthrough
@@ -95,8 +90,6 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     openAbout: () => setShowAbout(true),
     openUpdateModal: () => setShowUpdateModal(true),
     openCommandPalette: () => setShowCommandPalette(true),
-    theme,
-    setTheme,
     activeSurface: surface.activeSurface,
     openSettings: (focus?: SettingsFocusSection) => surface.openSettings(focus),
     shortcutBindings,

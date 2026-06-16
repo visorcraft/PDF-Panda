@@ -30,10 +30,6 @@ export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
       ctx.togglePdfUaPanel,
       { active: ctx.showPdfUaPanel },
     ),
-    sep(),
-    act('theme-system', 'Follow system', () => ctx.setTheme('system'), { active: ctx.theme === 'system' }),
-    act('theme-light', 'Light', () => ctx.setTheme('light'), { active: ctx.theme === 'light' }),
-    act('theme-dark', 'Dark', () => ctx.setTheme('dark'), { active: ctx.theme === 'dark' }),
   ];
   return {
     id: 'view',

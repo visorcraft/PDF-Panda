@@ -136,7 +136,6 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     unsaved,
     browser: { showBrowserModal: browser.showBrowserModal, setShowBrowserModal: browser.setShowBrowserModal },
     search: { showSearchModal: search.showSearchModal, closeSearchModal: search.closeSearchModal },
-    appearance,
     shortcutBindings: shortcutBindingsState.bindings,
     surface,
   });

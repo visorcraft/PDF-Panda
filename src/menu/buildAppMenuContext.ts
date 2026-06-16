@@ -6,8 +6,6 @@ export function buildAppMenuContext(source: AppMenuContextSource): AppMenuContex
   return {
     ...menuContextDocAnnotFields(source),
     ...menuContextPagesFields(source),
-    theme: source.theme,
-    setTheme: source.setTheme,
     activeSurface: source.activeSurface,
     openSettings: source.openSettings,
     shortcutBindings: source.shortcutBindings,

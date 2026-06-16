@@ -8,8 +8,6 @@ export function buildAppMenuInput(args: BuildAppMenuInputArgs) {
   return buildAppMenusFromSource({
     ...menuInputDocFields(args),
     ...menuInputPagesFields(args),
-    theme: args.theme,
-    setTheme: args.setTheme,
     surface: args.surface,
     shortcutBindings: args.shortcutBindings,
   } satisfies BuildAppMenuSourceInput);
