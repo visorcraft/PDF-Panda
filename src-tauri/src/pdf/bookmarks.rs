@@ -63,7 +63,11 @@ pub fn resolve_outline_destination(doc: &Document, dict: &Dictionary) -> Option<
 
 pub fn collect_outline_items(doc: &Document, item_id: ObjectId, depth: u32, entries: &mut Vec<PdfBookmarkEntry>) {
     let mut current = Some(item_id);
+    let mut visited = std::collections::HashSet::<ObjectId>::new();
     while let Some(id) = current {
+        if !visited.insert(id) {
+            break;
+        }
         let dict = match doc.get_dictionary(id) {
             Ok(dict) => dict,
             Err(_) => break,
@@ -73,9 +77,11 @@ pub fn collect_outline_items(doc: &Document, item_id: ObjectId, depth: u32, entr
             depth,
             page_index: resolve_outline_destination(doc, dict),
         });
-        if let Ok(first) = dict.get(b"First") {
-            if let Ok(child_id) = first.as_reference() {
-                collect_outline_items(doc, child_id, depth + 1, entries);
+        if depth < 32 {
+            if let Ok(first) = dict.get(b"First") {
+                if let Ok(child_id) = first.as_reference() {
+                    collect_outline_items(doc, child_id, depth + 1, entries);
+                }
             }
         }
         current = dict.get(b"Next").ok().and_then(|value| value.as_reference().ok());
@@ -84,7 +90,11 @@ pub fn collect_outline_items(doc: &Document, item_id: ObjectId, depth: u32, entr
 
 pub fn collect_outline_ids(doc: &Document, item_id: ObjectId, ids: &mut Vec<ObjectId>) {
     let mut current = Some(item_id);
+    let mut visited = std::collections::HashSet::<ObjectId>::new();
     while let Some(id) = current {
+        if !visited.insert(id) {
+            break;
+        }
         ids.push(id);
         if let Ok(dict) = doc.get_dictionary(id) {
             if let Ok(first) = dict.get(b"First") {
@@ -168,4 +178,61 @@ pub fn remove_outline_item(doc: &mut Document, outlines_id: ObjectId, item_id: O
     }
     doc.objects.remove(&item_id);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lopdf::{Dictionary, Object, Stream};
+
+    fn minimal_doc_with_outline() -> (Document, ObjectId, ObjectId) {
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+        let content_id = doc.new_object_id();
+        doc.objects.insert(content_id, Object::Stream(Stream::new(Dictionary::new(), b"BT ET".to_vec())));
+        let mut page = Dictionary::new();
+        page.set("Type", Object::Name(b"Page".to_vec()));
+        page.set("Parent", Object::Reference(pages_id));
+        page.set("MediaBox", Object::Array(vec![0.into(), 0.into(), 612.into(), 792.into()]));
+        page.set("Contents", Object::Reference(content_id));
+        doc.objects.insert(page_id, Object::Dictionary(page));
+        let mut pages = Dictionary::new();
+        pages.set("Type", Object::Name(b"Pages".to_vec()));
+        pages.set("Kids", Object::Array(vec![Object::Reference(page_id)]));
+        pages.set("Count", Object::Integer(1));
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+
+        let mut catalog = Dictionary::new();
+        catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", Object::Reference(pages_id));
+        let catalog_id = doc.add_object(Object::Dictionary(catalog));
+        doc.trailer.set("Root", Object::Reference(catalog_id));
+
+        (doc, pages_id, catalog_id)
+    }
+
+    #[test]
+    fn collect_outline_items_breaks_next_cycle() {
+        let (mut doc, _pages_id, catalog_id) = minimal_doc_with_outline();
+
+        let item_id = doc.add_object(Object::Dictionary(Dictionary::new()));
+        if let Ok(Object::Dictionary(dict)) = doc.get_object_mut(item_id) {
+            dict.set(b"Title".to_vec(), Object::String(b"A".to_vec(), lopdf::StringFormat::Literal));
+            dict.set(b"Next".to_vec(), Object::Reference(item_id));
+        }
+        let outlines_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"Outlines".to_vec())),
+            (b"First".to_vec(), Object::Reference(item_id)),
+        ])));
+        if let Ok(Object::Dictionary(catalog)) = doc.get_object_mut(catalog_id) {
+            catalog.set("Outlines", Object::Reference(outlines_id));
+        }
+
+        let start = std::time::Instant::now();
+        let mut entries = Vec::new();
+        collect_outline_items(&doc, item_id, 0, &mut entries);
+        assert!(start.elapsed() < std::time::Duration::from_secs(1), "outline collection cycled too long");
+        assert_eq!(entries.len(), 1);
+    }
 }

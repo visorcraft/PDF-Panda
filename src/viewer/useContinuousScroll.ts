@@ -32,6 +32,7 @@ export function useContinuousScroll(opts: UseContinuousScrollOptions) {
     pageSizes: opts.pageSizes,
     zoom: opts.zoom,
     onCurrentPageChange,
+    documentKey: opts.filePath,
   });
 
   const goToPageContinuous = useCallback(

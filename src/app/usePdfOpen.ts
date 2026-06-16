@@ -19,6 +19,7 @@ type UsePdfOpenOptions = {
   guardUnsaved: (fn: () => void) => void;
   ensureSessionForOpen: (originalPath: string) => string | null;
   clearOpeningPath: (originalPath: string) => void;
+  removeSession: (sessionId: string) => void;
   updateSession: (sessionId: string, patch: Partial<DocumentSessionData>) => void;
   showToast: (msg: string, kind?: 'error') => void;
   setOpenFilePath: (path: string) => void;
@@ -44,6 +45,7 @@ export function usePdfOpen({
   guardUnsaved,
   ensureSessionForOpen,
   clearOpeningPath,
+  removeSession,
   updateSession,
   showToast,
   setOpenFilePath,
@@ -58,8 +60,10 @@ export function usePdfOpen({
       clearOpeningPath(path);
       return true;
     }
+    const ownSession = targetSessionId === undefined;
+    let loaded = false;
     try {
-      const loaded = await withLoading(async () => {
+      loaded = (await withLoading(async () => {
         const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
         if (encrypted && !password) {
           setPendingEncryptedPath(path);
@@ -96,16 +100,20 @@ export function usePdfOpen({
         // The previous document's working copy stays with its session; it is
         // discarded by closeSession/closePdf, never by opening another file.
         return true;
-      });
-      return loaded === true;
+      })) ?? false;
+      return loaded;
     } finally {
       clearOpeningPath(path);
+      if (!loaded && ownSession) {
+        removeSession(sessionId);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
   }, [
     filePath,
     ensureSessionForOpen,
     clearOpeningPath,
+    removeSession,
     updateSession,
     withLoading,
     resetHistoryForOpen,

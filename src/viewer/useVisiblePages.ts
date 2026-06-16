@@ -8,6 +8,7 @@ type UseVisiblePagesOptions = {
   pageSizes: PdfPageSize[];
   zoom: number;
   onCurrentPageChange: (page: number) => void;
+  documentKey?: string;
 };
 
 const DEFAULT_ASPECT = PDF_BASE_HEIGHT / PDF_BASE_WIDTH;
@@ -18,6 +19,7 @@ export function useVisiblePages({
   pageSizes,
   zoom,
   onCurrentPageChange,
+  documentKey = '',
 }: UseVisiblePagesOptions) {
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const [visible, setVisible] = useState<Set<number>>(() => new Set([0]));
@@ -144,13 +146,15 @@ export function useVisiblePages({
     root.addEventListener('scroll', onScroll, { passive: true });
     compute();
 
+    const pageRefsAtCleanup = pageRefs.current;
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       observer.disconnect();
       observerRef.current = null;
       root.removeEventListener('scroll', onScroll);
+      pageRefsAtCleanup.clear();
     };
-  }, [pageCount, scrollRef]);
+  }, [pageCount, scrollRef, documentKey]);
 
   // Memoized so the Set identity stays stable across renders that don't change
   // which pages are visible. Without this, ContinuousViewer's effect (which

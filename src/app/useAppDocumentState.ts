@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useDocumentSessions } from './useDocumentSessions';
 
 export function useAppDocumentState() {
@@ -10,16 +10,19 @@ export function useAppDocumentState() {
   const anyDirtyRef = useRef(false);
   anyDirtyRef.current = sessions.dirtySessions.length > 0;
 
-  return {
-    ...sessions,
-    loading,
-    setLoading,
-    toast,
-    setToast,
-    ocrAvailable,
-    setOcrAvailable,
-    anyDirtyRef,
-  };
+  return useMemo(
+    () => ({
+      ...sessions,
+      loading,
+      setLoading,
+      toast,
+      setToast,
+      ocrAvailable,
+      setOcrAvailable,
+      anyDirtyRef,
+    }),
+    [sessions, loading, toast, ocrAvailable],
+  );
 }
 
 /** Canonical alias for this hook's state shape. */

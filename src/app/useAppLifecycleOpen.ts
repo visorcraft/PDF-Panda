@@ -114,6 +114,7 @@ export function useAppLifecycleOpen({ input, loaders }: UseAppLifecycleDocumentI
     guardUnsaved: loaders.guardUnsaved,
     ensureSessionForOpen: doc.ensureSessionForOpen,
     clearOpeningPath: doc.clearOpeningPath,
+    removeSession: doc.removeSession,
     updateSession: doc.updateSession,
     showToast,
     setOpenFilePath,

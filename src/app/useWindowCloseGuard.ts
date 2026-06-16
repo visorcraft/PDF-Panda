@@ -1,5 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useEffect, type MutableRefObject } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import type { DocumentSessionData } from './documentSessionTypes';
 import { isTauriRuntime } from './tauriRuntime';
 
@@ -18,13 +18,16 @@ export function useWindowCloseGuard({
   setShowUnsavedModal,
   focusSession,
 }: UseWindowCloseGuardOptions) {
+  const dirtySessionsRef = useRef(dirtySessions);
+  dirtySessionsRef.current = dirtySessions;
+
   useEffect(() => {
     if (!isTauriRuntime()) return;
     const w = getCurrentWindow();
     const unlisten = w.onCloseRequested((event) => {
       if (!anyDirtyRef.current) return;
       event.preventDefault();
-      const queue = [...dirtySessions];
+      const queue = [...dirtySessionsRef.current];
       const promptNext = () => {
         const next = queue.shift();
         if (!next) {
@@ -42,5 +45,5 @@ export function useWindowCloseGuard({
       promptNext();
     });
     return () => { void unlisten.then((f) => f()); };
-  }, [anyDirtyRef, dirtySessions, focusSession, pendingNavRef, setShowUnsavedModal]);
+  }, [anyDirtyRef, focusSession, pendingNavRef, setShowUnsavedModal]);
 }

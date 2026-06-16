@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 type ToastState = { message: string; type: 'success' | 'error' } | null;
 
@@ -25,6 +25,13 @@ export function useAppLoading({ setToast, setLoading }: UseAppLoadingOptions) {
     setToast({ message, type });
     timeoutRef.current = setTimeout(() => setToast(null), 3000);
   }, [setToast]);
+
+  useEffect(() => () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   const withLoading = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
     setLoading(true);

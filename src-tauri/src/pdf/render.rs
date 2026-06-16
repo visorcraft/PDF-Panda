@@ -35,16 +35,18 @@ impl DocumentCache {
         self.order.insert(0, path.to_path_buf());
     }
 
+    #[cfg(test)]
     fn remove(&mut self, path: &Path) {
-        if self.entries.remove(path).is_some() {
-            self.order.retain(|p| p != path);
-        }
+        self.entries.remove(path);
+        self.order.retain(|p| p != path);
+        self.generations.remove(path);
     }
 
     fn invalidate(&mut self, path: &Path) {
         let next = self.generation(path).wrapping_add(1);
+        self.entries.remove(path);
+        self.order.retain(|p| p != path);
         self.generations.insert(path.to_path_buf(), next);
-        self.remove(path);
     }
 
     #[cfg(test)]
@@ -68,6 +70,7 @@ impl DocumentCache {
         if self.entries.len() >= self.capacity && !self.entries.contains_key(path) {
             if let Some(oldest) = self.order.pop() {
                 self.entries.remove(&oldest);
+                self.generations.remove(&oldest);
             }
         }
 
@@ -117,22 +120,18 @@ pub fn invalidate_document_cache(path: &Path) {
     document_cache().invalidate(path);
 }
 
-/// Load a pdfium-render document for `path`, reusing the in-memory lopdf cache
-/// when possible. Falls back to loading directly from disk for encrypted files
-/// or when the cache cannot be used.
+/// Load a pdfium-render document for `path` directly from disk.
+///
+/// Read-only rendering does not use the `lopdf` cache: cloning and serialising a
+/// large `lopdf::Document` for every page render/thumbnail was the main source
+/// of the reported memory churn and gradual slowdown. The lopdf cache is kept
+/// for mutating callers that need a `Document` without re-parsing.
 fn pdfium_document_for_path<'a>(
     pdfium: &'a Pdfium,
     path: &Path,
     password: Option<&str>,
 ) -> Result<PdfDocument<'a>, String> {
-    let mut cached = cached_document(path)?;
-    if cached.is_encrypted() {
-        return pdfium.load_pdf_from_file(path, password).map_err(|e| e.to_string());
-    }
-
-    let mut bytes = Vec::new();
-    cached.save_to(&mut bytes).map_err(|e| e.to_string())?;
-    pdfium.load_pdf_from_byte_vec(bytes, password).map_err(|e| e.to_string())
+    pdfium.load_pdf_from_file(path, password).map_err(|e| e.to_string())
 }
 
 /// Render one PDF page to encoded image bytes at the given dimensions.
@@ -288,6 +287,50 @@ mod tests {
         if let Some(last) = paths.last() {
             assert!(cached_document(last).is_ok(), "most recent entry should still be reachable");
         }
+        let entries_len = document_cache().entries.len();
+        assert!(
+            document_cache().generations.len() <= entries_len,
+            "evicted paths should also drop their generation records"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cache_remove_prunes_generation_record() {
+        document_cache().clear();
+
+        let dir = test_dir();
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("gen_prune.pdf");
+        minimal_pdf(&path);
+
+        let _ = cached_document(&path).unwrap();
+        invalidate_document_cache(&path);
+        assert!(document_cache().generations.contains_key(&path));
+
+        document_cache().remove(&path);
+        assert!(!document_cache().entries.contains_key(&path));
+        assert!(!document_cache().generations.contains_key(&path));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cache_invalidate_keeps_bumped_generation() {
+        document_cache().clear();
+
+        let dir = test_dir();
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("gen_bump.pdf");
+        minimal_pdf(&path);
+
+        let _ = cached_document(&path).unwrap();
+        let before = document_cache().generation(&path);
+        invalidate_document_cache(&path);
+        let after = document_cache().generation(&path);
+        assert_eq!(after, before.wrapping_add(1));
+        assert!(!document_cache().entries.contains_key(&path));
 
         let _ = fs::remove_dir_all(&dir);
     }

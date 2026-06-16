@@ -84,6 +84,9 @@ export function useSessionPersistence({
     }
   }, [sessions, activeId, isSpawned]);
 
+  const saveSessionsRef = useRef(saveSessions);
+  saveSessionsRef.current = saveSessions;
+
   useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -101,11 +104,11 @@ export function useSessionPersistence({
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      void saveSessions();
+      void saveSessionsRef.current();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [saveSessions]);
+  }, []);
 
   const restoreSessions = useCallback(async (shouldSkipActiveRestore?: () => boolean) => {
     try {

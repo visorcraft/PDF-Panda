@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use lopdf::{Document, Object, ObjectId};
 
@@ -35,15 +35,18 @@ fn form_roots_on_pages(doc: &Document, page_ids: &[ObjectId]) -> Vec<ObjectId> {
     roots.keys().copied().collect()
 }
 
-fn acroform_tree_contains(doc: &Document, field: &Object, target: ObjectId) -> bool {
+fn acroform_tree_contains(doc: &Document, field: &Object, target: ObjectId, visited: &mut HashSet<ObjectId>) -> bool {
     match field {
         Object::Reference(id) => {
             if *id == target {
                 return true;
             }
+            if !visited.insert(*id) {
+                return false;
+            }
             if let Some(dict) = resolve_field_dict(doc, *id) {
                 if let Some(arr) = dict.get(b"Kids").ok().and_then(|o| o.as_array().ok()) {
-                    return arr.iter().any(|kid| acroform_tree_contains(doc, kid, target));
+                    return arr.iter().any(|kid| acroform_tree_contains(doc, kid, target, visited));
                 }
             }
             false
@@ -57,7 +60,8 @@ fn acroform_already_has_field(doc: &Document, field_id: ObjectId) -> bool {
     let Ok(Object::Reference(af_id)) = catalog.get(b"AcroForm") else { return false };
     let Ok(af) = doc.get_dictionary(*af_id) else { return false };
     let Ok(Object::Array(fields)) = af.get(b"Fields") else { return false };
-    fields.iter().any(|entry| acroform_tree_contains(doc, entry, field_id))
+    let mut visited = HashSet::new();
+    fields.iter().any(|entry| acroform_tree_contains(doc, entry, field_id, &mut visited))
 }
 
 fn rename_form_field_title(doc: &mut Document, field_id: ObjectId, new_name: &str) -> Result<(), String> {
@@ -168,4 +172,26 @@ pub fn merge_acroform_after_insert(
         mark_acroform_need_appearances(doc)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lopdf::{Dictionary, Object};
+
+    #[test]
+    fn acroform_tree_contains_breaks_kids_cycle() {
+        let mut doc = Document::with_version("1.4");
+        let field_id = doc.add_object(Object::Dictionary(Dictionary::new()));
+        if let Ok(Object::Dictionary(dict)) = doc.get_object_mut(field_id) {
+            dict.set(b"FT".to_vec(), Object::Name(b"Tx".to_vec()));
+            dict.set(b"Kids".to_vec(), Object::Array(vec![Object::Reference(field_id)]));
+        }
+
+        let mut visited = HashSet::new();
+        let start = std::time::Instant::now();
+        let contains = acroform_tree_contains(&doc, &Object::Reference(field_id), (9999, 0), &mut visited);
+        assert!(start.elapsed() < std::time::Duration::from_secs(1), "acroform tree walk cycled too long");
+        assert!(!contains);
+    }
 }

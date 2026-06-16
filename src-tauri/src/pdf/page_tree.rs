@@ -9,14 +9,20 @@ pub fn is_page_dict(d: &Dictionary) -> bool {
 
 pub fn inherited_page_attr(doc: &Document, page: ObjectId, key: &[u8]) -> Option<Object> {
     let mut dict = doc.get_dictionary(page).ok()?;
-    loop {
+    let mut visited = std::collections::HashSet::<ObjectId>::new();
+    visited.insert(page);
+    for _ in 0..32 {
         let parent_ref = dict.get(b"Parent").ok()?.as_reference().ok()?;
+        if !visited.insert(parent_ref) {
+            return None;
+        }
         let parent = doc.get_dictionary(parent_ref).ok()?;
         if let Ok(val) = parent.get(key) {
             return Some(val.clone());
         }
         dict = parent;
     }
+    None
 }
 
 pub fn get_pages_kids(doc: &Document) -> Result<(Vec<Object>, ObjectId), String> {
@@ -88,4 +94,44 @@ pub fn delete_kids_in_range(doc: &mut Document, start_page: u32, end_page: u32) 
     kids.drain(start_page as usize..=end_page as usize);
     set_pages_kids(doc, pages_ref, kids)?;
     Ok(delete_count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lopdf::{Object, Stream};
+
+    #[test]
+    fn inherited_page_attr_breaks_parent_cycle() {
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+        let content_id = doc.new_object_id();
+        doc.objects.insert(content_id, Object::Stream(Stream::new(Dictionary::new(), b"BT ET".to_vec())));
+        let mut page = Dictionary::new();
+        page.set("Type", Object::Name(b"Page".to_vec()));
+        // Cyclic Parent: page -> pages -> page.
+        page.set("Parent", Object::Reference(pages_id));
+        page.set("MediaBox", Object::Array(vec![0.into(), 0.into(), 612.into(), 792.into()]));
+        page.set("Contents", Object::Reference(content_id));
+        doc.objects.insert(page_id, Object::Dictionary(page));
+
+        let mut pages = Dictionary::new();
+        pages.set("Type", Object::Name(b"Pages".to_vec()));
+        pages.set("Kids", Object::Array(vec![Object::Reference(page_id)]));
+        pages.set("Count", Object::Integer(1));
+        pages.set("Parent", Object::Reference(page_id));
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+
+        let mut catalog = Dictionary::new();
+        catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", Object::Reference(pages_id));
+        let catalog_id = doc.add_object(Object::Dictionary(catalog));
+        doc.trailer.set("Root", Object::Reference(catalog_id));
+
+        let start = std::time::Instant::now();
+        let result = inherited_page_attr(&doc, page_id, b"Rotate");
+        assert!(start.elapsed() < std::time::Duration::from_secs(1), "inherited_page_attr cycled too long");
+        assert!(result.is_none());
+    }
 }

@@ -21,6 +21,7 @@ export function usePageRenderQueue(filePath: string, pdfRevision: number) {
     }
     cacheRef.current.clear();
     inflightRef.current.clear();
+    queueRef.current = Promise.resolve();
     bump((n) => n + 1);
   }, []);
 

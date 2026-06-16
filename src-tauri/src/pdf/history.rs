@@ -57,6 +57,11 @@ pub fn history_delta_fallback_bytes() -> u64 {
     }
 }
 
+/// Maximum number of consecutive delta snapshots allowed since the last full
+/// snapshot. Beyond this, a new full snapshot is written so that materializing
+/// the chain does not become O(chain length) on large files.
+const MAX_DELTA_CHAIN_LENGTH: usize = 10;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct HistorySnapshot {
@@ -215,7 +220,8 @@ pub fn snapshot_pdf_entry(history: Vec<HistorySnapshot>, source: String) -> Resu
     let size = current.len() as u64;
     let threshold = history_large_file_bytes();
 
-    if size <= threshold || history.is_empty() {
+    let deltas_since_full = history.iter().rev().take_while(|e| e.kind == "delta").count();
+    if size <= threshold || history.is_empty() || deltas_since_full >= MAX_DELTA_CHAIN_LENGTH {
         let path = write_full_snapshot(&source_path)?;
         return Ok(HistorySnapshot { kind: "full".into(), path, base_index: None, size });
     }
@@ -292,4 +298,36 @@ pub fn prune_history_entry(
     }
 
     Ok(history)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn snapshot_pdf_entry_resets_delta_chain_after_threshold() {
+        let dir = std::env::temp_dir().join(format!(
+            "pdf_panda_hist_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()
+        ));
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("delta_chain.pdf");
+
+        // File must be larger than the 100-byte test threshold to use deltas.
+        fs::write(&path, vec![b'x'; 256]).unwrap();
+
+        let mut history = Vec::new();
+        for i in 0..MAX_DELTA_CHAIN_LENGTH + 2 {
+            fs::write(&path, vec![b'a' + (i as u8) % 26; 256]).unwrap();
+            let entry = snapshot_pdf_entry(history.clone(), path.to_string_lossy().into_owned()).unwrap();
+            history.push(entry);
+        }
+
+        let full_count = history.iter().filter(|e| e.kind == "full").count();
+        assert!(full_count >= 2, "expected at least two full snapshots after chain reset, got {full_count}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

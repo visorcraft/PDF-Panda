@@ -22,11 +22,25 @@ type UseTextEditRunOptions = {
   runEdit: ReturnType<typeof createStructuralEditRunner>;
 };
 
+const MAX_LINES_CACHE = 32;
+
+function trimLinesCache(cache: Map<string, TextLineInfo[]>) {
+  while (cache.size > MAX_LINES_CACHE) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+}
+
 export function useTextEditRun(opts: UseTextEditRunOptions) {
   const [activeTarget, setActiveTarget] = useState<ActiveEditTarget | null>(null);
   const [draft, setDraft] = useState('');
   const [lines, setLines] = useState<TextLineInfo[]>([]);
   const linesCacheRef = useRef(new Map<string, TextLineInfo[]>());
+
+  useEffect(() => {
+    linesCacheRef.current.clear();
+  }, [opts.filePath]);
 
   // Load decoded text lines when entering edit mode.
   useEffect(() => {
@@ -47,6 +61,7 @@ export function useTextEditRun(opts: UseTextEditRunOptions) {
           pageIndex: opts.currentPage,
         });
         linesCacheRef.current.set(cacheKey, result);
+        trimLinesCache(linesCacheRef.current);
         setLines(result);
       } catch {
         setLines([]);

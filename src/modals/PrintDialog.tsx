@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { Modal } from '../ui/Modal';
@@ -89,6 +90,7 @@ export function PrintDialog({
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const previewUrlRef = useRef<string | null>(null);
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setPreviewObjectUrl = (url: string | null) => {
     if (previewUrlRef.current) {
@@ -121,6 +123,10 @@ export function PrintDialog({
 
   useEffect(() => {
     let cancelled = false;
+    if (previewDebounceRef.current) {
+      clearTimeout(previewDebounceRef.current);
+      previewDebounceRef.current = null;
+    }
     const run = async () => {
       setPreviewLoading(true);
       try {
@@ -142,9 +148,16 @@ export function PrintDialog({
         if (!cancelled) setPreviewLoading(false);
       }
     };
-    void run();
+    previewDebounceRef.current = setTimeout(() => {
+      previewDebounceRef.current = null;
+      void run();
+    }, 250);
     return () => {
       cancelled = true;
+      if (previewDebounceRef.current) {
+        clearTimeout(previewDebounceRef.current);
+        previewDebounceRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: preview reacts to specific option fields only
   }, [filePath, currentPage, opts.orientation, opts.paperSize, opts.scaling, opts.margins, opts.colorMode]);

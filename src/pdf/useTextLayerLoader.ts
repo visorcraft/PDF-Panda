@@ -11,8 +11,18 @@ export type PageTextRun = {
 
 type CacheKey = string;
 
+const MAX_CACHE_SIZE = 128;
+
 function cacheKey(path: string, page: number, revision: number): CacheKey {
   return `${path}\0${page}\0${revision}`;
+}
+
+function trimCache(cache: Map<CacheKey, PageTextRun[]>) {
+  while (cache.size > MAX_CACHE_SIZE) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
 }
 
 export function useTextLayerLoader(filePath: string, page: number, pdfRevision: number) {
@@ -38,6 +48,7 @@ export function useTextLayerLoader(filePath: string, page: number, pdfRevision: 
         pageIndex: page,
       });
       cacheRef.current.set(key, layout);
+      trimCache(cacheRef.current);
       setRuns(layout);
     } catch {
       setRuns([]);
@@ -57,6 +68,10 @@ export function useTextLayerLoader(filePath: string, page: number, pdfRevision: 
       if (key.startsWith(`${filePath}\0`)) cacheRef.current.delete(key);
     }
   }, [filePath, pdfRevision]);
+
+  useEffect(() => {
+    cacheRef.current.clear();
+  }, [filePath]);
 
   return { runs, loading, reload: load };
 }

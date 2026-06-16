@@ -113,5 +113,6 @@ pub fn insert_pdf(
     merge_acroform_after_insert(&mut doc, &insert_doc, &new_page_ids, &remap)?;
     dedup_fonts_after_insert(&mut doc, &new_page_ids)?;
     doc.save(path).map_err(|e| e.to_string())?;
+    crate::pdf::render::invalidate_document_cache(path);
     Ok(())
 }
