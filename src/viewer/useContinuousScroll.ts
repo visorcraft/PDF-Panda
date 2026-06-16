@@ -1,4 +1,4 @@
-import { useCallback, type RefObject } from 'react';
+import { useCallback, useMemo, type RefObject } from 'react';
 import type { PdfPageSize } from '../app/types';
 import { usePageRenderQueue } from '../pdf/usePageRenderQueue';
 import { useVisiblePages } from './useVisiblePages';
@@ -40,21 +40,29 @@ export function useContinuousScroll(opts: UseContinuousScrollOptions) {
       const clamped = Math.max(0, Math.min(page, opts.pageCount - 1));
       opts.setCurrentPage(clamped);
       opts.setPageInput(String(clamped + 1));
-      visible.scrollToPage(clamped);
+      // Reach through the ref so this callback doesn't depend on the `visible`
+      // object (a fresh object every render) — that dependency made
+      // goToPageContinuous churn identity each render and cascade re-renders.
+      visible.scrollToPageRef.current(clamped);
       requestPage(clamped);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: stable option object / destructured deps
-    [opts.pageCount, opts.setCurrentPage, opts.setPageInput, requestPage, visible],
+    [opts.pageCount, opts.setCurrentPage, opts.setPageInput, requestPage, visible.scrollToPageRef],
   );
 
-  return {
-    continuous: {
+  const continuous = useMemo(
+    () => ({
       placeholderHeight: visible.placeholderHeight,
       registerPageRef: visible.registerPageRef,
       getPageUrl,
       requestPage,
       renderPages: visible.renderPages,
-    },
+    }),
+    [visible.placeholderHeight, visible.registerPageRef, getPageUrl, requestPage, visible.renderPages],
+  );
+
+  return {
+    continuous,
     scrollToPageRef: visible.scrollToPageRef,
     goToPageContinuous,
   };

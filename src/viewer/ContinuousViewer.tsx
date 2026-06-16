@@ -8,7 +8,7 @@ type ContinuousViewerProps = {
   pageCount: number;
   currentPage: number;
   placeholderHeight: (page: number) => number;
-  registerPageRef: (page: number, el: HTMLDivElement | null) => void;
+  registerPageRef: (el: HTMLDivElement | null) => void;
   getPageUrl: (page: number) => string | null;
   requestPage: (page: number) => void;
   renderPages: Set<number>;
@@ -48,7 +48,7 @@ export function ContinuousViewer({
             className="continuous-page-slot"
             data-page-index={page}
             data-testid={showPage ? `continuous-page-${page + 1}` : undefined}
-            ref={(el) => registerPageRef(page, el)}
+            ref={registerPageRef}
             style={{ minHeight: height }}
           >
             {showPage && imageSrc ? (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { PdfPageSize } from '../app/types';
 import { PDF_BASE_HEIGHT, PDF_BASE_WIDTH } from '../pdf/usePdfDocument';
 
@@ -23,6 +23,15 @@ export function useVisiblePages({
   const [visible, setVisible] = useState<Set<number>>(() => new Set([0]));
   const scrollToPageRef = useRef<(page: number) => void>(() => {});
 
+  // Refs mirror the latest state so the long-lived scroll handler (registered
+  // once below) always reads fresh values without re-subscribing on every
+  // change — re-subscribing would churn the IntersectionObserver and scroll
+  // listener, which is what made large documents seize up during scroll.
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const onCurrentPageChangeRef = useRef(onCurrentPageChange);
+  onCurrentPageChangeRef.current = onCurrentPageChange;
+
   const placeholderHeight = useCallback(
     (page: number) => {
       const size = pageSizes[page];
@@ -34,16 +43,20 @@ export function useVisiblePages({
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const registerPageRef = useCallback((page: number, el: HTMLDivElement | null) => {
+  // Single stable ref callback. The page index is read from the element's
+  // dataset instead of being closed over, which keeps the callback identity
+  // stable. With an inline arrow (`ref={(el) => registerPageRef(page, el)}`)
+  // React treats the callback as new on every render and unobserves/re-observes
+  // every page slot every render — O(pages) churn that freezes large docs.
+  const registerPageRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const page = Number(el.dataset.pageIndex);
+    if (Number.isNaN(page)) return;
     const observer = observerRef.current;
     const prev = pageRefs.current.get(page);
-    if (prev && observer) observer.unobserve(prev);
-    if (el) {
-      pageRefs.current.set(page, el);
-      observer?.observe(el);
-    } else {
-      pageRefs.current.delete(page);
-    }
+    if (prev && prev !== el && observer) observer.unobserve(prev);
+    pageRefs.current.set(page, el);
+    observer?.observe(el);
   }, []);
 
   const scrollToPage = useCallback((page: number) => {
@@ -55,7 +68,20 @@ export function useVisiblePages({
 
   useEffect(() => {
     const root = scrollRef.current;
-    if (!root || pageCount === null || pageCount <= 0) return;
+    if (!root || pageCount === null || pageCount <= 0) {
+      // No document shown: drop any page elements held over from a previous
+      // document so detached DOM nodes can be garbage collected.
+      pageRefs.current.clear();
+      return;
+    }
+
+    // Prune entries for pages that no longer exist. Page slots unmount when
+    // pageCount shrinks (delete/merge pages), but with a stable ref callback
+    // React delivers ref(null) on unmount without the page index, so we clean
+    // up here by range instead of leaking detached elements + observations.
+    for (const page of pageRefs.current.keys()) {
+      if (page >= pageCount) pageRefs.current.delete(page);
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -77,49 +103,72 @@ export function useVisiblePages({
       observer.observe(el);
     }
 
-    const onScroll = () => {
+    let lastReported = -1;
+    let rafId: number | null = null;
+
+    const compute = () => {
+      rafId = null;
       const rootRect = root.getBoundingClientRect();
       const centerY = rootRect.top + rootRect.height / 2;
-      let bestPage = 0;
+      let best = -1;
       let bestDist = Number.POSITIVE_INFINITY;
-      for (const [page, el] of pageRefs.current.entries()) {
+      // Only score the handful of currently-visible candidates instead of
+      // measuring every page in the document — getBoundingClientRect() per
+      // page across hundreds/thousands of slots on every scroll tick is what
+      // froze scrolling and piled on forced layout work over time.
+      for (const page of visibleRef.current) {
+        const el = pageRefs.current.get(page);
+        if (!el) continue;
         const rect = el.getBoundingClientRect();
         const pageCenter = rect.top + rect.height / 2;
         const dist = Math.abs(pageCenter - centerY);
         if (dist < bestDist) {
           bestDist = dist;
-          bestPage = page;
+          best = page;
         }
       }
-      onCurrentPageChange(bestPage);
+      // Only notify when the centered page actually changes so we don't trigger
+      // a re-render (setCurrentPage + setPageInput) on every scroll frame.
+      if (best >= 0 && best !== lastReported) {
+        lastReported = best;
+        onCurrentPageChangeRef.current(best);
+      }
+    };
+
+    const onScroll = () => {
+      // Coalesce scroll bursts to one geometry pass per animation frame.
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(compute);
     };
 
     root.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    compute();
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       observer.disconnect();
       observerRef.current = null;
       root.removeEventListener('scroll', onScroll);
     };
-  }, [onCurrentPageChange, pageCount, scrollRef]);
+  }, [pageCount, scrollRef]);
 
-  const pagesToRender = useCallback(
-    (pages: Set<number>) => {
-      const out = new Set<number>();
-      for (const page of pages) {
-        out.add(page);
-        if (page > 0) out.add(page - 1);
-        if (pageCount !== null && page < pageCount - 1) out.add(page + 1);
-      }
-      return out;
-    },
-    [pageCount],
-  );
+  // Memoized so the Set identity stays stable across renders that don't change
+  // which pages are visible. Without this, ContinuousViewer's effect (which
+  // depends on renderPages) fired on every render and re-poked the render
+  // queue for every visible page each time.
+  const renderPages = useMemo(() => {
+    const out = new Set<number>();
+    for (const page of visible) {
+      out.add(page);
+      if (page > 0) out.add(page - 1);
+      if (pageCount !== null && page < pageCount - 1) out.add(page + 1);
+    }
+    return out;
+  }, [visible, pageCount]);
 
   return {
     visible,
-    renderPages: pagesToRender(visible),
+    renderPages,
     placeholderHeight,
     registerPageRef,
     scrollToPage,
