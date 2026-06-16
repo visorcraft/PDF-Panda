@@ -1,4 +1,5 @@
 import { AxeBuilder } from '@axe-core/webdriverio';
+import type { AxeResults } from 'axe-core';
 import {
   clickMenuAction,
   fixturePdf,
@@ -24,12 +25,19 @@ async function assertNoAxeViolations(
   // Disable them by default; individual tests can opt out via extraDisabledRules.
   const baseDisabledRules = ['page-has-heading-one'];
   // The full app DOM (especially with a rendered PDF) can take longer than the
-  // default WebDriver script timeout to analyze.
+  // default WebDriver script timeout to analyze. Save and restore the previous
+  // timeout so this helper does not leak a global timeout change.
+  const previous = await browser.getTimeouts();
   await browser.setTimeout({ script: 120_000 });
-  const results = await new AxeBuilder({ client: browser })
-    .setLegacyMode(true)
-    .disableRules([...baseDisabledRules, ...extraDisabledRules])
-    .analyze();
+  let results: AxeResults;
+  try {
+    results = await new AxeBuilder({ client: browser })
+      .setLegacyMode(true)
+      .disableRules([...baseDisabledRules, ...extraDisabledRules])
+      .analyze();
+  } finally {
+    await browser.setTimeout({ script: previous.script ?? 30_000 });
+  }
   if (results.violations.length > 0) {
     console.error(
       `Axe violations in ${context}:`,
@@ -87,8 +95,8 @@ describe('axe accessibility', () => {
     await openPdfViaPathModal(fixturePdfB);
     await browser.waitUntil(
       async () =>
-        (await $$('[data-testid^="doc-tab-"]:not([data-testid^="doc-tab-close-"])'))
-          .length === 2,
+        (await (await $$('[data-testid^="doc-tab-"]:not([data-testid^="doc-tab-close-"])'))
+          .length) === 2,
       { timeout: 15_000, timeoutMsg: 'expected two document tabs' },
     );
     // The tab close button is intentionally rendered inside each tab so it is

@@ -124,7 +124,7 @@ describe('multi-document tabs', () => {
     );
   });
 
-  it('focuses an already-open document instead of duplicating tabs', async () => {
+  it('does not duplicate an already-open document', async () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPdfOpen();
     await openPdfViaPathModal(fixturePdf);
@@ -201,7 +201,10 @@ describe('multi-document tabs', () => {
       menuRoot.focus();
     });
     await browser.keys('ArrowDown');
-    await browser.pause(150);
+    await browser.waitUntil(
+      async () => (await (await $$('.tcm-item.highlighted')).length) === 1,
+      { timeout: 5_000, timeoutMsg: 'expected a highlighted context-menu item' },
+    );
     await browser.keys('Enter');
     await browser.waitUntil(
       async () => (await countDocTabs()) === 0,
