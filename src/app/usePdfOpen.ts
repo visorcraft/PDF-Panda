@@ -62,6 +62,7 @@ export function usePdfOpen({
     }
     const ownSession = targetSessionId === undefined;
     let loaded = false;
+    let needsPassword = false;
     try {
       loaded = (await withLoading(async () => {
         const encrypted = await invoke<boolean>('pdf_is_encrypted', { path });
@@ -69,6 +70,7 @@ export function usePdfOpen({
           setPendingEncryptedPath(path);
           setPdfPasswordDraft('');
           setShowPasswordModal(true);
+          needsPassword = true;
           return false;
         }
         const working = password
@@ -104,7 +106,7 @@ export function usePdfOpen({
       return loaded;
     } finally {
       clearOpeningPath(path);
-      if (!loaded && ownSession) {
+      if (!loaded && ownSession && !needsPassword) {
         removeSession(sessionId);
       }
     }

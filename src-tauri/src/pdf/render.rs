@@ -53,6 +53,7 @@ impl DocumentCache {
     fn clear(&mut self) {
         self.entries.clear();
         self.order.clear();
+        self.generations.clear();
     }
 
     fn load_and_insert(&mut self, path: &Path) -> Result<Document, String> {

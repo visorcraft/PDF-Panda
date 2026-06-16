@@ -134,4 +134,31 @@ mod tests {
         assert!(start.elapsed() < std::time::Duration::from_secs(1), "inherited_page_attr cycled too long");
         assert!(result.is_none());
     }
+
+    #[test]
+    fn inherited_page_attr_caps_parent_depth() {
+        let mut doc = Document::with_version("1.4");
+
+        // Build a 33-ancestor chain: page_0 -> page_1 -> ... -> page_33.
+        // Only the deepest ancestor carries the requested attribute.
+        let leaf_id = doc.new_object_id();
+        let mut ids = vec![leaf_id];
+        for _ in 0..33 {
+            ids.push(doc.new_object_id());
+        }
+        for (i, &id) in ids.iter().enumerate() {
+            let mut d = Dictionary::new();
+            d.set("Type", Object::Name(b"Page".to_vec()));
+            if i + 1 < ids.len() {
+                d.set("Parent", Object::Reference(ids[i + 1]));
+            }
+            if i == ids.len() - 1 {
+                d.set("Rotate", Object::Integer(90));
+            }
+            doc.objects.insert(id, Object::Dictionary(d));
+        }
+
+        let result = inherited_page_attr(&doc, leaf_id, b"Rotate");
+        assert!(result.is_none(), "depth cap should stop before the 33rd ancestor");
+    }
 }

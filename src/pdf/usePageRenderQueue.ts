@@ -50,27 +50,29 @@ export function usePageRenderQueue(filePath: string, pdfRevision: number) {
       const revisionAtStart = pdfRevision;
       const pathAtStart = filePath;
 
-      queueRef.current = queueRef.current.then(async () => {
-        try {
-          if (pathAtStart !== filePath || revisionAtStart !== pdfRevision) return;
-          const bytes = await invoke<number[]>('render_pdf_page', {
-            path: pathAtStart,
-            pageIndex: page,
-            width: PDF_BASE_WIDTH,
-            height: PDF_BASE_HEIGHT,
-          });
-          if (pathAtStart !== filePath || revisionAtStart !== pdfRevision) return;
-          const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-          const url = URL.createObjectURL(blob);
-          const prev = cacheRef.current.get(page);
-          if (prev) URL.revokeObjectURL(prev.url);
-          cacheRef.current.set(page, { url, revision: revisionAtStart });
-          evictIfNeeded();
-          bump((n) => n + 1);
-        } finally {
-          inflightRef.current.delete(page);
-        }
-      });
+      queueRef.current = queueRef.current
+        .then(async () => {
+          try {
+            if (pathAtStart !== filePath || revisionAtStart !== pdfRevision) return;
+            const bytes = await invoke<number[]>('render_pdf_page', {
+              path: pathAtStart,
+              pageIndex: page,
+              width: PDF_BASE_WIDTH,
+              height: PDF_BASE_HEIGHT,
+            });
+            if (pathAtStart !== filePath || revisionAtStart !== pdfRevision) return;
+            const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+            const url = URL.createObjectURL(blob);
+            const prev = cacheRef.current.get(page);
+            if (prev) URL.revokeObjectURL(prev.url);
+            cacheRef.current.set(page, { url, revision: revisionAtStart });
+            evictIfNeeded();
+            bump((n) => n + 1);
+          } finally {
+            inflightRef.current.delete(page);
+          }
+        })
+        .catch(() => {});
     },
     [evictIfNeeded, filePath, pdfRevision],
   );

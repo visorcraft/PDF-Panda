@@ -18,6 +18,7 @@ type ActiveEditTarget =
 type UseTextEditRunOptions = {
   filePath: string;
   currentPage: number;
+  pdfRevision: number;
   editTextRunMode: boolean;
   runEdit: ReturnType<typeof createStructuralEditRunner>;
 };
@@ -40,7 +41,7 @@ export function useTextEditRun(opts: UseTextEditRunOptions) {
 
   useEffect(() => {
     linesCacheRef.current.clear();
-  }, [opts.filePath]);
+  }, [opts.filePath, opts.pdfRevision]);
 
   // Load decoded text lines when entering edit mode.
   useEffect(() => {
@@ -48,7 +49,7 @@ export function useTextEditRun(opts: UseTextEditRunOptions) {
       setLines([]);
       return;
     }
-    const cacheKey = `${opts.filePath}\0${opts.currentPage}`;
+    const cacheKey = `${opts.filePath}\0${opts.currentPage}\0${opts.pdfRevision}`;
     const cached = linesCacheRef.current.get(cacheKey);
     if (cached) {
       setLines(cached);
@@ -67,7 +68,7 @@ export function useTextEditRun(opts: UseTextEditRunOptions) {
         setLines([]);
       }
     })();
-  }, [opts.editTextRunMode, opts.filePath, opts.currentPage]);
+  }, [opts.editTextRunMode, opts.filePath, opts.currentPage, opts.pdfRevision]);
 
   const hitTestLine = useCallback(
     (x: number, y: number): TextLineInfo | null => {

@@ -88,7 +88,10 @@ pub fn collect_outline_items(doc: &Document, item_id: ObjectId, depth: u32, entr
     }
 }
 
-pub fn collect_outline_ids(doc: &Document, item_id: ObjectId, ids: &mut Vec<ObjectId>) {
+pub fn collect_outline_ids(doc: &Document, item_id: ObjectId, depth: u32, ids: &mut Vec<ObjectId>) {
+    if depth >= 32 {
+        return;
+    }
     let mut current = Some(item_id);
     let mut visited = std::collections::HashSet::<ObjectId>::new();
     while let Some(id) = current {
@@ -99,7 +102,7 @@ pub fn collect_outline_ids(doc: &Document, item_id: ObjectId, ids: &mut Vec<Obje
         if let Ok(dict) = doc.get_dictionary(id) {
             if let Ok(first) = dict.get(b"First") {
                 if let Ok(child_id) = first.as_reference() {
-                    collect_outline_ids(doc, child_id, ids);
+                    collect_outline_ids(doc, child_id, depth + 1, ids);
                 }
             }
             current = dict.get(b"Next").ok().and_then(|value| value.as_reference().ok());
@@ -121,7 +124,7 @@ pub fn flat_outline_ids(doc: &Document) -> Result<Vec<ObjectId>, String> {
         _ => return Ok(Vec::new()),
     };
     let mut ids = Vec::new();
-    collect_outline_ids(doc, first_id, &mut ids);
+    collect_outline_ids(doc, first_id, 0, &mut ids);
     Ok(ids)
 }
 
@@ -234,5 +237,60 @@ mod tests {
         collect_outline_items(&doc, item_id, 0, &mut entries);
         assert!(start.elapsed() < std::time::Duration::from_secs(1), "outline collection cycled too long");
         assert_eq!(entries.len(), 1);
+    }
+
+    #[test]
+    fn collect_outline_ids_breaks_next_cycle() {
+        let (mut doc, _pages_id, catalog_id) = minimal_doc_with_outline();
+
+        let item_id = doc.add_object(Object::Dictionary(Dictionary::new()));
+        if let Ok(Object::Dictionary(dict)) = doc.get_object_mut(item_id) {
+            dict.set(b"Title".to_vec(), Object::String(b"A".to_vec(), lopdf::StringFormat::Literal));
+            dict.set(b"Next".to_vec(), Object::Reference(item_id));
+        }
+        let outlines_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"Outlines".to_vec())),
+            (b"First".to_vec(), Object::Reference(item_id)),
+        ])));
+        if let Ok(Object::Dictionary(catalog)) = doc.get_object_mut(catalog_id) {
+            catalog.set("Outlines", Object::Reference(outlines_id));
+        }
+
+        let start = std::time::Instant::now();
+        let mut ids = Vec::new();
+        collect_outline_ids(&doc, item_id, 0, &mut ids);
+        assert!(start.elapsed() < std::time::Duration::from_secs(1), "outline id collection cycled too long");
+        assert_eq!(ids.len(), 1);
+    }
+
+    #[test]
+    fn collect_outline_ids_caps_first_depth() {
+        let (mut doc, _pages_id, catalog_id) = minimal_doc_with_outline();
+
+        // Build a 35-level deep /First chain of distinct IDs.
+        let mut ids_chain = Vec::new();
+        for _ in 0..35 {
+            let id = doc.add_object(Object::Dictionary(Dictionary::new()));
+            ids_chain.push(id);
+        }
+        for (i, &id) in ids_chain.iter().enumerate() {
+            if let Ok(Object::Dictionary(dict)) = doc.get_object_mut(id) {
+                dict.set(b"Title".to_vec(), Object::String(format!("{i}").into_bytes(), lopdf::StringFormat::Literal));
+                if i + 1 < ids_chain.len() {
+                    dict.set(b"First".to_vec(), Object::Reference(ids_chain[i + 1]));
+                }
+            }
+        }
+        let outlines_id = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"Outlines".to_vec())),
+            (b"First".to_vec(), Object::Reference(ids_chain[0])),
+        ])));
+        if let Ok(Object::Dictionary(catalog)) = doc.get_object_mut(catalog_id) {
+            catalog.set("Outlines", Object::Reference(outlines_id));
+        }
+
+        let mut ids = Vec::new();
+        collect_outline_ids(&doc, ids_chain[0], 0, &mut ids);
+        assert_eq!(ids.len(), 32, "depth cap should stop the walk at 32 levels");
     }
 }

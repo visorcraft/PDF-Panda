@@ -27,6 +27,7 @@ export function useTextLayerFlow(opts: UseTextLayerFlowOptions) {
   const textEdit = useTextEditRun({
     filePath: opts.filePath,
     currentPage: opts.currentPage,
+    pdfRevision: opts.pdfRevision,
     editTextRunMode: opts.editTextRunMode,
     runEdit: opts.runEdit,
   });
