@@ -156,14 +156,14 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
 
   // Always point at the latest loader. The listener and the launch-path pull are
   // registered once (empty deps); without this ref they would capture a stale
-  // loadPdfFromPath — both calling outdated logic and deduping against stale
+  // loadPdfFromPath - both calling outdated logic and deduping against stale
   // session state.
   const loadPdfFromPathRef = useRef(lifecycle.loadPdfFromPath);
   loadPdfFromPathRef.current = lifecycle.loadPdfFromPath;
 
   // Register the 'open-path' listener exactly once. Re-registering on every
   // loadPdfFromPath identity change (which changes on every session change) let
-  // listeners leak — the cleanup is a no-op until listen()'s promise resolves —
+  // listeners leak - the cleanup is a no-op until listen()'s promise resolves -
   // so a single event fired the loader multiple times, opening a new file twice.
   useEffect(() => {
     if (!isTauriRuntime()) return;

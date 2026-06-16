@@ -240,7 +240,7 @@ export function useDocumentSessions() {
   );
 
   // Async renders resolve their target session by the working-copy path they
-  // rendered, not by whichever tab is active when they complete — opening a
+  // rendered, not by whichever tab is active when they complete - opening a
   // second document races setActive and would otherwise corrupt the previous
   // tab's cache. Replaced object URLs are revoked here, the cache's single
   // lifecycle owner.

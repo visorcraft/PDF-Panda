@@ -25,7 +25,7 @@ type SpawnDeps = {
 };
 
 /**
- * Open `originalPath` in a fresh app window, then close the source tab — but
+ * Open `originalPath` in a fresh app window, then close the source tab - but
  * only once the new window acks a successful load (`spawn-loaded`). On creation
  * failure or a 15s timeout with no ack, the source tab is kept.
  */

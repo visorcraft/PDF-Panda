@@ -95,7 +95,7 @@ export function useParityExportActions(opts: UseParityExportActionsOptions) {
       }
       opts.setShowParityRangeModal(false);
       if (typeof result === 'number') {
-        opts.showToast(`Done — affected ${result} item${result === 1 ? '' : 's'}`);
+        opts.showToast(`Done - affected ${result} item${result === 1 ? '' : 's'}`);
       } else if (Array.isArray(result)) {
         opts.showToast(`Wrote ${result.length} file${result.length === 1 ? '' : 's'}`);
       } else if (typeof result === 'string') {

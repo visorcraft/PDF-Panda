@@ -41,7 +41,7 @@ export function buildKeyboardShortcuts(bindings: ShortcutBindings): KeyboardShor
       .flatMap((id) => bindings[id] ?? [])
       .map((s) => shortcutToDisplay(s))
       .join(' / ');
-    return { keys: keys || '—', action: label };
+    return { keys: keys || '-', action: label };
   });
 }
 

@@ -1,6 +1,6 @@
 use lopdf::{Document, Object, ObjectId};
 
-/// Viewer render size — must stay aligned with `BASE_W` / `BASE_H` in `App.tsx`.
+/// Viewer render size - must stay aligned with `BASE_W` / `BASE_H` in `App.tsx`.
 pub const VIEWER_PAGE_W: f64 = 800.0;
 pub const VIEWER_PAGE_H: f64 = 1132.0;
 

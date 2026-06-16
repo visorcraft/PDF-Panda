@@ -3,7 +3,7 @@
 #
 # Uses Tauri's linuxdeploy-based AppImage bundler (tools prefetched to
 # ~/.cache/tauri via scripts/fetch-appimage-tools.sh). On glibc 2.38+ distros,
-# linuxdeploy's strip step can fail — NO_STRIP=1 is the default (override with
+# linuxdeploy's strip step can fail - NO_STRIP=1 is the default (override with
 # NO_STRIP=0 on older build hosts if needed).
 #
 # Usage: scripts/build-appimage.sh

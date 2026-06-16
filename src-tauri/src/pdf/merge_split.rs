@@ -97,7 +97,7 @@ pub fn insert_pdf(
     }
 
     // Deep-copy the selected pages (and their content/resources) into `doc` so
-    // the saved file is self-contained — the old code copied bare references that
+    // the saved file is self-contained - the old code copied bare references that
     // dangled. `remap` is shared so resources common to several pages are copied
     // once.
     let mut remap = BTreeMap::new();

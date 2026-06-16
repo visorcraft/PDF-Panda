@@ -26,8 +26,8 @@ and viewable in-app under **Help → Licenses**, **Runtime components** tab.
 
 ## Rust crate dependencies
 
-The machine-generated transitive supplement — every Rust crate, its exact
-version, and the full text of every distinct license — lives in
+The machine-generated transitive supplement - every Rust crate, its exact
+version, and the full text of every distinct license - lives in
 [`docs/credits-third-party.md`](docs/credits-third-party.md).
 Regenerate it via `scripts/generate-credits.sh` (which runs `cargo-about`
 over `src-tauri/Cargo.lock`).

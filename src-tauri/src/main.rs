@@ -137,7 +137,7 @@ fn main() {
     // dispatching to Wayland display` on some Wayland + GPU-driver combinations
     // (notably bleeding-edge multi-GPU NVIDIA + mesa stacks, where the cross-GPU
     // zero-copy buffer handoff to the compositor fails). Disabling it falls back
-    // to the SHM presentation path — GPU compositing is still used, so the app
+    // to the SHM presentation path - GPU compositing is still used, so the app
     // stays hardware-accelerated; only the zero-copy presentation is given up.
     // Must run before GTK/WebKit initialise. A value set by the user always
     // wins. Drop when webkit2gtk-4.1 ships a working DMABUF renderer here.
@@ -168,7 +168,7 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // Forward non-flag argv entries to the frontend as open-path events.
             // `argv` is the second instance's full `std::env::args()`, so skip
-            // argv[0] (the program path) — otherwise the binary's own path is
+            // argv[0] (the program path) - otherwise the binary's own path is
             // opened as a bogus document, accumulating a dead tab each time.
             let paths: Vec<String> = argv.into_iter().skip(1).filter(|a| !a.starts_with('-')).collect();
             if !paths.is_empty() {
@@ -182,7 +182,7 @@ fn main() {
     // Capture any file paths from this launch (file-association / "Open With").
     // argv[0] is the program path, so skip it and keep only non-flag arguments.
     // The frontend drains these via `take_pending_open_paths` after it mounts,
-    // which is race-free — unlike emitting an event the listener may miss.
+    // which is race-free - unlike emitting an event the listener may miss.
     let initial_open_paths: Vec<String> = std::env::args().skip(1).filter(|a| !a.starts_with('-')).collect();
 
     builder

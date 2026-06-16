@@ -24,7 +24,7 @@ PLAN.md
 # Worktrees
 .worktrees/
 
-# Vendored PDFium runtime library (downloaded prebuilt, not committed — see README)
+# Vendored PDFium runtime library (downloaded prebuilt, not committed - see README)
 src-tauri/vendor/
 src-tauri/capabilities/e2e.json
 

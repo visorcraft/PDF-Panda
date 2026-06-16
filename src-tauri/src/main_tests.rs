@@ -63,7 +63,7 @@ fn build_pdf(n: usize) -> Document {
 }
 
 /// Build a PDF with a *nested* page tree: the root /Pages holds an
-/// intermediate /Pages node (two leaves) followed by one direct leaf — three
+/// intermediate /Pages node (two leaves) followed by one direct leaf - three
 /// pages total. This mirrors real PDFs that the old flat-tree code mangled.
 fn build_nested_pdf() -> Document {
     let mut doc = Document::with_version("1.5");
@@ -400,7 +400,7 @@ fn insert_pdf_imports_pages_into_nested_tree() {
         assert!(d.get(b"MediaBox").is_ok(), "every page carries a MediaBox");
         if let Ok(contents) = d.get(b"Contents") {
             let cid = contents.as_reference().unwrap();
-            assert!(doc.get_object(cid).is_ok(), "Contents must resolve — no dangling refs");
+            assert!(doc.get_object(cid).is_ok(), "Contents must resolve - no dangling refs");
         }
     }
     let _ = fs::remove_file(&dest);
@@ -18099,7 +18099,7 @@ fn pdf_signature_roundtrip_with_openssl() {
     let dir = std::env::temp_dir().join(format!("pdf_panda_sig_{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
     let Some(p12) = generate_test_pkcs12(&dir) else {
-        eprintln!("openssl unavailable — skipping pdf_signature_roundtrip_with_openssl");
+        eprintln!("openssl unavailable - skipping pdf_signature_roundtrip_with_openssl");
         return;
     };
     let path = save(&mut build_pdf(1), "sig_roundtrip");

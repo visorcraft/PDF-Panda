@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-packages
-          # Package files only — bundle/* also holds staging trees (deb data
+          # Package files only - bundle/* also holds staging trees (deb data
           # dirs, .AppDir) that must not become release assets.
           path: |
             src-tauri/target/release/bundle/deb/*.deb

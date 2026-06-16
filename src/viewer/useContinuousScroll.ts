@@ -42,7 +42,7 @@ export function useContinuousScroll(opts: UseContinuousScrollOptions) {
       opts.setCurrentPage(clamped);
       opts.setPageInput(String(clamped + 1));
       // Reach through the ref so this callback doesn't depend on the `visible`
-      // object (a fresh object every render) — that dependency made
+      // object (a fresh object every render) - that dependency made
       // goToPageContinuous churn identity each render and cascade re-renders.
       visible.scrollToPageRef.current(clamped);
       requestPage(clamped);

@@ -14,7 +14,7 @@
 
 <p align="center">
   <b>The friendly, fast, cross-platform PDF editor.</b><br />
-  Open a document, rearrange pages, annotate, sign, and export to Markdown — all in one lightweight native app.
+  Open a document, rearrange pages, annotate, sign, and export to Markdown - all in one lightweight native app.
 </p>
 
 ---
@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <i>Welcome screen — custom title bar, menu bar, and click-to-open splash before a document is loaded.</i>
+  <i>Welcome screen - custom title bar, menu bar, and click-to-open splash before a document is loaded.</i>
 </p>
 
 ---
@@ -34,25 +34,25 @@
 ## What is PDF Panda?
 
 PDF Panda is a desktop PDF editor for the everyday workflow: **view, reorganize,
-annotate, sign, and export** — without firing up a heavyweight suite or uploading
+annotate, sign, and export** - without firing up a heavyweight suite or uploading
 your files to someone else's server. It's a small, snappy native app that gets out
 of your way.
 
 Three things we care about:
 
-- **Native & cross-platform** — one lightweight [Tauri 2](https://v2.tauri.app/) app that feels at home on **Linux**, **macOS**, and **Windows**.
-- **Non-destructive** — every edit lands in a working copy, so your original file stays untouched until you choose to save. Undo/redo has your back (50 steps).
-- **Offline & private** — no cloud, no accounts, no telemetry. Your documents never leave your machine.
+- **Native & cross-platform** - one lightweight [Tauri 2](https://v2.tauri.app/) app that feels at home on **Linux**, **macOS**, and **Windows**.
+- **Non-destructive** - every edit lands in a working copy, so your original file stays untouched until you choose to save. Undo/redo has your back (50 steps).
+- **Offline & private** - no cloud, no accounts, no telemetry. Your documents never leave your machine.
 
 ### What it covers today
 
 **View & navigate**
-- **Menu bar** (File, Edit, Pages, Document, Annotate, Security, View, Help) plus a slim quick-access row — all page tools live in menus; **Ctrl/Cmd+Shift+P** opens a searchable command palette
+- **Menu bar** (File, Edit, Pages, Document, Annotate, Security, View, Help) plus a slim quick-access row - all page tools live in menus; **Ctrl/Cmd+Shift+P** opens a searchable command palette
 - Smooth viewer with **25%–400%** zoom; thumbnail sidebar matches viewer height
 - Page navigation via menus, quick bar, thumbnails, keyboard, mouse wheel at scroll edges, and a clickable **Bookmarks** outline
 - **Find text** across the document with match highlighting (Ctrl/Cmd+F); **selectable text layer** with native copy and **Highlight Selection**
 - **Continuous scroll** mode (View → Continuous scroll) with virtualized page rendering
-- **Document tabs** — multiple PDFs open at once (Ctrl+Tab / Ctrl+W)
+- **Document tabs** - multiple PDFs open at once (Ctrl+Tab / Ctrl+W)
 - Open via **File → Open PDF** (Ctrl/Cmd+O), in-app path entry, **Recently Opened**, built-in PDF browser, or **native open/save dialogs**
 
 **Organize pages**
@@ -72,22 +72,22 @@ Three things we care about:
 - View and edit document **metadata** (title, author, subject, keywords, creator, producer)
 
 **Annotate & mark up**
-- **Highlights** (`H`), **sticky notes** (`N`), **freehand ink** (`D`), **shapes** (`S` — rectangle/ellipse/line)
-- **Stamps** (`T` — APPROVED, DRAFT, CONFIDENTIAL, REVIEWED, plus image stamps) and **redaction** boxes (`X`)
-- **In-PDF text blocks** (`E`), **Edit text** (click existing text runs), and **vector rectangles** (`G`), embedded **images** (`I`) — all persisted in the PDF
-- **Annotations panel** (View) — document-wide list with navigate and delete
-- **Apply redactions** — burn in redaction boxes (optional OCR restore); **Bates numbering**; **Make Searchable (OCR)** for scanned pages
+- **Highlights** (`H`), **sticky notes** (`N`), **freehand ink** (`D`), **shapes** (`S` - rectangle/ellipse/line)
+- **Stamps** (`T` - APPROVED, DRAFT, CONFIDENTIAL, REVIEWED, plus image stamps) and **redaction** boxes (`X`)
+- **In-PDF text blocks** (`E`), **Edit text** (click existing text runs), and **vector rectangles** (`G`), embedded **images** (`I`) - all persisted in the PDF
+- **Annotations panel** (View) - document-wide list with navigate and delete
+- **Apply redactions** - burn in redaction boxes (optional OCR restore); **Bates numbering**; **Make Searchable (OCR)** for scanned pages
 
 **Forms & signatures**
-- **Interactive forms** (`F`) — list, fill, and create text / checkbox / choice / radio fields
-- **PAdES digital signatures** — sign with a PKCS#12 certificate (`.p12`/`.pfx`); list and verify in the Signatures panel
-- **Password protect** — export an encrypted copy; **decrypt** to `_decrypted.pdf`; open encrypted PDFs with a prompt
+- **Interactive forms** (`F`) - list, fill, and create text / checkbox / choice / radio fields
+- **PAdES digital signatures** - sign with a PKCS#12 certificate (`.p12`/`.pfx`); list and verify in the Signatures panel
+- **Password protect** - export an encrypted copy; **decrypt** to `_decrypted.pdf`; open encrypted PDFs with a prompt
 
 **Convert & export**
-- **PDF → Markdown** — tagged-PDF structure when available (headings, lists, tables with THead/TBody, links, TOC, captions, code, notes, inline emphasis); otherwise PDFium heuristic layout with column reading order, paragraph merge, header/footer stripping, and link/URL autodetection; on save, scanned/sparse pages, embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX, CCITT Fax scans, RunLength 1-bit), and painted Form XObjects (vector charts rasterized via PDFium, including nested form content) land in `<md-stem>_assets/` with optional Tesseract OCR; auto-save sibling `.md` or **Save As…** for a custom path
-- **Summarize** — extractive overview, key points, and extracted headings/emails/URLs/dates
-- **Optimize** — strip metadata, recompress images, prune unused objects, compress streams
-- **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** — save rendered pages as image files (Ctrl/Cmd+Shift+B)
+- **PDF → Markdown** - tagged-PDF structure when available (headings, lists, tables with THead/TBody, links, TOC, captions, code, notes, inline emphasis); otherwise PDFium heuristic layout with column reading order, paragraph merge, header/footer stripping, and link/URL autodetection; on save, scanned/sparse pages, embedded images (JPEG/PNG/Gray/CMYK/Indexed/JPX, CCITT Fax scans, RunLength 1-bit), and painted Form XObjects (vector charts rasterized via PDFium, including nested form content) land in `<md-stem>_assets/` with optional Tesseract OCR; auto-save sibling `.md` or **Save As…** for a custom path
+- **Summarize** - extractive overview, key points, and extracted headings/emails/URLs/dates
+- **Optimize** - strip metadata, recompress images, prune unused objects, compress streams
+- **Export PNG/JPEG/WebP/BMP/TIFF/GIF/PPM/TGA/ICO** - save rendered pages as image files (Ctrl/Cmd+Shift+B)
 - **Print** via the system print dialog
 - **Help → Check for Updates…** (AppImage / macOS / Windows; signed `latest.json` when release artifacts are published)
 
@@ -129,7 +129,7 @@ Markdown export can OCR scanned pages, sparse-text pages, and embedded/form imag
 
 **Markdown view (Ctrl/Cmd+Shift+M)** runs the full save pipeline: page PNGs and image assets land in `<md-stem>_assets/`, with OCR blocks appended where Tesseract is available. Without Tesseract you still get PDFium text and image assets; scanned pages show a plain-language notice in the header/toast. On first launch (and when opening Markdown without Tesseract), the app offers an optional install guide with a **Do not remind me again** checkbox; **Help → Install Tesseract** appears only while OCR is not detected.
 
-The `convert_pdf_to_markdown` API is text/heuristics only (no assets, no OCR) — the UI does not use it.
+The `convert_pdf_to_markdown` API is text/heuristics only (no assets, no OCR) - the UI does not use it.
 
 ### Run in development
 
@@ -138,7 +138,7 @@ npm install
 npm run tauri dev
 ```
 
-> Always use the **Tauri CLI** for dev and release builds — a plain
+> Always use the **Tauri CLI** for dev and release builds - a plain
 > `cargo build --release` produces a dev-mode binary that expects the Vite dev
 > server.
 
@@ -151,16 +151,16 @@ page, or build your own with the helpers under [`scripts/`](scripts/):
 
 | Target | Command |
 | --- | --- |
-| Linux — `.deb` / `.rpm` | `scripts/build-linux-packages.sh` |
-| Linux — AppImage | `scripts/build-appimage.sh` (prefetches linuxdeploy; `NO_STRIP=1` default on glibc 2.38+) |
-| macOS — `.app` / `.dmg` | `scripts/build-macos.sh` |
-| Windows — `.msi` / `.exe` | `scripts/build-windows.sh` |
-| Any — standalone binary | `npx tauri build --no-bundle` → `src-tauri/target/release/pdf-panda` |
+| Linux - `.deb` / `.rpm` | `scripts/build-linux-packages.sh` |
+| Linux - AppImage | `scripts/build-appimage.sh` (prefetches linuxdeploy; `NO_STRIP=1` default on glibc 2.38+) |
+| macOS - `.app` / `.dmg` | `scripts/build-macos.sh` |
+| Windows - `.msi` / `.exe` | `scripts/build-windows.sh` |
+| Any - standalone binary | `npx tauri build --no-bundle` → `src-tauri/target/release/pdf-panda` |
 
 Run the GitHub Actions [release workflow](.github/workflows/release.yml) manually
 (**Actions → Release → Run workflow**) to build and publish `.deb`, `.rpm`,
 AppImage, macOS, and Windows artifacts (unsigned by default; optional
-macOS/Windows **package** signing via repository secrets — see
+macOS/Windows **package** signing via repository secrets - see
 [`docs/SIGNING.md`](docs/SIGNING.md)).
 
 ---
@@ -191,7 +191,7 @@ macOS/Windows **package** signing via repository secrets — see
 
 ### Linux (Wayland & GPU)
 
-- **File dialogs:** Open/Save default to in-app path entry and the built-in PDF browser on **Linux Wayland** — the XDG desktop-portal picker can hang WebKitGTK on some stacks. macOS, Windows, and Linux X11 use native **Choose file…** buttons by default. Set `PDF_PANDA_NATIVE_DIALOGS=1` to opt in on Wayland; `PDF_PANDA_DISABLE_NATIVE_DIALOGS=1` forces in-app paths everywhere.
+- **File dialogs:** Open/Save default to in-app path entry and the built-in PDF browser on **Linux Wayland** - the XDG desktop-portal picker can hang WebKitGTK on some stacks. macOS, Windows, and Linux X11 use native **Choose file…** buttons by default. Set `PDF_PANDA_NATIVE_DIALOGS=1` to opt in on Wayland; `PDF_PANDA_DISABLE_NATIVE_DIALOGS=1` forces in-app paths everywhere.
 - **DMABUF renderer:** At startup the app sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` when unset, avoiding `Gdk Error 71 (Protocol error)` crashes on some multi-GPU Wayland setups. GPU compositing stays on; only zero-copy presentation is disabled. Set your own value before launch to override.
 
 ### Environment variables
@@ -212,16 +212,16 @@ macOS/Windows **package** signing via repository secrets — see
 
 ## Contribute
 
-Contributions are welcome — issues, fixes, and features alike.
+Contributions are welcome - issues, fixes, and features alike.
 
 **Quick rules:**
 
 - Match the existing style, and keep commits focused.
 - Run the quality gates before you push: `scripts/smoke-test.sh` (Rust unit tests, `clippy`, `fmt`, `tsc`, `eslint`, `npm audit`) and, on Linux, `npm run test:e2e`.
-- **Help → Licenses** shows bundled GPL, third-party (Rust + shipped npm), acknowledgment, and runtime license texts offline — searchable with line numbers, wrap, and copy.
+- **Help → Licenses** shows bundled GPL, third-party (Rust + shipped npm), acknowledgment, and runtime license texts offline - searchable with line numbers, wrap, and copy.
 - **Help → Credits** lists every Cargo crate, shipped npm package, and runtime component with filter, license badges, and project links.
 - Regenerate license supplements with `scripts/generate-credits.sh` after Rust or npm dependency changes.
-- PDF Panda is **GPL v3** — derivative works must stay open source under compatible terms.
+- PDF Panda is **GPL v3** - derivative works must stay open source under compatible terms.
 
 ---
 

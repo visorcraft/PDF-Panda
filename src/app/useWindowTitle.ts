@@ -13,7 +13,7 @@ type UseWindowTitleOptions = {
 export function useWindowTitle(opts: UseWindowTitleOptions) {
   const windowTitle = useMemo(() => {
     const name = opts.originalPath ? (opts.originalPath.split('/').pop() ?? '') : '';
-    return name ? `${opts.isDirty ? '• ' : ''}${name} — PDF Panda` : 'PDF Panda';
+    return name ? `${opts.isDirty ? '• ' : ''}${name} - PDF Panda` : 'PDF Panda';
   }, [opts.isDirty, opts.originalPath]);
 
   useEffect(() => {

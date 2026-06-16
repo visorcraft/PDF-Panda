@@ -39,7 +39,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
   }, [activeId, tabs]);
 
   // The scroll arrows are absolute overlays (see styles.css), so they never
-  // take layout space — the scroll viewport width is constant whether or not an
+  // take layout space - the scroll viewport width is constant whether or not an
   // arrow is showing. That keeps these thresholds (and the scroll targets below)
   // stable, so a single click always lands exactly on the intended tab.
   const checkScroll = useCallback(() => {

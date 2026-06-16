@@ -97,7 +97,7 @@ that PDF-Panda links against or bundles in packaged builds.\n\n",
         out.push_str(RULE);
         out.push('\n');
         out.push_str(spdx);
-        out.push_str(" — applies to: ");
+        out.push_str(" - applies to: ");
         out.push_str(&applies_to.join(", "));
         out.push('\n');
         out.push_str(RULE);
@@ -112,7 +112,7 @@ that PDF-Panda links against or bundles in packaged builds.\n\n",
     out.push_str(RULE);
     out.push('\n');
     for component in RUNTIME_COMPONENTS {
-        out.push_str(&format!("- {} — {} — {}\n", component.name, component.license_display, component.url));
+        out.push_str(&format!("- {} - {} - {}\n", component.name, component.license_display, component.url));
     }
 
     out

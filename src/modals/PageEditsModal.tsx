@@ -36,7 +36,7 @@ export function PageEditsModal({
 }: PageEditsModalProps) {
   return (
     <Modal onClose={onClose}>
-      <h3>Page Edits — page {currentPage + 1}</h3>
+      <h3>Page Edits - page {currentPage + 1}</h3>
       <p className="modal-help">Text and vector shapes embedded in the PDF content stream for this page.</p>
       <h4>Text blocks</h4>
       {textEdits.length === 0 ? (

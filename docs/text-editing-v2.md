@@ -1,4 +1,4 @@
-# In-place text editing v2 — feasibility spike
+# In-place text editing v2 - feasibility spike
 
 ## Goal
 
@@ -6,13 +6,13 @@ Edit existing PDF text by modifying content-stream `Tj`/`TJ` operands in place, 
 
 ## Investigation
 
-1. **Content stream decode** — `page_text::read_page_content` + `content.rs` already decompress and expose page streams. Operators are linear bytes; a full parser exists for append paths but not a span→glyph index map.
+1. **Content stream decode** - `page_text::read_page_content` + `content.rs` already decompress and expose page streams. Operators are linear bytes; a full parser exists for append paths but not a span→glyph index map.
 
-2. **PDFium char indices** — Phase 1 `text_layer.rs` maps PDFium per-char boxes to viewer runs. Mapping those runs back to content-stream `Tj` operands requires correlating glyph positions with operator sequences (font context, `Tm`/`Td` transforms). Feasible for simple Type1/Helvetica pages; breaks on composite fonts, nested `q`/`Q`, and Form XObjects.
+2. **PDFium char indices** - Phase 1 `text_layer.rs` maps PDFium per-char boxes to viewer runs. Mapping those runs back to content-stream `Tj` operands requires correlating glyph positions with operator sequences (font context, `Tm`/`Td` transforms). Feasible for simple Type1/Helvetica pages; breaks on composite fonts, nested `q`/`Q`, and Form XObjects.
 
-3. **Subset fonts** — Embedded subset fonts (`/Subtype /Type0`, `/ToUnicode`) often lack glyphs for characters not in the original document. Replacing `"Hello"` with `"José"` typically fails unless the font is re-embedded or substituted.
+3. **Subset fonts** - Embedded subset fonts (`/Subtype /Type0`, `/ToUnicode`) often lack glyphs for characters not in the original document. Replacing `"Hello"` with `"José"` typically fails unless the font is re-embedded or substituted.
 
-4. **Width adjustments** — In-place `Tj` changes alter line length; no reflow without re-measuring and shifting subsequent operators.
+4. **Width adjustments** - In-place `Tj` changes alter line length; no reflow without re-measuring and shifting subsequent operators.
 
 ## Failure modes
 

@@ -12,7 +12,7 @@ type TauriExecute = <T>(script: (api: { core: { invoke: (cmd: string, args?: Rec
 function tauriExecute(): TauriExecute {
   const tauri = (browser as WebdriverIO.Browser & { tauri?: { execute: TauriExecute } }).tauri;
   if (!tauri?.execute) {
-    throw new Error('browser.tauri.execute is unavailable — rebuild with scripts/e2e-build.sh');
+    throw new Error('browser.tauri.execute is unavailable - rebuild with scripts/e2e-build.sh');
   }
   return tauri.execute.bind(tauri);
 }

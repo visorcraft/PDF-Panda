@@ -53,7 +53,7 @@ From `src-tauri/` the smoke script covers Rust unit tests, `clippy`, `fmt`, and
 PDF_PANDA_TEST_PDF=/path/to.pdf cargo test render_real_pdf_smoke -- --ignored --nocapture
 ```
 
-CI and release workflows are **manual only** — run them from **Actions** when
+CI and release workflows are **manual only** - run them from **Actions** when
 needed.
 
 ## Pull requests

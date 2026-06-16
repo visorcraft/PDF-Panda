@@ -126,7 +126,7 @@ export const markdownOcrNoticeFromResult = (result: MarkdownSaveResult): Markdow
   if (result.ocrMissingHints > 0 || result.ocrTextBlocks === 0) {
     return {
       tone: 'warning',
-      message: 'Scanned pages — pictures saved, text not read',
+      message: 'Scanned pages - pictures saved, text not read',
     };
   }
   return {
@@ -141,7 +141,7 @@ export const markdownSaveToastMessage = (result: MarkdownSaveResult): string => 
     : 'Markdown file is already up to date';
   if (result.pagesNeedingOcr === 0) return base;
   if (result.ocrMissingHints > 0 || result.ocrTextBlocks === 0) {
-    return `${base}. Some pages are scans — pictures were saved, but their text couldn't be read.`;
+    return `${base}. Some pages are scans - pictures were saved, but their text couldn't be read.`;
   }
   return `${base}. Text was read from scanned pages.`;
 };

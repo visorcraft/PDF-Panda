@@ -167,7 +167,7 @@ fn native_file_dialogs_enabled() -> bool {
 }
 /// Drain file paths captured at launch (file-association / "Open With").
 /// Returns them once and clears the buffer, so the frontend can open them
-/// after its document loaders mount — avoiding a startup event-delivery race.
+/// after its document loaders mount - avoiding a startup event-delivery race.
 #[tauri::command]
 fn take_pending_open_paths(pending: tauri::State<'_, PendingOpenPaths>) -> Vec<String> {
     let mut guard = pending.0.lock().unwrap_or_else(|e| e.into_inner());

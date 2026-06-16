@@ -21,7 +21,7 @@ export interface TabMenuWiring {
   showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-/** The wiring minus `tabs` — threaded down to the chrome as a single prop. */
+/** The wiring minus `tabs` - threaded down to the chrome as a single prop. */
 export type TabMenuApi = Omit<TabMenuWiring, 'tabs'>;
 
 /** Strip directory and a trailing `.pdf` so the rename field shows the base name. */

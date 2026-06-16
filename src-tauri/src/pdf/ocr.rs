@@ -180,7 +180,7 @@ pub struct OcrExportStats {
 }
 
 pub fn ocr_missing_hint(context: &str) -> String {
-    format!("_{context} — install Tesseract OCR (`tesseract` on PATH or `TESSERACT_CMD`) and language data (`PDF_PANDA_OCR_LANG`, default `eng`)._\n\n")
+    format!("_{context} - install Tesseract OCR (`tesseract` on PATH or `TESSERACT_CMD`) and language data (`PDF_PANDA_OCR_LANG`, default `eng`)._\n\n")
 }
 
 enum TesseractOutput {

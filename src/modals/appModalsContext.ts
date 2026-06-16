@@ -4,7 +4,7 @@ import type { modalCtxSecurityFields } from './buildAppModalCtxSecurityFields';
 import type { modalCtxAnnotFields } from './buildAppModalCtxAnnotFields';
 import type { modalCtxChromeFields } from './buildAppModalCtxChromeFields';
 
-/** Modal wiring context — all fields supplied by App.tsx. */
+/** Modal wiring context - all fields supplied by App.tsx. */
 export type AppModalsContext = AppModalsRuntime;
 
 /** Typed view used inside AppModals, derived from the field builders so renames surface at compile time. */

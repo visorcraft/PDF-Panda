@@ -42,7 +42,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
             Version <span data-testid="about-version">{version ?? '…'}</span>
           </p>
           <p className="modal-help">
-            A cross-platform desktop PDF editor. GPL-3.0-only — source and
+            A cross-platform desktop PDF editor. GPL-3.0-only - source and
             releases on GitHub.
           </p>
           <p className="about-repo">

@@ -777,7 +777,7 @@ body {
   font-size: 12px;
 }
 
-/* Tab right-click context menu — themed, mirrors .menu-dropdown styling. */
+/* Tab right-click context menu - themed, mirrors .menu-dropdown styling. */
 .tab-context-menu,
 .tcm-submenu {
   z-index: 1300;
@@ -2299,7 +2299,7 @@ select.modal-input {
   }
 }
 
-/* Print surface — hidden on screen, revealed only for the native print dialog */
+/* Print surface - hidden on screen, revealed only for the native print dialog */
 .print-root {
   display: none;
 }
@@ -2335,7 +2335,7 @@ select.modal-input {
   }
 }
 
-/* Legal viewers (Help → Licenses / Credits) — Grexa-style dark shell */
+/* Legal viewers (Help → Licenses / Credits) - Grexa-style dark shell */
 .legal-backdrop {
   align-items: stretch;
   justify-content: stretch;

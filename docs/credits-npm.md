@@ -8,12 +8,12 @@ shipped in release builds.
 
 ## Packages in use
 
-- **@tauri-apps/api** 2.11.0 — MIT OR Apache-2.0
-- **@tauri-apps/plugin-dialog** 2.7.1 — MIT OR Apache-2.0
-- **@tauri-apps/plugin-process** 2.3.1 — MIT OR Apache-2.0
-- **@tauri-apps/plugin-updater** 2.10.1 — MIT OR Apache-2.0
-- **react** 19.2.7 — MIT
-- **react-dom** 19.2.7 — MIT
+- **@tauri-apps/api** 2.11.0 - MIT OR Apache-2.0
+- **@tauri-apps/plugin-dialog** 2.7.1 - MIT OR Apache-2.0
+- **@tauri-apps/plugin-process** 2.3.1 - MIT OR Apache-2.0
+- **@tauri-apps/plugin-updater** 2.10.1 - MIT OR Apache-2.0
+- **react** 19.2.7 - MIT
+- **react-dom** 19.2.7 - MIT
 
 ---
 

@@ -27,7 +27,7 @@ export function useVisiblePages({
 
   // Refs mirror the latest state so the long-lived scroll handler (registered
   // once below) always reads fresh values without re-subscribing on every
-  // change — re-subscribing would churn the IntersectionObserver and scroll
+  // change - re-subscribing would churn the IntersectionObserver and scroll
   // listener, which is what made large documents seize up during scroll.
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
@@ -49,7 +49,7 @@ export function useVisiblePages({
   // dataset instead of being closed over, which keeps the callback identity
   // stable. With an inline arrow (`ref={(el) => registerPageRef(page, el)}`)
   // React treats the callback as new on every render and unobserves/re-observes
-  // every page slot every render — O(pages) churn that freezes large docs.
+  // every page slot every render - O(pages) churn that freezes large docs.
   const registerPageRef = useCallback((el: HTMLDivElement | null) => {
     if (!el) return;
     const page = Number(el.dataset.pageIndex);
@@ -115,7 +115,7 @@ export function useVisiblePages({
       let best = -1;
       let bestDist = Number.POSITIVE_INFINITY;
       // Only score the handful of currently-visible candidates instead of
-      // measuring every page in the document — getBoundingClientRect() per
+      // measuring every page in the document - getBoundingClientRect() per
       // page across hundreds/thousands of slots on every scroll tick is what
       // froze scrolling and piled on forced layout work over time.
       for (const page of visibleRef.current) {

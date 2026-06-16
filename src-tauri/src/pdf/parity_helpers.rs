@@ -78,7 +78,7 @@ pub fn keep_pages_by_parity(path: &Path, keep_odd: bool) -> Result<u32, String> 
             });
         }
         if kept == total {
-            return Err("Nothing to delete — all pages match the keep filter".to_string());
+            return Err("Nothing to delete - all pages match the keep filter".to_string());
         }
         Ok(())
     })

@@ -80,7 +80,7 @@ export function useSessionPersistence({
     try {
       await invoke('save_session_state', { state });
     } catch {
-      // Silent fail — session restore is best-effort.
+      // Silent fail - session restore is best-effort.
     }
   }, [sessions, activeId, isSpawned]);
 
@@ -122,7 +122,7 @@ export function useSessionPersistence({
       for (const s of state.sessions) {
         const sessionId = ensureSessionForOpen(s.original_path);
         if (sessionId === null) {
-          // Already open — update its target state for later.
+          // Already open - update its target state for later.
           const existing = sessions.find((es) => es.originalPath === s.original_path);
           if (existing) {
             opened.push({

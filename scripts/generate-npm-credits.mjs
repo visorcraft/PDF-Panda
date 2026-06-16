@@ -73,7 +73,7 @@ shipped in release builds.
 
 `;
 for (const row of rows) {
-  md += `- **${row.name}** ${row.version} — ${row.license}\n`;
+  md += `- **${row.name}** ${row.version} - ${row.license}\n`;
 }
 
 md += '\n---\n\n## npm License Texts\n\n';
