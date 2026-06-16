@@ -46,7 +46,23 @@ export function useTabContextMenu(api: TabMenuWiring) {
   const onTabContextMenu = useCallback((id: string, x: number, y: number) => {
     setMenu({ x, y, targetId: id });
   }, []);
-  const closeMenu = useCallback(() => setMenu(null), []);
+
+  const closeMenu = useCallback(() => {
+    const targetId = menu?.targetId;
+    const menuRoot = document.querySelector<HTMLElement>('.tab-context-menu');
+    setMenu(null);
+    if (!targetId) return;
+
+    setTimeout(() => {
+      // Don't steal focus if an action already moved it elsewhere (e.g. a modal).
+      if (document.activeElement !== document.body) return;
+      // If the menu root is somehow still mounted, leave focus alone.
+      if (menuRoot && document.contains(menuRoot)) return;
+
+      const tab = document.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(targetId)}"]`);
+      tab?.focus();
+    }, 0);
+  }, [menu]);
 
   const closeSet = useCallback(
     (ids: string[]) => {
