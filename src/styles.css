@@ -799,7 +799,8 @@ body {
   cursor: pointer;
 }
 
-.tcm-item:hover:not(:disabled) {
+.tcm-item:hover:not(:disabled),
+.tcm-item.highlighted:not(:disabled) {
   background: var(--pp-menu-hover);
 }
 
