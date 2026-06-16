@@ -269,6 +269,7 @@ export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
               className={className}
               role="menuitem"
               tabIndex={-1}
+              id={it.id}
               data-menuitem-id={it.id}
               aria-haspopup="true"
               aria-expanded={openSub === it.id}
@@ -295,6 +296,7 @@ export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
           className={className}
           role="menuitem"
           tabIndex={-1}
+          id={it.id}
           data-menuitem-id={it.id}
           disabled={it.disabled}
           onMouseEnter={() => setHighlightedId(it.id)}
@@ -307,7 +309,7 @@ export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
   };
 
   return (
-    <FocusTrap active initialFocus={false} restoreFocus>
+    <FocusTrap active initialFocus={false} restoreFocus={false}>
       <div
         ref={rootRef}
         className="tab-context-menu"
