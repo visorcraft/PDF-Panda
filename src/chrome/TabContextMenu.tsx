@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { FocusTrap } from '../ui/FocusTrap';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TabMenuItem } from './tabMenuModel';
 
 type TabContextMenuProps = {
@@ -108,6 +107,8 @@ function firstSelectableChildId(nav: NavEntry[], submenuId: string): string | nu
 /** Themed, viewport-clamped popup menu with full keyboard support. */
 export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const instanceId = useId();
+  const makeDomId = (id: string) => `${instanceId}--${id}`;
   const [pos, setPos] = useState({ left: x, top: y });
   const [openSub, setOpenSub] = useState<string | null>(null);
   const nav = useMemo(() => buildNav(items), [items]);
@@ -269,7 +270,7 @@ export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
               className={className}
               role="menuitem"
               tabIndex={-1}
-              id={it.id}
+              id={makeDomId(it.id)}
               data-menuitem-id={it.id}
               aria-haspopup="true"
               aria-expanded={openSub === it.id}
@@ -296,10 +297,13 @@ export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
           className={className}
           role="menuitem"
           tabIndex={-1}
-          id={it.id}
+          id={makeDomId(it.id)}
           data-menuitem-id={it.id}
           disabled={it.disabled}
-          onMouseEnter={() => setHighlightedId(it.id)}
+          onMouseEnter={() => {
+            setOpenSub(null);
+            setHighlightedId(it.id);
+          }}
           onClick={() => activate(it.disabled, it.onSelect)}
         >
           {it.label}
@@ -309,18 +313,17 @@ export function TabContextMenu({ items, x, y, onClose }: TabContextMenuProps) {
   };
 
   return (
-    <FocusTrap active initialFocus={false} restoreFocus={false}>
-      <div
-        ref={rootRef}
-        className="tab-context-menu"
-        style={{ left: pos.left, top: pos.top }}
-        role="menu"
-        tabIndex={-1}
-        aria-activedescendant={highlightedId ?? undefined}
-        onKeyDown={onKeyDown}
-      >
-        {renderItems(items)}
-      </div>
-    </FocusTrap>
+    <div
+      ref={rootRef}
+      className="tab-context-menu"
+      style={{ left: pos.left, top: pos.top }}
+      role="menu"
+      tabIndex={-1}
+      aria-label="Tab options"
+      aria-activedescendant={highlightedId ? makeDomId(highlightedId) : undefined}
+      onKeyDown={onKeyDown}
+    >
+      {renderItems(items)}
+    </div>
   );
 }
