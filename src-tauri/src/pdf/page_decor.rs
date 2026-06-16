@@ -207,6 +207,16 @@ pub fn flatten_annotations(path: &Path, start_page: u32, end_page: u32) -> Resul
     if start_page >= total || end_page >= total || start_page > end_page {
         return Err(format!("Invalid page range: {start_page}-{end_page}"));
     }
+    let removed = flatten_annotations_in_doc(&mut doc, start_page, end_page)?;
+    doc.save(path).map_err(|e| e.to_string())?;
+    Ok(removed)
+}
+
+pub(crate) fn flatten_annotations_in_doc(doc: &mut Document, start_page: u32, end_page: u32) -> Result<u32, String> {
+    let total = doc.get_pages().len() as u32;
+    if start_page >= total || end_page >= total || start_page > end_page {
+        return Err(format!("Invalid page range: {start_page}-{end_page}"));
+    }
     let mut removed = 0u32;
     for page_index in start_page..=end_page {
         let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or("Page not found".to_string())?;
@@ -222,8 +232,15 @@ pub fn flatten_annotations(path: &Path, start_page: u32, end_page: u32) -> Resul
             removed += count;
         }
     }
-    doc.save(path).map_err(|e| e.to_string())?;
     Ok(removed)
+}
+
+pub(crate) fn flatten_all_annotations_in_doc(doc: &mut Document) -> Result<u32, String> {
+    let total = doc.get_pages().len() as u32;
+    if total == 0 {
+        return Ok(0);
+    }
+    flatten_annotations_in_doc(doc, 0, total - 1)
 }
 
 pub fn add_page_header(path: &Path, start_page: u32, end_page: u32, text: &str) -> Result<u32, String> {

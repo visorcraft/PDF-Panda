@@ -26,7 +26,7 @@ pub fn print_document(source_path: &Path, opts: &PrintOptions, temp_dir: &Path) 
     let copies = opts.copies.ok_or("Copies is required")?;
     let duplex = opts.duplex.as_deref().ok_or("Duplex is required")?;
 
-    let doc = Document::load(source_path).map_err(|e| e.to_string())?;
+    let doc = crate::pdf::render::cached_document(source_path).map_err(|e| e.to_string())?;
     let page_count = doc.get_pages().len() as u32;
     let selected = parse_page_range(opts.page_range.as_deref(), page_count)?;
 
@@ -131,7 +131,7 @@ fn open_pdf_for_manual_print(path: &Path) -> Result<(), String> {
 }
 
 pub fn print_to_pdf(source_path: &Path, opts: &PrintOptions, output_path: &Path) -> Result<(), String> {
-    let doc = Document::load(source_path).map_err(|e| e.to_string())?;
+    let doc = crate::pdf::render::cached_document(source_path).map_err(|e| e.to_string())?;
     let page_count = doc.get_pages().len() as u32;
     let selected = parse_page_range(opts.page_range.as_deref(), page_count)?;
     build_print_pdf(source_path, opts, &selected, output_path)?;
@@ -171,7 +171,7 @@ pub fn build_print_pdf(
     selected_pages: &[u32],
     output_path: &Path,
 ) -> Result<(), String> {
-    let mut doc = Document::load(source_path).map_err(|e| e.to_string())?;
+    let mut doc = crate::pdf::render::cached_document(source_path).map_err(|e| e.to_string())?;
 
     apply_redactions_for_print(&mut doc)?;
     flatten_annotations_for_print(&mut doc)?;
@@ -212,13 +212,13 @@ pub fn build_print_pdf(
     Ok(())
 }
 
-/// v1 stub: no-op placeholder for redaction application during print.
-pub fn apply_redactions_for_print(_doc: &mut Document) -> Result<(), String> {
+pub fn apply_redactions_for_print(doc: &mut Document) -> Result<(), String> {
+    crate::pdf::redact::apply_redactions_to_doc(doc)?;
     Ok(())
 }
 
-/// v1 stub: no-op placeholder for annotation flattening during print.
-pub fn flatten_annotations_for_print(_doc: &mut Document) -> Result<(), String> {
+pub fn flatten_annotations_for_print(doc: &mut Document) -> Result<(), String> {
+    crate::pdf::page_decor::flatten_all_annotations_in_doc(doc)?;
     Ok(())
 }
 
@@ -541,5 +541,177 @@ mod tests {
         assert!(png.starts_with(b"\x89PNG"));
 
         let _ = fs::remove_file(&source);
+    }
+
+    fn minimal_pdf_with_annot(path: &Path) {
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+        let content_id = doc.new_object_id();
+        doc.objects.insert(content_id, Object::Stream(Stream::new(Dictionary::new(), b"BT ET".to_vec())));
+        let mut page = Dictionary::new();
+        page.set("Type", Object::Name(b"Page".to_vec()));
+        page.set("Parent", Object::Reference(pages_id));
+        page.set("MediaBox", Object::Array(vec![0.into(), 0.into(), 612.into(), 792.into()]));
+        page.set("Contents", Object::Reference(content_id));
+
+        let annot = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+            (b"Subtype".to_vec(), Object::Name(b"Highlight".to_vec())),
+            (
+                b"Rect".to_vec(),
+                Object::Array(vec![Object::Real(10.0), Object::Real(10.0), Object::Real(50.0), Object::Real(30.0)]),
+            ),
+        ])));
+        page.set("Annots", Object::Array(vec![Object::Reference(annot)]));
+
+        doc.objects.insert(page_id, Object::Dictionary(page));
+        let mut pages = Dictionary::new();
+        pages.set("Type", Object::Name(b"Pages".to_vec()));
+        pages.set("Kids", Object::Array(vec![Object::Reference(page_id)]));
+        pages.set("Count", Object::Integer(1));
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let mut catalog = Dictionary::new();
+        catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", Object::Reference(pages_id));
+        let catalog_id = doc.add_object(Object::Dictionary(catalog));
+        doc.trailer.set("Root", Object::Reference(catalog_id));
+        doc.save(path).unwrap();
+    }
+
+    fn minimal_pdf_with_red_square(path: &Path) {
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+        // Red filled rectangle from (100,100) to (200,200)
+        let ops = b"1 0 0 rg 100 100 100 100 re f BT ET".to_vec();
+        let content_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops)));
+        let mut page = Dictionary::new();
+        page.set("Type", Object::Name(b"Page".to_vec()));
+        page.set("Parent", Object::Reference(pages_id));
+        page.set("MediaBox", Object::Array(vec![0.into(), 0.into(), 612.into(), 792.into()]));
+        page.set("Contents", Object::Reference(content_id));
+        doc.objects.insert(page_id, Object::Dictionary(page));
+        let mut pages = Dictionary::new();
+        pages.set("Type", Object::Name(b"Pages".to_vec()));
+        pages.set("Kids", Object::Array(vec![Object::Reference(page_id)]));
+        pages.set("Count", Object::Integer(1));
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let mut catalog = Dictionary::new();
+        catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", Object::Reference(pages_id));
+        let catalog_id = doc.add_object(Object::Dictionary(catalog));
+        doc.trailer.set("Root", Object::Reference(catalog_id));
+        doc.save(path).unwrap();
+    }
+
+    fn add_redaction_to_doc(doc: &mut Document, page_id: ObjectId, rect: [f64; 4]) {
+        let annot = doc.add_object(Object::Dictionary(Dictionary::from_iter(vec![
+            (b"Type".to_vec(), Object::Name(b"Annot".to_vec())),
+            (b"Subtype".to_vec(), Object::Name(b"Square".to_vec())),
+            (
+                b"Rect".to_vec(),
+                Object::Array(vec![
+                    Object::Real(rect[0] as f32),
+                    Object::Real(rect[1] as f32),
+                    Object::Real(rect[2] as f32),
+                    Object::Real(rect[3] as f32),
+                ]),
+            ),
+            (b"C".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])),
+            (b"IC".to_vec(), Object::Array(vec![Object::Real(0.0), Object::Real(0.0), Object::Real(0.0)])),
+            (b"Border".to_vec(), Object::Array(vec![Object::Integer(0), Object::Integer(0), Object::Real(0.0)])),
+            (b"PandaRedact".to_vec(), Object::Boolean(true)),
+        ])));
+        let page_dict = doc.get_dictionary_mut(page_id).unwrap();
+        match page_dict.get_mut(b"Annots") {
+            Ok(Object::Array(arr)) => arr.push(Object::Reference(annot)),
+            _ => page_dict.set(b"Annots", Object::Array(vec![Object::Reference(annot)])),
+        }
+    }
+
+    #[test]
+    fn build_print_pdf_flattens_annotations() {
+        let dir = test_dir();
+        let source = dir.join("source.pdf");
+        let output = dir.join("output.pdf");
+
+        minimal_pdf_with_annot(&source);
+
+        let opts = PrintOptions {
+            page_range: None,
+            orientation: "portrait".to_string(),
+            paper_size: "letter".to_string(),
+            scaling: "none".to_string(),
+            margins: PrintMargins::None,
+            color_mode: "color".to_string(),
+            printer_name: None,
+            copies: None,
+            duplex: None,
+        };
+
+        build_print_pdf(&source, &opts, &[0], &output).unwrap();
+
+        let doc = Document::load(&output).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let page_dict = doc.get_dictionary(page_id).unwrap();
+        assert!(page_dict.get(b"Annots").is_err());
+
+        let _ = fs::remove_file(&source);
+        let _ = fs::remove_file(&output);
+    }
+
+    #[test]
+    fn build_print_pdf_applies_redactions() {
+        let dir = test_dir();
+        let source = dir.join("source.pdf");
+        let output = dir.join("output.pdf");
+
+        minimal_pdf_with_red_square(&source);
+        {
+            let mut doc = Document::load(&source).unwrap();
+            let page_id = *doc.get_pages().get(&1).unwrap();
+            // Redaction box covering the red square.
+            add_redaction_to_doc(&mut doc, page_id, [100.0, 100.0, 200.0, 200.0]);
+            doc.save(&source).unwrap();
+        }
+
+        let opts = PrintOptions {
+            page_range: None,
+            orientation: "portrait".to_string(),
+            paper_size: "letter".to_string(),
+            scaling: "none".to_string(),
+            margins: PrintMargins::None,
+            color_mode: "color".to_string(),
+            printer_name: None,
+            copies: None,
+            duplex: None,
+        };
+
+        build_print_pdf(&source, &opts, &[0], &output).unwrap();
+
+        let doc = Document::load(&output).unwrap();
+        let page_id = *doc.get_pages().get(&1).unwrap();
+        let page_dict = doc.get_dictionary(page_id).unwrap();
+        assert!(page_dict.get(b"Annots").is_err());
+
+        let resources = page_dict.get(b"Resources").unwrap().as_dict().unwrap();
+        let xobjects = resources.get(b"XObject").unwrap().as_dict().unwrap();
+        assert!(!xobjects.is_empty(), "redacted page should contain an image XObject");
+
+        // Render the output and verify the redacted region is black.
+        let png = crate::pdf::pdfium_bind::render_page_png(&output, 0, 400, 582).unwrap();
+        let img = image::load_from_memory(&png).unwrap().to_rgb8();
+        let (iw, ih) = img.dimensions();
+        let sx = f64::from(iw) / 612.0;
+        let sy = f64::from(ih) / 792.0;
+        // PDF y runs from the bottom; map a point inside the redaction box.
+        let cx = ((150.0 * sx) as u32).min(iw - 1);
+        let cy = (ih - 1 - (150.0 * sy) as u32).min(ih - 1);
+        let pixel = img.get_pixel(cx, cy);
+        assert!(pixel[0] < 30 && pixel[1] < 30 && pixel[2] < 30, "redacted area should be black, got {:?}", pixel);
+
+        let _ = fs::remove_file(&source);
+        let _ = fs::remove_file(&output);
     }
 }

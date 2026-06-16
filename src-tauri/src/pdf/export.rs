@@ -1,4 +1,4 @@
-use lopdf::Document;
+use crate::pdf::render;
 use std::fs;
 use std::path::Path;
 
@@ -41,7 +41,7 @@ impl ExportImageKind {
 }
 
 pub fn validate_page_range(path: &Path, start_page: u32, end_page: u32) -> Result<(), String> {
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let total = render::cached_document(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
     if start_page >= total || end_page >= total || start_page > end_page {
         return Err(format!("Invalid page range: {start_page}-{end_page}"));
     }
@@ -116,7 +116,7 @@ pub fn export_pages_by_parity_rendered(
     if !path.is_file() {
         return Err("File not found".to_string());
     }
-    let total = Document::load(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
+    let total = render::cached_document(path).map_err(|e| e.to_string())?.get_pages().len() as u32;
     fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
     let mut written = Vec::new();
     for page_index in 0..total {

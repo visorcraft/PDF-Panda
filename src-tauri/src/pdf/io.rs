@@ -1,3 +1,4 @@
+use crate::pdf::render;
 use lopdf::Document;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -11,6 +12,7 @@ where
     let mut doc = Document::load(path).map_err(|e| e.to_string())?;
     let result = f(&mut doc)?;
     doc.save(path).map_err(|e| e.to_string())?;
+    render::invalidate_document_cache(path);
     Ok(result)
 }
 

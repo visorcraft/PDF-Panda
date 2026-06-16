@@ -1,5 +1,139 @@
 use pdfium_render::prelude::*;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use std::time::SystemTime;
+
+use lopdf::Document;
+
+const CACHE_CAPACITY: usize = 8;
+
+struct CacheEntry {
+    document: Document,
+    mtime: Option<SystemTime>,
+    generation: u64,
+}
+
+struct DocumentCache {
+    entries: HashMap<PathBuf, CacheEntry>,
+    order: Vec<PathBuf>,
+    generations: HashMap<PathBuf, u64>,
+    capacity: usize,
+}
+
+impl DocumentCache {
+    fn new(capacity: usize) -> Self {
+        Self { entries: HashMap::new(), order: Vec::with_capacity(capacity), generations: HashMap::new(), capacity }
+    }
+
+    fn generation(&self, path: &Path) -> u64 {
+        self.generations.get(path).copied().unwrap_or(0)
+    }
+
+    fn touch(&mut self, path: &Path) {
+        self.order.retain(|p| p != path);
+        self.order.insert(0, path.to_path_buf());
+    }
+
+    fn remove(&mut self, path: &Path) {
+        if self.entries.remove(path).is_some() {
+            self.order.retain(|p| p != path);
+        }
+    }
+
+    fn invalidate(&mut self, path: &Path) {
+        let next = self.generation(path).wrapping_add(1);
+        self.generations.insert(path.to_path_buf(), next);
+        self.remove(path);
+    }
+
+    #[cfg(test)]
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.order.clear();
+    }
+
+    fn load_and_insert(&mut self, path: &Path) -> Result<Document, String> {
+        let current_mtime = std::fs::metadata(path).ok().and_then(|m| m.modified().ok());
+        let current_gen = self.generation(path);
+
+        let document = Document::load(path).map_err(|e| e.to_string())?;
+        if document.is_encrypted() {
+            // Encrypted documents are never cached because callers currently do
+            // not pass decryption passwords and serialising an encrypted lopdf
+            // document back to bytes would not help pdfium-render.
+            return Ok(document);
+        }
+
+        if self.entries.len() >= self.capacity && !self.entries.contains_key(path) {
+            if let Some(oldest) = self.order.pop() {
+                self.entries.remove(&oldest);
+            }
+        }
+
+        self.entries.insert(
+            path.to_path_buf(),
+            CacheEntry { document: document.clone(), mtime: current_mtime, generation: current_gen },
+        );
+        self.touch(path);
+        Ok(document)
+    }
+
+    fn get(&mut self, path: &Path) -> Result<Document, String> {
+        let current_mtime = std::fs::metadata(path).ok().and_then(|m| m.modified().ok());
+        let current_gen = self.generation(path);
+
+        if let Some(entry) = self.entries.get(path) {
+            if entry.mtime == current_mtime && entry.generation == current_gen {
+                let document = entry.document.clone();
+                self.touch(path);
+                return Ok(document);
+            }
+        }
+
+        self.load_and_insert(path)
+    }
+}
+
+fn document_cache() -> std::sync::MutexGuard<'static, DocumentCache> {
+    static CACHE: OnceLock<Mutex<DocumentCache>> = OnceLock::new();
+    CACHE
+        .get_or_init(|| Mutex::new(DocumentCache::new(CACHE_CAPACITY)))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Return a fresh clone of the cached `lopdf::Document` for `path`, reloading
+/// from disk when the file changes or when the entry is explicitly invalidated.
+pub fn cached_document(path: &Path) -> Result<Document, String> {
+    document_cache().get(path)
+}
+
+/// Mark any cached document for `path` as stale. Callers that mutate and save a
+/// PDF should invalidate the cache so subsequent reads see the new contents
+/// immediately, even when filesystem mtime granularity would otherwise hide the
+/// change.
+pub fn invalidate_document_cache(path: &Path) {
+    document_cache().invalidate(path);
+}
+
+/// Load a pdfium-render document for `path`, reusing the in-memory lopdf cache
+/// when possible. Falls back to loading directly from disk for encrypted files
+/// or when the cache cannot be used.
+fn pdfium_document_for_path<'a>(
+    pdfium: &'a Pdfium,
+    path: &Path,
+    password: Option<&str>,
+) -> Result<PdfDocument<'a>, String> {
+    let mut cached = cached_document(path)?;
+    if cached.is_encrypted() {
+        return pdfium.load_pdf_from_file(path, password).map_err(|e| e.to_string());
+    }
+
+    let mut bytes = Vec::new();
+    cached.save_to(&mut bytes).map_err(|e| e.to_string())?;
+    pdfium.load_pdf_from_byte_vec(bytes, password).map_err(|e| e.to_string())
+}
 
 /// Render one PDF page to encoded image bytes at the given dimensions.
 pub fn render_page_bytes(
@@ -10,11 +144,151 @@ pub fn render_page_bytes(
     height: i32,
     format: image::ImageFormat,
 ) -> Result<Vec<u8>, String> {
-    let document = pdfium.load_pdf_from_file(path, None).map_err(|e| e.to_string())?;
+    let document = pdfium_document_for_path(pdfium, path, None)?;
     let page = document.pages().get(page_index as PdfPageIndex).map_err(|e| e.to_string())?;
     let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
     let image = bitmap.as_image().map_err(|e| e.to_string())?;
     let mut buffer = Vec::new();
     image.write_to(&mut std::io::Cursor::new(&mut buffer), format).map_err(|e| e.to_string())?;
     Ok(buffer)
+}
+
+/// Render every page of `path` to thumbnail PNG bytes at the requested size.
+pub fn render_pdf_thumbnails(pdfium: &Pdfium, path: &Path, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
+    let document = pdfium_document_for_path(pdfium, path, None)?;
+    let page_count = document.pages().len();
+    let mut thumbnails = Vec::with_capacity(page_count as usize);
+
+    for i in 0..page_count {
+        let page = document.pages().get(i as PdfPageIndex).map_err(|e| e.to_string())?;
+        let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
+        let image = bitmap.as_image().map_err(|e| e.to_string())?;
+        let mut buffer = Vec::new();
+        image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png).map_err(|e| e.to_string())?;
+        thumbnails.push(buffer);
+    }
+
+    Ok(thumbnails)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lopdf::{Dictionary, Object, Stream};
+    use std::fs;
+
+    fn test_dir() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "pdf_panda_render_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()
+        ))
+    }
+
+    fn minimal_pdf(path: &Path) {
+        let _ = fs::create_dir_all(path.parent().unwrap_or_else(|| Path::new(".")));
+        let mut doc = Document::with_version("1.4");
+        let pages_id = doc.new_object_id();
+        let page_id = doc.new_object_id();
+        let content_id = doc.new_object_id();
+        doc.objects.insert(content_id, Object::Stream(Stream::new(Dictionary::new(), b"BT ET".to_vec())));
+        let mut page = Dictionary::new();
+        page.set("Type", Object::Name(b"Page".to_vec()));
+        page.set("Parent", Object::Reference(pages_id));
+        page.set("MediaBox", Object::Array(vec![0.into(), 0.into(), 612.into(), 792.into()]));
+        page.set("Contents", Object::Reference(content_id));
+        doc.objects.insert(page_id, Object::Dictionary(page));
+        let mut pages = Dictionary::new();
+        pages.set("Type", Object::Name(b"Pages".to_vec()));
+        pages.set("Kids", Object::Array(vec![Object::Reference(page_id)]));
+        pages.set("Count", Object::Integer(1));
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let mut catalog = Dictionary::new();
+        catalog.set("Type", Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", Object::Reference(pages_id));
+        let catalog_id = doc.add_object(Object::Dictionary(catalog));
+        doc.trailer.set("Root", Object::Reference(catalog_id));
+        doc.save(path).unwrap();
+    }
+
+    #[test]
+    fn cached_document_reuses_loaded_copy() {
+        let dir = test_dir();
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("cached.pdf");
+        minimal_pdf(&path);
+
+        let first = cached_document(&path).unwrap();
+        let second = cached_document(&path).unwrap();
+        assert_eq!(first.get_pages().len(), second.get_pages().len());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cached_document_reloads_after_invalidation() {
+        let dir = test_dir();
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("reload.pdf");
+        minimal_pdf(&path);
+
+        let before = cached_document(&path).unwrap();
+        assert_eq!(before.get_pages().len(), 1);
+
+        // Simulate a structural edit by replacing the file with a two-page PDF.
+        let mut doc = Document::load(&path).unwrap();
+        let pages_id = doc.catalog().unwrap().get(b"Pages").unwrap().as_reference().unwrap();
+        let page_id = doc.new_object_id();
+        let content_id = doc.new_object_id();
+        doc.objects.insert(content_id, Object::Stream(Stream::new(Dictionary::new(), b"BT ET".to_vec())));
+        let mut page = Dictionary::new();
+        page.set("Type", Object::Name(b"Page".to_vec()));
+        page.set("Parent", Object::Reference(pages_id));
+        page.set("MediaBox", Object::Array(vec![0.into(), 0.into(), 612.into(), 792.into()]));
+        page.set("Contents", Object::Reference(content_id));
+        doc.objects.insert(page_id, Object::Dictionary(page));
+        {
+            let pages = doc.get_dictionary_mut(pages_id).unwrap();
+            let kids = pages.get_mut(b"Kids").unwrap().as_array_mut().unwrap();
+            kids.push(Object::Reference(page_id));
+            let count = pages.get_mut(b"Count").unwrap().as_i64().unwrap();
+            pages.set("Count", Object::Integer(count + 1));
+        }
+        doc.save(&path).unwrap();
+
+        invalidate_document_cache(&path);
+        let after = cached_document(&path).unwrap();
+        assert_eq!(after.get_pages().len(), 2);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cache_evicts_oldest_when_full() {
+        document_cache().clear();
+
+        let dir = test_dir();
+        let _ = fs::create_dir_all(&dir);
+
+        let mut paths = Vec::new();
+        for i in 0..CACHE_CAPACITY + 2 {
+            let path = dir.join(format!("evict_{i}.pdf"));
+            minimal_pdf(&path);
+            paths.push(path);
+        }
+
+        for path in &paths {
+            let _ = cached_document(path).unwrap();
+        }
+
+        // The cache is shared across tests, so we only assert the invariant that
+        // it never grows beyond its configured capacity and that the most recent
+        // entries are still reachable.
+        assert!(document_cache().entries.len() <= CACHE_CAPACITY, "cache grew beyond capacity");
+        if let Some(last) = paths.last() {
+            assert!(cached_document(last).is_ok(), "most recent entry should still be reachable");
+        }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

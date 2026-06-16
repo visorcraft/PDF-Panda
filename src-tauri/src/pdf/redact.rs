@@ -14,18 +14,23 @@ pub type RedactionPageRects = Vec<(u32, Vec<[f64; 4]>)>;
 
 pub fn pages_with_redactions(path: &Path) -> Result<RedactionPageRects, String> {
     let doc = Document::load(path).map_err(|e| e.to_string())?;
-    let mut page_nums: Vec<u32> = doc.get_pages().keys().copied().collect();
+    Ok(pages_with_redactions_in_doc(&doc))
+}
+
+pub(crate) fn pages_with_redactions_in_doc(doc: &Document) -> RedactionPageRects {
+    let pages = doc.get_pages();
+    let mut page_nums: Vec<u32> = pages.keys().copied().collect();
     page_nums.sort_unstable();
     let mut out = Vec::new();
     for page_num in page_nums {
         let page_index = page_num.saturating_sub(1);
-        let page_id = *doc.get_pages().get(&page_num).ok_or("Page not found".to_string())?;
-        let rects = redaction_rects_on_page(&doc, page_id);
+        let page_id = *pages.get(&page_num).unwrap_or_else(|| unreachable!());
+        let rects = redaction_rects_on_page(doc, page_id);
         if !rects.is_empty() {
             out.push((page_index, rects));
         }
     }
-    Ok(out)
+    out
 }
 
 pub fn has_redaction_boxes(path: &Path) -> Result<bool, String> {
@@ -33,15 +38,31 @@ pub fn has_redaction_boxes(path: &Path) -> Result<bool, String> {
 }
 
 pub fn render_page_redacted(path: &Path, page_index: u32, rects_pdf: &[[f64; 4]]) -> Result<RgbImage, String> {
+    let doc = Document::load(path).map_err(|e| e.to_string())?;
+    render_page_redacted_with_doc(&doc, path, page_index, rects_pdf)
+}
+
+pub(crate) fn render_page_redacted_with_doc(
+    doc: &Document,
+    render_path: &Path,
+    page_index: u32,
+    rects_pdf: &[[f64; 4]],
+) -> Result<RgbImage, String> {
     let png = {
         let pdfium = get_pdfium()?;
-        render::render_page_bytes(&pdfium, path, page_index, EXPORT_RENDER_W, EXPORT_RENDER_H, image::ImageFormat::Png)?
+        render::render_page_bytes(
+            &pdfium,
+            render_path,
+            page_index,
+            EXPORT_RENDER_W,
+            EXPORT_RENDER_H,
+            image::ImageFormat::Png,
+        )?
     };
     let mut img = image::load_from_memory(&png).map_err(|e| e.to_string())?.to_rgb8();
 
-    let doc = Document::load(path).map_err(|e| e.to_string())?;
     let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or_else(|| "Page not found".to_string())?;
-    let media = page_media_box(&doc, page_id)?;
+    let media = page_media_box(doc, page_id)?;
     let page_w = (media[2] - media[0]) as f32;
     let page_h = (media[3] - media[1]) as f32;
     let render_w = f64::from(EXPORT_RENDER_W);
@@ -68,34 +89,41 @@ fn paint_black_rect(img: &mut RgbImage, x: i32, y: i32, w: i32, h: i32) {
 }
 
 pub fn replace_page_with_render(path: &Path, page_index: u32, img: &RgbImage) -> Result<(), String> {
-    let (img_w, img_h) = img.dimensions();
     let mut jpeg = Vec::new();
     image::DynamicImage::ImageRgb8(img.clone())
         .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
         .map_err(|e| e.to_string())?;
 
-    mutate_pdf(path, |doc| {
-        let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or_else(|| "Page not found".to_string())?;
-        let media = page_media_box(doc, page_id)?;
-        let mw = media[2] - media[0];
-        let mh = media[3] - media[1];
+    mutate_pdf(path, |doc| replace_page_with_render_in_doc(doc, page_index, img, jpeg.clone()))
+}
 
-        let image_id = embed_jpeg_xobject(doc, jpeg, img_w, img_h);
-        let mut xobjects = Dictionary::new();
-        xobjects.set(b"Im1", Object::Reference(image_id));
-        let mut resources = Dictionary::new();
-        resources.set(b"XObject", Object::Dictionary(xobjects));
+pub(crate) fn replace_page_with_render_in_doc(
+    doc: &mut Document,
+    page_index: u32,
+    img: &RgbImage,
+    jpeg: Vec<u8>,
+) -> Result<(), String> {
+    let (img_w, img_h) = img.dimensions();
+    let page_id = *doc.get_pages().get(&(page_index + 1)).ok_or_else(|| "Page not found".to_string())?;
+    let media = page_media_box(doc, page_id)?;
+    let mw = media[2] - media[0];
+    let mh = media[3] - media[1];
 
-        let ops = format!("q {mw} 0 0 {mh} 0 0 cm /Im1 Do Q\n", mw = mw, mh = mh);
-        let content_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.into_bytes())));
+    let image_id = embed_jpeg_xobject(doc, jpeg, img_w, img_h);
+    let mut xobjects = Dictionary::new();
+    xobjects.set(b"Im1", Object::Reference(image_id));
+    let mut resources = Dictionary::new();
+    resources.set(b"XObject", Object::Dictionary(xobjects));
 
-        let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
-        page_dict.set(b"Contents", Object::Reference(content_id));
-        page_dict.set(b"Resources", Object::Dictionary(resources));
-        page_dict.remove(b"Annots");
-        doc.prune_objects();
-        Ok(())
-    })
+    let ops = format!("q {mw} 0 0 {mh} 0 0 cm /Im1 Do Q\n", mw = mw, mh = mh);
+    let content_id = doc.add_object(Object::Stream(Stream::new(Dictionary::new(), ops.into_bytes())));
+
+    let page_dict = doc.get_dictionary_mut(page_id).map_err(|e| e.to_string())?;
+    page_dict.set(b"Contents", Object::Reference(content_id));
+    page_dict.set(b"Resources", Object::Dictionary(resources));
+    page_dict.remove(b"Annots");
+    doc.prune_objects();
+    Ok(())
 }
 
 pub fn apply_redactions(path: &Path, ocr_after: bool) -> Result<u32, String> {
@@ -117,6 +145,36 @@ pub fn apply_redactions(path: &Path, ocr_after: bool) -> Result<u32, String> {
         let _ = make_pdf_searchable(path, start, end)?;
     }
 
+    Ok(affected)
+}
+
+/// Apply redactions to an in-memory document. A temporary file is used for
+/// rendering because the PDFium binding loads documents from disk.
+pub(crate) fn apply_redactions_to_doc(doc: &mut Document) -> Result<u32, String> {
+    let inventory = pages_with_redactions_in_doc(doc);
+    if inventory.is_empty() {
+        return Ok(0);
+    }
+
+    let temp_name = format!(
+        "pdf_panda_redact_print_{}.pdf",
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()
+    );
+    let temp_path = std::env::temp_dir().join(&temp_name);
+    doc.save(&temp_path).map_err(|e| e.to_string())?;
+
+    let mut affected = 0u32;
+    for (page_index, rects) in &inventory {
+        let img = render_page_redacted_with_doc(doc, &temp_path, *page_index, rects)?;
+        let mut jpeg = Vec::new();
+        image::DynamicImage::ImageRgb8(img.clone())
+            .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+            .map_err(|e| e.to_string())?;
+        replace_page_with_render_in_doc(doc, *page_index, &img, jpeg)?;
+        affected += 1;
+    }
+
+    let _ = std::fs::remove_file(&temp_path);
     Ok(affected)
 }
 

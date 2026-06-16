@@ -130,21 +130,7 @@ fn get_page_text_layout(path: String, page_index: u32) -> Result<Vec<pdf::text_l
 fn get_pdf_thumbnails(path: String, width: i32, height: i32) -> Result<Vec<Vec<u8>>, String> {
     let path = PathBuf::from(path);
     let pdfium = get_pdfium()?;
-    let document = pdfium.load_pdf_from_file(&path, None).map_err(|e| e.to_string())?;
-    let page_count = document.pages().len();
-    let mut thumbnails = Vec::with_capacity(page_count as usize);
-
-    for i in 0..page_count {
-        let page = document.pages().get(i as PdfPageIndex).map_err(|e| e.to_string())?;
-        let bitmap = page.render(width as Pixels, height as Pixels, None).map_err(|e| e.to_string())?;
-
-        let image = bitmap.as_image().map_err(|e| e.to_string())?;
-        let mut buffer = Vec::new();
-        image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png).map_err(|e| e.to_string())?;
-        thumbnails.push(buffer);
-    }
-
-    Ok(thumbnails)
+    pdf::render::render_pdf_thumbnails(&pdfium, &path, width, height)
 }
 #[tauri::command]
 fn delete_page(path: String, page_index: u32) -> Result<(), String> {

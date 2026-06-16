@@ -37,7 +37,6 @@ use pdf::security::{PdfSignatureInfo, PdfSignatureVerificationSummary};
 use pdf::summary::{PdfSummaryResult, SummarySaveResult};
 
 use lopdf::{Document, Object, ObjectId};
-use pdfium_render::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fs;

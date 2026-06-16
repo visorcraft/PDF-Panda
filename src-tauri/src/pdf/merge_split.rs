@@ -2,13 +2,13 @@ use crate::pdf::fonts::dedup_fonts_after_insert;
 use crate::pdf::form_merge::merge_acroform_after_insert;
 use crate::pdf::import::import_object;
 use crate::pdf::page_tree::{flatten_pages, get_pages_kids, set_pages_kids};
-use lopdf::{Document, Object, ObjectId};
+use lopdf::{Object, ObjectId};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
 pub fn split_pdf(path: &Path, page_ranges: Vec<(u32, u32)>) -> Result<Vec<String>, String> {
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let mut doc = crate::pdf::render::cached_document(path).map_err(|e| e.to_string())?;
 
     if page_ranges.is_empty() {
         return Err("At least one page range is required".to_string());
@@ -39,7 +39,7 @@ pub fn split_pdf(path: &Path, page_ranges: Vec<(u32, u32)>) -> Result<Vec<String
         doc.save(&output_path).map_err(|e| e.to_string())?;
         output_paths.push(output_path.to_string_lossy().to_string());
 
-        doc = Document::load(path).map_err(|e| e.to_string())?;
+        doc = crate::pdf::render::cached_document(path).map_err(|e| e.to_string())?;
     }
 
     Ok(output_paths)
@@ -50,7 +50,7 @@ pub fn extract_pdf_pages(path: &Path, output_path: &Path, start_page: u32, end_p
         return Err("Output path must differ from the source PDF".to_string());
     }
 
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
+    let mut doc = crate::pdf::render::cached_document(path).map_err(|e| e.to_string())?;
     let (all_kids, pages_ref) = get_pages_kids(&doc)?;
     let total_pages = all_kids.len() as u32;
     if start_page >= total_pages || end_page >= total_pages || start_page > end_page {
@@ -77,8 +77,8 @@ pub fn insert_pdf(
     insert_start: u32,
     insert_end: u32,
 ) -> Result<(), String> {
-    let mut doc = Document::load(path).map_err(|e| e.to_string())?;
-    let insert_doc = Document::load(insert_path).map_err(|e| e.to_string())?;
+    let mut doc = crate::pdf::render::cached_document(path).map_err(|e| e.to_string())?;
+    let insert_doc = crate::pdf::render::cached_document(insert_path).map_err(|e| e.to_string())?;
 
     // Flatten the destination so /Kids is a flat leaf list we can index into.
     let pages_ref = flatten_pages(&mut doc)?;
