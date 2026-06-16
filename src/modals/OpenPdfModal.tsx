@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import { useId, type KeyboardEvent } from 'react';
 import { Modal } from '../ui/Modal';
 
 type OpenPdfModalProps = {
@@ -26,6 +26,8 @@ export function OpenPdfModal({
   onChooseNative,
   onBrowse,
 }: OpenPdfModalProps) {
+  const pathId = useId();
+
   const onFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onOpen();
@@ -39,9 +41,10 @@ export function OpenPdfModal({
       {!nativeDialogs && (
         <p className="modal-help">Native file picker is disabled for this session. Enter a path or use Browse….</p>
       )}
-      <label>PDF path:</label>
+      <label htmlFor={pathId}>PDF path:</label>
       <div className="modal-path-row">
         <input
+          id={pathId}
           type="text"
           value={filePath}
           onChange={(e) => onFilePathChange(e.target.value)}

@@ -67,7 +67,7 @@ export function TesseractReminderModal({
           />
           <span>Do not remind me again</span>
         </label>
-        <button type="button" onClick={onClose} className="btn btn-active" data-testid="tesseract-reminder-close">Close</button>
+        <button type="button" onClick={onClose} className="btn btn-secondary" data-testid="tesseract-reminder-close">Close</button>
       </div>
     </Modal>
   );

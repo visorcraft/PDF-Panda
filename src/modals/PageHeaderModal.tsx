@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { ScopedPageActionModal } from './ScopedPageActionModal';
 import type { PageRangeController } from '../pageRange/usePageRange';
 
@@ -22,6 +23,7 @@ export function PageHeaderModal({
   onApplyOdd,
   onApplyEven,
 }: PageHeaderModalProps) {
+  const textId = useId();
   const disabled = !text.trim();
 
   return (
@@ -36,8 +38,9 @@ export function PageHeaderModal({
       onApplyEven={onApplyEven}
       applyDisabled={disabled}
     >
-      <label>Header text:</label>
+      <label htmlFor={textId}>Header text:</label>
       <input
+        id={textId}
         type="text"
         value={text}
         onChange={(e) => onTextChange(e.target.value)}

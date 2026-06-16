@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 type ExtractOddPagesModalProps = {
@@ -13,14 +14,16 @@ export function ExtractOddPagesModal({
   onClose,
   onExtract,
 }: ExtractOddPagesModalProps) {
+  const outputId = useId();
   const disabled = !outputPath.trim();
 
   return (
     <Modal onClose={onClose}>
       <h3>Extract Odd Pages</h3>
       <p className="modal-help">Save pages 1, 3, 5, … to a new PDF. The open document is not modified.</p>
-      <label>Output path:</label>
+      <label htmlFor={outputId}>Output path:</label>
       <input
+        id={outputId}
         type="text"
         value={outputPath}
         onChange={(e) => onOutputPathChange(e.target.value)}

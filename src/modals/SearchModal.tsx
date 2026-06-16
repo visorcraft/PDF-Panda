@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useId, type RefObject } from 'react';
 import { Modal } from '../ui/Modal';
 
 export type PdfTextSearchMatch = {
@@ -36,12 +36,18 @@ export function SearchModal({
   onFind,
   onStepMatch,
 }: SearchModalProps) {
+  const baseId = useId();
+  const queryId = `${baseId}-query`;
+  const matchCaseId = `${baseId}-match-case`;
+  const wholeWordId = `${baseId}-whole-word`;
+
   return (
     <Modal onClose={onClose}>
       <h3>Find in PDF</h3>
-      <label>Search for:</label>
+      <label htmlFor={queryId}>Search for:</label>
       <input
         ref={inputRef}
+        id={queryId}
         type="text"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
@@ -58,16 +64,18 @@ export function SearchModal({
         }}
       />
       <div className="search-options">
-        <label className="form-checkbox-row">
+        <label htmlFor={matchCaseId} className="form-checkbox-row">
           <input
+            id={matchCaseId}
             type="checkbox"
             checked={matchCase}
             onChange={(e) => onMatchCaseChange(e.target.checked)}
           />
           <span>Match case</span>
         </label>
-        <label className="form-checkbox-row">
+        <label htmlFor={wholeWordId} className="form-checkbox-row">
           <input
+            id={wholeWordId}
             type="checkbox"
             checked={wholeWord}
             onChange={(e) => onWholeWordChange(e.target.checked)}

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { ScopedPageActionModal } from './ScopedPageActionModal';
 import type { PageRangeController } from '../pageRange/usePageRange';
 
@@ -22,6 +23,7 @@ export function ExportPagesPdfModal({
   onExportOdd,
   onExportEven,
 }: ExportPagesPdfModalProps) {
+  const outputId = useId();
   const disabled = !outputDir.trim();
 
   return (
@@ -41,8 +43,9 @@ export function ExportPagesPdfModal({
       applyDisabled={disabled}
       rangeFirst
     >
-      <label>Output directory:</label>
+      <label htmlFor={outputId}>Output directory:</label>
       <input
+        id={outputId}
         type="text"
         value={outputDir}
         onChange={(e) => onOutputDirChange(e.target.value)}

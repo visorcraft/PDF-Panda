@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import { useId, type KeyboardEvent } from 'react';
 import { Modal } from '../ui/Modal';
 
 export type PdfBrowserEntry = {
@@ -32,6 +32,8 @@ export function PdfBrowserModal({
   onNavigateParent,
   onEntryClick,
 }: PdfBrowserModalProps) {
+  const folderId = useId();
+
   const onFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onCommitPath();
@@ -42,9 +44,10 @@ export function PdfBrowserModal({
   return (
     <Modal onClose={onClose}>
       <h3>Browse PDF</h3>
-      <label>Folder:</label>
+      <label htmlFor={folderId}>Folder:</label>
       <div className="modal-path-row">
         <input
+          id={folderId}
           type="text"
           value={pathInput}
           onChange={(e) => onPathInputChange(e.target.value)}

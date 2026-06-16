@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 type ReplacePageModalProps = {
@@ -23,15 +24,19 @@ export function ReplacePageModal({
   onClose,
   onReplace,
 }: ReplacePageModalProps) {
+  const baseId = useId();
+  const sourcePathId = `${baseId}-source-path`;
+  const sourcePageId = `${baseId}-source-page`;
   const disabled = !sourcePath.trim();
 
   return (
     <Modal onClose={onClose}>
       <h3>Replace Page {currentPage + 1}</h3>
       <p className="modal-help">Replace the current page with a deep-copied page from another PDF.</p>
-      <label>Source PDF path:</label>
+      <label htmlFor={sourcePathId}>Source PDF path:</label>
       <div className="modal-path-row">
         <input
+          id={sourcePathId}
           type="text"
           value={sourcePath}
           onChange={(e) => onSourcePathChange(e.target.value)}
@@ -41,10 +46,11 @@ export function ReplacePageModal({
         <button onClick={onBrowse} className="btn">Browse…</button>
       </div>
       {sourcePageCount !== null && (
-        <label>
+        <label htmlFor={sourcePageId}>
           Source page (1-{sourcePageCount}):
           {' '}
           <input
+            id={sourcePageId}
             type="number"
             value={sourcePage + 1}
             onChange={(e) => onSourcePageChange(Math.max(0, parseInt(e.target.value, 10) - 1))}

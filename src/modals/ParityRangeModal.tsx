@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { PageRangePairInputs } from '../pageRange/PageRangeFields';
 import { parityBatchNeedsRange } from '../pdf/parityPayload';
 import { Modal } from '../ui/Modal';
@@ -31,6 +32,9 @@ export function ParityRangeModal({
   onClose,
   onRun,
 }: ParityRangeModalProps) {
+  const baseId = useId();
+  const actionId = `${baseId}-action`;
+  const outputId = `${baseId}-output`;
   const needsRange = parityBatchNeedsRange(command);
   const needsOutput = command.startsWith('export_') || command.startsWith('extract_');
 
@@ -47,16 +51,17 @@ export function ParityRangeModal({
           maxPage={pageCount ?? undefined}
         />
       )}
-      <label>Action:</label>
-      <select className="modal-input" value={command} onChange={(e) => onCommandChange(e.target.value)}>
+      <label htmlFor={actionId}>Action:</label>
+      <select id={actionId} className="modal-input" value={command} onChange={(e) => onCommandChange(e.target.value)}>
         {commands.map((cmd) => (
           <option key={cmd} value={cmd}>{cmd.replaceAll('_', ' ')}</option>
         ))}
       </select>
       {needsOutput && (
         <>
-          <label>{command.startsWith('extract_') ? 'Output PDF path:' : 'Output directory:'}</label>
+          <label htmlFor={outputId}>{command.startsWith('extract_') ? 'Output PDF path:' : 'Output directory:'}</label>
           <input
+            id={outputId}
             type="text"
             value={outputPath}
             onChange={(e) => onOutputPathChange(e.target.value)}

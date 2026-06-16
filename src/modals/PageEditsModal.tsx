@@ -68,7 +68,7 @@ export function PageEditsModal({
         </ul>
       )}
       <div className="modal-actions">
-        <button onClick={onClose} className="btn">Close</button>
+        <button onClick={onClose} className="btn btn-secondary">Close</button>
       </div>
     </Modal>
   );

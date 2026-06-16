@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 type SplitPdfModalProps = {
@@ -15,11 +16,14 @@ export function SplitPdfModal({
   onClose,
   onSplit,
 }: SplitPdfModalProps) {
+  const rangesId = useId();
+
   return (
     <Modal onClose={onClose}>
       <h3>Split PDF</h3>
-      <p>Enter page ranges (e.g., &quot;1-3, 4-5, 6-10&quot;):</p>
+      <label htmlFor={rangesId}>Enter page ranges (e.g., &quot;1-3, 4-5, 6-10&quot;):</label>
       <input
+        id={rangesId}
         type="text"
         value={splitRanges}
         onChange={(e) => onSplitRangesChange(e.target.value)}

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { PageRangeController } from './usePageRange';
 
 type PageRangeFieldsProps = {
@@ -7,10 +8,13 @@ type PageRangeFieldsProps = {
 };
 
 export function PageRangeFields({ range, pageCount, applyLabel = 'Apply to:' }: PageRangeFieldsProps) {
+  const scopeId = useId();
+
   return (
     <>
-      <label>{applyLabel}</label>
+      <label htmlFor={scopeId}>{applyLabel}</label>
       <select
+        id={scopeId}
         className="modal-input"
         value={range.scope}
         onChange={(e) => range.setScope(e.target.value as typeof range.scope)}
@@ -53,16 +57,20 @@ export function PageRangePairInputs({
   fromLabel,
   toLabel,
 }: PageRangePairInputsProps) {
+  const baseId = useId();
+  const fromId = `${baseId}-from`;
+  const toId = `${baseId}-to`;
   const resolvedFromLabel = fromLabel ?? (maxPage !== undefined ? `From page (1-${maxPage}):` : 'From page:');
   const resolvedToLabel = toLabel ?? (maxPage !== undefined ? `To page (1-${maxPage}):` : 'To page:');
   const parsePage = (value: string) => Math.max(0, (parseInt(value, 10) || 1) - 1);
 
   return (
     <>
-      <label>
+      <label htmlFor={fromId}>
         {resolvedFromLabel}
         {' '}
         <input
+          id={fromId}
           type="number"
           value={startPage + 1}
           onChange={(e) => onStartChange(parsePage(e.target.value))}
@@ -71,10 +79,11 @@ export function PageRangePairInputs({
           className="modal-input"
         />
       </label>
-      <label>
+      <label htmlFor={toId}>
         {resolvedToLabel}
         {' '}
         <input
+          id={toId}
           type="number"
           value={endPage + 1}
           onChange={(e) => onEndChange(parsePage(e.target.value))}

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 export type FormFieldKind = 'text' | 'checkbox' | 'choice' | 'radio';
@@ -35,6 +36,14 @@ export function AddFormFieldModal({
   onClose,
   onConfirm,
 }: AddFormFieldModalProps) {
+  const baseId = useId();
+  const kindId = `${baseId}-kind`;
+  const nameId = `${baseId}-name`;
+  const optionsId = `${baseId}-options`;
+  const checkedId = `${baseId}-checked`;
+  const groupId = `${baseId}-group`;
+  const optionId = `${baseId}-option`;
+
   const disabled = fieldKind === 'radio'
     ? !radioGroup.trim() || !radioOption.trim()
     : !fieldName.trim();
@@ -43,8 +52,9 @@ export function AddFormFieldModal({
     <Modal onClose={onClose}>
       <h3>Add Form Field</h3>
       <p className="modal-help">Choose a field type, then place it on the current page.</p>
-      <label>Field type:</label>
+      <label htmlFor={kindId}>Field type:</label>
       <select
+        id={kindId}
         className="modal-input"
         value={fieldKind}
         onChange={(e) => onFieldKindChange(e.target.value as FormFieldKind)}
@@ -56,16 +66,18 @@ export function AddFormFieldModal({
       </select>
       {fieldKind === 'radio' ? (
         <>
-          <label>Group name:</label>
+          <label htmlFor={groupId}>Group name:</label>
           <input
+            id={groupId}
             type="text"
             value={radioGroup}
             onChange={(e) => onRadioGroupChange(e.target.value)}
             className="modal-input"
             placeholder="Color"
           />
-          <label>Option name:</label>
+          <label htmlFor={optionId}>Option name:</label>
           <input
+            id={optionId}
             type="text"
             value={radioOption}
             onChange={(e) => onRadioOptionChange(e.target.value)}
@@ -75,8 +87,9 @@ export function AddFormFieldModal({
         </>
       ) : (
         <>
-          <label>Field name:</label>
+          <label htmlFor={nameId}>Field name:</label>
           <input
+            id={nameId}
             type="text"
             value={fieldName}
             onChange={(e) => onFieldNameChange(e.target.value)}
@@ -85,8 +98,9 @@ export function AddFormFieldModal({
           />
           {fieldKind === 'choice' && (
             <>
-              <label>Options (comma-separated):</label>
+              <label htmlFor={optionsId}>Options (comma-separated):</label>
               <input
+                id={optionsId}
                 type="text"
                 value={fieldOptions}
                 onChange={(e) => onFieldOptionsChange(e.target.value)}
@@ -96,8 +110,9 @@ export function AddFormFieldModal({
             </>
           )}
           {fieldKind === 'checkbox' && (
-            <label className="form-checkbox-row">
+            <label htmlFor={checkedId} className="form-checkbox-row">
               <input
+                id={checkedId}
                 type="checkbox"
                 checked={checkboxChecked}
                 onChange={(e) => onCheckboxCheckedChange(e.target.checked)}

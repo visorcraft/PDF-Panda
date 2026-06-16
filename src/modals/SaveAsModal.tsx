@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 type SaveAsModalProps = {
@@ -17,12 +18,15 @@ export function SaveAsModal({
   onChooseNative,
   onSave,
 }: SaveAsModalProps) {
+  const outputId = useId();
+
   return (
     <Modal onClose={onClose}>
       <h3>Save As</h3>
-      <label>Save to path:</label>
+      <label htmlFor={outputId}>Save to path:</label>
       <div className="modal-path-row">
         <input
+          id={outputId}
           type="text"
           value={outputPath}
           onChange={(e) => onOutputPathChange(e.target.value)}

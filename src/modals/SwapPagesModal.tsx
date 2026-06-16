@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 type SwapPagesModalProps = {
@@ -19,16 +20,20 @@ export function SwapPagesModal({
   onClose,
   onSwap,
 }: SwapPagesModalProps) {
+  const baseId = useId();
+  const pageAId = `${baseId}-a`;
+  const pageBId = `${baseId}-b`;
   const parsePage = (value: string) => Math.max(0, parseInt(value, 10) - 1);
 
   return (
     <Modal onClose={onClose}>
       <h3>Swap Pages</h3>
       <p className="modal-help">Exchange the positions of two pages in the working copy.</p>
-      <label>
+      <label htmlFor={pageAId}>
         Page A (1-{pageCount ?? 0}):
         {' '}
         <input
+          id={pageAId}
           type="number"
           value={pageA + 1}
           onChange={(e) => onPageAChange(parsePage(e.target.value))}
@@ -37,10 +42,11 @@ export function SwapPagesModal({
           className="modal-input"
         />
       </label>
-      <label>
+      <label htmlFor={pageBId}>
         Page B (1-{pageCount ?? 0}):
         {' '}
         <input
+          id={pageBId}
           type="number"
           value={pageB + 1}
           onChange={(e) => onPageBChange(parsePage(e.target.value))}

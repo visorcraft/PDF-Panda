@@ -10,7 +10,7 @@ export function buildFileEditMenus(ctx: AppMenuContext): { fileMenu: MenuRoot; e
       ...(ctx.hasPdf
         ? [
             sep(),
-            act('save', ctx.isDirty ? 'Save' : 'Save', ctx.handleSave, {
+            act('save', ctx.isDirty ? 'Save •' : 'Save', ctx.handleSave, {
               shortcutCommandId: 'save',
               disabled: !ctx.isDirty,
             }),

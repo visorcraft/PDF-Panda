@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { ScopedPageActionModal } from './ScopedPageActionModal';
 import type { PageRangeController } from '../pageRange/usePageRange';
 
@@ -22,6 +23,8 @@ export function PageNumbersModal({
   onApplyOdd,
   onApplyEven,
 }: PageNumbersModalProps) {
+  const prefixId = useId();
+
   return (
     <ScopedPageActionModal
       title="Page Numbers"
@@ -34,8 +37,9 @@ export function PageNumbersModal({
       onApplyOdd={onApplyOdd}
       onApplyEven={onApplyEven}
     >
-      <label>Prefix (e.g. &quot;Page &quot;):</label>
+      <label htmlFor={prefixId}>Prefix (e.g. &quot;Page &quot;):</label>
       <input
+        id={prefixId}
         type="text"
         value={prefix}
         onChange={(e) => onPrefixChange(e.target.value)}

@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { listen, emit } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { readSpawnParams, spawnDocumentWindow } from './spawnWindow';
 import { useAppPdfActionsBinding } from './useAppPdfActionsBinding';
 import { useAppChromeBindings } from './useAppChromeBindings';
 import { useAppModalCtxBinding } from './useAppModalCtxBinding';
-import { useAppShellBinding } from './useAppShellBinding';
+import { useAppShellBinding as buildAppShellBinding } from './useAppShellBinding';
 import { useDocumentTabActions } from './useDocumentTabActions';
 import { isTauriRuntime } from './tauriRuntime';
 import type { useAppStateBootstrap } from './useAppStateBootstrap';
@@ -232,59 +232,108 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
   // Move a tab's document into a fresh window. Opening it there is a fresh load
   // of the on-disk file, so route a dirty source through the unsaved guard first
   // (Save keeps edits; the new window then opens the saved file).
-  const moveToNewWindow = (id: string) => {
-    const session = doc.sessions.find((s) => s.id === id);
-    if (!session?.originalPath) return;
-    const run = () =>
-      spawnDocumentWindow(session.originalPath, id, {
-        finalizeClose: tabActions.finalizeCloseSession,
-        showToast,
-      });
-    if (session.isDirty) {
-      if (id !== doc.activeId) doc.setActiveSession(id);
-      unsaved.guardUnsaved(run, true);
-    } else {
-      void run();
-    }
-  };
+  const moveToNewWindow = useCallback(
+    (id: string) => {
+      const session = doc.sessions.find((s) => s.id === id);
+      if (!session?.originalPath) return;
+      const run = () =>
+        spawnDocumentWindow(session.originalPath, id, {
+          finalizeClose: tabActions.finalizeCloseSession,
+          showToast,
+        });
+      if (session.isDirty) {
+        if (id !== doc.activeId) doc.setActiveSession(id);
+        unsaved.guardUnsaved(run, true);
+      } else {
+        void run();
+      }
+    },
+    [doc, tabActions.finalizeCloseSession, unsaved, showToast],
+  );
 
-  const tabMenuApi = {
-    selectTab: tabActions.selectTab,
-    requestCloseTab: tabActions.requestCloseTab,
-    finalizeClose: tabActions.finalizeCloseSession,
-    moveTabToFirst: doc.moveTabToFirst,
-    moveTabToLast: doc.moveTabToLast,
-    moveToNewWindow,
-    updateSession: doc.updateSession,
-    openPrint: chrome.openPrintDialog,
-    openProperties: (filePath: string) => {
+  const openProperties = useCallback(
+    (filePath: string) => {
       void pdfActions.openMetadataModal(filePath);
     },
-    showToast,
-  };
+    [pdfActions],
+  );
 
-  return useAppShellBinding({
-    doc,
-    modal,
-    panels,
-    annotation,
-    drawing: drawingGesture,
-    help,
-    refs: { imgRef: refs.imgRef },
-    pdfActions,
-    windowTitle,
-    appMenus,
-    modeToolbarExtras,
-    modalCtx,
-    slices,
-    viewerWorkflow,
-    surface,
-    onSelectTab: tabActions.selectTab,
-    onCloseTab: tabActions.requestCloseTab,
-    tabMenuApi,
-    shortcuts: shortcutBindingsState,
-    showToast,
-    dismissToast,
-    appearance,
-  });
+  const tabMenuApi = useMemo(
+    () => ({
+      selectTab: tabActions.selectTab,
+      requestCloseTab: tabActions.requestCloseTab,
+      finalizeClose: tabActions.finalizeCloseSession,
+      moveTabToFirst: doc.moveTabToFirst,
+      moveTabToLast: doc.moveTabToLast,
+      moveToNewWindow,
+      updateSession: doc.updateSession,
+      openPrint: chrome.openPrintDialog,
+      openProperties,
+      showToast,
+    }),
+    [
+      tabActions.selectTab,
+      tabActions.requestCloseTab,
+      tabActions.finalizeCloseSession,
+      doc.moveTabToFirst,
+      doc.moveTabToLast,
+      moveToNewWindow,
+      doc.updateSession,
+      chrome.openPrintDialog,
+      openProperties,
+      showToast,
+    ],
+  );
+
+  return useMemo(
+    () =>
+      buildAppShellBinding({
+        doc,
+        modal,
+        panels,
+        annotation,
+        drawing: drawingGesture,
+        help,
+        refs: { imgRef: refs.imgRef },
+        pdfActions,
+        windowTitle,
+        appMenus,
+        modeToolbarExtras,
+        modalCtx,
+        slices,
+        viewerWorkflow,
+        surface,
+        onSelectTab: tabActions.selectTab,
+        onCloseTab: tabActions.requestCloseTab,
+        tabMenuApi,
+        shortcuts: shortcutBindingsState,
+        showToast,
+        dismissToast,
+        appearance,
+      }),
+    [
+      doc,
+      modal,
+      panels,
+      annotation,
+      drawingGesture,
+      help,
+      refs,
+      pdfActions,
+      windowTitle,
+      appMenus,
+      modeToolbarExtras,
+      modalCtx,
+      slices,
+      viewerWorkflow,
+      surface,
+      tabActions.selectTab,
+      tabActions.requestCloseTab,
+      tabMenuApi,
+      shortcutBindingsState,
+      showToast,
+      dismissToast,
+      appearance,
+    ],
+  );
 }

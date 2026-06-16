@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Modal } from '../ui/Modal';
 
 type ApplyRedactionsModalProps = {
@@ -17,6 +18,8 @@ export function ApplyRedactionsModal({
   onApply,
   onOpenTesseractGuide,
 }: ApplyRedactionsModalProps) {
+  const ocrId = useId();
+
   return (
     <Modal onClose={onClose}>
       <h3>Apply Redactions</h3>
@@ -24,8 +27,9 @@ export function ApplyRedactionsModal({
         Rasterizes pages with redaction boxes. Text, vectors, and form fields on those pages are
         permanently removed (undo available until you save).
       </p>
-      <label className="modal-checkbox">
+      <label htmlFor={ocrId} className="modal-checkbox">
         <input
+          id={ocrId}
           type="checkbox"
           checked={ocrAfter}
           disabled={!ocrAvailable}
