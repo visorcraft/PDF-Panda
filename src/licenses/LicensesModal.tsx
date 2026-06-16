@@ -123,7 +123,7 @@ export function LicensesModal({ onClose }: { onClose: () => void }) {
         label: 'Runtime components',
         title: 'Runtime components',
         subtitle:
-          'Full license texts for PDFium, WebKitGTK, GTK, and optional Tesseract OCR runtimes.',
+          'Full license texts for PDFium, WebKitGTK, GTK, CUPS, and optional Tesseract OCR runtimes.',
         body: documents.runtime,
       },
     ];

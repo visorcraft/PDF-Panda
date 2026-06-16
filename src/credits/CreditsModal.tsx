@@ -199,8 +199,9 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
                 <p className="credits-runtime-help">
                   System libraries and bundled runtimes PDF-Panda uses at
                   execution time. Packaged builds ship PDFium; Linux desktop
-                  builds use the system WebKitGTK and GTK stacks. Tesseract is
-                  optional for scan OCR.
+                  builds use the system WebKitGTK and GTK stacks. CUPS is used
+                  for direct printing on Linux and macOS. Tesseract is optional
+                  for scan OCR.
                 </p>
                 <ul className="credits-runtime-list">
                   {catalog.runtime_components.map((component) => (

@@ -39,6 +39,12 @@ const RUNTIME_COMPONENTS: &[RuntimeComponent] = &[
         spdx_ids: &["LGPL-2.1-or-later"],
     },
     RuntimeComponent {
+        name: "CUPS",
+        url: "https://openprinting.github.io/cups/",
+        license_display: "Apache-2.0",
+        spdx_ids: &["Apache-2.0"],
+    },
+    RuntimeComponent {
         name: "Tesseract OCR (optional)",
         url: "https://github.com/tesseract-ocr/tesseract",
         license_display: "Apache-2.0",
