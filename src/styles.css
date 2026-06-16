@@ -95,6 +95,13 @@
   outline-offset: 2px;
 }
 
+@media (forced-colors: active) {
+  .tab-item:focus-visible,
+  .tcm-item:focus-visible:not(:disabled) {
+    outline-color: CanvasText;
+  }
+}
+
 [data-theme='dark'] {
   --pp-bg: #000000;
   --pp-surface: #121212;
@@ -812,6 +819,10 @@ body {
 .tcm-item.highlighted:not(:disabled),
 .tcm-item:focus-visible:not(:disabled) {
   background: var(--pp-menu-hover);
+}
+
+.tcm-item.highlighted:not(:disabled),
+.tcm-item:focus-visible:not(:disabled) {
   outline: 2px solid var(--pp-focus-ring);
   outline-offset: -2px;
 }
