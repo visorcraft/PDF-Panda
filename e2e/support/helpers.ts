@@ -220,6 +220,16 @@ export async function countDocTabs(): Promise<number> {
   );
 }
 
+export async function focusTabByLabel(label: string) {
+  const tab = await $(`[data-testid="doc-tab-${label}"]`);
+  await tab.waitForDisplayed({ timeout: 15_000 });
+  await browser.execute((selector: string) => {
+    const el = document.querySelector(`[data-testid="${selector}"]`) as HTMLElement | null;
+    if (!el) throw new Error(`tab ${selector} not found`);
+    el.focus();
+  }, `doc-tab-${label}`);
+}
+
 export async function selectTab(label: string) {
   const tab = await $(`[data-testid="doc-tab-${label}"]`);
   await tab.waitForDisplayed({ timeout: 15_000 });
@@ -253,6 +263,14 @@ export async function dismissToastIfAny() {
 
 export async function resetToWelcome() {
   await dismissToastIfAny();
+
+  // If the Settings page is open, close it first so the main chrome is reachable.
+  const settingsBack = await $('[data-testid="settings-back-button"]');
+  if (await settingsBack.isDisplayed().catch(() => false)) {
+    await settingsBack.click();
+    await browser.pause(200);
+  }
+
   for (let guard = 0; guard < 8; guard++) {
     const welcome = await $('[data-testid="welcome-open-pdf"]');
     if (await welcome.isDisplayed().catch(() => false)) return;

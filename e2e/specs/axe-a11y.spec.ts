@@ -3,6 +3,7 @@ import {
   clickMenuAction,
   fixturePdf,
   fixturePdf3p,
+  fixturePdfB,
   openPdfViaPathModal,
   resetToWelcome,
   waitForPageCount,
@@ -22,6 +23,9 @@ async function assertNoAxeViolations(
   // containment) do not map cleanly to the toolbar/sidebar/viewer layout.
   // Disable them by default; individual tests can opt out via extraDisabledRules.
   const baseDisabledRules = ['page-has-heading-one'];
+  // The full app DOM (especially with a rendered PDF) can take longer than the
+  // default WebDriver script timeout to analyze.
+  await browser.setTimeout({ script: 120_000 });
   const results = await new AxeBuilder({ client: browser })
     .setLegacyMode(true)
     .disableRules([...baseDisabledRules, ...extraDisabledRules])
@@ -76,5 +80,23 @@ describe('axe accessibility', () => {
       { timeout: 10_000, timeoutMsg: 'expected Settings page' },
     );
     await assertNoAxeViolations('settings');
+  });
+
+  it('tab bar has no detectable axe violations', async () => {
+    await openPdfViaPathModal(fixturePdf);
+    await openPdfViaPathModal(fixturePdfB);
+    await browser.waitUntil(
+      async () =>
+        (await $$('[data-testid^="doc-tab-"]:not([data-testid^="doc-tab-close-"])'))
+          .length === 2,
+      { timeout: 15_000, timeoutMsg: 'expected two document tabs' },
+    );
+    // The tab close button is intentionally rendered inside each tab so it is
+    // visually associated with the tab and reachable by mouse. Keyboard users
+    // can close tabs with Delete and the context menu. axe flags this as
+    // nested-interactive (via the no-focusable-content check), so disable that
+    // rule for the tab bar scan while still checking contrast, ARIA roles, and
+    // labels.
+    await assertNoAxeViolations('tab-bar', ['region', 'nested-interactive']);
   });
 });

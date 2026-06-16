@@ -9,6 +9,7 @@ import {
   findText,
   fixturePdf,
   fixturePdfB,
+  focusTabByLabel,
   getSaveLabel,
   getZoomInput,
   openPdfViaPathModal,
@@ -129,6 +130,84 @@ describe('multi-document tabs', () => {
     await openPdfViaPathModal(fixturePdf);
     await waitForPageCount('/ 1');
     expect(await countDocTabs()).toBe(0);
+  });
+
+  it('navigates tabs with arrow keys and closes with Delete', async () => {
+    await openPdfViaPathModal(fixturePdf);
+    await openPdfViaPathModal(fixturePdfB);
+    await browser.waitUntil(
+      async () => (await countDocTabs()) === 2,
+      { timeout: 15_000, timeoutMsg: 'expected two document tabs' },
+    );
+
+    await focusTabByLabel('sample-b');
+    const focusedTabDataTestid = () =>
+      browser.execute(() =>
+        document.activeElement?.closest('.tab-item')?.getAttribute('data-testid'),
+      );
+    await browser.waitUntil(
+      async () => (await focusedTabDataTestid()) === 'doc-tab-sample-b',
+      { timeout: 5_000, timeoutMsg: 'expected focus on second tab' },
+    );
+
+    await browser.keys('ArrowLeft');
+    expect(await focusedTabDataTestid()).toBe('doc-tab-sample');
+
+    await browser.keys('ArrowRight');
+    expect(await focusedTabDataTestid()).toBe('doc-tab-sample-b');
+
+    // The app renders the tab bar only when two or more tabs are open, so the
+    // DOM count becomes 0 after closing one of two tabs. Dispatch Delete directly
+    // because WebKit GTK's WebDriver does not reliably send it to non-inputs.
+    await browser.execute(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (!active) throw new Error('no focused tab');
+      active.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }),
+      );
+    });
+    await browser.waitUntil(
+      async () => (await countDocTabs()) === 0,
+      { timeout: 10_000, timeoutMsg: 'expected tab bar to hide after Delete' },
+    );
+    await (await $('[data-testid="save-pdf"]')).waitForDisplayed({ timeout: 10_000 });
+  });
+
+  it('opens the tab context menu from the keyboard and closes a tab', async () => {
+    await openPdfViaPathModal(fixturePdf);
+    await openPdfViaPathModal(fixturePdfB);
+    await browser.waitUntil(
+      async () => (await countDocTabs()) === 2,
+      { timeout: 15_000, timeoutMsg: 'expected two document tabs' },
+    );
+
+    await focusTabByLabel('sample');
+    // Dispatch Shift+F10 directly; WebKit GTK's WebDriver does not reliably
+    // send function-key combinations to non-input elements.
+    await browser.execute(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (!active) throw new Error('no focused tab');
+      active.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, cancelable: true }),
+      );
+    });
+    const menu = await $('.tab-context-menu');
+    await menu.waitForDisplayed({ timeout: 10_000 });
+
+    // Ensure the menu root has focus, then navigate with the keyboard.
+    await browser.execute(() => {
+      const menuRoot = document.querySelector('.tab-context-menu') as HTMLElement | null;
+      if (!menuRoot) throw new Error('context menu missing');
+      menuRoot.focus();
+    });
+    await browser.keys('ArrowDown');
+    await browser.pause(150);
+    await browser.keys('Enter');
+    await browser.waitUntil(
+      async () => (await countDocTabs()) === 0,
+      { timeout: 10_000, timeoutMsg: 'expected tab bar to hide after Close tab' },
+    );
+    await (await $('[data-testid="save-pdf"]')).waitForDisplayed({ timeout: 10_000 });
   });
 
   it('cleans up working copies after all tabs close', async () => {
