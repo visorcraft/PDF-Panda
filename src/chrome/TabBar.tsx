@@ -52,7 +52,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
 
   useLayoutEffect(() => {
     checkScroll();
-  }, [canScrollLeft, canScrollRight, checkScroll, tabs]);
+  }, [checkScroll, tabs]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -63,7 +63,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
       el.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
     };
-  }, [checkScroll, tabs]);
+  }, [checkScroll]);
 
   // Bring a tab fully into view. Snap to the true edge when the target is the
   // first/last tab so that arrow collapses and the tab is fully revealed.
@@ -109,6 +109,22 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
   useEffect(() => {
     focusTabElement(focusedTabId);
   }, [focusedTabId, focusTabElement]);
+
+  const scrollToNext = useCallback(
+    (direction: 'left' | 'right') => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>('.tab-item'));
+      if (items.length === 0) return;
+      const visibleRight = el.scrollLeft + el.clientWidth;
+      const target =
+        direction === 'right'
+          ? items.find((item) => item.offsetLeft + item.offsetWidth > visibleRight + 1)
+          : [...items].reverse().find((item) => item.offsetLeft < el.scrollLeft - 1);
+      if (target) scrollTabIntoView(target);
+    },
+    [scrollTabIntoView],
+  );
 
   const handleTabKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>, tab: DocumentTabInfo) => {
@@ -170,19 +186,6 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
 
   if (tabs.length <= 1) return null;
 
-  const scrollToNext = (direction: 'left' | 'right') => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const items = Array.from(el.querySelectorAll<HTMLElement>('.tab-item'));
-    if (items.length === 0) return;
-    const visibleRight = el.scrollLeft + el.clientWidth;
-    const target =
-      direction === 'right'
-        ? items.find((item) => item.offsetLeft + item.offsetWidth > visibleRight + 1)
-        : [...items].reverse().find((item) => item.offsetLeft < el.scrollLeft - 1);
-    if (target) scrollTabIntoView(target);
-  };
-
   return (
     <div className="tab-bar" role="tablist">
       {canScrollLeft && (
@@ -232,6 +235,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onTabContextMenu }: 
               <button
                 type="button"
                 className="tab-close"
+                tabIndex={-1}
                 aria-label={`Close ${tab.label}`}
                 data-testid={`doc-tab-close-${tab.label}`}
                 onClick={(e) => {
