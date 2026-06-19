@@ -31,7 +31,7 @@ function buildShortcutIndex(bindings: Record<ShortcutCommandId, string[]>): Map<
   return index;
 }
 
-const GLOBAL_COMMANDS = new Set<ShortcutCommandId>(['open-pdf', 'command-palette']);
+const GLOBAL_COMMANDS = new Set<ShortcutCommandId>(['open-pdf', 'command-palette', 'quit']);
 
 export function useAppKeyboard(
   actionsRef: MutableRefObject<AppKeyboardActions>,

@@ -9,6 +9,7 @@ export type BuildAppMenuSourceInput = Omit<
   | 'hasPdf'
   | 'tesseractInstalled'
   | 'requestClosePdf'
+  | 'quitApp'
   | 'setViewModePdf'
   | 'toggleBookmarksPanel'
   | 'toggleAnnotationsPanel'
@@ -30,6 +31,7 @@ export type BuildAppMenuSourceInput = Omit<
   surface: { activeSurface: AppSurface; openSettings: (focus?: SettingsFocusSection) => void };
   guardUnsaved: (action: () => void) => void;
   closePdf: () => void;
+  exitApp: () => void;
   setViewMode: (mode: ViewMode) => void;
   scrollViewMode: ScrollViewMode;
   setScrollViewMode: (fn: (prev: ScrollViewMode) => ScrollViewMode) => void;
@@ -53,6 +55,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     ocrAvailable,
     guardUnsaved,
     closePdf,
+    exitApp,
     setViewMode,
     scrollViewMode,
     setScrollViewMode,
@@ -77,6 +80,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     hasPdf: !!filePath,
     tesseractInstalled: ocrAvailable === true,
     requestClosePdf: () => guardUnsaved(closePdf),
+    quitApp: () => guardUnsaved(exitApp),
     setViewModePdf: () => setViewMode('pdf'),
     scrollViewMode,
     toggleContinuousScroll: () => setScrollViewMode((prev) => (prev === 'continuous' ? 'single' : 'continuous')),

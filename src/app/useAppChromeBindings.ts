@@ -1,3 +1,4 @@
+import { exit } from '@tauri-apps/plugin-process';
 import { buildAppMenuInput } from '../menu/buildAppMenuInput';
 import { buildModeToolbarExtras } from '../viewer/buildModeToolbarExtras';
 import { buildAppKeyboardSource } from './buildAppKeyboardSource';
@@ -43,6 +44,10 @@ export type UseAppChromeBindingsInput = {
 };
 
 export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
+  const exitApp = () => {
+    void exit(0);
+  };
+
   const { dismissModals, anyModalOpen } = useModalDismiss(
     buildModalDismissInput({
       modal: input.modal,
@@ -85,6 +90,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
         dismissModals,
         guardUnsaved: input.chrome.guardUnsaved,
         closePdf: input.chrome.closePdf,
+        exitApp,
         openPdf: input.chrome.openPdf,
         setShowCommandPalette: input.help.setShowCommandPalette,
         goToPage: input.chrome.goToPage,
@@ -132,6 +138,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
     chrome: {
       guardUnsaved: input.chrome.guardUnsaved,
       closePdf: input.chrome.closePdf,
+      exitApp,
       setViewMode: input.doc.setViewMode,
       setScrollViewMode: input.doc.setScrollViewMode,
       setShowBookmarksPanel: input.panels.setShowBookmarksPanel,

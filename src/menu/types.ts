@@ -57,6 +57,7 @@ export interface AppMenuContext {
   togglePdfUaPanel: () => void;
   tesseractInstalled: boolean;
   openPdf: () => void;
+  quitApp: () => void;
   handleSave: () => void | Promise<void>;
   openSaveAs: () => void;
   requestClosePdf: () => void;
@@ -247,6 +248,7 @@ export type AppMenuContextSource = {
   togglePdfUaPanel: () => void;
   tesseractInstalled: boolean;
   openPdf: () => void;
+  quitApp: () => void;
   handleSave: VoidHandler;
   openSaveAs: () => void;
   requestClosePdf: () => void;

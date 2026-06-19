@@ -29,6 +29,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
   | 'ocrAvailable'
   | 'guardUnsaved'
   | 'closePdf'
+  | 'exitApp'
   | 'setViewMode'
   | 'setScrollViewMode'
   | 'setShowBookmarksPanel'
@@ -125,6 +126,7 @@ export function menuInputDocFields(args: BuildAppMenuInputArgs): Pick<
     ocrAvailable: doc.ocrAvailable,
     guardUnsaved: chrome.guardUnsaved,
     closePdf: chrome.closePdf,
+    exitApp: chrome.exitApp,
     setViewMode: chrome.setViewMode,
     setScrollViewMode: chrome.setScrollViewMode,
     setShowBookmarksPanel: chrome.setShowBookmarksPanel,

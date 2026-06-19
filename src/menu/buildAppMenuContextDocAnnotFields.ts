@@ -29,6 +29,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'togglePdfUaPanel'
   | 'tesseractInstalled'
   | 'openPdf'
+  | 'quitApp'
   | 'handleSave'
   | 'openSaveAs'
   | 'requestClosePdf'
@@ -123,6 +124,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     togglePdfUaPanel: source.togglePdfUaPanel,
     tesseractInstalled: source.tesseractInstalled,
     openPdf: source.openPdf,
+    quitApp: source.quitApp,
     handleSave: source.handleSave,
     openSaveAs: source.openSaveAs,
     requestClosePdf: source.requestClosePdf,

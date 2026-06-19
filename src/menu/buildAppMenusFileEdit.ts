@@ -29,6 +29,8 @@ export function buildFileEditMenus(ctx: AppMenuContext): { fileMenu: MenuRoot; e
             act('close', 'Close', ctx.requestClosePdf, { shortcutCommandId: 'close-pdf' }),
           ]
         : []),
+      sep(),
+      act('quit', 'Quit', ctx.quitApp, { shortcutCommandId: 'quit' }),
     ],
   };
 

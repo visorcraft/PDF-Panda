@@ -34,6 +34,11 @@ export const SHORTCUT_HANDLERS: Record<ShortcutCommandId, ShortcutHandler> = {
     enabled: (a) => a.hasOpenPdf,
     run: (a) => a.requestClosePdf(),
   },
+  quit: {
+    id: 'quit',
+    enabled: () => true,
+    run: (a) => a.quitApp(),
+  },
   print: {
     id: 'print',
     enabled: (a) => a.hasOpenPdf,

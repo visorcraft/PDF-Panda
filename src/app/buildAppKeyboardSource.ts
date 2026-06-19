@@ -14,6 +14,7 @@ export type BuildAppKeyboardSourceArgs = {
     dismissModals: () => void;
     guardUnsaved: (action: () => void) => void;
     closePdf: () => void;
+    exitApp: () => void;
     openPdf: () => void;
     setShowCommandPalette: (open: boolean) => void;
     goToPage: (page: number) => void;
@@ -50,6 +51,7 @@ export function buildAppKeyboardSource(args: BuildAppKeyboardSourceArgs): BuildA
     dismissModals: args.chrome.dismissModals,
     guardUnsaved: args.chrome.guardUnsaved,
     closePdf: args.chrome.closePdf,
+    exitApp: args.chrome.exitApp,
     handlePrint: args.chrome.handlePrint,
     openPrintDialog: args.chrome.openPrintDialog,
     openSearchModal: args.chrome.openSearchModal,

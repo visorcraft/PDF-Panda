@@ -1,5 +1,6 @@
 export type ShortcutCommandId =
   | 'open-pdf'
+  | 'quit'
   | 'save'
   | 'save-as'
   | 'close-pdf'
@@ -72,6 +73,7 @@ export type ShortcutBinding = {
 export const SHORTCUT_REGISTRY: ShortcutBinding[] = [
   { commandId: 'open-pdf', category: 'Global', label: 'Open PDF', defaultShortcuts: ['Ctrl+O'] },
   { commandId: 'command-palette', category: 'Global', label: 'Command palette', defaultShortcuts: ['Ctrl+Shift+P'] },
+  { commandId: 'quit', category: 'Global', label: 'Quit', defaultShortcuts: ['Ctrl+Q'] },
 
   { commandId: 'save', category: 'File', label: 'Save', defaultShortcuts: ['Ctrl+S'] },
   { commandId: 'save-as', category: 'File', label: 'Save As', defaultShortcuts: ['Ctrl+Shift+S'] },

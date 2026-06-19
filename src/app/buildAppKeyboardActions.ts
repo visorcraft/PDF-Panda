@@ -47,6 +47,7 @@ export type AppKeyboardActions = {
   openSaveAs: () => void;
   handleSave: () => void | Promise<void>;
   requestClosePdf: () => void;
+  quitApp: () => void;
   handlePrint: () => void | Promise<void>;
   openPrintDialog: () => void;
   handleRotatePage: () => void | Promise<void>;
@@ -120,6 +121,7 @@ export type BuildAppKeyboardActionsInput = {
   handleSave: () => void | Promise<void>;
   guardUnsaved: (action: () => void) => void;
   closePdf: () => void;
+  exitApp: () => void;
   handlePrint: () => void;
   openPrintDialog: () => void;
   handleRotatePage: () => void | Promise<void>;
@@ -193,6 +195,7 @@ export function buildAppKeyboardActions(input: BuildAppKeyboardActionsInput): Ap
     openSaveAs: input.openSaveAs,
     handleSave: input.handleSave,
     requestClosePdf: () => input.guardUnsaved(input.closePdf),
+    quitApp: () => input.guardUnsaved(input.exitApp),
     handlePrint: input.handlePrint,
     openPrintDialog: input.openPrintDialog,
     handleRotatePage: input.handleRotatePage,

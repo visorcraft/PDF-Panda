@@ -15,6 +15,7 @@ export type BuildAppMenuInputArgs = {
   chrome: {
     guardUnsaved: (action: () => void) => void;
     closePdf: () => void;
+    exitApp: () => void;
     setViewMode: (mode: ViewMode) => void;
     setScrollViewMode: DocumentState['setScrollViewMode'];
     setShowBookmarksPanel: PanelsState['setShowBookmarksPanel'];
