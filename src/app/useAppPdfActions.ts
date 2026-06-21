@@ -21,7 +21,8 @@ import { useFormFieldActions } from '../pdf/useFormFieldActions';
 import { usePdfRevisionSync } from './usePdfRevisionSync';
 import { usePageInteraction } from '../viewer/usePageInteraction';
 import { useTextLayerFlow } from '../viewer/useTextLayerFlow';
-import { useAnnotationModes } from './useAnnotationModes';
+import { useAnnotationModesAsset } from './useAnnotationModesAsset';
+import { useAnnotationModesMarkup } from './useAnnotationModesMarkup';
 import { usePageTextEdits } from './usePageTextEdits';
 import { useNotePasswordActions } from '../pdf/useNotePasswordActions';
 import { useNativeFilePickers } from './useNativeFilePickers';
@@ -57,7 +58,8 @@ type AllHookOpts = HookOpts<typeof usePdfModalOpeners> &
   HookOpts<typeof useFormFieldActions> &
   HookOpts<typeof usePdfRevisionSync> &
   HookOpts<typeof usePageInteraction> &
-  HookOpts<typeof useAnnotationModes> &
+  HookOpts<typeof useAnnotationModesAsset> &
+  HookOpts<typeof useAnnotationModesMarkup> &
   HookOpts<typeof usePageTextEdits> &
   HookOpts<typeof useNotePasswordActions> &
   HookOpts<typeof useNativeFilePickers> &
@@ -129,7 +131,10 @@ export function useAppPdfActions(input: UseAppPdfActionsInput) {
   const formField = call(useFormFieldActions, input);
   call(usePdfRevisionSync, input);
   input.cancelDrawingRef.current = input.cancelDrawing;
-  const annotationModes = call(useAnnotationModes, input);
+  const annotationModes = {
+    ...call(useAnnotationModesAsset, input),
+    ...call(useAnnotationModesMarkup, input),
+  };
   const textLayerFlow = useTextLayerFlow({
     filePath: input.filePath,
     currentPage: input.currentPage,

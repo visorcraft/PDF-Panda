@@ -1,5 +1,4 @@
-import { buildAppPdfActionsInput, type AppPdfActionsRuntime, type AppPdfActionsRuntimeExtras } from './buildAppPdfActionsInput';
-import { useAppPdfActions } from './useAppPdfActions';
+import { useAppPdfActions, type UseAppPdfActionsInput } from './useAppPdfActions';
 import type { AnnotationState } from './useAnnotationDraftState';
 import type { DocumentState } from './useAppDocumentState';
 import type { ModalState } from './useAppModalState';
@@ -8,10 +7,49 @@ import type { RefsState } from './useAppRefs';
 import type { PanelsState } from './useDocumentPanelsState';
 import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
-import type { DrawingGestureSlice } from './buildAppPdfActionsInput';
+import {
+  annotationPdfActionFields,
+  documentPdfActionFields,
+  drawingPdfActionFields,
+  marginPdfActionFields,
+  modalPdfActionFields,
+  pageRangesPdfActionFields,
+  panelsPdfActionFields,
+  refsPdfActionFields,
+  securityPdfActionFields,
+  type DrawingGestureSlice,
+} from './buildAppPdfActionsFields';
+
+type AppPdfActionsRuntime = Pick<
+  UseAppPdfActionsInput,
+  | 'loadFormFields'
+  | 'loadPageSizes'
+  | 'loadPdfBookmarks'
+  | 'loadPdfFromPath'
+  | 'loadPdfSignatures'
+  | 'loadThumbnails'
+  | 'markPdfEdited'
+  | 'markSaved'
+  | 'reloadOpenPdf'
+  | 'rememberBrowserDirectory'
+  | 'rememberOpenedPdf'
+  | 'renderPage'
+  | 'setAnnotations'
+  | 'shouldShowTesseractReminder'
+  | 'showToast'
+  | 'withLoading'
+  | 'setShowTesseractModal'
+  | 'setTesseractReminderSource'
+>;
+
+type AppPdfActionsRuntimeExtras = {
+  openTesseractGuide: () => void;
+};
 
 export type AppPdfActionsRuntimeSlice = Omit<AppPdfActionsRuntime, 'setShowTesseractModal' | 'setTesseractReminderSource'>
   & AppPdfActionsRuntimeExtras;
+
+export type { DrawingGestureSlice };
 
 export type UseAppPdfActionsBindingInput = {
   doc: DocumentState;
@@ -27,21 +65,26 @@ export type UseAppPdfActionsBindingInput = {
 };
 
 export function useAppPdfActionsBinding(input: UseAppPdfActionsBindingInput) {
-  return useAppPdfActions(
-    buildAppPdfActionsInput({
-      modal: input.modal,
-      security: input.security,
-      panels: input.panels,
-      annotation: input.annotation,
-      document: input.doc,
-      drawing: input.drawing,
-      pageRanges: input.pageRanges,
-      refs: input.refs,
-      runtime: {
-        ...input.runtime,
-        setShowTesseractModal: input.help.setShowTesseractModal,
-        setTesseractReminderSource: input.help.setTesseractReminderSource,
-      },
-    }),
-  );
+  const { modal: m, security: s, panels: p, annotation: a, doc: d, drawing: g, pageRanges: r, refs, help, runtime } = input;
+
+  return useAppPdfActions({
+    ...modalPdfActionFields(m),
+    ...securityPdfActionFields(s),
+    ...panelsPdfActionFields(p),
+    ...annotationPdfActionFields(a),
+    ...documentPdfActionFields(d),
+    ...drawingPdfActionFields(g),
+    ...pageRangesPdfActionFields(r),
+    ...refsPdfActionFields(refs),
+    ...marginPdfActionFields(m),
+    extractEndPage: r.extractRange.endPage,
+    extractStartPage: r.extractRange.startPage,
+    pngExportEndPage: r.pngExportRange.endPage,
+    pngExportScope: r.pngExportRange.scope,
+    pngExportStartPage: r.pngExportRange.startPage,
+    ...runtime,
+    setShowTesseractModal: help.setShowTesseractModal,
+    setTesseractReminderSource: help.setTesseractReminderSource,
+    openTesseractGuide: runtime.openTesseractGuide,
+  });
 }

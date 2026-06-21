@@ -1,5 +1,4 @@
 import type { UseModalDismissOptions } from './useModalDismiss';
-import { buildModalDismissSource } from './buildModalDismissSource';
 import type { ModalState } from './useAppModalState';
 import type { SecurityState } from './useSecurityFormState';
 import type { AnnotationState } from './useAnnotationDraftState';
@@ -21,8 +20,8 @@ export type BuildModalDismissInputArgs = {
   search: { showSearchModal: boolean; closeSearchModal: () => void };
 };
 
-export function buildModalDismissInput(args: BuildModalDismissInputArgs) {
-  return buildModalDismissSource({
+export function buildModalDismissInput(args: BuildModalDismissInputArgs): UseModalDismissOptions {
+  return {
     showUnsavedModal: args.unsaved.showUnsavedModal,
     showSaveAsModal: args.modal.showSaveAsModal,
     showMarkdownSaveAsModal: args.modal.showMarkdownSaveAsModal,
@@ -155,5 +154,5 @@ export function buildModalDismissInput(args: BuildModalDismissInputArgs) {
     setShowCredits: args.help.setShowCredits,
     setShowAbout: args.help.setShowAbout,
     setShowTesseractModal: args.help.setShowTesseractModal,
-  } satisfies UseModalDismissOptions);
+  } satisfies UseModalDismissOptions;
 }

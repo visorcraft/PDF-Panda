@@ -3,7 +3,7 @@ import type { ScrollViewMode, ViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
-/** Inputs from App hooks/state before menu void-wrapping in buildAppMenuContext. */
+/** Inputs from App hooks/state before void-wrapping into the menu context. */
 export type BuildAppMenuSourceInput = Omit<
   AppMenuContextSource,
   | 'hasPdf'

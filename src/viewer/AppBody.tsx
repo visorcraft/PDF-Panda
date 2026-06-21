@@ -16,7 +16,7 @@ export function AppBody({ filePath, sidebar, viewer }: AppBodyProps) {
       <div className="viewer-main" tabIndex={-1} aria-label="Document viewer">
         <ViewerMain {...viewer} filePath={filePath} />
       </div>
-      <E2EThrowTrigger />
+      {import.meta.env.VITE_WDIO === '1' && <E2EThrowTrigger />}
     </div>
   );
 }

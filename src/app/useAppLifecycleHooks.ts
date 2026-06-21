@@ -1,5 +1,6 @@
 import { useAppLifecycleLoaders } from './useAppLifecycleLoaders';
-import { useAppLifecycleDocument } from './useAppLifecycleDocument';
+import { useAppLifecycleBrowserSearch } from './useAppLifecycleBrowserSearch';
+import { useAppLifecycleOpen } from './useAppLifecycleOpen';
 import type { UseAppLifecycleHooksInput } from './appLifecycleTypes';
 
 export function useAppLifecycleHooks(input: UseAppLifecycleHooksInput) {
@@ -19,7 +20,8 @@ export function useAppLifecycleHooks(input: UseAppLifecycleHooksInput) {
     ocrAvailable: input.ocrAvailable,
   });
 
-  const document = useAppLifecycleDocument({ input, loaders });
+  const open = useAppLifecycleOpen({ input, loaders });
+  const { browser, search, printPages, handlePrint, openPrintDialog, closePdf } = useAppLifecycleBrowserSearch({ input, loaders, open });
 
   return {
     showToast: input.showToast,
@@ -36,6 +38,12 @@ export function useAppLifecycleHooks(input: UseAppLifecycleHooksInput) {
     showUnsavedModal: loaders.showUnsavedModal,
     resolveUnsaved: loaders.resolveUnsaved,
     guardUnsaved: loaders.guardUnsaved,
-    ...document,
+    ...open,
+    browser,
+    search,
+    printPages,
+    handlePrint,
+    openPrintDialog,
+    closePdf,
   };
 }

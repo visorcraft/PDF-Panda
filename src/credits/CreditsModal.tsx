@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { LegalModalShell } from '../legal/LegalModalShell';
+import { useEscapeClose } from '../legal/useEscapeClose';
 import { openExternalUrl } from '../legal/openExternalUrl';
 import { FocusTrap } from '../ui/FocusTrap';
 import { LicenseTextDialog } from '../licenses/LicenseTextDialog';
@@ -163,130 +163,154 @@ export function CreditsModal({ onClose }: { onClose: () => void }) {
   const npmCount = catalog?.npm_packages.length ?? 0;
   const runtimeCount = catalog?.runtime_components.length ?? 0;
 
+  const tagline = loadError
+    ? 'Unable to load credits catalog.'
+    : `${crateCount} Cargo crates · ${npmCount} npm packages · ${runtimeCount} runtime components`;
+
+  useEscapeClose(() => {
+    if (licenseDialog) setLicenseDialog(null);
+    else onClose();
+  });
+
   return (
     <>
       <FocusTrap active={!licenseDialog}>
-        <LegalModalShell
-          onClose={onClose}
-          onEscape={() => {
-            if (licenseDialog) setLicenseDialog(null);
-            else onClose();
+        <div
+          className="modal-backdrop legal-backdrop credits-backdrop"
+          onClick={() => {
+            if (!licenseDialog) onClose();
           }}
-          allowBackdropClose={!licenseDialog}
-          title="Credits"
-          tagline={
-            loadError
-              ? 'Unable to load credits catalog.'
-              : `${crateCount} Cargo crates · ${npmCount} npm packages · ${runtimeCount} runtime components`
-          }
-          backdropClassName="credits-backdrop"
-          panelClassName="credits-panel"
-          headerClassName="credits-header"
-          taglineClassName="credits-tagline"
-          bodyClassName="credits-body"
-          testId="credits-panel"
         >
-          {loadError ? (
-            <p className="legal-load-error credits-load-error">{loadError}</p>
-          ) : !catalog ? (
-            <p className="legal-loading credits-loading">
-              Loading credits catalog…
-            </p>
-          ) : (
-            <>
-              <section className="credits-runtime-card">
-                <h3>Runtime components</h3>
-                <p className="credits-runtime-help">
-                  System libraries and bundled runtimes PDF-Panda uses at
-                  execution time. Packaged builds ship PDFium; Linux desktop
-                  builds use the system WebKitGTK and GTK stacks. CUPS is used
-                  for direct printing on Linux and macOS. Tesseract is optional
-                  for scan OCR.
+          <div
+            className="legal-page credits-panel"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="credits-panel"
+          >
+            <header className="legal-header credits-header">
+              <div>
+                <h2>Credits</h2>
+                <p className="legal-tagline credits-tagline">{tagline}</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary legal-close-btn"
+                onClick={onClose}
+                aria-label="Close credits"
+              >
+                Close
+              </button>
+            </header>
+            <div className="legal-body credits-body">
+              {loadError ? (
+                <p className="legal-load-error credits-load-error">
+                  {loadError}
                 </p>
-                <ul className="credits-runtime-list">
-                  {catalog.runtime_components.map((component) => (
-                    <li key={component.name} className="credits-runtime-row">
-                      <span className="credits-runtime-name">
-                        {component.name}
-                      </span>
-                      <span className="credits-runtime-license">
-                        {component.licenses}
-                      </span>
-                      <div className="credits-row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-secondary credits-icon-btn"
-                          title="View license text"
-                          aria-label={`View license text for ${component.name}`}
-                          onClick={() => void openComponentLicense(component)}
+              ) : !catalog ? (
+                <p className="legal-loading credits-loading">
+                  Loading credits catalog…
+                </p>
+              ) : (
+                <>
+                  <section className="credits-runtime-card">
+                    <h3>Runtime components</h3>
+                    <p className="credits-runtime-help">
+                      System libraries and bundled runtimes PDF-Panda uses at
+                      execution time. Packaged builds ship PDFium; Linux desktop
+                      builds use the system WebKitGTK and GTK stacks. CUPS is
+                      used for direct printing on Linux and macOS. Tesseract is
+                      optional for scan OCR.
+                    </p>
+                    <ul className="credits-runtime-list">
+                      {catalog.runtime_components.map((component) => (
+                        <li
+                          key={component.name}
+                          className="credits-runtime-row"
                         >
-                          License
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary credits-icon-btn"
-                          title="Open project website"
-                          aria-label={`Open website for ${component.name}`}
-                          onClick={() => openUrl(component.url)}
-                        >
-                          ↗
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+                          <span className="credits-runtime-name">
+                            {component.name}
+                          </span>
+                          <span className="credits-runtime-license">
+                            {component.licenses}
+                          </span>
+                          <div className="credits-row-actions">
+                            <button
+                              type="button"
+                              className="btn btn-secondary credits-icon-btn"
+                              title="View license text"
+                              aria-label={`View license text for ${component.name}`}
+                              onClick={() =>
+                                void openComponentLicense(component)
+                              }
+                            >
+                              License
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary credits-icon-btn"
+                              title="Open project website"
+                              aria-label={`Open website for ${component.name}`}
+                              onClick={() => openUrl(component.url)}
+                            >
+                              ↗
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
 
-              <div className="credits-section-heading">Cargo crates</div>
-              <div className="credits-filter-row">
-                <input
-                  className="modal-input legal-input credits-filter-input"
-                  type="search"
-                  placeholder="Filter by crate name or license..."
-                  value={crateFilter}
-                  onChange={(e) => setCrateFilter(e.target.value)}
-                  aria-label="Filter Cargo crate credits"
-                />
-                <span className="credits-filter-count">
-                  {filteredCrates.length} / {crateCount}
-                </span>
-              </div>
-              <CreditsTable
-                rows={filteredCrates}
-                emptyLabel={
-                  crateFilter.trim()
-                    ? 'No Cargo crates match the current filter.'
-                    : 'No Cargo crates listed.'
-                }
-                onOpenUrl={openUrl}
-              />
+                  <div className="credits-section-heading">Cargo crates</div>
+                  <div className="credits-filter-row">
+                    <input
+                      className="modal-input legal-input credits-filter-input"
+                      type="search"
+                      placeholder="Filter by crate name or license..."
+                      value={crateFilter}
+                      onChange={(e) => setCrateFilter(e.target.value)}
+                      aria-label="Filter Cargo crate credits"
+                    />
+                    <span className="credits-filter-count">
+                      {filteredCrates.length} / {crateCount}
+                    </span>
+                  </div>
+                  <CreditsTable
+                    rows={filteredCrates}
+                    emptyLabel={
+                      crateFilter.trim()
+                        ? 'No Cargo crates match the current filter.'
+                        : 'No Cargo crates listed.'
+                    }
+                    onOpenUrl={openUrl}
+                  />
 
-              <div className="credits-section-heading">npm packages</div>
-              <div className="credits-filter-row">
-                <input
-                  className="modal-input legal-input credits-filter-input"
-                  type="search"
-                  placeholder="Filter by package name or license..."
-                  value={npmFilter}
-                  onChange={(e) => setNpmFilter(e.target.value)}
-                  aria-label="Filter npm package credits"
-                />
-                <span className="credits-filter-count">
-                  {filteredNpm.length} / {npmCount}
-                </span>
-              </div>
-              <CreditsTable
-                rows={filteredNpm}
-                emptyLabel={
-                  npmFilter.trim()
-                    ? 'No npm packages match the current filter.'
-                    : 'No npm packages listed.'
-                }
-                onOpenUrl={openUrl}
-              />
-            </>
-          )}
-        </LegalModalShell>
+                  <div className="credits-section-heading">npm packages</div>
+                  <div className="credits-filter-row">
+                    <input
+                      className="modal-input legal-input credits-filter-input"
+                      type="search"
+                      placeholder="Filter by package name or license..."
+                      value={npmFilter}
+                      onChange={(e) => setNpmFilter(e.target.value)}
+                      aria-label="Filter npm package credits"
+                    />
+                    <span className="credits-filter-count">
+                      {filteredNpm.length} / {npmCount}
+                    </span>
+                  </div>
+                  <CreditsTable
+                    rows={filteredNpm}
+                    emptyLabel={
+                      npmFilter.trim()
+                        ? 'No npm packages match the current filter.'
+                        : 'No npm packages listed.'
+                    }
+                    onOpenUrl={openUrl}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </FocusTrap>
 
       {licenseDialog && (

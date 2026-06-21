@@ -1,9 +1,10 @@
 import { exit } from '@tauri-apps/plugin-process';
 import { buildAppMenuInput } from '../menu/buildAppMenuInput';
 import { buildModeToolbarExtras } from '../viewer/buildModeToolbarExtras';
+import { buildAppKeyboardActions } from './buildAppKeyboardActions';
 import { buildAppKeyboardSource } from './buildAppKeyboardSource';
 import { buildModalDismissInput } from './buildModalDismissInput';
-import { useAppKeyboardBinding } from './useAppKeyboardBinding';
+import { useAppKeyboard } from './useAppKeyboard';
 import { useModalDismiss, type UseModalDismissOptions } from './useModalDismiss';
 import type { AppPdfActions } from './useAppPdfActions';
 import type { AnnotationState } from './useAnnotationDraftState';
@@ -60,8 +61,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
     }),
   );
 
-  useAppKeyboardBinding(
-    input.refs.keyboardActionsRef,
+  input.refs.keyboardActionsRef.current = buildAppKeyboardActions(
     buildAppKeyboardSource({
       doc: {
         isDirty: input.doc.isDirty,
@@ -101,9 +101,8 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       zoom: input.zoom,
       pdfActions: input.pdfActions,
     }),
-    input.shortcutBindings,
-    input.surface.activeSurface,
   );
+  useAppKeyboard(input.refs.keyboardActionsRef, input.shortcutBindings, input.surface.activeSurface);
 
   const appMenus = buildAppMenuInput({
     doc: {

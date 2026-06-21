@@ -1,5 +1,5 @@
 import type { PageRangeScope } from '../pageRange/types';
-import type { RotateDirection } from '../app/useAppModalStateRotate';
+import type { RotateDirection } from '../app/useAppModalState';
 import { Modal } from '../ui/Modal';
 
 type RotateModalProps = {
