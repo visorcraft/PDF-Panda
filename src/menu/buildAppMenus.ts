@@ -32,8 +32,9 @@ export function buildAppMenus(ctx: AppMenuContext): AppMenus {
   const viewMenu = buildViewMenu(ctx);
   const helpMenu = buildHelpMenu(ctx);
 
+  const pdfRequiredMenuIds = new Set(['edit', 'pages', 'document', 'annotate', 'security']);
   const menus = [fileMenu, editMenu, pagesMenu, documentMenu, annotateMenu, securityMenu, viewMenu, helpMenu].filter(
-    (menu) => menu.items.length > 0,
+    (menu) => menu.items.length > 0 && (ctx.hasPdf || !pdfRequiredMenuIds.has(menu.id)),
   );
   for (const menu of menus) {
     resolveMenuShortcuts(menu.items, ctx.shortcutBindings);
