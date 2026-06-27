@@ -90,14 +90,19 @@ export function useAppStateBootstrap() {
     renderPage: loaders.renderPage,
   });
 
+  const [workspaceView, setWorkspaceView] =
+    useState<WorkspaceViewMode>('tabs');
+
   const persistence = useSessionPersistence({
     sessions: doc.sessions,
     activeId: doc.activeId,
+    workspaceView,
     updateSession: doc.updateSession,
     removeSession: doc.removeSession,
     ensureSessionForOpen: doc.ensureSessionForOpen,
     loadPdfFromPath: lifecycle.loadPdfFromPath,
     setActiveSession: doc.setActiveSession,
+    setWorkspaceView,
     showToast,
     isSpawned: readSpawnParams().spawn,
   });
@@ -105,8 +110,6 @@ export function useAppStateBootstrap() {
   const appearance = useAppearanceState();
   const shortcutBindings = useShortcutBindingsState();
   const surface = useAppSurfaceState();
-  const [workspaceView, setWorkspaceView] =
-    useState<WorkspaceViewMode>('tabs');
 
   return {
     doc,

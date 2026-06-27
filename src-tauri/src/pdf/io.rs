@@ -34,7 +34,13 @@ pub struct PersistedSession {
 pub struct SessionState {
     pub version: u32,
     pub active_index: usize,
+    #[serde(default = "default_workspace_view")]
+    pub workspace_view: String,
     pub sessions: Vec<PersistedSession>,
+}
+
+fn default_workspace_view() -> String {
+    "tabs".to_string()
 }
 
 impl SessionState {
@@ -42,7 +48,7 @@ impl SessionState {
 
     #[allow(dead_code)]
     pub fn new(active_index: usize, sessions: Vec<PersistedSession>) -> Self {
-        Self { version: Self::CURRENT_VERSION, active_index, sessions }
+        Self { version: Self::CURRENT_VERSION, active_index, workspace_view: default_workspace_view(), sessions }
     }
 
     pub fn validate(self) -> Result<Self, String> {
@@ -191,6 +197,13 @@ mod tests {
         let json = serde_json::to_string_pretty(&state).unwrap();
         let loaded: SessionState = serde_json::from_str(&json).unwrap();
         assert_eq!(loaded, state);
+    }
+
+    #[test]
+    fn session_state_legacy_defaults_workspace_view() {
+        let json = r#"{"version":1,"active_index":0,"sessions":[]}"#;
+        let state: SessionState = serde_json::from_str(json).unwrap();
+        assert_eq!(state.workspace_view, "tabs");
     }
 
     #[test]

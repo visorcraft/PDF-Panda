@@ -23,6 +23,7 @@ export type BirdsEyeWorkspace = {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onOpenDocument: () => void;
+  onSelectDocument: (sessionId: string) => void;
   onSelectPage: (sessionId: string, pageIndex: number) => void;
   onOpenPage: (sessionId: string, pageIndex: number) => void;
   onAddPages: (sessionId: string) => void;
@@ -159,6 +160,14 @@ export function useBirdsEyeWorkspace({
     setShowOpenModal(true);
   }, [setOpenFilePath, setShowOpenModal]);
 
+  const onSelectDocument = useCallback(
+    (sessionId: string) => {
+      if (!findSession(sessionId)) return;
+      setActiveSession(sessionId);
+    },
+    [findSession, setActiveSession],
+  );
+
   const onSelectPage = useCallback(
     (sessionId: string, pageIndex: number) => {
       const session = findSession(sessionId);
@@ -286,6 +295,7 @@ export function useBirdsEyeWorkspace({
     onZoomIn,
     onZoomOut,
     onOpenDocument,
+    onSelectDocument,
     onSelectPage,
     onOpenPage,
     onAddPages,

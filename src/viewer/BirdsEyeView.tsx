@@ -14,6 +14,7 @@ export function BirdsEyeView({
   onZoomIn,
   onZoomOut,
   onOpenDocument,
+  onSelectDocument,
   onSelectPage,
   onOpenPage,
   onAddPages,
@@ -69,6 +70,7 @@ export function BirdsEyeView({
                 key={document.id}
                 className={`birdseye-document${document.active ? ' active' : ''}`}
                 aria-label={`${document.label}, ${pageLabel(document.pageCount)}`}
+                onClick={() => onSelectDocument(document.id)}
               >
                 <div className="birdseye-document-title">
                   <span>{String(docIndex + 1).padStart(2, '0')}</span>

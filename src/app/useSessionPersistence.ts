@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { DocumentSessionData } from './documentSessionTypes';
-import type { ViewMode } from './types';
+import type { ViewMode, WorkspaceViewMode } from './types';
 
 export interface PersistedSession {
   original_path: string;
@@ -14,19 +14,22 @@ export interface PersistedSession {
 export interface SessionState {
   version: number;
   active_index: number;
+  workspace_view?: string;
   sessions: PersistedSession[];
 }
 
 const SAVE_DEBOUNCE_MS = 200;
 const VALID_VIEW_MODES: ViewMode[] = ['pdf', 'markdown'];
 const VALID_SCROLL_MODES: Array<'single' | 'continuous'> = ['single', 'continuous'];
+const VALID_WORKSPACE_VIEW_MODES: WorkspaceViewMode[] = ['tabs', 'birdseye'];
 
-function toState(sessions: DocumentSessionData[], activeId: string | null): SessionState {
+function toState(sessions: DocumentSessionData[], activeId: string | null, workspaceView: WorkspaceViewMode): SessionState {
   const withPath = sessions.filter((s) => s.originalPath);
   const activeIndex = activeId ? withPath.findIndex((s) => s.id === activeId) : 0;
   return {
     version: 1,
     active_index: Math.max(0, activeIndex),
+    workspace_view: workspaceView,
     sessions: withPath.map((s) => ({
       original_path: s.originalPath,
       page: s.currentPage,
@@ -45,24 +48,32 @@ function validateScrollMode(v: string): 'single' | 'continuous' {
   return VALID_SCROLL_MODES.includes(v as 'single' | 'continuous') ? (v as 'single' | 'continuous') : 'single';
 }
 
+function validateWorkspaceView(v: string | undefined): WorkspaceViewMode {
+  return VALID_WORKSPACE_VIEW_MODES.includes(v as WorkspaceViewMode) ? (v as WorkspaceViewMode) : 'tabs';
+}
+
 export function useSessionPersistence({
   sessions,
   activeId,
+  workspaceView,
   updateSession,
   removeSession,
   ensureSessionForOpen,
   loadPdfFromPath,
   setActiveSession,
+  setWorkspaceView,
   showToast,
   isSpawned = false,
 }: {
   sessions: DocumentSessionData[];
   activeId: string | null;
+  workspaceView: WorkspaceViewMode;
   updateSession: (id: string, patch: Partial<DocumentSessionData>) => void;
   removeSession: (id: string) => void;
   ensureSessionForOpen: (originalPath: string) => string | null;
   loadPdfFromPath: (path: string, password?: string, targetSessionId?: string) => Promise<boolean>;
   setActiveSession: (id: string) => void;
+  setWorkspaceView: (mode: WorkspaceViewMode) => void;
   showToast: (msg: string, kind?: 'error') => void;
   isSpawned?: boolean;
 }) {
@@ -76,13 +87,13 @@ export function useSessionPersistence({
     if (isSpawned) return;
     if (!restoreAttemptedRef.current) return;
     if (isRestoringRef.current) return;
-    const state = toState(sessions, activeId);
+    const state = toState(sessions, activeId, workspaceView);
     try {
       await invoke('save_session_state', { state });
     } catch {
       // Silent fail - session restore is best-effort.
     }
-  }, [sessions, activeId, isSpawned]);
+  }, [sessions, activeId, workspaceView, isSpawned]);
 
   const saveSessionsRef = useRef(saveSessions);
   saveSessionsRef.current = saveSessions;
@@ -113,7 +124,13 @@ export function useSessionPersistence({
   const restoreSessions = useCallback(async (shouldSkipActiveRestore?: () => boolean) => {
     try {
       const state = await invoke<SessionState | null>('load_session_state');
-      if (!state || !state.sessions.length) {
+      if (!state) {
+        restoreAttemptedRef.current = true;
+        return;
+      }
+      const restoredWorkspaceView = validateWorkspaceView(state.workspace_view);
+      if (!state.sessions.length) {
+        if (!shouldSkipActiveRestore?.()) setWorkspaceView(restoredWorkspaceView);
         restoreAttemptedRef.current = true;
         return;
       }
@@ -167,8 +184,9 @@ export function useSessionPersistence({
       }
       // Restore the previously active tab.
       const target = opened[state.active_index] ?? opened[0];
-      if (target && !shouldSkipActiveRestore?.()) {
-        setActiveSession(target.sessionId);
+      if (!shouldSkipActiveRestore?.()) {
+        setWorkspaceView(restoredWorkspaceView);
+        if (target) setActiveSession(target.sessionId);
       }
       isRestoringRef.current = false;
       restoreAttemptedRef.current = true;
@@ -176,7 +194,7 @@ export function useSessionPersistence({
       isRestoringRef.current = false;
       restoreAttemptedRef.current = true;
     }
-  }, [ensureSessionForOpen, loadPdfFromPath, updateSession, removeSession, setActiveSession, showToast, sessions]);
+  }, [ensureSessionForOpen, loadPdfFromPath, updateSession, removeSession, setActiveSession, setWorkspaceView, showToast, sessions]);
 
   return { restoreSessions };
 }
