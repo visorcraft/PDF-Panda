@@ -46,6 +46,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     security,
     panels,
     annotation,
+    setWorkspaceView: workspace.setWorkspaceView,
     cancelDrawing: () => refs.cancelDrawingRef.current(),
     showToast,
     guardUnsavedForSession: (sessionId, action) => {

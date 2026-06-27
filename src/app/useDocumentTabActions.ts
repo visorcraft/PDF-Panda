@@ -5,6 +5,7 @@ import type { AnnotationState } from './useAnnotationDraftState';
 import type { ModalState } from './useAppModalState';
 import type { PanelsState } from './useDocumentPanelsState';
 import type { SecurityState } from './useSecurityFormState';
+import type { WorkspaceViewMode } from './types';
 
 type TabActionsDeps = {
   doc: DocumentState;
@@ -12,6 +13,7 @@ type TabActionsDeps = {
   security: SecurityState;
   panels: PanelsState;
   annotation: AnnotationState;
+  setWorkspaceView: (mode: WorkspaceViewMode) => void;
   cancelDrawing: () => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
   guardUnsavedForSession: (sessionId: string, action: () => void | Promise<void>) => void;
@@ -41,6 +43,7 @@ export function useDocumentTabActions(deps: TabActionsDeps) {
       deps.discardHistory(sessionId);
       deps.doc.removeSession(sessionId);
       if (deps.doc.sessions.length <= 1) {
+        deps.setWorkspaceView('tabs');
         deps.modal.setPageSizes([]);
         deps.panels.setFormFields([]);
         deps.panels.setFormDrafts({});

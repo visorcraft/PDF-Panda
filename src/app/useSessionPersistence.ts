@@ -130,7 +130,8 @@ export function useSessionPersistence({
       }
       const restoredWorkspaceView = validateWorkspaceView(state.workspace_view);
       if (!state.sessions.length) {
-        if (!shouldSkipActiveRestore?.()) setWorkspaceView(restoredWorkspaceView);
+        // No documents to show - never land on an empty Bird's Eye workspace.
+        if (!shouldSkipActiveRestore?.()) setWorkspaceView('tabs');
         restoreAttemptedRef.current = true;
         return;
       }
@@ -185,7 +186,9 @@ export function useSessionPersistence({
       // Restore the previously active tab.
       const target = opened[state.active_index] ?? opened[0];
       if (!shouldSkipActiveRestore?.()) {
-        setWorkspaceView(restoredWorkspaceView);
+        // Only restore Bird's Eye when at least one document reopened; an empty
+        // workspace should always land on the welcome screen.
+        setWorkspaceView(opened.length > 0 ? restoredWorkspaceView : 'tabs');
         if (target) setActiveSession(target.sessionId);
       }
       isRestoringRef.current = false;
