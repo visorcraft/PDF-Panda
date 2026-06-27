@@ -15,6 +15,7 @@ import type { PanelsState } from './useDocumentPanelsState';
 import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
 import type { ShortcutBindings } from './useShortcutBindingsState';
+import type { WorkspaceViewMode } from './types';
 
 export type UseAppChromeBindingsInput = {
   doc: DocumentState;
@@ -25,6 +26,7 @@ export type UseAppChromeBindingsInput = {
   help: HelpState;
   refs: Pick<RefsState, 'keyboardActionsRef'>;
   surface: { activeSurface: import('./useAppSurfaceState').AppSurface; openSettings: (focus?: import('./useAppSurfaceState').SettingsFocusSection) => void };
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
   shortcutBindings: ShortcutBindings;
   pdfActions: AppPdfActions;
   history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
@@ -160,6 +162,7 @@ export function useAppChromeBindings(input: UseAppChromeBindingsInput) {
       setShowCommandPalette: input.help.setShowCommandPalette,
     },
     surface: input.surface,
+    workspace: input.workspace,
     shortcutBindings: input.shortcutBindings,
     pdfActions: input.pdfActions,
   });

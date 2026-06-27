@@ -14,6 +14,7 @@ import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { FlatMenuAction, MenuAction, MenuEntry, MenuRoot } from './types';
 import { buildKeyboardShortcuts } from './buildMenuShortcuts';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+import type { WorkspaceViewMode } from '../app/types';
 import { useEscapeClose } from '../legal/useEscapeClose';
 import { FocusTrap } from '../ui/FocusTrap';
 
@@ -38,6 +39,7 @@ type MenuChromeProps = {
   onCloseTab: (id: string) => void;
   tabMenuApi: TabMenuApi;
   documentChromeVisible: boolean;
+  workspaceView: WorkspaceViewMode;
   shortcutBindings: ShortcutBindings;
 };
 
@@ -360,14 +362,16 @@ export function MenuChrome({
   onCloseTab,
   tabMenuApi,
   documentChromeVisible,
+  workspaceView,
   shortcutBindings,
 }: MenuChromeProps) {
   const { onTabContextMenu, overlay: tabMenuOverlay } = useTabContextMenu({ tabs, ...tabMenuApi });
+  const showTabChrome = documentChromeVisible && workspaceView === 'tabs';
   return (
     <>
       <div className="menu-chrome">
         <MenuBar menus={menus} />
-        {documentChromeVisible && (
+        {showTabChrome && (
           <>
             <TabBar
               tabs={tabs}

@@ -7,6 +7,7 @@ import type { HelpState } from './useHelpChromeState';
 import type { SecurityState } from './useSecurityFormState';
 import type { DocumentSessionData } from './documentSessionTypes';
 import type { useAppLifecycleSlices } from './useAppLifecycleSlices';
+import type { WorkspaceViewMode } from './types';
 
 type Slices = ReturnType<typeof useAppLifecycleSlices>;
 
@@ -17,6 +18,7 @@ export type UseAppModalCtxBindingInput = {
   pageRanges: PageRangesState;
   help: HelpState;
   doc: { activeSession: DocumentSessionData | null; currentPage: number; pageCount: number | null; ocrAvailable: boolean | null };
+  workspace: { setWorkspaceView: (mode: WorkspaceViewMode) => void };
   slices: Slices;
   pdfActions: AppPdfActions;
   showToast: (message: string, type?: 'success' | 'error') => void;
@@ -70,6 +72,7 @@ export function useAppModalCtxBinding(input: UseAppModalCtxBindingInput) {
       handleUseSystemPrint: slices.chrome.handlePrint,
     },
     runtime: { showToast: input.showToast },
+    workspace: input.workspace,
     pdfActions: input.pdfActions,
   });
 }

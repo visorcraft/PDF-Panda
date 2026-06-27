@@ -3,17 +3,26 @@ import { act, sep } from './menuBuilders';
 
 export function buildViewMenu(ctx: AppMenuContext): MenuRoot {
   const pdfItems = [
-    act('view-pdf', 'PDF view', ctx.setViewModePdf, { active: ctx.viewMode === 'pdf' }),
-    act('view-md', 'Markdown view', () => void ctx.toggleMarkdownView(), {
+    act('view-birdseye', "Bird's Eye View", ctx.setWorkspaceViewBirdseye, {
+      active: ctx.workspaceView === 'birdseye',
+      disabled: !ctx.hasPdf,
+    }),
+    act('view-pdf', 'PDF view', ctx.setViewModePdf, {
+      active: ctx.workspaceView === 'tabs' && ctx.viewMode === 'pdf',
+    }),
+    act('view-md', 'Markdown view', () => {
+      ctx.setWorkspaceViewTabs();
+      void ctx.toggleMarkdownView();
+    }, {
       shortcutCommandId: 'markdown-view',
-      active: ctx.viewMode === 'markdown',
+      active: ctx.workspaceView === 'tabs' && ctx.viewMode === 'markdown',
     }),
     sep(),
     act(
       'continuous-scroll',
       ctx.scrollViewMode === 'continuous' ? 'Continuous scroll (on)' : 'Continuous scroll',
       ctx.toggleContinuousScroll,
-      { active: ctx.scrollViewMode === 'continuous', disabled: ctx.viewMode !== 'pdf' },
+      { active: ctx.scrollViewMode === 'continuous', disabled: ctx.workspaceView !== 'tabs' || ctx.viewMode !== 'pdf' },
     ),
     act('bookmarks', ctx.showBookmarksPanel ? 'Bookmarks panel (on)' : 'Bookmarks panel', ctx.toggleBookmarksPanel, {
       active: ctx.showBookmarksPanel,

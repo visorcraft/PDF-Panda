@@ -15,6 +15,8 @@ import type { BuildAppChromeSourceInput } from '../chrome/buildAppChromeSource';
 import type { AppSurface, SettingsFocusSection } from './useAppSurfaceState';
 import type { ShortcutBindingsState } from './useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { WorkspaceViewMode } from './types';
+import type { BirdsEyeWorkspace } from './useBirdsEyeWorkspace';
 
 type DrawingState = ReturnType<typeof useDrawingGesture>;
 type ViewerWorkflow = ReturnType<typeof useAppViewerWorkflow>;
@@ -39,6 +41,8 @@ export type UseAppShellBindingInput = {
   slices: Slices;
   viewerWorkflow: ViewerWorkflow;
   surface: { activeSurface: AppSurface; settingsFocus: SettingsFocusSection; closeSettings: () => void };
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
+  birdsEye: BirdsEyeWorkspace;
   shortcuts: ShortcutBindingsState;
   showToast: (message: string, type?: 'success' | 'error') => void;
   dismissToast: () => void;
@@ -69,6 +73,8 @@ export function useAppShellBinding(input: UseAppShellBindingInput) {
     activeSurface: input.surface.activeSurface,
     settingsFocus: input.surface.settingsFocus,
     closeSettings: input.surface.closeSettings,
+    workspace: input.workspace,
+    birdsEye: input.birdsEye,
     shortcuts: input.shortcuts,
     showToast: input.showToast,
     dismissToast: input.dismissToast,

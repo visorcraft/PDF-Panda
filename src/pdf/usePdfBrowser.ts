@@ -15,7 +15,6 @@ type UsePdfBrowserOptions = {
   prependFilePath: string;
   mergeFilePath: string;
   withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  loadPdfFromPath: (path: string) => Promise<boolean>;
   rememberBrowserDirectory: (path: string) => void;
   interleaveRange: PageRangePairController;
   prependRange: PageRangePairController;
@@ -29,7 +28,6 @@ type UsePdfBrowserOptions = {
   setPrependFilePath: (path: string) => void;
   setPrependSourcePageCount: (count: number | null) => void;
   setMergeFilePath: (path: string) => void;
-  setShowOpenModal: (show: boolean) => void;
 };
 
 export function usePdfBrowser({
@@ -42,7 +40,6 @@ export function usePdfBrowser({
   prependFilePath,
   mergeFilePath,
   withLoading,
-  loadPdfFromPath,
   rememberBrowserDirectory,
   interleaveRange,
   prependRange,
@@ -56,7 +53,6 @@ export function usePdfBrowser({
   setPrependFilePath,
   setPrependSourcePageCount,
   setMergeFilePath,
-  setShowOpenModal,
 }: UsePdfBrowserOptions) {
   const [showBrowserModal, setShowBrowserModal] = useState(false);
   const [browserTarget, setBrowserTarget] = useState<PdfBrowserTarget>('open');
@@ -103,9 +99,7 @@ export function usePdfBrowser({
 
     if (browserTarget === 'open') {
       setOpenFilePath(entry.path);
-      const loaded = await loadPdfFromPath(entry.path);
-      if (!loaded) return;
-      setShowOpenModal(false);
+      rememberBrowserDirectory(entry.path);
     } else if (browserTarget === 'insert') {
       setInsertFilePath(entry.path);
       rememberBrowserDirectory(entry.path);

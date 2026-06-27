@@ -1,4 +1,5 @@
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+import type { WorkspaceViewMode } from '../app/types';
 
 export type MenuAction = {
   id: string;
@@ -38,6 +39,7 @@ export interface AppMenuContext {
   canRedo: boolean;
   pageCount: number | null;
   currentPage: number;
+  workspaceView: WorkspaceViewMode;
   viewMode: 'pdf' | 'markdown';
   scrollViewMode: 'single' | 'continuous';
   highlightMode: boolean;
@@ -140,6 +142,8 @@ export interface AppMenuContext {
   openExtractModal: () => void;
   openExtractOddModal: () => void;
   openExtractEvenModal: () => void;
+  setWorkspaceViewBirdseye: () => void;
+  setWorkspaceViewTabs: () => void;
   setViewModePdf: () => void;
   toggleMarkdownView: () => void | Promise<void>;
   handleOptimizePdf: () => void | Promise<void>;
@@ -229,6 +233,7 @@ export type AppMenuContextSource = {
   canRedo: boolean;
   pageCount: number | null;
   currentPage: number;
+  workspaceView: WorkspaceViewMode;
   viewMode: 'pdf' | 'markdown';
   scrollViewMode: 'single' | 'continuous';
   highlightMode: boolean;
@@ -331,6 +336,8 @@ export type AppMenuContextSource = {
   openExtractModal: () => void;
   openExtractOddModal: () => void;
   openExtractEvenModal: () => void;
+  setWorkspaceViewBirdseye: () => void;
+  setWorkspaceViewTabs: () => void;
   setViewModePdf: () => void;
   toggleMarkdownView: VoidHandler;
   handleOptimizePdf: VoidHandler;

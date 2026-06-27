@@ -3,7 +3,7 @@ import type { DocumentState } from '../app/useAppDocumentState';
 import type { AnnotationState } from '../app/useAnnotationDraftState';
 import type { PanelsState } from '../app/useDocumentPanelsState';
 import type { HelpState } from '../app/useHelpChromeState';
-import type { ViewMode } from '../app/types';
+import type { ViewMode, WorkspaceViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
@@ -30,6 +30,7 @@ export type BuildAppMenuInputArgs = {
   };
   help: Pick<HelpState, 'setShowShortcutsHelp' | 'setShowLicenses' | 'setShowCredits' | 'setShowAbout' | 'setShowUpdateModal' | 'updaterSupported' | 'setShowCommandPalette'>;
   surface: { activeSurface: AppSurface; openSettings: (focus?: SettingsFocusSection) => void };
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
   shortcutBindings: ShortcutBindings;
   pdfActions: AppPdfActions;
 };

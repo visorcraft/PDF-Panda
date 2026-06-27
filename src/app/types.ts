@@ -17,6 +17,7 @@ export interface FormFieldData {
 }
 
 export type ViewMode = 'pdf' | 'markdown';
+export type WorkspaceViewMode = 'tabs' | 'birdseye';
 export type ScrollViewMode = 'single' | 'continuous';
 
 export interface MarkdownSaveResult {

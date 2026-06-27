@@ -36,14 +36,12 @@ type UseNativeFilePickersOptions = {
   extractEndPage: number;
   currentPage: number;
   withLoading: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  loadPdfFromPath: (path: string) => Promise<boolean>;
   rememberOpenedPdf: (path: string) => void;
   rememberBrowserDirectory: (path: string) => void;
   markSaved: () => void;
   defaultExtractOutputPath: (start: number, end: number) => string;
   defaultImageExportOutput: (format: ImageExportFormat, scope: PngExportScope, start: number, end: number) => string;
   setOpenFilePath: (path: string) => void;
-  setShowOpenModal: (open: boolean) => void;
   setInsertFilePath: (path: string) => void;
   setMergeFilePath: (path: string) => void;
   setSaveAsPath: (path: string) => void;
@@ -58,10 +56,10 @@ type UseNativeFilePickersOptions = {
 export function useNativeFilePickers(opts: UseNativeFilePickersOptions) {
   const chooseOpenPdfNative = useCallback(async () => {
     const path = await pickPdfWithNativeDialog(opts.openFilePath || opts.lastBrowserDir || opts.originalPath);
-    if (!path) return;
+    if (!path) return false;
     opts.setOpenFilePath(path);
-    const loaded = await opts.loadPdfFromPath(path);
-    if (loaded) opts.setShowOpenModal(false);
+    opts.rememberBrowserDirectory(path);
+    return true;
   }, [opts]);
 
   const chooseInsertPdfNative = useCallback(async () => {

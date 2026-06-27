@@ -26,6 +26,7 @@ tauri::generate_handler![
             delete_page,
             delete_page_range,
             move_page,
+            move_page_between_pdfs,
             move_page_to_first,
             move_page_to_last,
             duplicate_page,

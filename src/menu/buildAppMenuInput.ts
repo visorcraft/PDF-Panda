@@ -11,6 +11,7 @@ export function buildAppMenuInput(args: BuildAppMenuInputArgs) {
     ...menuInputDocFields(args),
     ...menuInputPagesFields(args),
     surface: args.surface,
+    workspace: args.workspace,
     shortcutBindings: args.shortcutBindings,
   } satisfies BuildAppMenuSourceInput);
 

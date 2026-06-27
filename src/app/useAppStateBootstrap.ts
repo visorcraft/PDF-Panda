@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAppDocumentState } from './useAppDocumentState';
 import { useAppModalState } from './useAppModalState';
 import { useSecurityFormState } from './useSecurityFormState';
@@ -18,6 +19,7 @@ import { readSpawnParams } from './spawnWindow';
 import { useAppearanceState } from './useAppearanceState';
 import { useShortcutBindingsState } from './useShortcutBindingsState';
 import { useAppSurfaceState } from './useAppSurfaceState';
+import type { WorkspaceViewMode } from './types';
 
 export function useAppStateBootstrap() {
   const doc = useAppDocumentState();
@@ -103,6 +105,8 @@ export function useAppStateBootstrap() {
   const appearance = useAppearanceState();
   const shortcutBindings = useShortcutBindingsState();
   const surface = useAppSurfaceState();
+  const [workspaceView, setWorkspaceView] =
+    useState<WorkspaceViewMode>('tabs');
 
   return {
     doc,
@@ -125,5 +129,6 @@ export function useAppStateBootstrap() {
     appearance,
     shortcutBindings,
     surface,
+    workspace: { workspaceView, setWorkspaceView },
   };
 }

@@ -4,6 +4,7 @@ import type { AppMenus } from '../menu/types';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { TabMenuApi } from './useTabContextMenu';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+import type { WorkspaceViewMode } from '../app/types';
 
 type AppChromeProps = {
   menus: AppMenus;
@@ -24,6 +25,7 @@ type AppChromeProps = {
   onCloseTab: (id: string) => void;
   tabMenuApi: TabMenuApi;
   documentChromeVisible: boolean;
+  workspaceView: WorkspaceViewMode;
   shortcutBindings: ShortcutBindings;
 };
 
@@ -46,6 +48,7 @@ export function AppChrome({
   onCloseTab,
   tabMenuApi,
   documentChromeVisible,
+  workspaceView,
   shortcutBindings,
 }: AppChromeProps) {
   return (
@@ -71,6 +74,7 @@ export function AppChrome({
         onCloseTab={onCloseTab}
         tabMenuApi={tabMenuApi}
         documentChromeVisible={documentChromeVisible}
+        workspaceView={workspaceView}
         shortcutBindings={shortcutBindings}
       />
     </div>

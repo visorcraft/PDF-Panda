@@ -427,6 +427,31 @@ fn move_page_reorders() {
 }
 
 #[test]
+fn move_page_between_pdfs_moves_page_and_updates_counts() {
+    let source = save(&mut build_pdf(3), "move_between_source");
+    let dest = save(&mut build_pdf(2), "move_between_dest");
+    move_page_between_pdfs(source.clone(), dest.clone(), 1, 1).unwrap();
+    assert_eq!(page_order(&source), vec![0, 2]);
+    assert_eq!(page_order(&dest), vec![0, 1, 1]);
+    assert_eq!(count_entry(&source), 2);
+    assert_eq!(count_entry(&dest), 3);
+    let _ = std::fs::remove_file(&source);
+    let _ = std::fs::remove_file(&dest);
+}
+
+#[test]
+fn move_page_between_pdfs_rejects_emptying_source() {
+    let source = save(&mut build_pdf(1), "move_between_only_source");
+    let dest = save(&mut build_pdf(2), "move_between_only_dest");
+    let err = move_page_between_pdfs(source.clone(), dest.clone(), 0, 1).unwrap_err();
+    assert!(err.contains("only page"));
+    assert_eq!(page_count(&source), 1);
+    assert_eq!(page_count(&dest), 2);
+    let _ = std::fs::remove_file(&source);
+    let _ = std::fs::remove_file(&dest);
+}
+
+#[test]
 fn duplicate_page_inserts_copy_after_source() {
     let path = save(&mut build_pdf(2), "duplicate");
     duplicate_page(path.clone(), 0).unwrap();

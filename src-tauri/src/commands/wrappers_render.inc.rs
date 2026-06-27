@@ -140,6 +140,15 @@ fn delete_page(path: String, page_index: u32) -> Result<(), String> {
 fn move_page(path: String, from_index: u32, to_index: u32) -> Result<(), String> {
     pdf::page_ops::move_page(&PathBuf::from(path), from_index, to_index)
 }
+#[tauri::command]
+fn move_page_between_pdfs(source_path: String, dest_path: String, source_index: u32, dest_index: u32) -> Result<(), String> {
+    pdf::page_ops::move_page_between_documents(
+        &PathBuf::from(source_path),
+        &PathBuf::from(dest_path),
+        source_index,
+        dest_index,
+    )
+}
 /// Deep-copy `page_index` and insert the copy immediately after it.
 #[tauri::command]
 fn duplicate_page(path: String, page_index: u32) -> Result<u32, String> {

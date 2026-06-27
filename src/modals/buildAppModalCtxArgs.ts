@@ -8,6 +8,7 @@ import type { HelpState } from '../app/useHelpChromeState';
 import type { PdfBrowserEntry, PdfBrowserListing } from './PdfBrowserModal';
 import type { PdfTextSearchMatch } from './SearchModal';
 import type { PdfBrowserTarget } from '../app/types';
+import type { WorkspaceViewMode } from '../app/types';
 
 export type BrowserSlice = {
   showBrowserModal: boolean;
@@ -73,5 +74,6 @@ export type BuildAppModalCtxInputArgs = {
   help: HelpState;
   lifecycle: LifecycleSlice;
   runtime: RuntimeSlice;
+  workspace: { setWorkspaceView: (mode: WorkspaceViewMode) => void };
   pdfActions: AppPdfActions;
 };

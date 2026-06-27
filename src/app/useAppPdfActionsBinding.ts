@@ -25,7 +25,6 @@ type AppPdfActionsRuntime = Pick<
   | 'loadFormFields'
   | 'loadPageSizes'
   | 'loadPdfBookmarks'
-  | 'loadPdfFromPath'
   | 'loadPdfSignatures'
   | 'loadThumbnails'
   | 'markPdfEdited'

@@ -10,6 +10,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'canRedo'
   | 'pageCount'
   | 'currentPage'
+  | 'workspaceView'
   | 'viewMode'
   | 'scrollViewMode'
   | 'highlightMode'
@@ -38,6 +39,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
   | 'handlePrint'
   | 'openPrintDialog'
   | 'openSearchModal'
+  | 'setWorkspaceViewBirdseye'
+  | 'setWorkspaceViewTabs'
   | 'setViewModePdf'
   | 'toggleMarkdownView'
   | 'handleOptimizePdf'
@@ -105,6 +108,7 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     canRedo: source.canRedo,
     pageCount: source.pageCount,
     currentPage: source.currentPage,
+    workspaceView: source.workspaceView,
     viewMode: source.viewMode,
     scrollViewMode: source.scrollViewMode,
     highlightMode: source.highlightMode,
@@ -133,6 +137,8 @@ export function menuContextDocAnnotFields(source: AppMenuContextSource): Pick<
     handlePrint: source.handlePrint,
     openPrintDialog: source.openPrintDialog,
     openSearchModal: source.openSearchModal,
+    setWorkspaceViewBirdseye: source.setWorkspaceViewBirdseye,
+    setWorkspaceViewTabs: source.setWorkspaceViewTabs,
     setViewModePdf: source.setViewModePdf,
     toggleMarkdownView: source.toggleMarkdownView,
     handleOptimizePdf: source.handleOptimizePdf,

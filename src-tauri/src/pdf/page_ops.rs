@@ -40,6 +40,39 @@ pub fn move_page(path: &Path, from_index: u32, to_index: u32) -> Result<(), Stri
     })
 }
 
+pub fn move_page_between_documents(
+    source_path: &Path,
+    dest_path: &Path,
+    source_index: u32,
+    dest_index: u32,
+) -> Result<(), String> {
+    if source_path == dest_path {
+        let total = crate::pdf::io::page_count(source_path)? as u32;
+        if total == 0 {
+            return Err("Document has no pages".to_string());
+        }
+        let target = if dest_index >= total { total - 1 } else { dest_index };
+        return move_page(source_path, source_index, target);
+    }
+
+    let source_count = crate::pdf::io::page_count(source_path)? as u32;
+    if source_count <= 1 {
+        return Err("Cannot move the only page in the source document".to_string());
+    }
+    if source_index >= source_count {
+        return Err("Source page index out of bounds".to_string());
+    }
+
+    let dest_count = crate::pdf::io::page_count(dest_path)? as u32;
+    if dest_index > dest_count {
+        return Err("Destination insert index out of bounds".to_string());
+    }
+
+    insert_pdf(dest_path, source_path, dest_index, source_index, source_index)?;
+    delete_page(source_path, source_index)?;
+    Ok(())
+}
+
 pub fn duplicate_page(path: &Path, page_index: u32) -> Result<u32, String> {
     let page_count = crate::pdf::io::page_count(path)?;
     let idx = page_index as usize;

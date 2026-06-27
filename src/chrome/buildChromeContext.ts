@@ -4,6 +4,7 @@ import type { AppMenus } from '../menu/types';
 import type { DocumentTabInfo } from '../app/documentSessionTypes';
 import type { TabMenuApi } from './useTabContextMenu';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
+import type { WorkspaceViewMode } from '../app/types';
 
 export type BuildChromeContextInput = {
   menus: AppMenus;
@@ -24,6 +25,7 @@ export type BuildChromeContextInput = {
   onCloseTab: (id: string) => void;
   tabMenuApi: TabMenuApi;
   documentChromeVisible: boolean;
+  workspaceView: WorkspaceViewMode;
   shortcutBindings: ShortcutBindings;
 };
 

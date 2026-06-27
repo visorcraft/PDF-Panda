@@ -40,6 +40,14 @@ export function modalCtxFileFields(args: BuildAppModalCtxInputArgs) {
     handleMarkdownSaveAs: args.pdfActions.handleMarkdownSaveAs,
     handleMergePdf: args.pdfActions.handleMergePdf,
     handleOpenEncryptedPdf: args.lifecycle.handleOpenEncryptedPdf,
+    handleOpenPdfInBirdsEye: () => {
+      args.workspace.setWorkspaceView('birdseye');
+      return args.lifecycle.handleOpenPdfPath();
+    },
+    handleOpenPdfInPdfView: () => {
+      args.workspace.setWorkspaceView('tabs');
+      return args.lifecycle.handleOpenPdfPath();
+    },
     handleOpenPdfPath: args.lifecycle.handleOpenPdfPath,
     handleOpenRecentPdf: args.lifecycle.handleOpenRecentPdf,
     handlePrependPdf: args.pdfActions.handlePrependPdf,

@@ -24,6 +24,7 @@ export type BuildAppShellChromeInputArgs = {
   onCloseTab: BuildAppChromeSourceInput['onCloseTab'];
   tabMenuApi: TabMenuApi;
   documentChromeVisible: boolean;
+  workspaceView: BuildAppChromeSourceInput['workspaceView'];
   shortcutBindings: ShortcutBindings;
 };
 
@@ -38,6 +39,7 @@ export function buildAppShellChromeInput(args: BuildAppShellChromeInputArgs): Bu
     onCloseTab: args.onCloseTab,
     tabMenuApi: args.tabMenuApi,
     documentChromeVisible: args.documentChromeVisible,
+    workspaceView: args.workspaceView,
     shortcutBindings: args.shortcutBindings,
   };
 }

@@ -36,7 +36,6 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
     setPrependFilePath,
     setPrependSourcePageCount,
     setMergeFilePath,
-    setShowOpenModal,
     setShowDeleteModal,
     setShowPrintDialog,
     setPageSizes,
@@ -79,7 +78,6 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
     prependFilePath,
     mergeFilePath,
     withLoading: input.withLoading,
-    loadPdfFromPath: open.loadPdfFromPath,
     rememberBrowserDirectory: loaders.rememberBrowserDirectory,
     interleaveRange,
     prependRange,
@@ -93,7 +91,6 @@ export function useAppLifecycleBrowserSearch({ input, loaders, open }: UseAppLif
     setPrependFilePath,
     setPrependSourcePageCount,
     setMergeFilePath,
-    setShowOpenModal,
   });
 
   const search = usePdfSearch({

@@ -108,6 +108,8 @@ export type BuildAppShellViewerInputArgs = {
     | 'zoomOut'
     | 'resetZoom'
   >;
+  workspaceView: BuildAppViewerSourceInput['workspaceView'];
+  birdsEye: BuildAppViewerSourceInput['birdsEye'];
 };
 
 export function buildAppShellViewerInput(args: BuildAppShellViewerInputArgs): BuildAppViewerSourceInput {
@@ -118,5 +120,7 @@ export function buildAppShellViewerInput(args: BuildAppShellViewerInputArgs): Bu
     ...args.modes,
     ...args.interaction,
     ...args.pageZoom,
+    workspaceView: args.workspaceView,
+    birdsEye: args.birdsEye,
   };
 }

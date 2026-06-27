@@ -1,4 +1,4 @@
-import { useId, type KeyboardEvent } from 'react';
+import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 import { Modal } from '../ui/Modal';
 
 type OpenPdfModalProps = {
@@ -8,9 +8,9 @@ type OpenPdfModalProps = {
   fileNameFromPath: (path: string) => string;
   onFilePathChange: (path: string) => void;
   onClose: () => void;
-  onOpen: () => void;
-  onOpenRecent: (path: string) => void;
-  onChooseNative: () => void;
+  onOpenPdfView: () => void;
+  onOpenBirdsEye: () => void;
+  onChooseNative: () => boolean | Promise<boolean>;
   onBrowse: () => void;
 };
 
@@ -21,16 +21,22 @@ export function OpenPdfModal({
   fileNameFromPath,
   onFilePathChange,
   onClose,
-  onOpen,
-  onOpenRecent,
+  onOpenPdfView,
+  onOpenBirdsEye,
   onChooseNative,
   onBrowse,
 }: OpenPdfModalProps) {
   const pathId = useId();
+  const [step, setStep] = useState<'path' | 'view'>('path');
+  const canContinue = !!filePath.trim();
+
+  useEffect(() => {
+    if (!canContinue) setStep('path');
+  }, [canContinue]);
 
   const onFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      onOpen();
+      if (canContinue) setStep('view');
       e.currentTarget.blur();
     }
   };
@@ -38,41 +44,85 @@ export function OpenPdfModal({
   return (
     <Modal onClose={onClose}>
       <h3>Open PDF</h3>
-      {!nativeDialogs && (
-        <p className="modal-help">Native file picker is disabled for this session. Enter a path or use Browse….</p>
-      )}
-      <label htmlFor={pathId}>PDF path:</label>
-      <div className="modal-path-row">
-        <input
-          id={pathId}
-          type="text"
-          value={filePath}
-          onChange={(e) => onFilePathChange(e.target.value)}
-          onKeyDown={onFieldKeyDown}
-          className="modal-input"
-          placeholder="/path/to/document.pdf"
-          data-testid="open-pdf-path"
-          autoFocus
-        />
-        {nativeDialogs && (
-          <button onClick={() => void onChooseNative()} className="btn" data-testid="native-open-pdf">Choose file…</button>
-        )}
-        <button onClick={onBrowse} className="btn">Browse…</button>
-      </div>
-      {recentPdfs.length > 0 && (
-        <div className="recent-list" aria-label="Recently opened PDFs">
-          <h4>Recently Opened</h4>
-          {recentPdfs.map((path) => (
-            <button key={path} className="recent-row" onClick={() => onOpenRecent(path)}>
-              <span className="recent-name">{fileNameFromPath(path)}</span>
-              <span className="recent-path">{path}</span>
-            </button>
-          ))}
+      {step === 'path' ? (
+        <>
+          {!nativeDialogs && (
+            <p className="modal-help">Native file picker is disabled for this session. Enter a path or use Browse….</p>
+          )}
+          <label htmlFor={pathId}>PDF path:</label>
+          <div className="modal-path-row">
+            <input
+              id={pathId}
+              type="text"
+              value={filePath}
+              onChange={(e) => onFilePathChange(e.target.value)}
+              onKeyDown={onFieldKeyDown}
+              className="modal-input"
+              placeholder="/path/to/document.pdf"
+              data-testid="open-pdf-path"
+              autoFocus
+            />
+            {nativeDialogs && (
+              <button
+                onClick={() => {
+                  void Promise.resolve(onChooseNative()).then((picked) => {
+                    if (picked) setStep('view');
+                  });
+                }}
+                className="btn"
+                data-testid="native-open-pdf"
+              >
+                Choose file…
+              </button>
+            )}
+            <button onClick={onBrowse} className="btn">Browse…</button>
+          </div>
+          {recentPdfs.length > 0 && (
+            <div className="recent-list" aria-label="Recently opened PDFs">
+              <h4>Recently Opened</h4>
+              {recentPdfs.map((path) => (
+                <button
+                  key={path}
+                  className="recent-row"
+                  onClick={() => {
+                    onFilePathChange(path);
+                    setStep('view');
+                  }}
+                >
+                  <span className="recent-name">{fileNameFromPath(path)}</span>
+                  <span className="recent-path">{path}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="open-view-choice" aria-label="Choose how to open this PDF">
+          <button type="button" className="open-view-card" onClick={onOpenPdfView}>
+            <strong>PDF View</strong>
+            <span>Open in the standard tabbed viewer.</span>
+          </button>
+          <button type="button" className="open-view-card" onClick={onOpenBirdsEye}>
+            <strong>Bird&apos;s Eye View</strong>
+            <span>Open as a section for arranging pages across documents.</span>
+          </button>
         </div>
       )}
       <div className="modal-actions">
         <button onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button onClick={onOpen} className="btn" disabled={!filePath.trim()} data-testid="open-pdf-submit">Open</button>
+        {step === 'view' && (
+          <button onClick={() => setStep('path')} className="btn btn-secondary">Back</button>
+        )}
+        {step === 'path' && (
+          <button
+            onClick={() => setStep('view')}
+            className="btn"
+            disabled={!canContinue}
+            data-testid="open-pdf-submit"
+          >
+            Next
+          </button>
+        )}
       </div>
     </Modal>
   );

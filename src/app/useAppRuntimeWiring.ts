@@ -8,6 +8,7 @@ import { useAppModalCtxBinding } from './useAppModalCtxBinding';
 import { useAppShellBinding as buildAppShellBinding } from './useAppShellBinding';
 import { useDocumentTabActions } from './useDocumentTabActions';
 import { isTauriRuntime } from './tauriRuntime';
+import { useBirdsEyeWorkspace } from './useBirdsEyeWorkspace';
 import type { useAppStateBootstrap } from './useAppStateBootstrap';
 
 type Bootstrap = ReturnType<typeof useAppStateBootstrap>;
@@ -34,6 +35,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     appearance,
     shortcutBindings: shortcutBindingsState,
     surface,
+    workspace,
   } = bootstrap;
 
   const { loaders, history, unsaved, browser, search, chrome, tesseract } = slices;
@@ -91,7 +93,6 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
       loadFormFields: loaders.loadFormFields,
       loadPageSizes: loaders.loadPageSizes,
       loadPdfBookmarks: loaders.loadPdfBookmarks,
-      loadPdfFromPath: lifecycle.loadPdfFromPath,
       loadPdfSignatures: loaders.loadPdfSignatures,
       loadThumbnails: loaders.loadThumbnails,
       markPdfEdited: history.markPdfEdited,
@@ -138,6 +139,7 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     search: { showSearchModal: search.showSearchModal, closeSearchModal: search.closeSearchModal },
     shortcutBindings: shortcutBindingsState.bindings,
     surface,
+    workspace,
   });
 
   const modalCtx = useAppModalCtxBinding({
@@ -147,8 +149,27 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
     pageRanges,
     help,
     doc: { activeSession: doc.activeSession, currentPage: doc.currentPage, pageCount: doc.pageCount, ocrAvailable: doc.ocrAvailable },
+    workspace,
     slices,
     pdfActions,
+    showToast,
+  });
+
+  const birdsEye = useBirdsEyeWorkspace({
+    sessions: doc.sessions,
+    tabs: doc.tabs,
+    activeId: doc.activeId,
+    nativeDialogs: modal.nativeDialogs,
+    lastBrowserDir: modal.lastBrowserDir,
+    withLoading,
+    updateSession: doc.updateSession,
+    setActiveSession: doc.setActiveSession,
+    setWorkspaceView: workspace.setWorkspaceView,
+    setOpenFilePath: modal.setOpenFilePath,
+    setShowOpenModal: modal.setShowOpenModal,
+    loadThumbnails: loaders.loadThumbnails,
+    renderPage: loaders.renderPage,
+    rememberBrowserDirectory: lifecycle.rememberBrowserDirectory,
     showToast,
   });
 
@@ -302,6 +323,8 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
         slices,
         viewerWorkflow,
         surface,
+        workspace,
+        birdsEye,
         onSelectTab: tabActions.selectTab,
         onCloseTab: tabActions.requestCloseTab,
         tabMenuApi,
@@ -326,6 +349,8 @@ export function useAppRuntimeWiring(bootstrap: Bootstrap) {
       slices,
       viewerWorkflow,
       surface,
+      workspace,
+      birdsEye,
       tabActions.selectTab,
       tabActions.requestCloseTab,
       tabMenuApi,

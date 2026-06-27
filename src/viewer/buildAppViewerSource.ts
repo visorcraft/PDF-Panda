@@ -4,6 +4,8 @@ import type { PdfPageView } from './PdfPageView';
 import type { PdfSidebar } from './PdfSidebar';
 import type { ViewerMain } from './ViewerMain';
 import type { PageControls } from './PageControls';
+import type { WorkspaceViewMode } from '../app/types';
+import type { BirdsEyeWorkspace } from '../app/useBirdsEyeWorkspace';
 
 type SidebarProps = ComponentProps<typeof PdfSidebar>;
 type PdfPageProps = ComponentProps<typeof PdfPageView>;
@@ -107,6 +109,8 @@ export type BuildAppViewerSourceInput = {
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
+  workspaceView: WorkspaceViewMode;
+  birdsEye: BirdsEyeWorkspace;
 };
 
 export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildViewerContextInput {
@@ -241,5 +245,11 @@ export function buildAppViewerSource(input: BuildAppViewerSourceInput): BuildVie
     pageControls,
   };
 
-  return { filePath: input.filePath, sidebar, viewer };
+  return {
+    filePath: input.filePath,
+    sidebar,
+    viewer,
+    workspaceView: input.workspaceView,
+    birdsEye: input.birdsEye,
+  };
 }

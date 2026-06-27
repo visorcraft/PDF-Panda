@@ -19,6 +19,8 @@ import type { PdfPageSize } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 import type { ShortcutBindingsState } from '../app/useShortcutBindingsState';
 import type { AppearanceKey } from '../settings/appearancePalettes';
+import type { WorkspaceViewMode } from '../app/types';
+import type { BirdsEyeWorkspace } from '../app/useBirdsEyeWorkspace';
 
 type DrawingState = ReturnType<typeof useDrawingGesture>;
 
@@ -42,6 +44,8 @@ export type BuildAppShellRenderInputArgs = {
   activeSurface: AppSurface;
   settingsFocus: SettingsFocusSection;
   closeSettings: () => void;
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
+  birdsEye: BirdsEyeWorkspace;
   shortcuts: ShortcutBindingsState;
   showToast: (message: string, type?: 'success' | 'error') => void;
   dismissToast: () => void;
@@ -97,6 +101,7 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
       onCloseTab: args.onCloseTab,
       tabMenuApi: args.tabMenuApi,
       documentChromeVisible: args.activeSurface === 'document',
+      workspaceView: args.workspace.workspaceView,
       shortcutBindings: args.shortcuts.bindings,
     }),
     activeSurface: args.activeSurface,
@@ -202,6 +207,8 @@ export function buildAppShellRenderInput(args: BuildAppShellRenderInputArgs) {
         removeTextNote: args.pdfActions.removeTextNote,
       },
       pageZoom,
+      workspaceView: args.workspace.workspaceView,
+      birdsEye: args.birdsEye,
     }),
     modalCtx: args.modalCtx,
     printPages: args.printPages,

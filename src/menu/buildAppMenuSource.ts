@@ -1,5 +1,5 @@
 import type { AppMenuContextSource } from './types';
-import type { ScrollViewMode, ViewMode } from '../app/types';
+import type { ScrollViewMode, ViewMode, WorkspaceViewMode } from '../app/types';
 import type { AppSurface, SettingsFocusSection } from '../app/useAppSurfaceState';
 import type { ShortcutBindings } from '../app/useShortcutBindingsState';
 
@@ -8,8 +8,11 @@ export type BuildAppMenuSourceInput = Omit<
   AppMenuContextSource,
   | 'hasPdf'
   | 'tesseractInstalled'
+  | 'workspaceView'
   | 'requestClosePdf'
   | 'quitApp'
+  | 'setWorkspaceViewBirdseye'
+  | 'setWorkspaceViewTabs'
   | 'setViewModePdf'
   | 'toggleBookmarksPanel'
   | 'toggleAnnotationsPanel'
@@ -29,6 +32,7 @@ export type BuildAppMenuSourceInput = Omit<
   filePath: string;
   ocrAvailable: boolean | null;
   surface: { activeSurface: AppSurface; openSettings: (focus?: SettingsFocusSection) => void };
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
   guardUnsaved: (action: () => void) => void;
   closePdf: () => void;
   exitApp: () => void;
@@ -71,6 +75,7 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     updaterSupported,
     setShowCommandPalette,
     surface,
+    workspace,
     shortcutBindings,
     ...passthrough
   } = input;
@@ -81,7 +86,13 @@ export function buildAppMenuSource(input: BuildAppMenuSourceInput): AppMenuConte
     tesseractInstalled: ocrAvailable === true,
     requestClosePdf: () => guardUnsaved(closePdf),
     quitApp: () => guardUnsaved(exitApp),
-    setViewModePdf: () => setViewMode('pdf'),
+    workspaceView: workspace.workspaceView,
+    setWorkspaceViewBirdseye: () => workspace.setWorkspaceView('birdseye'),
+    setWorkspaceViewTabs: () => workspace.setWorkspaceView('tabs'),
+    setViewModePdf: () => {
+      workspace.setWorkspaceView('tabs');
+      setViewMode('pdf');
+    },
     scrollViewMode,
     toggleContinuousScroll: () => setScrollViewMode((prev) => (prev === 'continuous' ? 'single' : 'continuous')),
     toggleBookmarksPanel: () => setShowBookmarksPanel((prev) => !prev),
