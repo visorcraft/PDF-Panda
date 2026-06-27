@@ -82,6 +82,7 @@ export function AppModals({ ctx: rawCtx }: AppModalsProps) {
           onClose={() => ctx.setShowOpenModal(false)}
           onOpenPdfView={ctx.handleOpenPdfInPdfView}
           onOpenBirdsEye={ctx.handleOpenPdfInBirdsEye}
+          openDirectlyInBirdsEye={ctx.openDirectlyInBirdsEye}
           onChooseNative={ctx.chooseOpenPdfNative}
           onBrowse={() => ctx.openPdfBrowser('open')}
         />

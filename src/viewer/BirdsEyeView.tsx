@@ -35,11 +35,6 @@ export function BirdsEyeView({
   return (
     <div className="birdseye-workspace">
       <div className="birdseye-toolbar">
-        <div className="birdseye-window-dots" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
         <div className="birdseye-counts">
           <strong>{documents.length}</strong> document{documents.length === 1 ? '' : 's'}
           <span> - </span>

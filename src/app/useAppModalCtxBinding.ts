@@ -18,7 +18,7 @@ export type UseAppModalCtxBindingInput = {
   pageRanges: PageRangesState;
   help: HelpState;
   doc: { activeSession: DocumentSessionData | null; currentPage: number; pageCount: number | null; ocrAvailable: boolean | null };
-  workspace: { setWorkspaceView: (mode: WorkspaceViewMode) => void };
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
   slices: Slices;
   pdfActions: AppPdfActions;
   showToast: (message: string, type?: 'success' | 'error') => void;

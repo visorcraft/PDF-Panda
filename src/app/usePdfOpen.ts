@@ -136,8 +136,8 @@ export function usePdfOpen({
     });
   }, [guardUnsaved, originalPath, setOpenFilePath, setShowOpenModal]);
 
-  const handleOpenPdfPath = useCallback(async () => {
-    const path = openFilePath.trim();
+  const handleOpenPdfPath = useCallback(async (pathOverride?: string) => {
+    const path = (pathOverride ?? openFilePath).trim();
     if (!path) return;
     const loaded = await loadPdfFromPath(path);
     if (loaded) setShowOpenModal(false);

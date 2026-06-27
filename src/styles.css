@@ -310,31 +310,6 @@ body {
   backdrop-filter: blur(14px);
 }
 
-.birdseye-window-dots {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.birdseye-window-dots span {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  display: block;
-}
-
-.birdseye-window-dots span:nth-child(1) {
-  background: #ff4d62;
-}
-
-.birdseye-window-dots span:nth-child(2) {
-  background: #ffd331;
-}
-
-.birdseye-window-dots span:nth-child(3) {
-  background: #32d85f;
-}
-
 .birdseye-counts {
   color: rgba(244, 247, 244, 0.72);
   font-size: 15px;

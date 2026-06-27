@@ -114,6 +114,10 @@ export async function openPdfViaPathModal(pdfPath: string) {
     timeoutMsg: 'open submit enabled',
   });
   await submit.click();
+  const pdfView = await $('[data-testid="open-pdf-view"]');
+  if (await pdfView.isDisplayed().catch(() => false)) {
+    await pdfView.click();
+  }
   await waitForPdfOpen();
 }
 
@@ -514,5 +518,4 @@ export async function applyRedactions() {
   await (await $('[data-testid="apply-redactions-confirm"]')).click();
   await waitForPageRendered();
 }
-
 

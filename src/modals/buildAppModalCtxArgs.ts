@@ -49,7 +49,7 @@ export type TesseractSlice = {
 };
 
 export type LifecycleSlice = {
-  handleOpenPdfPath: () => void | Promise<void>;
+  handleOpenPdfPath: (path?: string) => void | Promise<void>;
   handleOpenEncryptedPdf: () => void | Promise<void>;
   handleOpenRecentPdf: (path: string) => void | Promise<void>;
   loadPdfBrowser: (path?: string) => void | Promise<void>;
@@ -74,6 +74,6 @@ export type BuildAppModalCtxInputArgs = {
   help: HelpState;
   lifecycle: LifecycleSlice;
   runtime: RuntimeSlice;
-  workspace: { setWorkspaceView: (mode: WorkspaceViewMode) => void };
+  workspace: { workspaceView: WorkspaceViewMode; setWorkspaceView: (mode: WorkspaceViewMode) => void };
   pdfActions: AppPdfActions;
 };

@@ -8,8 +8,9 @@ type OpenPdfModalProps = {
   fileNameFromPath: (path: string) => string;
   onFilePathChange: (path: string) => void;
   onClose: () => void;
-  onOpenPdfView: () => void;
-  onOpenBirdsEye: () => void;
+  onOpenPdfView: (path?: string) => void | Promise<void>;
+  onOpenBirdsEye: (path?: string) => void | Promise<void>;
+  openDirectlyInBirdsEye: boolean;
   onChooseNative: () => boolean | Promise<boolean>;
   onBrowse: () => void;
 };
@@ -23,6 +24,7 @@ export function OpenPdfModal({
   onClose,
   onOpenPdfView,
   onOpenBirdsEye,
+  openDirectlyInBirdsEye,
   onChooseNative,
   onBrowse,
 }: OpenPdfModalProps) {
@@ -34,9 +36,22 @@ export function OpenPdfModal({
     if (!canContinue) setStep('path');
   }, [canContinue]);
 
+  useEffect(() => {
+    if (openDirectlyInBirdsEye && step === 'view') setStep('path');
+  }, [openDirectlyInBirdsEye, step]);
+
+  const acceptPath = () => {
+    if (!canContinue) return;
+    if (openDirectlyInBirdsEye) {
+      void onOpenBirdsEye();
+    } else {
+      setStep('view');
+    }
+  };
+
   const onFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (canContinue) setStep('view');
+      acceptPath();
       e.currentTarget.blur();
     }
   };
@@ -66,7 +81,7 @@ export function OpenPdfModal({
               <button
                 onClick={() => {
                   void Promise.resolve(onChooseNative()).then((picked) => {
-                    if (picked) setStep('view');
+                    if (picked && !openDirectlyInBirdsEye) setStep('view');
                   });
                 }}
                 className="btn"
@@ -86,7 +101,11 @@ export function OpenPdfModal({
                   className="recent-row"
                   onClick={() => {
                     onFilePathChange(path);
-                    setStep('view');
+                    if (openDirectlyInBirdsEye) {
+                      void onOpenBirdsEye(path);
+                    } else {
+                      setStep('view');
+                    }
                   }}
                 >
                   <span className="recent-name">{fileNameFromPath(path)}</span>
@@ -98,11 +117,11 @@ export function OpenPdfModal({
         </>
       ) : (
         <div className="open-view-choice" aria-label="Choose how to open this PDF">
-          <button type="button" className="open-view-card" onClick={onOpenPdfView}>
+          <button type="button" className="open-view-card" data-testid="open-pdf-view" onClick={() => onOpenPdfView()}>
             <strong>PDF View</strong>
             <span>Open in the standard tabbed viewer.</span>
           </button>
-          <button type="button" className="open-view-card" onClick={onOpenBirdsEye}>
+          <button type="button" className="open-view-card" data-testid="open-birdseye-view" onClick={() => onOpenBirdsEye()}>
             <strong>Bird&apos;s Eye View</strong>
             <span>Open as a section for arranging pages across documents.</span>
           </button>
@@ -115,12 +134,12 @@ export function OpenPdfModal({
         )}
         {step === 'path' && (
           <button
-            onClick={() => setStep('view')}
+            onClick={acceptPath}
             className="btn"
             disabled={!canContinue}
             data-testid="open-pdf-submit"
           >
-            Next
+            {openDirectlyInBirdsEye ? 'Open' : 'Next'}
           </button>
         )}
       </div>

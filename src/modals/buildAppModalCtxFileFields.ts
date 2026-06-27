@@ -40,13 +40,13 @@ export function modalCtxFileFields(args: BuildAppModalCtxInputArgs) {
     handleMarkdownSaveAs: args.pdfActions.handleMarkdownSaveAs,
     handleMergePdf: args.pdfActions.handleMergePdf,
     handleOpenEncryptedPdf: args.lifecycle.handleOpenEncryptedPdf,
-    handleOpenPdfInBirdsEye: () => {
+    handleOpenPdfInBirdsEye: (path?: string) => {
       args.workspace.setWorkspaceView('birdseye');
-      return args.lifecycle.handleOpenPdfPath();
+      return args.lifecycle.handleOpenPdfPath(path);
     },
-    handleOpenPdfInPdfView: () => {
+    handleOpenPdfInPdfView: (path?: string) => {
       args.workspace.setWorkspaceView('tabs');
-      return args.lifecycle.handleOpenPdfPath();
+      return args.lifecycle.handleOpenPdfPath(path);
     },
     handleOpenPdfPath: args.lifecycle.handleOpenPdfPath,
     handleOpenRecentPdf: args.lifecycle.handleOpenRecentPdf,
@@ -77,6 +77,7 @@ export function modalCtxFileFields(args: BuildAppModalCtxInputArgs) {
     mergeSourcePageCount: args.modal.mergeSourcePageCount,
     nativeDialogs: args.modal.nativeDialogs,
     openFilePath: args.modal.openFilePath,
+    openDirectlyInBirdsEye: args.workspace.workspaceView === 'birdseye',
     openPdfBrowser: args.browser.openPdfBrowser,
     pngExportOutputPath: args.modal.pngExportOutputPath,
     pngExportRange: args.pageRanges.pngExportRange,
