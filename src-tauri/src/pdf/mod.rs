@@ -32,7 +32,6 @@ pub mod page_text;
 pub mod page_tree;
 pub mod parity_helpers;
 pub mod pdfium_bind;
-#[allow(dead_code, unused_imports, unused_variables)]
 pub mod print;
 pub mod redact;
 pub mod render;

@@ -40,14 +40,14 @@ excluded).
 
 | Crate | Version | License | Project |
 | ----- | ------- | ------- | ------- |
-| `tauri` | 2.11.2 | MIT OR Apache-2.0 | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
-| `tauri-build` | 2.6.2 | MIT OR Apache-2.0 | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
+| `tauri` | 2.11.3 | MIT OR Apache-2.0 | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
+| `tauri-build` | 2.6.3 | MIT OR Apache-2.0 | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
 | `tauri-plugin-dialog` | 2.7.1 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |
 | `tauri-plugin-process` | 2.3.1 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |
 | `tauri-plugin-single-instance` | 2.4.2 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |
 | `tauri-plugin-updater` | 2.10.1 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |
-| `pdfium-render` | 0.9.1 | MIT OR Apache-2.0 | [ajrcarey/pdfium-render](https://github.com/ajrcarey/pdfium-render) |
-| `lopdf` | 0.41.0 | MIT | [J-F-Liu/lopdf](https://github.com/J-F-Liu/lopdf) |
+| `pdfium-render` | 0.9.2 | MIT OR Apache-2.0 | [ajrcarey/pdfium-render](https://github.com/ajrcarey/pdfium-render) |
+| `lopdf` | 0.42.0 | MIT | [J-F-Liu/lopdf](https://github.com/J-F-Liu/lopdf) |
 | `image` | 0.25.10 | MIT OR Apache-2.0 | [image-rs/image](https://github.com/image-rs/image) |
 | `fax` | 0.2.7 | MIT | [pdf-rs/fax](https://github.com/pdf-rs/fax) |
 | `underskrift` | 0.1.4 | BSD-2-Clause | [kushaldas/underskrift](https://github.com/kushaldas/underskrift) |
@@ -58,8 +58,8 @@ excluded).
 | `sha2` | 0.10.9 | MIT OR Apache-2.0 | [RustCrypto/hashes](https://github.com/RustCrypto/hashes) |
 | `ttf-parser` | 0.25.1 | MIT OR Apache-2.0 | [harfbuzz/ttf-parser](https://github.com/harfbuzz/ttf-parser) |
 | `printers` | 2.3.0 | MIT | [talesluna/rust-printers](https://github.com/talesluna/rust-printers) |
-| `openssl-sys` (Windows) | 0.9.116 | MIT | [rust-openssl/rust-openssl](https://github.com/rust-openssl/rust-openssl) |
-| `windows` (Windows) | 0.61.3 | MIT OR Apache-2.0 | [microsoft/windows-rs](https://github.com/microsoft/windows-rs) |
+| `openssl-sys` (Windows) | 0.9.117 | MIT | [rust-openssl/rust-openssl](https://github.com/rust-openssl/rust-openssl) |
+| `windows` (Windows) | 0.62.2 | MIT OR Apache-2.0 | [microsoft/windows-rs](https://github.com/microsoft/windows-rs) |
 
 ## Frontend (npm) dependencies
 
@@ -69,7 +69,7 @@ are omitted because they are not bundled into release artifacts.
 
 | Package | Version | License | Project |
 | ------- | ------- | ------- | ------- |
-| `@tauri-apps/api` | 2.11.0 | MIT OR Apache-2.0 | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
+| `@tauri-apps/api` | 2.11.1 | MIT OR Apache-2.0 | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
 | `@tauri-apps/plugin-dialog` | 2.7.1 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |
 | `@tauri-apps/plugin-process` | 2.3.1 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |
 | `@tauri-apps/plugin-updater` | 2.10.1 | MIT OR Apache-2.0 | [tauri-apps/plugins-workspace](https://github.com/tauri-apps/plugins-workspace) |

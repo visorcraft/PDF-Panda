@@ -1,6 +1,6 @@
 [package]
 name = "pdf-panda"
-version = "1.5.0"
+version = "1.5.1"
 description = "A high-performance PDF editor"
 edition = "2021"
 license = "GPL-3.0-only"
@@ -17,7 +17,7 @@ tauri = { version = "2", features = ["default"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 pdfium-render = "0.9.1"
-lopdf = "0.41.0"
+lopdf = "0.42.0"
 image = "0.25"
 fax = "0.2"
 tauri-plugin-wdio = { version = "1", optional = true }
@@ -37,7 +37,7 @@ printers = "2.3"
 # from source there (Linux/macOS keep using the platform OpenSSL).
 [target.'cfg(windows)'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
-windows = { version = "0.61", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.62", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 # Optimized release profile for fast, compact production builds. `panic` is left
 # as the default (unwind) so Tauri can still catch and surface command panics.

@@ -39,7 +39,7 @@ pub fn print_document(source_path: &Path, opts: &PrintOptions, temp_dir: &Path) 
     #[cfg(target_os = "windows")]
     let mut guard = TempFileGuard::new(&temp_path);
     #[cfg(not(target_os = "windows"))]
-    let guard = TempFileGuard::new(&temp_path);
+    let _guard = TempFileGuard::new(&temp_path);
     build_print_pdf(source_path, opts, &selected, &temp_path)?;
 
     #[cfg(target_os = "windows")]

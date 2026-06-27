@@ -46,7 +46,7 @@ fn default_workspace_view() -> String {
 impl SessionState {
     const CURRENT_VERSION: u32 = 1;
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn new(active_index: usize, sessions: Vec<PersistedSession>) -> Self {
         Self { version: Self::CURRENT_VERSION, active_index, workspace_view: default_workspace_view(), sessions }
     }

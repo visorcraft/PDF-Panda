@@ -17,7 +17,7 @@ If you have questions about license compliance, please contact
 
 ## Licenses in use
 
-- **Apache License 2.0** (471 crates)
+- **Apache License 2.0** (475 crates)
 - **MIT License** (151 crates)
 - **Unicode License v3** (19 crates)
 - **BSD 3-Clause &quot;New&quot; or &quot;Revised&quot; License** (12 crates)
@@ -493,7 +493,7 @@ Used by:
 - [`polycool 0.4.0`](https://github.com/linebender/kurbo)
 - [`tinyvec 1.11.0`](https://github.com/Lokathor/tinyvec)
 - [`utf8_iter 1.0.4`](https://github.com/hsivonen/utf8_iter)
-- [`zeroize 1.8.2`](https://github.com/RustCrypto/utils)
+- [`zeroize 1.9.0`](https://github.com/RustCrypto/utils)
 
 ```
 
@@ -1140,14 +1140,17 @@ Used by:
 
 Used by:
 - [`windows-collections 0.2.0`](https://github.com/microsoft/windows-rs)
+- [`windows-collections 0.3.2`](https://github.com/microsoft/windows-rs)
 - [`windows-core 0.61.2`](https://github.com/microsoft/windows-rs)
 - [`windows-core 0.62.2`](https://github.com/microsoft/windows-rs)
 - [`windows-future 0.2.1`](https://github.com/microsoft/windows-rs)
+- [`windows-future 0.3.2`](https://github.com/microsoft/windows-rs)
 - [`windows-implement 0.60.2`](https://github.com/microsoft/windows-rs)
 - [`windows-interface 0.59.3`](https://github.com/microsoft/windows-rs)
 - [`windows-link 0.1.3`](https://github.com/microsoft/windows-rs)
 - [`windows-link 0.2.1`](https://github.com/microsoft/windows-rs)
 - [`windows-numerics 0.2.0`](https://github.com/microsoft/windows-rs)
+- [`windows-numerics 0.3.1`](https://github.com/microsoft/windows-rs)
 - [`windows-result 0.3.4`](https://github.com/microsoft/windows-rs)
 - [`windows-result 0.4.1`](https://github.com/microsoft/windows-rs)
 - [`windows-strings 0.4.2`](https://github.com/microsoft/windows-rs)
@@ -1161,8 +1164,10 @@ Used by:
 - [`windows-targets 0.52.6`](https://github.com/microsoft/windows-rs)
 - [`windows-targets 0.53.5`](https://github.com/microsoft/windows-rs)
 - [`windows-threading 0.1.0`](https://github.com/microsoft/windows-rs)
+- [`windows-threading 0.2.1`](https://github.com/microsoft/windows-rs)
 - [`windows-version 0.1.7`](https://github.com/microsoft/windows-rs)
 - [`windows 0.61.3`](https://github.com/microsoft/windows-rs)
+- [`windows 0.62.2`](https://github.com/microsoft/windows-rs)
 - [`windows_aarch64_gnullvm 0.42.2`](https://github.com/microsoft/windows-rs)
 - [`windows_aarch64_gnullvm 0.52.6`](https://github.com/microsoft/windows-rs)
 - [`windows_aarch64_gnullvm 0.53.1`](https://github.com/microsoft/windows-rs)
@@ -1610,8 +1615,8 @@ Used by:
 ### Apache License 2.0
 
 Used by:
-- [`zerocopy-derive 0.8.50`](https://github.com/google/zerocopy)
-- [`zerocopy 0.8.50`](https://github.com/google/zerocopy)
+- [`zerocopy-derive 0.8.52`](https://github.com/google/zerocopy)
+- [`zerocopy 0.8.52`](https://github.com/google/zerocopy)
 
 ```
                                  Apache License
@@ -2037,7 +2042,7 @@ Used by:
 ### Apache License 2.0
 
 Used by:
-- [`imgref 1.12.1`](https://github.com/kornelski/imgref)
+- [`imgref 1.12.2`](https://github.com/kornelski/imgref)
 - [`josekit 0.10.3`](https://github.com/hidekatsu-izuno/josekit-rs)
 - [`rustls-platform-verifier 0.7.0`](https://github.com/rustls/rustls-platform-verifier)
 - [`serialize-to-javascript-impl 0.1.2`](https://github.com/chippers/serialize-to-javascript)
@@ -2906,7 +2911,7 @@ Used by:
 - [`jni-sys 0.4.1`](https://github.com/jni-rs/jni-sys)
 - [`no_std_io2 0.9.4`](https://github.com/wcampbell0x2a/no-std-io2)
 - [`openssl-macros 0.1.1`](https://crates.io/crates/openssl-macros)
-- [`openssl 0.10.80`](https://github.com/rust-openssl/rust-openssl)
+- [`openssl 0.10.81`](https://github.com/rust-openssl/rust-openssl)
 - [`quick-error 2.0.1`](http://github.com/tailhook/quick-error)
 - [`serde_spanned 0.6.9`](https://github.com/toml-rs/toml)
 - [`serde_spanned 1.1.1`](https://github.com/toml-rs/toml)
@@ -4827,7 +4832,7 @@ limitations under the License.
 ### Apache License 2.0
 
 Used by:
-- [`http 1.4.1`](https://github.com/hyperium/http)
+- [`http 1.4.2`](https://github.com/hyperium/http)
 
 ```
                               Apache License
@@ -6531,7 +6536,7 @@ limitations under the License.
 Used by:
 - [`aligned 0.4.3`](https://github.com/rust-embedded-community/aligned)
 - [`arbitrary 1.4.2`](https://github.com/rust-fuzz/arbitrary/)
-- [`arrayvec 0.7.6`](https://github.com/bluss/arrayvec)
+- [`arrayvec 0.7.7`](https://github.com/bluss/arrayvec)
 - [`as-slice 0.2.1`](https://github.com/japaric/as-slice)
 - [`async-channel 2.5.0`](https://github.com/smol-rs/async-channel)
 - [`async-executor 1.14.0`](https://github.com/smol-rs/async-executor)
@@ -6549,8 +6554,8 @@ Used by:
 - [`bitstream-io 4.10.0`](https://github.com/tuffy/bitstream-io)
 - [`blocking 1.6.2`](https://github.com/smol-rs/blocking)
 - [`bumpalo 3.20.3`](https://github.com/fitzgen/bumpalo)
-- [`camino 1.2.2`](https://github.com/camino-rs/camino)
-- [`cc 1.2.63`](https://github.com/rust-lang/cc-rs)
+- [`camino 1.2.3`](https://github.com/camino-rs/camino)
+- [`cc 1.2.65`](https://github.com/rust-lang/cc-rs)
 - [`cfg-if 1.0.4`](https://github.com/rust-lang/cfg-if)
 - [`concurrent-queue 2.5.0`](https://github.com/smol-rs/concurrent-queue)
 - [`console_log 1.0.0`](https://github.com/iamcodemaker/console_log)
@@ -6592,17 +6597,18 @@ Used by:
 - [`indexmap 1.9.3`](https://github.com/bluss/indexmap)
 - [`indexmap 2.14.0`](https://github.com/indexmap-rs/indexmap)
 - [`itertools 0.14.0`](https://github.com/rust-itertools/itertools)
+- [`itertools 0.15.0`](https://github.com/rust-itertools/itertools)
 - [`jni 0.21.1`](https://github.com/jni-rs/jni-rs)
 - [`jobserver 0.1.34`](https://github.com/rust-lang/jobserver-rs)
-- [`js-sys 0.3.99`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys)
+- [`js-sys 0.3.103`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys)
 - [`lazy_static 1.5.0`](https://github.com/rust-lang-nursery/lazy-static.rs)
-- [`libfuzzer-sys 0.4.12`](https://github.com/rust-fuzz/libfuzzer)
+- [`libfuzzer-sys 0.4.13`](https://github.com/rust-fuzz/libfuzzer)
 - [`linux-raw-sys 0.12.1`](https://github.com/sunfishcode/linux-raw-sys)
 - [`lock_api 0.4.14`](https://github.com/Amanieu/parking_lot)
-- [`log 0.4.32`](https://github.com/rust-lang/log)
+- [`log 0.4.33`](https://github.com/rust-lang/log)
 - [`markup5ever 0.38.0`](https://github.com/servo/html5ever)
 - [`mime 0.3.17`](https://github.com/hyperium/mime)
-- [`muda 0.19.2`](https://github.com/tauri-apps/muda)
+- [`muda 0.19.3`](https://github.com/tauri-apps/muda)
 - [`num-bigint-dig 0.8.6`](https://github.com/dignifiedquire/num-bigint)
 - [`num-bigint 0.4.6`](https://github.com/rust-num/num-bigint)
 - [`num-derive 0.4.2`](https://github.com/rust-num/num-derive)
@@ -6612,7 +6618,7 @@ Used by:
 - [`num-traits 0.2.19`](https://github.com/rust-num/num-traits)
 - [`once_cell 1.21.4`](https://github.com/matklad/once_cell)
 - [`openssl-probe 0.2.1`](https://github.com/rustls/openssl-probe)
-- [`openssl-src 300.6.0+3.6.2`](https://github.com/alexcrichton/openssl-src-rs)
+- [`openssl-src 300.6.1+3.6.3`](https://github.com/alexcrichton/openssl-src-rs)
 - [`ordered-stream 0.2.0`](https://github.com/danieldg/ordered-stream)
 - [`parking 2.2.1`](https://github.com/smol-rs/parking)
 - [`parking_lot 0.12.5`](https://github.com/Amanieu/parking_lot)
@@ -6626,13 +6632,13 @@ Used by:
 - [`rayon-core 1.13.0`](https://github.com/rayon-rs/rayon)
 - [`rayon 1.12.0`](https://github.com/rayon-rs/rayon)
 - [`regex-automata 0.4.14`](https://github.com/rust-lang/regex)
-- [`regex-syntax 0.8.10`](https://github.com/rust-lang/regex)
-- [`regex 1.12.3`](https://github.com/rust-lang/regex)
+- [`regex-syntax 0.8.11`](https://github.com/rust-lang/regex)
+- [`regex 1.12.4`](https://github.com/rust-lang/regex)
 - [`ring 0.17.14`](https://github.com/briansmith/ring)
 - [`rustc_version 0.4.1`](https://github.com/djc/rustc-version-rs)
 - [`rustix 1.1.4`](https://github.com/bytecodealliance/rustix)
 - [`rustls-native-certs 0.8.4`](https://github.com/rustls/rustls-native-certs)
-- [`rustls 0.23.40`](https://github.com/rustls/rustls)
+- [`rustls 0.23.41`](https://github.com/rustls/rustls)
 - [`scopeguard 1.2.0`](https://github.com/bluss/scopeguard)
 - [`security-framework-sys 2.17.0`](https://github.com/kornelski/rust-security-framework)
 - [`security-framework 3.7.0`](https://github.com/kornelski/rust-security-framework)
@@ -6641,7 +6647,7 @@ Used by:
 - [`servo_arc 0.4.3`](https://github.com/servo/stylo)
 - [`signal-hook-registry 1.4.8`](https://github.com/vorner/signal-hook)
 - [`simd_cesu8 1.1.1`](https://github.com/seancroach/simd_cesu8)
-- [`smallvec 1.15.1`](https://github.com/servo/rust-smallvec)
+- [`smallvec 1.15.2`](https://github.com/servo/rust-smallvec)
 - [`socket2 0.6.4`](https://github.com/rust-lang/socket2)
 - [`stable_deref_trait 1.2.1`](https://github.com/storyyeller/stable_deref_trait)
 - [`string_cache 0.9.0`](https://github.com/servo/string-cache)
@@ -6659,19 +6665,18 @@ Used by:
 - [`unicode-segmentation 1.13.3`](https://github.com/unicode-rs/unicode-segmentation)
 - [`url 2.5.8`](https://github.com/servo/rust-url)
 - [`utf16string 0.2.0`](https://github.com/getsentry/utf16string)
-- [`uuid 1.23.2`](https://github.com/uuid-rs/uuid)
+- [`uuid 1.23.4`](https://github.com/uuid-rs/uuid)
 - [`version_check 0.9.5`](https://github.com/SergioBenitez/version_check)
 - [`wasi 0.11.1+wasi-snapshot-preview1`](https://github.com/bytecodealliance/wasi)
-- [`wasip2 1.0.3+wasi-0.2.9`](https://github.com/bytecodealliance/wasi-rs)
-- [`wasm-bindgen-futures 0.4.72`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures)
-- [`wasm-bindgen-macro-support 0.2.122`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro-support)
-- [`wasm-bindgen-macro 0.2.122`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro)
-- [`wasm-bindgen-shared 0.2.122`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared)
-- [`wasm-bindgen 0.2.122`](https://github.com/wasm-bindgen/wasm-bindgen)
-- [`web-sys 0.3.99`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys)
-- [`web_atoms 0.2.4`](https://github.com/servo/html5ever)
+- [`wasip2 1.0.4+wasi-0.2.12`](https://github.com/bytecodealliance/wasi-rs)
+- [`wasm-bindgen-futures 0.4.76`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures)
+- [`wasm-bindgen-macro-support 0.2.126`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro-support)
+- [`wasm-bindgen-macro 0.2.126`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro)
+- [`wasm-bindgen-shared 0.2.126`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared)
+- [`wasm-bindgen 0.2.126`](https://github.com/wasm-bindgen/wasm-bindgen)
+- [`web-sys 0.3.103`](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys)
+- [`web_atoms 0.2.5`](https://github.com/servo/html5ever)
 - [`window-vibrancy 0.6.0`](https://github.com/tauri-apps/tauri-plugin-vibrancy)
-- [`wit-bindgen 0.51.0`](https://github.com/bytecodealliance/wit-bindgen)
 - [`wit-bindgen 0.57.1`](https://github.com/bytecodealliance/wit-bindgen)
 - [`wry 0.55.1`](https://github.com/tauri-apps/wry)
 - [`xattr 1.6.1`](https://github.com/Stebalien/xattr)
@@ -7531,7 +7536,7 @@ Used by:
 - [`block-buffer 0.10.4`](https://github.com/RustCrypto/utils)
 - [`block-padding 0.3.3`](https://github.com/RustCrypto/utils)
 - [`cbc 0.1.2`](https://github.com/RustCrypto/block-modes)
-- [`chacha20 0.10.0`](https://github.com/RustCrypto/stream-ciphers)
+- [`chacha20 0.10.1`](https://github.com/RustCrypto/stream-ciphers)
 - [`cipher 0.4.4`](https://github.com/RustCrypto/traits)
 - [`const-oid 0.9.6`](https://github.com/RustCrypto/formats/tree/master/const-oid)
 - [`cpufeatures 0.2.17`](https://github.com/RustCrypto/utils)
@@ -8185,7 +8190,7 @@ APPENDIX: How to apply the Apache License to your work.
 Used by:
 - [`getrandom 0.2.17`](https://github.com/rust-random/getrandom)
 - [`getrandom 0.3.4`](https://github.com/rust-random/getrandom)
-- [`getrandom 0.4.2`](https://github.com/rust-random/getrandom)
+- [`getrandom 0.4.3`](https://github.com/rust-random/getrandom)
 - [`rand_chacha 0.3.1`](https://github.com/rust-random/rand)
 
 ```
@@ -10202,7 +10207,7 @@ limitations under the License.
 
 Used by:
 - [`android_system_properties 0.1.5`](https://github.com/nical/android_system_properties)
-- [`anyhow 1.0.102`](https://github.com/dtolnay/anyhow)
+- [`anyhow 1.0.103`](https://github.com/dtolnay/anyhow)
 - [`async-trait 0.1.89`](https://github.com/dtolnay/async-trait)
 - [`cargo_toml 0.22.3`](https://gitlab.com/lib.rs/cargo_toml)
 - [`cesu8 1.1.0`](https://github.com/emk/cesu8-rs)
@@ -10250,14 +10255,14 @@ Used by:
 - [`p12 0.6.3`](https://github.com/hjiayz/p12)
 - [`paste 1.0.15`](https://github.com/dtolnay/paste)
 - [`pastey 0.1.1`](https://github.com/as1100k/pastey)
-- [`pdfium-render 0.9.1`](https://github.com/ajrcarey/pdfium-render)
+- [`pdfium-render 0.9.2`](https://github.com/ajrcarey/pdfium-render)
 - [`pin-project-lite 0.2.17`](https://github.com/taiki-e/pin-project-lite)
 - [`portable-atomic-util 0.2.7`](https://github.com/taiki-e/portable-atomic-util)
 - [`portable-atomic 1.13.1`](https://github.com/taiki-e/portable-atomic)
 - [`proc-macro2 1.0.106`](https://github.com/dtolnay/proc-macro2)
 - [`profiling-procmacros 1.0.18`](https://github.com/aclysma/profiling)
 - [`profiling 1.0.18`](https://github.com/aclysma/profiling)
-- [`quote 1.0.45`](https://github.com/dtolnay/quote)
+- [`quote 1.0.46`](https://github.com/dtolnay/quote)
 - [`r-efi 5.3.0`](https://github.com/r-efi/r-efi)
 - [`r-efi 6.0.0`](https://github.com/r-efi/r-efi)
 - [`rand 0.10.1`](https://github.com/rust-random/rand)
@@ -10283,29 +10288,29 @@ Used by:
 - [`simdutf8 0.1.5`](https://github.com/rusticstuff/simdutf8)
 - [`siphasher 1.0.3`](https://github.com/jedisct1/rust-siphash)
 - [`subsetter 0.2.6`](https://github.com/typst/subsetter)
-- [`syn 2.0.117`](https://github.com/dtolnay/syn)
+- [`syn 2.0.118`](https://github.com/dtolnay/syn)
 - [`sync_wrapper 1.0.2`](https://github.com/Actyx/sync_wrapper)
 - [`tao-macros 0.1.3`](https://github.com/tauri-apps/tao)
-- [`tauri-build 2.6.2`](https://github.com/tauri-apps/tauri)
-- [`tauri-codegen 2.6.2`](https://github.com/tauri-apps/tauri)
-- [`tauri-macros 2.6.2`](https://github.com/tauri-apps/tauri)
+- [`tauri-build 2.6.3`](https://github.com/tauri-apps/tauri)
+- [`tauri-codegen 2.6.3`](https://github.com/tauri-apps/tauri)
+- [`tauri-macros 2.6.3`](https://github.com/tauri-apps/tauri)
 - [`tauri-plugin-dialog 2.7.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`tauri-plugin-fs 2.5.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`tauri-plugin-process 2.3.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`tauri-plugin-single-instance 2.4.2`](https://github.com/tauri-apps/plugins-workspace)
 - [`tauri-plugin-updater 2.10.1`](https://github.com/tauri-apps/plugins-workspace)
-- [`tauri-plugin 2.6.2`](https://github.com/tauri-apps/tauri)
-- [`tauri-runtime-wry 2.11.2`](https://github.com/tauri-apps/tauri)
-- [`tauri-runtime 2.11.2`](https://github.com/tauri-apps/tauri)
-- [`tauri-utils 2.9.2`](https://github.com/tauri-apps/tauri)
-- [`tauri 2.11.2`](https://github.com/tauri-apps/tauri)
+- [`tauri-plugin 2.6.3`](https://github.com/tauri-apps/tauri)
+- [`tauri-runtime-wry 2.11.3`](https://github.com/tauri-apps/tauri)
+- [`tauri-runtime 2.11.3`](https://github.com/tauri-apps/tauri)
+- [`tauri-utils 2.9.3`](https://github.com/tauri-apps/tauri)
+- [`tauri 2.11.3`](https://github.com/tauri-apps/tauri)
 - [`thiserror-impl 1.0.69`](https://github.com/dtolnay/thiserror)
 - [`thiserror-impl 2.0.18`](https://github.com/dtolnay/thiserror)
 - [`thiserror 1.0.69`](https://github.com/dtolnay/thiserror)
 - [`thiserror 2.0.18`](https://github.com/dtolnay/thiserror)
-- [`time-core 0.1.8`](https://github.com/time-rs/time)
-- [`time-macros 0.2.27`](https://github.com/time-rs/time)
-- [`time 0.3.47`](https://github.com/time-rs/time)
+- [`time-core 0.1.9`](https://github.com/time-rs/time)
+- [`time-macros 0.2.30`](https://github.com/time-rs/time)
+- [`time 0.3.51`](https://github.com/time-rs/time)
 - [`typeid 1.0.3`](https://github.com/dtolnay/typeid)
 - [`unic-char-property 0.9.0`](https://github.com/open-i18n/rust-unic/)
 - [`unic-char-range 0.9.0`](https://github.com/open-i18n/rust-unic/)
@@ -10314,7 +10319,6 @@ Used by:
 - [`unic-ucd-version 0.9.0`](https://github.com/open-i18n/rust-unic/)
 - [`unicode-ident 1.0.24`](https://github.com/dtolnay/unicode-ident)
 - [`utf-8 0.7.6`](https://github.com/SimonSapin/rust-utf8)
-- [`wasip3 0.4.0+wasi-0.3.0-rc-2026-01-06`](https://github.com/bytecodealliance/wasi-rs)
 - [`wasm-streams 0.5.0`](https://github.com/MattiasBuelens/wasm-streams/)
 - [`winapi-i686-pc-windows-gnu 0.4.0`](https://github.com/retep998/winapi-rs)
 - [`winapi-x86_64-pc-windows-gnu 0.4.0`](https://github.com/retep998/winapi-rs)
@@ -10898,8 +10902,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Used by:
 - [`alloc-no-stdlib 2.0.4`](https://github.com/dropbox/rust-alloc-no-stdlib)
-- [`brotli-decompressor 5.0.1`](https://github.com/dropbox/rust-brotli-decompressor)
-- [`brotli 8.0.3`](https://github.com/dropbox/rust-brotli)
+- [`brotli-decompressor 5.0.3`](https://github.com/dropbox/rust-brotli-decompressor)
+- [`brotli 8.0.4`](https://github.com/dropbox/rust-brotli)
 
 ```
 Copyright (c) 2016 Dropbox, Inc.
@@ -11038,7 +11042,7 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ### BSD 3-Clause &quot;New&quot; or &quot;Revised&quot; License
 
 Used by:
-- [`alloc-stdlib 0.2.2`](https://github.com/dropbox/rust-alloc-no-stdlib)
+- [`alloc-stdlib 0.2.4`](https://github.com/dropbox/rust-alloc-no-stdlib)
 - [`curve25519-dalek 4.1.3`](https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek)
 - [`exr 1.74.0`](https://github.com/johannesvollmer/exrs)
 
@@ -11099,9 +11103,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ### Community Data License Agreement Permissive 2.0
 
 Used by:
-- [`webpki-root-certs 1.0.7`](https://github.com/rustls/webpki-roots)
+- [`webpki-root-certs 1.0.8`](https://github.com/rustls/webpki-roots)
 - [`webpki-roots 0.26.11`](https://github.com/rustls/webpki-roots)
-- [`webpki-roots 1.0.7`](https://github.com/rustls/webpki-roots)
+- [`webpki-roots 1.0.8`](https://github.com/rustls/webpki-roots)
 
 ```
 # Community Data License Agreement - Permissive - Version 2.0
@@ -11173,7 +11177,7 @@ insights.
 ### GNU General Public License v3.0 only
 
 Used by:
-- [`pdf-panda 1.3.3`](https://crates.io/crates/pdf-panda)
+- [`pdf-panda 1.5.0`](https://crates.io/crates/pdf-panda)
 
 ```
 GNU GENERAL PUBLIC LICENSE
@@ -11582,7 +11586,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### MIT License
 
 Used by:
-- [`brotli 8.0.3`](https://github.com/dropbox/rust-brotli)
+- [`brotli 8.0.4`](https://github.com/dropbox/rust-brotli)
 
 ```
 Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
@@ -11612,7 +11616,7 @@ THE SOFTWARE.
 ### MIT License
 
 Used by:
-- [`openssl-sys 0.9.116`](https://github.com/rust-openssl/rust-openssl)
+- [`openssl-sys 0.9.117`](https://github.com/rust-openssl/rust-openssl)
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -12005,7 +12009,7 @@ SOFTWARE.
 ### MIT License
 
 Used by:
-- [`bytes 1.11.1`](https://github.com/tokio-rs/bytes)
+- [`bytes 1.12.0`](https://github.com/tokio-rs/bytes)
 
 ```
 Copyright (c) 2018 Carl Lerche
@@ -12461,7 +12465,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 
 Used by:
 - [`lopdf 0.39.0`](https://github.com/J-F-Liu/lopdf.git)
-- [`lopdf 0.41.0`](https://github.com/J-F-Liu/lopdf.git)
+- [`lopdf 0.42.0`](https://github.com/J-F-Liu/lopdf.git)
 
 ```
 MIT License
@@ -13606,8 +13610,8 @@ Used by:
 - [`byteorder 1.5.0`](https://github.com/BurntSushi/byteorder)
 - [`jiff-tzdb-platform 0.1.3`](https://github.com/BurntSushi/jiff)
 - [`jiff-tzdb 0.1.6`](https://github.com/BurntSushi/jiff)
-- [`jiff 0.2.28`](https://github.com/BurntSushi/jiff)
-- [`memchr 2.8.1`](https://github.com/BurntSushi/memchr)
+- [`jiff 0.2.29`](https://github.com/BurntSushi/jiff)
+- [`memchr 2.8.2`](https://github.com/BurntSushi/memchr)
 - [`walkdir 2.5.0`](https://github.com/BurntSushi/walkdir)
 
 ```
@@ -15278,7 +15282,7 @@ Exhibit B - &quot;Incompatible With Secondary Licenses&quot; Notice
 ### University of Illinois/NCSA Open Source License
 
 Used by:
-- [`libfuzzer-sys 0.4.12`](https://github.com/rust-fuzz/libfuzzer)
+- [`libfuzzer-sys 0.4.13`](https://github.com/rust-fuzz/libfuzzer)
 
 ```
 University of Illinois/NCSA Open Source License
@@ -15465,7 +15469,7 @@ shipped in release builds.
 
 ## Packages in use
 
-- **@tauri-apps/api** 2.11.0 - MIT OR Apache-2.0
+- **@tauri-apps/api** 2.11.1 - MIT OR Apache-2.0
 - **@tauri-apps/plugin-dialog** 2.7.1 - MIT OR Apache-2.0
 - **@tauri-apps/plugin-process** 2.3.1 - MIT OR Apache-2.0
 - **@tauri-apps/plugin-updater** 2.10.1 - MIT OR Apache-2.0
@@ -15509,7 +15513,7 @@ SOFTWARE.
 ### MIT OR Apache-2.0
 
 Used by:
-- [`@tauri-apps/api 2.11.0`](https://github.com/tauri-apps/tauri)
+- [`@tauri-apps/api 2.11.1`](https://github.com/tauri-apps/tauri)
 - [`@tauri-apps/plugin-dialog 2.7.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`@tauri-apps/plugin-process 2.3.1`](https://www.npmjs.com/package/@tauri-apps/plugin-process)
 - [`@tauri-apps/plugin-updater 2.10.1`](https://www.npmjs.com/package/@tauri-apps/plugin-updater)

@@ -8,7 +8,7 @@ shipped in release builds.
 
 ## Packages in use
 
-- **@tauri-apps/api** 2.11.0 - MIT OR Apache-2.0
+- **@tauri-apps/api** 2.11.1 - MIT OR Apache-2.0
 - **@tauri-apps/plugin-dialog** 2.7.1 - MIT OR Apache-2.0
 - **@tauri-apps/plugin-process** 2.3.1 - MIT OR Apache-2.0
 - **@tauri-apps/plugin-updater** 2.10.1 - MIT OR Apache-2.0
@@ -52,7 +52,7 @@ SOFTWARE.
 ### MIT OR Apache-2.0
 
 Used by:
-- [`@tauri-apps/api 2.11.0`](https://github.com/tauri-apps/tauri)
+- [`@tauri-apps/api 2.11.1`](https://github.com/tauri-apps/tauri)
 - [`@tauri-apps/plugin-dialog 2.7.1`](https://github.com/tauri-apps/plugins-workspace)
 - [`@tauri-apps/plugin-process 2.3.1`](https://www.npmjs.com/package/@tauri-apps/plugin-process)
 - [`@tauri-apps/plugin-updater 2.10.1`](https://www.npmjs.com/package/@tauri-apps/plugin-updater)
