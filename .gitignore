@@ -51,3 +51,6 @@ docs/credits-third-party-rust.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Local release-artifact cache kept by clean_visorcraft_repos
+/_releases/
